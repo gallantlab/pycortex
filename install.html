@@ -1,22 +1,20 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/doctools.js"></script>
+    <title>Installation &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Surface Segmentation and Flattening" href="segmentation_guide.html" />
@@ -24,8 +22,9 @@
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -38,7 +37,7 @@
           <div class="body" role="main">
             
   <section id="installation">
-<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
 <p>To install the stable release version of pycortex, do the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># First, install some required dependencies</span>
 <span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">setuptools</span> <span class="n">wheel</span> <span class="n">numpy</span> <span class="n">cython</span>
@@ -49,16 +48,16 @@
 <p>If you wish to install the development version of pycortex, you can install it directly from Github.</p>
 <p>To do so, replace the second install line above with the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install development version of pycortex from github</span>
-<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">git</span><span class="o">+</span><span class="n">git</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">gallantlab</span><span class="o">/</span><span class="n">pycortex</span><span class="o">.</span><span class="n">git</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">gallantlab</span><span class="o">/</span><span class="n">pycortex</span><span class="o">.</span><span class="n">git</span>
 </pre></div>
 </div>
 <section id="optional-dependencies">
-<h2>Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Permalink to this headline">¶</a></h2>
+<h2>Optional Dependencies<a class="headerlink" href="#optional-dependencies" title="Link to this heading">¶</a></h2>
 <p>For some functionality, you will also need to install <a class="reference external" href="https://inkscape.org/en/">Inkscape</a>, using whatever method is appropriate for your system.</p>
 <p>On Mac OS X you will also need to enable access to Inkscape on the command line, see these <a class="reference external" href="http://wiki.inkscape.org/wiki/index.php/Mac_OS_X#Inkscape_command_line">instructions</a>.</p>
 </section>
 <section id="demo">
-<h2>Demo<a class="headerlink" href="#demo" title="Permalink to this headline">¶</a></h2>
+<h2>Demo<a class="headerlink" href="#demo" title="Link to this heading">¶</a></h2>
 <p>To test if your install went well, you can run the pycortex demo.</p>
 <p>Pycortex is best used with <a class="reference external" href="http://www.ipython.org/">IPython</a></p>
 <p>If you do not already have IPython, you can install it by running:</p>
@@ -74,7 +73,7 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
 <p>If everything went well, this should pop up a web browser window with a demo subject.</p>
 </section>
 <section id="basic-configuration">
-<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Permalink to this headline">¶</a></h2>
+<h2>Basic Configuration<a class="headerlink" href="#basic-configuration" title="Link to this heading">¶</a></h2>
 <p>Pycortex will automatically create a database filestore when it is first installed. In Linux, this filestore is located at <code class="file docutils literal notranslate"><span class="pre">/usr/local/share/pycortex/</span></code>. On first import, it will also create a configuration file in your user directory which allows you to specify additional options, including alternate filestore locations. In Linux, this user configuration file is located in <code class="file docutils literal notranslate"><span class="pre">~/.config/pycortex/options.cfg</span></code>.</p>
 <p>You can check the location of the filestore after installing by running:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
@@ -148,7 +147,7 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -156,8 +155,8 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -171,11 +170,11 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="_sources/install.rst.txt"

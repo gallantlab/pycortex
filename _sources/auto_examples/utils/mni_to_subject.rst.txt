@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_utils_mni_to_subject.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_utils_mni_to_subject.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -31,7 +31,7 @@ into subject space from MNI space.
 
 .. GENERATED FROM PYTHON SOURCE LINES 14-45
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
 
@@ -59,37 +59,26 @@ into subject space from MNI space.
                                                 data.data, s1_to_mni)
     # subject_data is a nibabel Nifti1Image
 
-    subject_data_vol = mni_data.get_data() # the actual array, shape=(100,100,31)
+    subject_data_vol = mni_data.get_fdata() # the actual array, shape=(100,100,31)
 
     # That was the manual method. pycortex can also cache these transforms for you
     # if you get them using the pycortex database
     s1_to_mni_db = cortex.db.get_mnixfm('S1', 'fullhead')
     # this is the same as s1_to_mni, but will return instantly on subsequent calls
 
-.. rst-class:: sphx-glr-timing
-
-   **Total running time of the script:** ( 0 minutes  0.000 seconds)
-
-
 .. _sphx_glr_download_auto_examples_utils_mni_to_subject.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: mni_to_subject.ipynb <mni_to_subject.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: mni_to_subject.py <mni_to_subject.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: mni_to_subject.ipynb <mni_to_subject.ipynb>`
+      :download:`Download Python source code: mni_to_subject.py <mni_to_subject.py>`
 
 
 .. only:: html

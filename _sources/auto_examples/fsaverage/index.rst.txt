@@ -1,0 +1,42 @@
+
+
+.. _sphx_glr_auto_examples_fsaverage:
+
+Examples with fsaverage
+------------------------------
+
+Examples showing how to use PyCortex to visualize data on fsaverage.
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how data in a lower resolution fsaverage template  (e.g., fsaverage5 or fsav...">
+
+.. only:: html
+
+  .. image:: /auto_examples/fsaverage/images/thumb/sphx_glr_upsample_to_fsaverage_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_fsaverage_upsample_to_fsaverage.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Upsample data from a lower resolution fsaverage template to fsaverage for visualization</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/fsaverage/upsample_to_fsaverage
+

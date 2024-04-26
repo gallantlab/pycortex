@@ -1,22 +1,20 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Surface Database &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/doctools.js"></script>
+    <title>Surface Database &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Alignments" href="align.html" />
@@ -24,8 +22,9 @@
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -38,7 +37,7 @@
           <div class="body" role="main">
             
   <section id="surface-database">
-<h1>Surface Database<a class="headerlink" href="#surface-database" title="Permalink to this headline">¶</a></h1>
+<h1>Surface Database<a class="headerlink" href="#surface-database" title="Link to this heading">¶</a></h1>
 <p>Pycortex creates and maintains a simple flat-file database store all the data required to plot data on a cortical sheet (surfaces, transforms, masks, regions-of-interest, etc.). By default, the filestore is in <code class="docutils literal notranslate"><span class="pre">INSTALL_DATA/share/pycortex/</span></code>. This location can be customized in your <code class="docutils literal notranslate"><span class="pre">options.cfg</span></code> file. You can find the filestore directory by running:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="n">cortex</span><span class="o">.</span><span class="n">database</span><span class="o">.</span><span class="n">default_filestore</span>
@@ -46,16 +45,16 @@
 </div>
 <p>Within the filestore, each subject has their own directory containing all associated data.</p>
 <section id="anatomical-scans">
-<h2>Anatomical scans<a class="headerlink" href="#anatomical-scans" title="Permalink to this headline">¶</a></h2>
+<h2>Anatomical scans<a class="headerlink" href="#anatomical-scans" title="Link to this heading">¶</a></h2>
 <p>Each subject must have an anatomical scan.</p>
 </section>
 <section id="cache">
-<h2>Cache<a class="headerlink" href="#cache" title="Permalink to this headline">¶</a></h2>
+<h2>Cache<a class="headerlink" href="#cache" title="Link to this heading">¶</a></h2>
 <p>The cache holds the sequence of files necessary for the webgl viewer. <a class="reference external" href="http://openctm.sourceforge.net/">OpenCTM</a> is a geometry specification that allows very small files to reduce bandwidth. Files are stored with the format <code class="docutils literal notranslate"><span class="pre">{subject}_{transform}_[{types}]_{compression}_{level}.{suffix}</span></code>. Each subject and transform is associated with a triplet of files called a “ctmpack”. Each ctmpack contains a json file specifying the limits of the data, a ctm file consisting of concatenated left and right hemispheres, and an <a class="reference external" href="http://en.wikipedia.org/wiki/Scalable_Vector_Graphics">SVG</a> consisting of the roi’s with the data layers deleted. There is a unique ctmpack for each subject, transform, and set of included inflations. Raw CTMs are generated for view.webshow, whereas MG2 CTM’s are generated for static WebGL views. These files are considered disposable, and are generated on demand.</p>
 <p>The flatcache holds the voxel indices for quickly generating a flatmap. They have the format <code class="docutils literal notranslate"><span class="pre">{subject}_{transform}_{height}_{date}.pkl</span></code>. A different flatcache must be generated for each datamap height. These files are also disposable and are generated on demand. This cache allows quickflat to satisfy its namesake.</p>
 </section>
 <section id="surfaces">
-<h2>Surfaces<a class="headerlink" href="#surfaces" title="Permalink to this headline">¶</a></h2>
+<h2>Surfaces<a class="headerlink" href="#surfaces" title="Link to this heading">¶</a></h2>
 <p>Pycortex fundamentally operates on triangular mesh geometry computed from a subject’s anatomy. Surface geometries are usually created from a <a class="reference external" href="http://en.wikipedia.org/wiki/Marching_cubes">marching cubes</a> reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries and is morphed by an energy metric to be on a flattened 2D surface.</p>
 <p>Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>. Another package which is generally more user-friendly is <a class="reference external" href="http://brainvis.wustl.edu/wiki/index.php/Main_Page">Caret</a>. pycortex includes some utility functions to interact with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>, documented ‘’’HERE’’’.</p>
 <p>A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces may be stored in any one of <strong>OFF</strong>, <strong>VTK</strong>, or <strong>npz</strong> formats. The highest performance is achieved with <strong>npz</strong> since it is binary and compressed. VTK is also efficient, having a <cite>Cython</cite> module to read files. Inside the filestore, surface names are formatted as <code class="docutils literal notranslate"><span class="pre">{type}_{hemisphere}.{format}</span></code>. Surfaces generally have three variables associated:</p>
@@ -69,11 +68,11 @@
 <p>The surface files for a specific subject and hemisphere must have the same number of vertices across all the different types. Without this information, the mapping from fiducial to flatmap is not preserved, and there is no way to display data on the flatmap. <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a> surfaces preserve this relationship, and can be automatically imported into the database. pycortex does not check the validity of surfaces, and will break in unexpected ways if the number of vertices do not match! It is your job to make sure that all surfaces are valid.</p>
 <p>In order to plot cortical data for a subject, at least the fiducial and flat geometries must be available for that subject. Surfaces must be stored in VTK v. 1 format (also known as the ASCII format).</p>
 <section id="accessing-surfaces">
-<h3>Accessing surfaces<a class="headerlink" href="#accessing-surfaces" title="Permalink to this headline">¶</a></h3>
-<p>Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convienient tab completion interface.</p>
+<h3>Accessing surfaces<a class="headerlink" href="#accessing-surfaces" title="Link to this heading">¶</a></h3>
+<p>Two methods exist for accessing the surface data once they are committed to the database: direct command access, or via a convenient tab completion interface.</p>
 </section>
 <section id="command-access">
-<h3>Command access<a class="headerlink" href="#command-access" title="Permalink to this headline">¶</a></h3>
+<h3>Command access<a class="headerlink" href="#command-access" title="Link to this heading">¶</a></h3>
 <p>For the direct command access, there are two call signatures:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -89,7 +88,7 @@
 <p>If you only specify <code class="docutils literal notranslate"><span class="pre">hemisphere='left'</span></code> or <code class="docutils literal notranslate"><span class="pre">'right'</span></code>, only one hemisphere will be returned, and the return will again be only points, polygons, and normals.</p>
 </section>
 <section id="tab-interface">
-<h3>Tab interface<a class="headerlink" href="#tab-interface" title="Permalink to this headline">¶</a></h3>
+<h3>Tab interface<a class="headerlink" href="#tab-interface" title="Link to this heading">¶</a></h3>
 <p>An alternate way to browse the database is using <a class="reference external" href="http://ipython.org/">ipython</a> and its tab completion feature. If you type the following:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">1</span><span class="p">]:</span> <span class="kn">import</span> <span class="nn">cortex</span>
 <span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span>
@@ -120,16 +119,16 @@
 </div>
 </section>
 <section id="adding-new-surfaces">
-<h3>Adding new surfaces<a class="headerlink" href="#adding-new-surfaces" title="Permalink to this headline">¶</a></h3>
+<h3>Adding new surfaces<a class="headerlink" href="#adding-new-surfaces" title="Link to this heading">¶</a></h3>
 <p>Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into <code class="docutils literal notranslate"><span class="pre">{$FILESTORE}/{$SUBJECT}/surfaces/</span></code> with the format <code class="docutils literal notranslate"><span class="pre">{type}_{hemisphere}.{format}</span></code>, where <code class="docutils literal notranslate"><span class="pre">hemisphere</span></code> is <strong>lh</strong> or <strong>rh</strong>, and format is one of <strong>OFF</strong>, <strong>VTK</strong>, or an <strong>npz</strong> file with keys ‘pts’ and ‘polys’. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.</p>
 <p>In order to adequately utilize all the functions in pycortex, please add the <strong>fiducial</strong>, <strong>inflated</strong>, and <strong>flat</strong> geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!</p>
 </section>
 </section>
 <section id="transforms">
-<h2>Transforms<a class="headerlink" href="#transforms" title="Permalink to this headline">¶</a></h2>
+<h2>Transforms<a class="headerlink" href="#transforms" title="Link to this heading">¶</a></h2>
 <p>Transformations in pycortex are stored as <strong>affine</strong> matrices encoded in magnet isocenter space, as defined in the <a class="reference external" href="http://nifti.nimh.nih.gov/nifti-1/">Nifti</a> headers.</p>
 <p>Each transform is stored in its own subdirectory containing two files: <code class="docutils literal notranslate"><span class="pre">matrices.xfm</span></code>, and <code class="docutils literal notranslate"><span class="pre">reference.nii.gz</span></code>. Masks are also stored in the transforms directory.</p>
-<p>Transforms are saved as JSON-encoded text files. They have the format <code class="docutils literal notranslate"><span class="pre">{subject}_{transform}.xfm</span></code>. There are four fields in this JSON structure: <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">epifile</span></code>, <code class="docutils literal notranslate"><span class="pre">coord</span></code>, <code class="docutils literal notranslate"><span class="pre">magnet</span></code>. <code class="docutils literal notranslate"><span class="pre">epifile</span></code> gives the filename of the functional volume (EPI) that served as the reference for this transform. <code class="docutils literal notranslate"><span class="pre">coord</span></code> stores the transform from fiducial to coordinate space (for fast index lookups). <code class="docutils literal notranslate"><span class="pre">magnet</span></code> stores the transform from the fiducial to the magnet space, as defined in the return of <code class="docutils literal notranslate"><span class="pre">nibabel.get_affine()</span></code>.</p>
+<p>Transforms are saved as JSON-encoded text files. They have the format <code class="docutils literal notranslate"><span class="pre">{subject}_{transform}.xfm</span></code>. There are four fields in this JSON structure: <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">epifile</span></code>, <code class="docutils literal notranslate"><span class="pre">coord</span></code>, <code class="docutils literal notranslate"><span class="pre">magnet</span></code>. <code class="docutils literal notranslate"><span class="pre">epifile</span></code> gives the filename of the functional volume (EPI) that served as the reference for this transform. <code class="docutils literal notranslate"><span class="pre">coord</span></code> stores the transform from fiducial to coordinate space (for fast index lookups). <code class="docutils literal notranslate"><span class="pre">magnet</span></code> stores the transform from the fiducial to the magnet space, as defined in the return of <code class="docutils literal notranslate"><span class="pre">nibabel.affine</span></code>.</p>
 <p>Reference volumes are typically in <a class="reference external" href="http://nifti.nimh.nih.gov/nifti-1/">Nifti</a> format (<a href="#id1"><span class="problematic" id="id2">*</span></a>.nii), but can be any format that <a class="reference external" href="http://nipy.sourceforge.net/nibabel/">nibabel</a> understands. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.</p>
 <p>Similar to the surfaces, transforms can be access through two methods: direct command access, and the tab interface.</p>
 <p>Command access looks like this:</p>
@@ -164,7 +163,7 @@
 <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;magnet&#39;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="s1">&#39;path_to_functional.nii&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex’s advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.</p>
+<p id="database-masks">One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex’s advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.</p>
 <p>Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the datasets page.</p>
 <p>A mask is specified by three variables: <strong>subject</strong>, <strong>transform</strong>, and <strong>mask type</strong>. pycortex defines two named masks for each transform by default. These are the <code class="docutils literal notranslate"><span class="pre">'thick'</span></code> and the <code class="docutils literal notranslate"><span class="pre">'thin'</span></code> masks. They correspond to a distance of 8 mm and 2 mm, respectively, from any given cortical vertex. Additionally, masks corresponding to known mapper types (such as <code class="docutils literal notranslate"><span class="pre">'nearest'</span></code> and <code class="docutils literal notranslate"><span class="pre">'trilinear'</span></code>) are available. If the subject has both pial and white matter surfaces, all voxels of exactly the cortical thickness distance from each vertex are selected from the fiducial surface. To retrieve the thick mask for S1 using the fullhead transform:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
@@ -179,11 +178,11 @@
 </div>
 </section>
 <section id="surface-info">
-<h2>Surface info<a class="headerlink" href="#surface-info" title="Permalink to this headline">¶</a></h2>
+<h2>Surface info<a class="headerlink" href="#surface-info" title="Link to this heading">¶</a></h2>
 <p>The filestore also manages several important quantifications about the surfaces. These include Tissot’s Indicatrix and the flatmap surface distortion. There are stored in the <code class="docutils literal notranslate"><span class="pre">/surface_info</span></code> directory.</p>
 </section>
 <section id="views">
-<h2>Views<a class="headerlink" href="#views" title="Permalink to this headline">¶</a></h2>
+<h2>Views<a class="headerlink" href="#views" title="Link to this heading">¶</a></h2>
 <p>It is often useful to be able to store, recall, and share specific perspectives onto a 3D model of the brain. The filestore stores these “views” as JSON files containing parameters such as altitude, radius, target, and azimuth. After opening a webgl viewer and manipulating the brain using the browser GUI, a view can be stored by calling:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">webgl</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">volume</span><span class="p">)</span>
 <span class="n">viewer</span><span class="o">.</span><span class="n">save_view</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
@@ -195,46 +194,46 @@
 </div>
 </section>
 <section id="overlays-svg">
-<h2><code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code><a class="headerlink" href="#overlays-svg" title="Permalink to this headline">¶</a></h2>
+<h2><code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code><a class="headerlink" href="#overlays-svg" title="Link to this heading">¶</a></h2>
 <p>Overlays are stored as <a class="reference external" href="http://en.wikipedia.org/wiki/Scalable_Vector_Graphics">SVG</a>’s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call <code class="docutils literal notranslate"><span class="pre">cortex.add_roi</span></code>. ROI overlays are created and edited in <a class="reference external" href="http://inkscape.org/">Inkscape</a>. For more information, see <a href="#id3"><span class="problematic" id="id4">:module:`svgroi.py`</span></a>.</p>
 </section>
 <section id="rois-svg">
-<h2><code class="docutils literal notranslate"><span class="pre">rois.svg</span></code><a class="headerlink" href="#rois-svg" title="Permalink to this headline">¶</a></h2>
+<h2><code class="docutils literal notranslate"><span class="pre">rois.svg</span></code><a class="headerlink" href="#rois-svg" title="Link to this heading">¶</a></h2>
 </section>
 <section id="example-subject-database-entry">
-<h2>Example subject database entry<a class="headerlink" href="#example-subject-database-entry" title="Permalink to this headline">¶</a></h2>
+<h2>Example subject database entry<a class="headerlink" href="#example-subject-database-entry" title="Link to this heading">¶</a></h2>
 <p>Here is an example entry into the filestore…</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>filestore/db
-└── S1
-    ├── anatomicals
-    │   └── raw.nii.gz
-    ├── cache
-    │   ├── flatmask_1024.npz
-    │   ├── flatpixel_fullhead_1024_nearest_l32.npz
-    │   ├── flatverts_1024.npz
-    │   └── fullhead_linenn.npz
-    ├── overlays.svg
-    ├── rois.svg
-    ├── surface-info
-    │   ├── distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>areal<span class="o">]</span>.npz
-    │   └── distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>metric<span class="o">]</span>.npz
-    ├── surfaces
-    │   ├── flat_lh.gii
-    │   ├── flat_rh.gii
-    │   ├── inflated_lh.gii
-    │   ├── inflated_rh.gii
-    │   ├── pia_lh.gii
-    │   ├── pia_rh.gii
-    │   ├── wm_lh.gii
-    │   └── wm_rh.gii
-    ├── transforms
-    │   ├── fullhead
-    │   │   ├── matrices.xfm
-    │   │   └── reference.nii.gz
-    │   └── retinotopy
-    │       ├── matrices.xfm
-    │       └── reference.nii.gz
-    └── views
+└──<span class="w"> </span>S1
+<span class="w">    </span>├──<span class="w"> </span>anatomicals
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>raw.nii.gz
+<span class="w">    </span>├──<span class="w"> </span>cache
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flatmask_1024.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flatpixel_fullhead_1024_nearest_l32.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flatverts_1024.npz
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>fullhead_linenn.npz
+<span class="w">    </span>├──<span class="w"> </span>overlays.svg
+<span class="w">    </span>├──<span class="w"> </span>rois.svg
+<span class="w">    </span>├──<span class="w"> </span>surface-info
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>areal<span class="o">]</span>.npz
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>metric<span class="o">]</span>.npz
+<span class="w">    </span>├──<span class="w"> </span>surfaces
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flat_lh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flat_rh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>inflated_lh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>inflated_rh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>pia_lh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>pia_rh.gii
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>wm_lh.gii
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>wm_rh.gii
+<span class="w">    </span>├──<span class="w"> </span>transforms
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>fullhead
+<span class="w">    </span>│<span class="w">   </span>│<span class="w">   </span>├──<span class="w"> </span>matrices.xfm
+<span class="w">    </span>│<span class="w">   </span>│<span class="w">   </span>└──<span class="w"> </span>reference.nii.gz
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>retinotopy
+<span class="w">    </span>│<span class="w">       </span>├──<span class="w"> </span>matrices.xfm
+<span class="w">    </span>│<span class="w">       </span>└──<span class="w"> </span>reference.nii.gz
+<span class="w">    </span>└──<span class="w"> </span>views
 </pre></div>
 </div>
 </section>
@@ -300,7 +299,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -308,8 +307,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -323,11 +322,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="_sources/database.rst.txt"

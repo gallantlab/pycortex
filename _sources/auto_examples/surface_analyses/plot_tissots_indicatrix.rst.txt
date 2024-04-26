@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_tissots_indicatrix.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_tissots_indicatrix.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -53,13 +53,9 @@ introduced by flattening the globe onto a map:
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
     Generating tissots_indicatrix surface info...
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Adding vertex 88060..
     Adding vertex 93467..
     Adding vertex 51981..
@@ -209,8 +205,6 @@ introduced by flattening the globe onto a map:
     Adding vertex 6044..
     Adding vertex 67298..
     Adding vertex 40064..
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/numpy/lib/npyio.py:713: VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray.
-      val = np.asanyarray(val)
 
 
 
@@ -219,7 +213,7 @@ introduced by flattening the globe onto a map:
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -234,28 +228,22 @@ introduced by flattening the globe onto a map:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  33.731 seconds)
+   **Total running time of the script:** (0 minutes 25.962 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_tissots_indicatrix.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_tissots_indicatrix.ipynb <plot_tissots_indicatrix.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_tissots_indicatrix.py <plot_tissots_indicatrix.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_tissots_indicatrix.ipynb <plot_tissots_indicatrix.ipynb>`
+      :download:`Download Python source code: plot_tissots_indicatrix.py <plot_tissots_indicatrix.py>`
 
 
 .. only:: html

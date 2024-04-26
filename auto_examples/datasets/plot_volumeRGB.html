@@ -1,31 +1,30 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Plot RGB Volume Data &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>Plot RGB Volume Data &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Import fmriprep output" href="../import_surface/import_fmriprep.html" />
+    <link rel="next" title="Examples with fsaverage" href="../fsaverage/index.html" />
     <link rel="prev" title="Plot RGB Vertex Data" href="plot_vertexRGB.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -39,11 +38,11 @@
             
   <div class="sphx-glr-download-link-note admonition note">
 <p class="admonition-title">Note</p>
-<p>Click <a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-volumergb-py"><span class="std std-ref">here</span></a>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-volumergb-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code</p>
 </div>
 <section class="sphx-glr-example-title" id="plot-rgb-volume-data">
-<span id="sphx-glr-auto-examples-datasets-plot-volumergb-py"></span><h1>Plot RGB Volume Data<a class="headerlink" href="#plot-rgb-volume-data" title="Permalink to this headline">¶</a></h1>
+<span id="sphx-glr-auto-examples-datasets-plot-volumergb-py"></span><h1>Plot RGB Volume Data<a class="headerlink" href="#plot-rgb-volume-data" title="Link to this heading">¶</a></h1>
 <p>This plots an example RGB dataset onto an example subject, S1, onto a flatmap
 using quickflat. In order for this to run, you have to a have a flatmap for
 this subject in the pycortex filestore.</p>
@@ -71,25 +70,18 @@ shared_vmax` will allow you to specify minimum and maximum values manually.</p>
 <li><img src="../../_images/sphx_glr_plot_volumeRGB_002.png" srcset="../../_images/sphx_glr_plot_volumeRGB_002.png" alt="plot volumeRGB" class = "sphx-glr-multi-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_volumeRGB_003.png" srcset="../../_images/sphx_glr_plot_volumeRGB_003.png" alt="plot volumeRGB" class = "sphx-glr-multi-img"/></li>
 </ul>
-<p class="sphx-glr-script-out">Out:</p>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Failed to get connection
-** (inkscape:5180): CRITICAL **: 01:27:25.026: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
-** (inkscape:5180): CRITICAL **: 01:27:25.026: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
-** (inkscape:5180): CRITICAL **: 01:27:25.026: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
-Failed to get connection
-** (inkscape:5192): CRITICAL **: 01:27:31.612: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
-** (inkscape:5192): CRITICAL **: 01:27:31.612: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
-** (inkscape:5192): CRITICAL **: 01:27:31.612: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
-Failed to get connection
-** (inkscape:5202): CRITICAL **: 01:27:38.226: dbus_g_proxy_new_for_name: assertion &#39;connection != NULL&#39; failed
-** (inkscape:5202): CRITICAL **: 01:27:38.227: dbus_g_proxy_call: assertion &#39;DBUS_IS_G_PROXY (proxy)&#39; failed
-** (inkscape:5202): CRITICAL **: 01:27:38.227: dbus_g_connection_register_g_object: assertion &#39;connection != NULL&#39; failed
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Background RRGGBBAA: ffffff00
+Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+Background RRGGBBAA: ffffff00
+Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+Background RRGGBBAA: ffffff00
+Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 </pre></div>
 </div>
 <div class="line-block">
 <div class="line"><br /></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 
@@ -147,13 +139,13 @@ Failed to get connection
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> ( 0 minutes  17.227 seconds)</p>
-<div class="sphx-glr-footer class sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-volumergb-py">
-<div class="sphx-glr-download sphx-glr-download-python docutils container">
-<p><a class="reference download internal" download="" href="../../_downloads/143d83c2f8fe0044f498e638bde3f0a0/plot_volumeRGB.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_volumeRGB.py</span></code></a></p>
-</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 11.075 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-volumergb-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/dafaff1c5c813c5150e44a7314911857/plot_volumeRGB.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_volumeRGB.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/143d83c2f8fe0044f498e638bde3f0a0/plot_volumeRGB.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_volumeRGB.py</span></code></a></p>
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
@@ -194,23 +186,24 @@ Failed to get connection
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="plot_dataset_arithmetic.html">Dataset Arithmetic</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_volume_to_vertex.html">Map from Volume to Vertex Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_volume.html">Plot Volume Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_vertex.html">Plot Vertex Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_vertex2D.html">Plot 2D Vertex Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_volume2D.html">Plot 2D Volume Data</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_vertexRGB.html">Plot RGB Vertex Data</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Plot RGB Volume Data</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="index.html">Datasets Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -223,13 +216,15 @@ Failed to get connection
 <ul>
   <li><a href="../../index.html">Documentation overview</a><ul>
   <li><a href="../index.html">Example Gallery</a><ul>
+  <li><a href="index.html">Datasets Examples</a><ul>
       <li>Previous: <a href="plot_vertexRGB.html" title="previous chapter">Plot RGB Vertex Data</a></li>
-      <li>Next: <a href="../import_surface/import_fmriprep.html" title="next chapter">Import fmriprep output</a></li>
+      <li>Next: <a href="../fsaverage/index.html" title="next chapter">Examples with fsaverage</a></li>
+  </ul></li>
   </ul></li>
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
@@ -237,8 +232,8 @@ Failed to get connection
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -252,11 +247,11 @@ Failed to get connection
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="../../_sources/auto_examples/datasets/plot_volumeRGB.rst.txt"

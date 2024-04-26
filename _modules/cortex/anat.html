@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.anat &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>cortex.anat &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -51,14 +50,19 @@
 <span class="n">fsl_prefix</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;fsl_prefix&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="brainmask"><a class="viewcode-back" href="../../generated/cortex.anat.brainmask.html#cortex.anat.brainmask">[docs]</a><span class="k">def</span> <span class="nf">brainmask</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+<div class="viewcode-block" id="brainmask">
+<a class="viewcode-back" href="../../generated/cortex.anat.brainmask.html#cortex.anat.brainmask">[docs]</a>
+<span class="k">def</span> <span class="nf">brainmask</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
     <span class="n">raw</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Brain masking anatomical...&#39;</span><span class="p">)</span>
     <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{fsl_prefix}</span><span class="s1">bet </span><span class="si">{raw}</span><span class="s1"> </span><span class="si">{bet}</span><span class="s1"> -B -v&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fsl_prefix</span><span class="o">=</span><span class="n">fsl_prefix</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">,</span> <span class="n">bet</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">cmd</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Error calling fsl-bet&quot;</span></div>
 
-<div class="viewcode-block" id="whitematter"><a class="viewcode-back" href="../../generated/cortex.anat.whitematter.html#cortex.anat.whitematter">[docs]</a><span class="k">def</span> <span class="nf">whitematter</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">do_voxelize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="whitematter">
+<a class="viewcode-back" href="../../generated/cortex.anat.whitematter.html#cortex.anat.whitematter">[docs]</a>
+<span class="k">def</span> <span class="nf">whitematter</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">do_voxelize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">do_voxelize</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">IOError</span>
@@ -72,7 +76,7 @@
             <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Attempting to segment the brain with freesurfer...&quot;</span><span class="p">)</span>
             <span class="n">bet2</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw_wm&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
             <span class="n">vol</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{bet2}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">bet2</span><span class="o">=</span><span class="n">bet2</span><span class="p">))</span>
-            <span class="n">vol_data</span> <span class="o">=</span> <span class="n">vol</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+            <span class="n">vol_data</span> <span class="o">=</span> <span class="n">vol</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">vol_data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
             <span class="n">new_data</span> <span class="o">=</span> <span class="n">vol_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
             <span class="n">new_data</span><span class="p">[</span><span class="n">new_data</span><span class="o">==</span><span class="mi">250</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
@@ -87,7 +91,7 @@
             <span class="k">assert</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Error calling fsl-fast&quot;</span>
 
             <span class="n">wmfl</span> <span class="o">=</span> <span class="s1">&#39;fast_pve_2&#39;</span>
-            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{cache}</span><span class="s1">/</span><span class="si">{wmseg}</span><span class="s1">.nii.gz&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span><span class="n">wmseg</span><span class="o">=</span><span class="n">wmfl</span><span class="p">))</span><span class="o">.</span><span class="n">get_data</span><span class="p">())</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{cache}</span><span class="s1">/</span><span class="si">{wmseg}</span><span class="s1">.nii.gz&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">,</span><span class="n">wmseg</span><span class="o">=</span><span class="n">wmfl</span><span class="p">))</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span>
             <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="kn">from</span> <span class="nn">warnings</span> <span class="kn">import</span> <span class="n">warn</span>
                 <span class="n">warn</span><span class="p">(</span><span class="s1">&#39;&quot;fsl-fast&quot; with default settings failed. Trying no pve, no bias correction...&#39;</span><span class="p">)</span>
@@ -99,27 +103,31 @@
             <span class="k">assert</span> <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Error calling fsl-maths&#39;</span>
 
             <span class="c1"># check generated mask succeeded</span>
-            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{outfl}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outfl</span><span class="o">=</span><span class="n">outfile</span><span class="p">))</span><span class="o">.</span><span class="n">get_data</span><span class="p">())</span>
+            <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{outfl}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outfl</span><span class="o">=</span><span class="n">outfile</span><span class="p">))</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())</span>
             <span class="k">assert</span> <span class="n">arr</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;Error with generated whitematter mask.&#39;</span>
 
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="voxelize"><a class="viewcode-back" href="../../generated/cortex.anat.voxelize.html#cortex.anat.voxelize">[docs]</a><span class="k">def</span> <span class="nf">voxelize</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">surf</span><span class="o">=</span><span class="s1">&#39;wm&#39;</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Voxelize the whitematter surface to generate the white matter mask&#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="voxelize">
+<a class="viewcode-back" href="../../generated/cortex.anat.voxelize.html#cortex.anat.voxelize">[docs]</a>
+<span class="k">def</span> <span class="nf">voxelize</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">surf</span><span class="o">=</span><span class="s1">&#39;wm&#39;</span><span class="p">,</span> <span class="n">mp</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;Voxelize the whitematter surface to generate the white matter mask&#39;&#39;&#39;</span>
     <span class="kn">import</span> <span class="nn">nibabel</span>
     <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">polyutils</span>
     <span class="n">nib</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
     <span class="n">shape</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_shape</span><span class="p">()</span>
     <span class="n">vox</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="n">xfm</span> <span class="o">=</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()),</span> <span class="n">nib</span><span class="p">)</span>
+        <span class="n">xfm</span> <span class="o">=</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">),</span> <span class="n">nib</span><span class="p">)</span>
         <span class="n">vox</span> <span class="o">+=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">voxelize</span><span class="p">(</span><span class="n">xfm</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span> <span class="n">polys</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="n">mp</span><span class="o">=</span><span class="n">mp</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span>
         
-    <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">vox</span><span class="p">,</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">header</span><span class="o">=</span><span class="n">nib</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span>
+    <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">vox</span><span class="p">,</span> <span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">nib</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
     <span class="n">nib</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">vox</span><span class="o">.</span><span class="n">T</span></div>
+
 </pre></div>
 
           </div>
@@ -170,7 +178,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
@@ -178,8 +186,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -193,11 +201,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

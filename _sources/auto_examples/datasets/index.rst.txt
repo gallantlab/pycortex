@@ -1,0 +1,170 @@
+
+
+.. _sphx_glr_auto_examples_datasets:
+
+Datasets Examples
+------------------------------
+
+Examples demonstrating how to create, manipulate, plot datasets.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_dataset_arithmetic_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Dataset Arithmetic</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then crea...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_to_vertex_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Map from Volume to Vertex Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_volume.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot Volume Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot Vertex Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex2D_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot 2D Vertex Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume2D_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot 2D Volume Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat....">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertexRGB_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot RGB Vertex Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot RGB Volume Data</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/datasets/plot_dataset_arithmetic
+   /auto_examples/datasets/plot_volume_to_vertex
+   /auto_examples/datasets/plot_volume
+   /auto_examples/datasets/plot_vertex
+   /auto_examples/datasets/plot_vertex2D
+   /auto_examples/datasets/plot_volume2D
+   /auto_examples/datasets/plot_vertexRGB
+   /auto_examples/datasets/plot_volumeRGB
+

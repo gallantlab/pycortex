@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_vertex2D.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_datasets_plot_vertex2D.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -28,7 +28,7 @@ subject in the pycortex filestore.
 
 The cortex.Vertex2D object is instantiated with two numpy arrays of the same
 size as the total number of vertices in that subject's flatmap. Each pixel is
-colored according to both vlaues given for the nearest vertex in the flatmap.
+colored according to both values given for the nearest vertex in the flatmap.
 
 Instead of random test data, you can replace these with any arrays that are
 the length of the all the vertices in the subject.
@@ -45,14 +45,10 @@ the length of the all the vertices in the subject.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5161): CRITICAL **: 01:27:14.312: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5161): CRITICAL **: 01:27:14.312: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5161): CRITICAL **: 01:27:14.312: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -61,7 +57,7 @@ the length of the all the vertices in the subject.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -98,28 +94,22 @@ the length of the all the vertices in the subject.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  1.972 seconds)
+   **Total running time of the script:** (0 minutes 1.433 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_vertex2D.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_vertex2D.ipynb <plot_vertex2D.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_vertex2D.py <plot_vertex2D.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_vertex2D.ipynb <plot_vertex2D.ipynb>`
+      :download:`Download Python source code: plot_vertex2D.py <plot_vertex2D.py>`
 
 
 .. only:: html

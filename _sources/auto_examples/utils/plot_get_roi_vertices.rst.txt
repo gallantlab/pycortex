@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -37,14 +37,10 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5534): CRITICAL **: 01:33:42.301: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
     <Figure size 1960x1024 with 2 Axes>
 
@@ -54,7 +50,7 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
 
@@ -75,28 +71,22 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  2.277 seconds)
+   **Total running time of the script:** (0 minutes 4.012 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_get_roi_vertices.ipynb <plot_get_roi_vertices.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_get_roi_vertices.py <plot_get_roi_vertices.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_get_roi_vertices.ipynb <plot_get_roi_vertices.ipynb>`
+      :download:`Download Python source code: plot_get_roi_vertices.py <plot_get_roi_vertices.py>`
 
 
 .. only:: html

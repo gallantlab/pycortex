@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_datasets_plot_vertex.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_datasets_plot_vertex.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -61,18 +61,12 @@ filled in with zeros.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5153): CRITICAL **: 01:27:09.888: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5153): CRITICAL **: 01:27:09.888: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5153): CRITICAL **: 01:27:09.888: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5156): CRITICAL **: 01:27:10.878: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5156): CRITICAL **: 01:27:10.878: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5156): CRITICAL **: 01:27:10.878: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -81,7 +75,7 @@ filled in with zeros.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -121,28 +115,22 @@ filled in with zeros.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  4.388 seconds)
+   **Total running time of the script:** (0 minutes 3.304 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_vertex.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_vertex.ipynb <plot_vertex.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_vertex.py <plot_vertex.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_vertex.ipynb <plot_vertex.ipynb>`
+      :download:`Download Python source code: plot_vertex.py <plot_vertex.py>`
 
 
 .. only:: html

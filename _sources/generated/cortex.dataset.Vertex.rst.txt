@@ -19,6 +19,7 @@
      ~Vertex.empty
      ~Vertex.exp
      ~Vertex.from_hdf
+     ~Vertex.get_cmapdict
      ~Vertex.map
      ~Vertex.random
      ~Vertex.to_json

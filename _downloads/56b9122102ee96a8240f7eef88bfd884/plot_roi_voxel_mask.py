@@ -5,7 +5,7 @@ Get ROI Voxel Mask
 
 Get proportion of each voxel that exists within a named ROI (this 
 constitutes a probability map for the ROI, with values ranging from
-0-1). Plot this probablistic roi mask onto a flatmap. 
+0-1). Plot this probabilistic roi mask onto a flatmap. 
 
 In order for this to work, the specified ROI must exist in the
 overlays.svg file in the pycortex filestore for this subject.
@@ -23,7 +23,7 @@ roi_masks = cortex.utils.get_roi_masks(subject, xfm,
                                        roi_list=[roi],
                                        gm_sampler='cortical-conservative', # Select only voxels mostly within cortex
                                        split_lr=False, # No separate left/right ROIs
-                                       threshold=None, # Leave roi mask values as probabilites / fractions
+                                       threshold=None, # Leave roi mask values as probabilities / fractions
                                        return_dict=True
                                        )
 

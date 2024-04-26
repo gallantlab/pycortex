@@ -18,6 +18,7 @@
      ~Volume.empty
      ~Volume.exp
      ~Volume.from_hdf
+     ~Volume.get_cmapdict
      ~Volume.map
      ~Volume.random
      ~Volume.save

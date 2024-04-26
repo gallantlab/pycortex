@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -28,13 +28,13 @@ dataset_, but that can also be done automatically through the `urllib`
 command that is included.
 
 
-.. _dataset: http://gallantlab.org/pycortex/S1_retinotopy.hdf
+.. _dataset: https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf
 
 S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore,
 and you will also need a flatmap for them.
 
-.. GENERATED FROM PYTHON SOURCE LINES 18-46
+.. GENERATED FROM PYTHON SOURCE LINES 18-44
 
 
 
@@ -58,19 +58,13 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
     Mask not found, generating...
-    Failed to get connection
-    ** (inkscape:5434): CRITICAL **: 01:31:30.199: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5434): CRITICAL **: 01:31:30.199: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5434): CRITICAL **: 01:31:30.200: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5438): CRITICAL **: 01:31:31.326: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -79,20 +73,18 @@ and you will also need a flatmap for them.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
-    import six
     import cortex
     import matplotlib.pyplot as plt
-    if six.PY2:
-        from urllib import urlretrieve
-    elif six.PY3:
-        from urllib.request import urlretrieve
+    from urllib.request import urlretrieve
 
 
     # Download the dataset and load it
-    _ = urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
-                    "S1_retinotopy.hdf")
+    _ = urlretrieve(
+        "https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf", 
+        "S1_retinotopy.hdf"
+    )
     ret_data = cortex.load("S1_retinotopy.hdf")
 
     # The retinotopy data has to be divided into left and right hemispheres
@@ -113,28 +105,22 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  6.018 seconds)
+   **Total running time of the script:** (0 minutes 5.836 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_retinotopy_flatmap.ipynb <plot_retinotopy_flatmap.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_retinotopy_flatmap.py <plot_retinotopy_flatmap.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_retinotopy_flatmap.ipynb <plot_retinotopy_flatmap.ipynb>`
+      :download:`Download Python source code: plot_retinotopy_flatmap.py <plot_retinotopy_flatmap.py>`
 
 
 .. only:: html

@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.get\_cmapdict
+=====================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Volume2D.get_cmapdict

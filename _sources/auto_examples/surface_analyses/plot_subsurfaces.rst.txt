@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -26,7 +26,7 @@ Subsurfaces can be used for efficient operations on subsets of cortical surface
 
 .. GENERATED FROM PYTHON SOURCE LINES 9-24
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import tempfile
@@ -56,7 +56,7 @@ create subsurface
 
 .. GENERATED FROM PYTHON SOURCE LINES 26-33
 
-.. code-block:: default
+.. code-block:: Python
 
 
     center = 125000
@@ -69,15 +69,6 @@ create subsurface
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- Out:
-
- .. code-block:: none
-
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-
 
 
 
@@ -87,7 +78,7 @@ plot data on subsurface
 
 .. GENERATED FROM PYTHON SOURCE LINES 35-42
 
-.. code-block:: default
+.. code-block:: Python
 
 
     data = subsurface.geodesic_distance([0]) + 20
@@ -107,16 +98,10 @@ plot data on subsurface
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    Failed to get connection
-    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5499): CRITICAL **: 01:33:03.252: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -128,7 +113,7 @@ plot subsurface as gif
 
 .. GENERATED FROM PYTHON SOURCE LINES 45-51
 
-.. code-block:: default
+.. code-block:: Python
 
 
     f, path = tempfile.mkstemp()
@@ -154,7 +139,7 @@ create many patches
 
 .. GENERATED FROM PYTHON SOURCE LINES 58-76
 
-.. code-block:: default
+.. code-block:: Python
 
 
 
@@ -185,16 +170,10 @@ create many patches
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    Failed to get connection
-    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5506): CRITICAL **: 01:33:09.549: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -205,7 +184,7 @@ create geodesic strip patch
 
 .. GENERATED FROM PYTHON SOURCE LINES 78-95
 
-.. code-block:: default
+.. code-block:: Python
 
 
     patch = left_surface.get_geodesic_strip_patch(v0=70000, v1=125000, radius=5)
@@ -254,24 +233,14 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    Failed to get connection
-    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5514): CRITICAL **: 01:33:20.494: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5517): CRITICAL **: 01:33:21.485: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5517): CRITICAL **: 01:33:21.485: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5517): CRITICAL **: 01:33:21.486: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5520): CRITICAL **: 01:33:22.471: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -279,28 +248,22 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  22.744 seconds)
+   **Total running time of the script:** (0 minutes 19.551 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_subsurfaces.ipynb <plot_subsurfaces.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_subsurfaces.py <plot_subsurfaces.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_subsurfaces.ipynb <plot_subsurfaces.ipynb>`
+      :download:`Download Python source code: plot_subsurfaces.py <plot_subsurfaces.py>`
 
 
 .. only:: html

@@ -1,0 +1,134 @@
+
+
+.. _sphx_glr_auto_examples_surface_analyses:
+
+Surface Analysis Examples
+------------------------------
+
+Examples demonstrating operations and analyses done on brain surfaces.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_tissots_indicatrix_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Tissot's Indicatrix</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based...">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_path_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plotting Geodesic Paths</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on ...">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_distance_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plotting Geodesic Distances</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_flatmap_distortion_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Flatmap Distortion</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Subsurfaces can be used for efficient operations on subsets of cortical surface">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_subsurfaces_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot and Use Subsurface Tools</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the p...">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_interpolate_data_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Interpolate Data</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/surface_analyses/plot_tissots_indicatrix
+   /auto_examples/surface_analyses/plot_geodesic_path
+   /auto_examples/surface_analyses/plot_geodesic_distance
+   /auto_examples/surface_analyses/plot_flatmap_distortion
+   /auto_examples/surface_analyses/plot_subsurfaces
+   /auto_examples/surface_analyses/plot_interpolate_data
+

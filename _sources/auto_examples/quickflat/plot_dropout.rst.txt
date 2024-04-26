@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickflat_plot_dropout.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_dropout.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -49,14 +49,10 @@ of this using the following formula:
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5219): CRITICAL **: 01:27:52.316: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5219): CRITICAL **: 01:27:52.317: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5219): CRITICAL **: 01:27:52.317: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -65,7 +61,7 @@ of this using the following formula:
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -84,28 +80,22 @@ of this using the following formula:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  3.200 seconds)
+   **Total running time of the script:** (0 minutes 2.353 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_dropout.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_dropout.ipynb <plot_dropout.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_dropout.py <plot_dropout.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_dropout.ipynb <plot_dropout.ipynb>`
+      :download:`Download Python source code: plot_dropout.py <plot_dropout.py>`
 
 
 .. only:: html

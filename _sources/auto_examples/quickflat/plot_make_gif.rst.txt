@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickflat_plot_make_gif.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_make_gif.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -28,7 +28,7 @@ to make an animated gif in which each frame is a flatmap.
 
 .. GENERATED FROM PYTHON SOURCE LINES 11-16
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
     import matplotlib.pyplot as plt
@@ -49,7 +49,7 @@ Create several pycortex Volumes
 
 .. GENERATED FROM PYTHON SOURCE LINES 19-23
 
-.. code-block:: default
+.. code-block:: Python
 
 
     volumes = {'first': cortex.Volume.random(subject='S1', xfmname='fullhead', vmin=-2, vmax=2, cmap="RdBu_r"),
@@ -69,7 +69,7 @@ Plot flat maps individually
 
 .. GENERATED FROM PYTHON SOURCE LINES 26-32
 
-.. code-block:: default
+.. code-block:: Python
 
 
     _ = cortex.quickflat.make_figure(volumes['first'], colorbar_location="right")
@@ -100,18 +100,12 @@ Plot flat maps individually
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5327): CRITICAL **: 01:30:14.896: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5327): CRITICAL **: 01:30:14.896: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5327): CRITICAL **: 01:30:14.896: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5332): CRITICAL **: 01:30:15.933: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5332): CRITICAL **: 01:30:15.933: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5332): CRITICAL **: 01:30:15.933: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -123,7 +117,7 @@ Generate an animated gif that switches between frames every 1.5 seconds
 
 .. GENERATED FROM PYTHON SOURCE LINES 35-39
 
-.. code-block:: default
+.. code-block:: Python
 
 
     filename = "./flatmap_comparison.gif"
@@ -135,18 +129,12 @@ Generate an animated gif that switches between frames every 1.5 seconds
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5337): CRITICAL **: 01:30:19.261: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5337): CRITICAL **: 01:30:19.261: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5337): CRITICAL **: 01:30:19.262: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5341): CRITICAL **: 01:30:21.048: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5341): CRITICAL **: 01:30:21.049: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5341): CRITICAL **: 01:30:21.049: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -158,7 +146,7 @@ Display gif inline in an IPython notebook
 
 .. GENERATED FROM PYTHON SOURCE LINES 42-52
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import io
@@ -176,18 +164,12 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5347): CRITICAL **: 01:30:23.595: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5347): CRITICAL **: 01:30:23.595: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5347): CRITICAL **: 01:30:23.595: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5351): CRITICAL **: 01:30:25.381: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5351): CRITICAL **: 01:30:25.381: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5351): CRITICAL **: 01:30:25.381: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
     <IPython.core.display.Image object>
 
@@ -200,28 +182,22 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  12.570 seconds)
+   **Total running time of the script:** (0 minutes 9.046 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_make_gif.ipynb <plot_make_gif.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_make_gif.py <plot_make_gif.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_make_gif.ipynb <plot_make_gif.ipynb>`
+      :download:`Download Python source code: plot_make_gif.py <plot_make_gif.py>`
 
 
 .. only:: html

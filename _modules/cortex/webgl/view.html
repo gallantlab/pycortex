@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.webgl.view &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/doctools.js"></script>
+    <title>cortex.webgl.view &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
   <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -35,43 +34,41 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.webgl.view</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">six</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">glob</span>
+<span></span><span class="kn">import</span> <span class="nn">binascii</span>
 <span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">time</span>
-<span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY2</span><span class="p">:</span>  <span class="c1"># python 2</span>
-    <span class="kn">from</span> <span class="nn">Queue</span> <span class="kn">import</span> <span class="n">Queue</span>
-    <span class="kn">from</span> <span class="nn">ConfigParser</span> <span class="kn">import</span> <span class="n">NoOptionError</span>
-<span class="k">else</span><span class="p">:</span>  <span class="c1"># python 3</span>
-    <span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span>
-    <span class="kn">from</span> <span class="nn">configparser</span> <span class="kn">import</span> <span class="n">NoOptionError</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">functools</span>
-<span class="kn">import</span> <span class="nn">binascii</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">mimetypes</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">webbrowser</span>
+<span class="kn">from</span> <span class="nn">configparser</span> <span class="kn">import</span> <span class="n">NoOptionError</span>
+
+<span class="c1"># Now assumes python 3</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">tornado</span> <span class="kn">import</span> <span class="n">web</span>
 
-<span class="kn">from</span> <span class="nn">.FallbackLoader</span> <span class="kn">import</span> <span class="n">FallbackLoader</span>
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">utils</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span> <span class="n">dataset</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">utils</span><span class="p">,</span> <span class="n">volume</span>
 <span class="kn">from</span> <span class="nn">..database</span> <span class="kn">import</span> <span class="n">db</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">serve</span>
 <span class="kn">from</span> <span class="nn">.data</span> <span class="kn">import</span> <span class="n">Package</span>
+<span class="kn">from</span> <span class="nn">.FallbackLoader</span> <span class="kn">import</span> <span class="n">FallbackLoader</span>
 
 <span class="k">try</span><span class="p">:</span>
     <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Colormap directory (</span><span class="si">%s</span><span class="s2">) does not exits&quot;</span><span class="o">%</span><span class="n">cmapdir</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Colormap directory (</span><span class="si">%s</span><span class="s2">) does not exist&quot;</span><span class="o">%</span><span class="n">cmapdir</span><span class="p">)</span>
 <span class="k">except</span> <span class="n">NoOptionError</span><span class="p">:</span>
     <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;filestore&quot;</span><span class="p">),</span> <span class="s2">&quot;colormaps&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Colormap directory was not defined in the config file and the default (</span><span class="si">%s</span><span class="s2">) does not exits&quot;</span><span class="o">%</span><span class="n">cmapdir</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Colormap directory was not defined in the config file and the default (</span><span class="si">%s</span><span class="s2">) does not exist&quot;</span><span class="o">%</span><span class="n">cmapdir</span><span class="p">)</span>
 
 <span class="n">domain_name</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webgl&quot;</span><span class="p">,</span> <span class="s2">&quot;domain_name&quot;</span><span class="p">)</span>
 
@@ -79,13 +76,15 @@
 <span class="n">colormaps</span> <span class="o">=</span> <span class="p">[(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cm</span><span class="p">)[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span> <span class="n">serve</span><span class="o">.</span><span class="n">make_base64</span><span class="p">(</span><span class="n">cm</span><span class="p">))</span>
              <span class="k">for</span> <span class="n">cm</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">colormaps</span><span class="p">)]</span>
 
-<div class="viewcode-block" id="make_static"><a class="viewcode-back" href="../../../generated/cortex.webgl.make_static.html#cortex.webgl.make_static">[docs]</a><span class="k">def</span> <span class="nf">make_static</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span>
+<div class="viewcode-block" id="make_static">
+<a class="viewcode-back" href="../../../generated/cortex.webgl.make_static.html#cortex.webgl.make_static">[docs]</a>
+<span class="k">def</span> <span class="nf">make_static</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span>
                 <span class="n">template</span><span class="o">=</span><span class="s2">&quot;static.html&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">anonymize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">html_embed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="s1">&#39;sulci&#39;</span><span class="p">),</span> <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="p">),</span>
                 <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy_ctmfiles</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Brain&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a static webGL MRI viewer in your filesystem so that it can easily</span>
-<span class="sd">    be posted publically for sharing or just saved for later viewing.</span>
+<span class="sd">    be posted publicly for sharing or just saved for later viewing.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -104,7 +103,7 @@
 <span class="sd">        Whether to rename CTM and SVG files generically, for public distribution.</span>
 <span class="sd">        Default False</span>
 <span class="sd">    overlays_available : tuple, optional</span>
-<span class="sd">        Overlays availble in the viewer. If None, then all overlay layers of the</span>
+<span class="sd">        Overlays available in the viewer. If None, then all overlay layers of the</span>
 <span class="sd">        svg file will be potentially available in the viewer (whether initially</span>
 <span class="sd">        visible or not). This provides the option to include, e.g., only a subset</span>
 <span class="sd">        of layers for a given static viewer.</span>
@@ -141,6 +140,10 @@
 <span class="sd">    title : str, optional</span>
 <span class="sd">        The title that is displayed on the viewer website when it is loaded in</span>
 <span class="sd">        a browser.</span>
+<span class="sd">    layout : None or list of (int, int)</span>
+<span class="sd">        The layout of the viewer subwindows for showing multiple subjects, passed to</span>
+<span class="sd">        the template generator. </span>
+<span class="sd">        Default to None, corresponding to no subwindows.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -172,8 +175,6 @@
     <span class="n">package</span><span class="o">.</span><span class="n">reorder</span><span class="p">(</span><span class="n">ctms</span><span class="p">)</span>
 
     <span class="n">db</span><span class="o">.</span><span class="n">auxfile</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">layout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">layout</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)][</span><span class="nb">len</span><span class="p">(</span><span class="n">subjects</span><span class="p">)]</span>
 
     <span class="c1">## Rename files to anonymize</span>
     <span class="n">submap</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -272,12 +273,19 @@
             <span class="n">htmlfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="show"><a class="viewcode-back" href="../../../generated/cortex.webgl.show.html#cortex.webgl.show">[docs]</a><span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,</span> <span class="p">),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;RdBu_r&#39;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+
+<div class="viewcode-block" id="show">
+<a class="viewcode-back" href="../../../generated/cortex.webgl.show.html#cortex.webgl.show">[docs]</a>
+<span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,</span> <span class="p">),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;RdBu_r&#39;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
          <span class="n">autoclose</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">open_browser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pickerfun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
          <span class="n">template</span><span class="o">=</span><span class="s2">&quot;mixer.html&quot;</span><span class="p">,</span> <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
          <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="s1">&#39;sulci&#39;</span><span class="p">),</span> <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="p">),</span>
-         <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Brain&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+         <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">curvature_smoothness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Brain&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a webGL MRI viewer that is dynamically served by a tornado server</span>
 <span class="sd">    running inside the current python process.</span>
 
@@ -297,7 +305,7 @@
 <span class="sd">    port : int or None, optional</span>
 <span class="sd">        The port that will be used by the server. If None, a random port will be</span>
 <span class="sd">        selected from the range 1024-65536. Default None</span>
-<span class="sd">    pickerfun : funcion or None, optional</span>
+<span class="sd">    pickerfun : function or None, optional</span>
 <span class="sd">        Should be a function that takes two arguments, a voxel index and a vertex</span>
 <span class="sd">        index. Is called whenever a location on the surface is clicked in the</span>
 <span class="sd">        viewer. This can be used to print information about individual voxels or</span>
@@ -328,12 +336,22 @@
 <span class="sd">    overlay_file : str or None, optional</span>
 <span class="sd">        Custom overlays.svg file to use instead of the default one for this</span>
 <span class="sd">        subject (if not None). Default None.</span>
+<span class="sd">    curvature_brightness : float or None, optional</span>
+<span class="sd">        Brightness of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    curvature_smoothness : float or None, optional</span>
+<span class="sd">        Smoothness of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    curvature_contrast : float or None, optional</span>
+<span class="sd">        Contrast of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
 <span class="sd">    title : str, optional</span>
 <span class="sd">        The title that is displayed on the viewer website when it is loaded in</span>
 <span class="sd">        a browser.</span>
-<span class="sd">    layout : (int, int), optional</span>
-<span class="sd">        The layout of the viewer subwindows for showing multiple subjects.</span>
-<span class="sd">        Default None, which selects the layout based on the number of subjects.</span>
+<span class="sd">    layout : None or list of (int, int), optional</span>
+<span class="sd">        The layout of the viewer subwindows for showing multiple subjects, passed to</span>
+<span class="sd">        the template generator.</span>
+<span class="sd">        Default None, corresponding to no subwindows.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># populate default webshow args</span>
@@ -370,8 +388,6 @@
     <span class="n">subjectjs</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">dict</span><span class="p">((</span><span class="n">subj</span><span class="p">,</span> <span class="s2">&quot;ctm/</span><span class="si">%s</span><span class="s2">/&quot;</span><span class="o">%</span><span class="n">subj</span><span class="p">)</span> <span class="k">for</span> <span class="n">subj</span> <span class="ow">in</span> <span class="n">subjects</span><span class="p">))</span>
     <span class="n">db</span><span class="o">.</span><span class="n">auxfile</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">if</span> <span class="n">layout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">layout</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">)][</span><span class="nb">len</span><span class="p">(</span><span class="n">subjects</span><span class="p">)]</span>
 
     <span class="n">linear</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">m</span><span class="p">)</span><span class="o">*</span><span class="n">x</span> <span class="o">+</span> <span class="n">m</span><span class="o">*</span><span class="n">y</span>
     <span class="n">mixes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
@@ -386,9 +402,12 @@
     <span class="n">my_viewopts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s1">&#39;webgl_viewopts&#39;</span><span class="p">))</span>
     <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;overlays_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overlays_visible</span>
     <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;labels_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels_visible</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;brightness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;smoothness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;webgl_smooth&#39;</span><span class="p">)</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;contrast&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;contrast&#39;</span><span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;brightness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> \
+        <span class="k">if</span> <span class="n">curvature_brightness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_brightness</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;smoothness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;webgl_smooth&#39;</span><span class="p">)</span> \
+        <span class="k">if</span> <span class="n">curvature_smoothness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_smoothness</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;contrast&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;contrast&#39;</span><span class="p">)</span> \
+        <span class="k">if</span> <span class="n">curvature_contrast</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_contrast</span>
 
     <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
         <span class="k">if</span> <span class="s1">&#39;paths&#39;</span> <span class="ow">in</span> <span class="n">sec</span> <span class="ow">or</span> <span class="s1">&#39;labels&#39;</span> <span class="ow">in</span> <span class="n">sec</span><span class="p">:</span>
@@ -492,7 +511,7 @@
     <span class="k">class</span> <span class="nc">JSMixer</span><span class="p">(</span><span class="n">serve</span><span class="o">.</span><span class="n">JSProxy</span><span class="p">):</span>
         <span class="nd">@property</span>
         <span class="k">def</span> <span class="nf">view_props</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;An enumerated list of settable properties for views. </span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;An enumerated list of settable properties for views. </span>
 <span class="sd">            There may be a way to get this from the javascript object, </span>
 <span class="sd">            but I (ML) don&#39;t know how.</span>
 
@@ -504,10 +523,11 @@
 <span class="sd">                &#39;visL&#39;, &#39;visR&#39;, &#39;alpha&#39;, &#39;rotationR&#39;, &#39;rotationL&#39;, &#39;projection&#39;,</span>
 <span class="sd">                &#39;volume_vis&#39;, &#39;frame&#39;, &#39;slices&#39;]</span>
 <span class="sd">            &quot;&quot;&quot;</span>
-
-            <span class="n">_camera_props</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;camera.</span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">_controls</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
-            <span class="n">_subject</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">surface</span><span class="o">.</span><span class="n">_folders</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">_surface</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">surface</span><span class="p">,</span> <span class="n">_subject</span><span class="p">)</span>
+            <span class="n">camera</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">,</span> <span class="s2">&quot;camera&quot;</span><span class="p">)</span>
+            <span class="n">_camera_props</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;camera.</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">camera</span><span class="o">.</span><span class="n">_controls</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+            <span class="n">surface</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">,</span> <span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+            <span class="n">_subject</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">surface</span><span class="o">.</span><span class="n">_folders</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">_surface</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">surface</span><span class="p">,</span> <span class="n">_subject</span><span class="p">)</span>
             <span class="n">_surface_props</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;surface.</span><span class="si">{subject}</span><span class="s1">.</span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">_surface</span><span class="o">.</span><span class="n">_controls</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
             <span class="n">_curvature_props</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;surface.</span><span class="si">{subject}</span><span class="s1">.curvature.brightness&#39;</span><span class="p">,</span>
                                 <span class="s1">&#39;surface.</span><span class="si">{subject}</span><span class="s1">.curvature.contrast&#39;</span><span class="p">,</span>
@@ -515,14 +535,15 @@
             <span class="k">return</span> <span class="n">_camera_props</span> <span class="o">+</span> <span class="n">_surface_props</span> <span class="o">+</span> <span class="n">_curvature_props</span>
 
         <span class="k">def</span> <span class="nf">_set_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Low-level command: sets view parameters in the current viewer</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Low-level command: sets view parameters in the current viewer</span>
 
 <span class="sd">            Sets each the state of each keyword argument provided. View parameters</span>
 <span class="sd">            that can be set include all parameters in the data.gui in the html view.</span>
 
 <span class="sd">            &quot;&quot;&quot;</span>
             <span class="c1"># Set unfolding level first, as it interacts with other arguments</span>
-            <span class="n">subject_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">surface</span><span class="o">.</span><span class="n">_folders</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="n">surface</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="p">,</span> <span class="s2">&quot;surface&quot;</span><span class="p">)</span>
+            <span class="n">subject_list</span> <span class="o">=</span> <span class="n">surface</span><span class="o">.</span><span class="n">_folders</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
             <span class="c1"># Better to only self.view_props once; it interacts with javascript, </span>
             <span class="c1"># don&#39;t want to do that too often, it leads to glitches.</span>
             <span class="n">vw_props</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">view_props</span><span class="p">)</span>
@@ -540,7 +561,7 @@
                         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.03</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">_capture_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Low-level command: returns a dict of current view parameters</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Low-level command: returns a dict of current view parameters</span>
 
 <span class="sd">            Retrieves the following view parameters from current viewer:</span>
 
@@ -573,7 +594,7 @@
             <span class="k">return</span> <span class="n">view</span>
 
         <span class="k">def</span> <span class="nf">save_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">is_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Saves current view parameters to pycortex database</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Saves current view parameters to pycortex database</span>
 
 <span class="sd">            Parameters</span>
 <span class="sd">            ----------</span>
@@ -592,7 +613,7 @@
             <span class="n">db</span><span class="o">.</span><span class="n">save_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">is_overwrite</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">get_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Get saved view from pycortex database.</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Get saved view from pycortex database.</span>
 
 <span class="sd">            Retrieves named view from pycortex database and sets current</span>
 <span class="sd">            viewer parameters to retrieved values.</span>
@@ -619,7 +640,7 @@
             <span class="k">return</span> <span class="n">Proxy</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">getImage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)):</span>
-            <span class="sd">&quot;&quot;&quot;Saves currently displayed view to a .png image file</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Saves currently displayed view to a .png image file</span>
 
 <span class="sd">            Parameters</span>
 <span class="sd">            ----------</span>
@@ -634,7 +655,7 @@
 
         <span class="k">def</span> <span class="nf">makeMovie</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">animation</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;brainmovie</span><span class="si">%07d</span><span class="s2">.png&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                       <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">),</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Renders movie frames for animation of mesh movement</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Renders movie frames for animation of mesh movement</span>
 
 <span class="sd">            Makes an animation (for example, a transition between inflated and</span>
 <span class="sd">            flattened brain or a rotating brain) of a cortical surface. Takes a</span>
@@ -717,7 +738,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">getImage</span><span class="p">(</span><span class="n">filename</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="n">offset</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">_get_anim_seq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keyframes</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Convert a list of keyframes to a list of EVERY frame in an animation.</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Convert a list of keyframes to a list of EVERY frame in an animation.</span>
 
 <span class="sd">            Utility function called by make_movie; separated out so that individual</span>
 <span class="sd">            frames of an animation can be re-rendered, or for more control over the</span>
@@ -744,7 +765,7 @@
                 <span class="n">tdif</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">t1</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span>
                 <span class="c1"># Check whether to continue frame sequence to endpoint</span>
                 <span class="n">use_endpoint</span> <span class="o">=</span> <span class="n">keyframes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">==</span><span class="n">end</span>
-                <span class="n">nvalues</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">tdif</span><span class="o">/</span><span class="n">fs</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+                <span class="n">nvalues</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">tdif</span><span class="o">/</span><span class="n">fs</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">use_endpoint</span><span class="p">:</span>
                     <span class="n">nvalues</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="n">fr_time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nvalues</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="n">use_endpoint</span><span class="p">)</span>
@@ -754,7 +775,7 @@
                     <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">start</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                         <span class="k">if</span> <span class="n">prop</span><span class="o">==</span><span class="s1">&#39;time&#39;</span><span class="p">:</span>
                             <span class="k">continue</span>
-                        <span class="k">if</span> <span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">==</span> <span class="n">end</span><span class="p">[</span><span class="n">prop</span><span class="p">])</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">],</span> <span class="p">(</span><span class="nb">bool</span><span class="p">,)</span> <span class="o">+</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">==</span> <span class="n">end</span><span class="p">[</span><span class="n">prop</span><span class="p">])</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">],</span> <span class="p">(</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
                             <span class="n">frame</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span>
                             <span class="k">continue</span>
                         <span class="n">val</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">a</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">prop</span><span class="p">]),</span> <span class="n">a</span><span class="p">(</span><span class="n">end</span><span class="p">[</span><span class="n">prop</span><span class="p">]),</span> <span class="n">t</span><span class="p">)</span>
@@ -768,7 +789,7 @@
         <span class="k">def</span> <span class="nf">make_movie_views</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">animation</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;brainmovie</span><span class="si">%07d</span><span class="s2">.png&quot;</span><span class="p">,</span> 
             <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">frame_sleep</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
             <span class="n">frame_start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Renders movie frames for animation of mesh movement</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Renders movie frames for animation of mesh movement</span>
 
 <span class="sd">            Makes an animation (for example, a transition between inflated and</span>
 <span class="sd">            flattened brain or a rotating brain) of a cortical surface. Takes a</span>
@@ -863,11 +884,12 @@
         <span class="k">return</span> <span class="n">client</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">display</span><span class="p">,</span> <span class="n">HTML</span>
+            <span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span><span class="p">,</span> <span class="n">display</span>
             <span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="s1">&#39;Open viewer: &lt;a href=&quot;</span><span class="si">{0}</span><span class="s1">&quot; target=&quot;_blank&quot;&gt;</span><span class="si">{0}</span><span class="s1">&lt;/a&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">url</span><span class="p">)))</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="k">pass</span>
     <span class="k">return</span> <span class="n">server</span></div>
+
 </pre></div>
 
           </div>
@@ -918,7 +940,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../../search.html" method="get">
@@ -926,8 +948,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -941,11 +963,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

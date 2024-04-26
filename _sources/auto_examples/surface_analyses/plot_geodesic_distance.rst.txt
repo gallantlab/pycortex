@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -58,20 +58,12 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    Failed to get connection
-    ** (inkscape:5473): CRITICAL **: 01:32:28.085: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5473): CRITICAL **: 01:32:28.085: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5473): CRITICAL **: 01:32:28.085: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5477): CRITICAL **: 01:32:29.814: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5477): CRITICAL **: 01:32:29.814: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5477): CRITICAL **: 01:32:29.814: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -80,7 +72,7 @@ The two hemispheres must be run separately.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
     import cortex.polyutils
@@ -124,28 +116,22 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  14.953 seconds)
+   **Total running time of the script:** (0 minutes 14.610 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_geodesic_distance.ipynb <plot_geodesic_distance.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_geodesic_distance.py <plot_geodesic_distance.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_geodesic_distance.ipynb <plot_geodesic_distance.ipynb>`
+      :download:`Download Python source code: plot_geodesic_distance.py <plot_geodesic_distance.py>`
 
 
 .. only:: html

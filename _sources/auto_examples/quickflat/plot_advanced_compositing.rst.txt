@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickflat_plot_advanced_compositing.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_advanced_compositing.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -40,22 +40,14 @@ quickflat.composite sub-module.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5421): CRITICAL **: 01:31:23.379: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5421): CRITICAL **: 01:31:23.379: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5421): CRITICAL **: 01:31:23.379: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5424): CRITICAL **: 01:31:24.128: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5424): CRITICAL **: 01:31:24.128: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5424): CRITICAL **: 01:31:24.128: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5427): CRITICAL **: 01:31:24.950: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5427): CRITICAL **: 01:31:24.950: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5427): CRITICAL **: 01:31:24.950: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -64,7 +56,7 @@ quickflat.composite sub-module.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -106,28 +98,22 @@ quickflat.composite sub-module.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  5.141 seconds)
+   **Total running time of the script:** (0 minutes 3.674 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_advanced_compositing.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_advanced_compositing.ipynb <plot_advanced_compositing.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_advanced_compositing.py <plot_advanced_compositing.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_advanced_compositing.ipynb <plot_advanced_compositing.ipynb>`
+      :download:`Download Python source code: plot_advanced_compositing.py <plot_advanced_compositing.py>`
 
 
 .. only:: html

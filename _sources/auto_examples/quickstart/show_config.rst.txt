@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickstart_show_config.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickstart_show_config.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -27,7 +27,7 @@ This comes in useful when things don't work because the config file is not set c
 
 .. GENERATED FROM PYTHON SOURCE LINES 9-13
 
-.. code-block:: default
+.. code-block:: Python
 
     from __future__ import print_function
     import cortex
@@ -40,7 +40,7 @@ Finding where your config file is.
 
 .. GENERATED FROM PYTHON SOURCE LINES 15-17
 
-.. code-block:: default
+.. code-block:: Python
 
     print(cortex.options.usercfg)
 
@@ -52,7 +52,7 @@ Useful for when your subjects don't show up in cortex.db, and all you have is S1
 
 .. GENERATED FROM PYTHON SOURCE LINES 20-22
 
-.. code-block:: default
+.. code-block:: Python
 
     print(config.get('basic', 'filestore'))
 
@@ -64,7 +64,7 @@ Useful for when you get color map not found messages.
 
 .. GENERATED FROM PYTHON SOURCE LINES 25-27
 
-.. code-block:: default
+.. code-block:: Python
 
     print(config.get('webgl', 'colormaps'))
 
@@ -76,7 +76,7 @@ However, you *can* still look at options from within pycortex.
 
 .. GENERATED FROM PYTHON SOURCE LINES 30-37
 
-.. code-block:: default
+.. code-block:: Python
 
 
     # sections gets the upper-level sections in the config file
@@ -87,30 +87,19 @@ However, you *can* still look at options from within pycortex.
     basic_config = config.items('paths_default')
     print(basic_config)
 
-.. rst-class:: sphx-glr-timing
-
-   **Total running time of the script:** ( 0 minutes  0.000 seconds)
-
-
 .. _sphx_glr_download_auto_examples_quickstart_show_config.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: show_config.ipynb <show_config.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: show_config.py <show_config.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: show_config.ipynb <show_config.ipynb>`
+      :download:`Download Python source code: show_config.py <show_config.py>`
 
 
 .. only:: html

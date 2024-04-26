@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_flatmap_distortion.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_flatmap_distortion.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -62,21 +62,15 @@ the original.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in true_divide
+    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in divide
       vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
     Generating distortion surface info...
-    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in true_divide
+    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in divide
       vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in true_divide
+    /home/runner/work/pycortex/pycortex/cortex/polyutils/distortion.py:57: RuntimeWarning: invalid value encountered in divide
       vertratios /= np.bincount(self.polys.ravel(), minlength=len(self.ref))
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
     Generating distortion surface info...
 
 
@@ -86,7 +80,7 @@ the original.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
 
     import cortex
@@ -136,28 +130,22 @@ the original.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  30.161 seconds)
+   **Total running time of the script:** (0 minutes 23.561 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_flatmap_distortion.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_flatmap_distortion.ipynb <plot_flatmap_distortion.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_flatmap_distortion.py <plot_flatmap_distortion.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_flatmap_distortion.ipynb <plot_flatmap_distortion.ipynb>`
+      :download:`Download Python source code: plot_flatmap_distortion.py <plot_flatmap_distortion.py>`
 
 
 .. only:: html

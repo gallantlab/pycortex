@@ -1,29 +1,28 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>cortex.align.automatic &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/doctools.js"></script>
+    <title>cortex.align.automatic &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -36,49 +35,60 @@
           <div class="body" role="main">
             
   <section id="cortex-align-automatic">
-<h1>cortex.align.automatic<a class="headerlink" href="#cortex-align-automatic" title="Permalink to this headline">¶</a></h1>
+<h1>cortex.align.automatic<a class="headerlink" href="#cortex-align-automatic" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.align.automatic">
-<span class="sig-prename descclassname"><span class="pre">cortex.align.</span></span><span class="sig-name descname"><span class="pre">automatic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xfmname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noclean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbrtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'signed'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_flirt_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_fs_bbr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epi_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/align.html#automatic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.align.automatic" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an automatic alignment using the FLIRT boundary-based alignment (BBR) from FSL.</p>
-<p>If <cite>noclean</cite>, intermediate files will not be removed from /tmp. The <cite>reference</cite> image and resulting
-transform called <cite>xfmname</cite> will be automatically stored in the database.</p>
-<p>It’s good practice to open up this transform afterward in the manual aligner and check how it worked.
-Do that using the following (with the same <cite>subject</cite> and <cite>xfmname</cite> used here, no need for <cite>reference</cite>):
-&gt; align.manual(subject, xfmname)</p>
-<p>If automatic alignment gives you a very bad answer, you can try giving the pre-BBR FLIRT
-some hints by passing ‘-usesqform’ in as <cite>pre_flirt_args</cite>.</p>
+<span class="sig-prename descclassname"><span class="pre">cortex.align.</span></span><span class="sig-name descname"><span class="pre">automatic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xfmname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'coreg'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epi_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intermediate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_contrast</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'t2'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noclean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/align.html#automatic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.align.automatic" title="Link to this definition">¶</a></dt>
+<dd><p>Perform automatic alignment using Freesurfer’s boundary-based registration.
+The <cite>reference</cite> image and resulting transform called <cite>xfmname</cite> will be automatically
+stored in the database.</p>
+<p>If <cite>noclean</cite> is set to True, intermediate files will not be removed from /tmp.</p>
+<p>It’s good practice to open up this transform afterward in the manual aligner and
+check how it worked. Do that using the following code (passing the same <cite>subject</cite>
+and <cite>xfmname</cite> used here, no need for <cite>reference</cite>):</p>
+<p>&gt; cortex.align.manual(subject, xfmname)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Subject identifier.</p>
 </dd>
-<dt><strong>xfmname</strong><span class="classifier">str</span></dt><dd><p>String identifying the transform to be created.</p>
+<dt><strong>xfmname</strong><span class="classifier">str</span></dt><dd><p>Name of the transform to be created and stored in the database.</p>
 </dd>
-<dt><strong>reference</strong><span class="classifier">str</span></dt><dd><p>Path to a nibabel-readable image that will be used as the reference for this transform.
-Usually, this is a single (3D) functional data volume.</p>
+<dt><strong>reference</strong><span class="classifier">str</span></dt><dd><p>Path to a nibabel-readable image that will be used as the reference for
+this transform. Usually, this is a single (3D) functional data volume.</p>
 </dd>
-<dt><strong>noclean</strong><span class="classifier">bool, optional</span></dt><dd><p>If True intermediate files will not be removed from /tmp (this is useful for debugging things),
-and the returned value will be the name of the temp directory. Default False.</p>
+<dt><strong>init</strong><span class="classifier">str, optional</span></dt><dd><p>One of “coreg”, “fsl”, “header”, or a path to a transform from the reference
+volume to the anatomical volume.
+Specifies the initialization method to obtain a first alignment that will be
+refined with bbregister. Default is “coreg”, which uses Freesurfer’s <cite>mri_coreg</cite>
+and it generally performs best. Other options include “fsl” to use FSL’s FLIRT
+or “header” to assume that the reference and the anatomical are already close
+enough (this option can be used when the reference and the anatomical are
+acquired in the same session). Finally, you can also specify a path to a
+transform file (in DAT or LTA format) that will be used as initialization.</p>
 </dd>
-<dt><strong>bbrtype</strong><span class="classifier">str, optional</span></dt><dd><p>The ‘bbrtype’ argument that is passed to FLIRT.</p>
+<dt><strong>epi_mask</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, then the flag –epi-mask is passed to bbregister to mask out areas
+with spatial distortions. This setting recommended whenever the reference was
+not distortion corrected.</p>
 </dd>
-<dt><strong>pre_flirt_args</strong><span class="classifier">str, optional</span></dt><dd><p>Additional arguments that are passed to the FLIRT pre-alignment step (not BBR).</p>
+<dt><strong>intermediate</strong><span class="classifier">str</span></dt><dd><p>Path to a nibabel-readable image that will be used as intermediate volume
+for alignment. This is useful if the reference image has a small field-of-view
+and a whole-brain image was acquired in the same session.</p>
 </dd>
-<dt><strong>use_fs_bbr</strong><span class="classifier">bool, optional</span></dt><dd><p>If True will use freesurfer bbregister instead of FSL BBR. (default, True)</p>
+<dt><strong>reference_contrast</strong><span class="classifier">str</span></dt><dd><p>Contrast of the reference image. This is used to determine the appropriate
+contrast for the reference image in the bbregister command. Default is “t2”
+(for BOLD): gray matter is brighter than white matter.
+The alternative option is “t1”: white matter is brighter than gray matter.</p>
 </dd>
-<dt><strong>epi_mask</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, and use_fs_bbr is True, then the flag –epi-mask is passed to bbregister
-to mask out areas with spatial distortions. This setting is to be used whenever
-the reference was not distortion corrected.</p>
-</dd>
-<dt><strong>intermediate</strong><span class="classifier">str</span></dt><dd><p>Path to a nibabel-readable image that will be used as intermediate for the alignment.
-Usually, this is a single (3D) functional data volume.</p>
+<dt><strong>noclean</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, intermediate files will not be removed from /tmp (this is useful
+for debugging things), and the returned value will be the name of the
+temp directory. Default False.</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Returns</dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>Nothing unless <cite>noclean</cite> is True.</dt><dd></dd>
+<dt>None or path to temp directory if <cite>noclean</cite> is True.</dt><dd></dd>
 </dl>
 </dd>
 </dl>
@@ -133,7 +143,7 @@ Usually, this is a single (3D) functional data volume.</p>
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
@@ -141,8 +151,8 @@ Usually, this is a single (3D) functional data volume.</p>
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -156,11 +166,11 @@ Usually, this is a single (3D) functional data volume.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="../_sources/generated/cortex.align.automatic.rst.txt"

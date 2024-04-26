@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.alpha
+==============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoproperty:: VertexRGB.alpha

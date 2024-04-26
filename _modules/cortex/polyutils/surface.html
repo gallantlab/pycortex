@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.polyutils.surface &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/doctools.js"></script>
+    <title>cortex.polyutils.surface &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
   <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -50,8 +49,10 @@
 <span class="kn">from</span> <span class="nn">.misc</span> <span class="kn">import</span> <span class="n">_memo</span>
 
 
-<div class="viewcode-block" id="Surface"><a class="viewcode-back" href="../../../generated/cortex.polyutils.Surface.html#cortex.polyutils.Surface">[docs]</a><span class="k">class</span> <span class="nc">Surface</span><span class="p">(</span><span class="n">exact_geodesic</span><span class="o">.</span><span class="n">ExactGeodesicMixin</span><span class="p">,</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">SubsurfaceMixin</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Represents a single cortical hemisphere surface. Can be the white matter surface,</span>
+<div class="viewcode-block" id="Surface">
+<a class="viewcode-back" href="../../../generated/cortex.polyutils.Surface.html#cortex.polyutils.Surface">[docs]</a>
+<span class="k">class</span> <span class="nc">Surface</span><span class="p">(</span><span class="n">exact_geodesic</span><span class="o">.</span><span class="n">ExactGeodesicMixin</span><span class="p">,</span> <span class="n">subsurface</span><span class="o">.</span><span class="n">SubsurfaceMixin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single cortical hemisphere surface. Can be the white matter surface,</span>
 <span class="sd">    pial surface, fiducial (mid-cortical) surface, inflated surface, flattened surface,</span>
 <span class="sd">    etc.</span>
 
@@ -64,7 +65,9 @@
 <span class="sd">    polys : 2D ndarray, shape (total_polys, 3)</span>
 <span class="sd">        Indices of the vertices in each triangle in the surface.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="Surface.__init__"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.__init__.html#cortex.polyutils.Surface.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+<div class="viewcode-block" id="Surface.__init__">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.__init__.html#cortex.polyutils.Surface.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pts</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">polys</span> <span class="o">=</span> <span class="n">polys</span>
 
@@ -72,17 +75,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_rlfac_solvers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_nLC_solvers</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span></div>
 
+
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">ppts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;3D matrix of points in each face: n faces x 3 points per face x 3 coords per point.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;3D matrix of points in each face: n faces x 3 points per face x 3 coords per point.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">]</span>
     
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Sparse matrix of vertex-face associations.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sparse matrix of vertex-face associations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">npt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">)</span>
         <span class="n">npoly</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">)</span>
@@ -93,7 +97,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">adj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Sparse vertex adjacency matrix.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sparse vertex adjacency matrix.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">npt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">)</span>
         <span class="n">npoly</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polys</span><span class="p">)</span>
@@ -109,7 +113,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">face_normals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Normal vector for each face.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normal vector for each face.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Compute normal vector direction</span>
         <span class="n">nnfnorms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> 
@@ -122,7 +126,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">vertex_normals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Normal vector for each vertex (average of normals for neighboring faces).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Normal vector for each vertex (average of normals for neighboring faces).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Average adjacent face normals</span>
         <span class="n">nnvnorms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">face_normals</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">A</span>
@@ -132,7 +136,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">face_areas</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Area of each face.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Area of each face.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Compute normal vector (length is face area)</span>
         <span class="n">nnfnorms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> 
@@ -143,7 +147,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">cotangent_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Cotangent of angle opposite each vertex in each face.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cotangent of angle opposite each vertex in each face.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ppts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ppts</span>
         <span class="n">cots1</span> <span class="o">=</span> <span class="p">((</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span>
@@ -165,7 +169,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">laplace_operator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Laplace-Beltrami operator for this surface. A sparse adjacency matrix with</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Laplace-Beltrami operator for this surface. A sparse adjacency matrix with</span>
 <span class="sd">        edge weights determined by the cotangents of the angles opposite each edge.</span>
 <span class="sd">        Returns a 4-tuple (B,D,W,V) where D is the &#39;lumped mass matrix&#39;, W is the weighted</span>
 <span class="sd">        adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.</span>
@@ -205,8 +209,10 @@
         <span class="n">B</span> <span class="o">=</span> <span class="p">(</span><span class="n">Be1</span> <span class="o">+</span> <span class="n">Be1</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="n">Be2</span> <span class="o">+</span> <span class="n">Be2</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="n">Be3</span> <span class="o">+</span> <span class="n">Be3</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">/</span><span class="mi">12</span> <span class="o">+</span> <span class="n">dBd</span>
         <span class="k">return</span> <span class="n">B</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">V</span>
 
-<div class="viewcode-block" id="Surface.mean_curvature"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.mean_curvature.html#cortex.polyutils.Surface.mean_curvature">[docs]</a>    <span class="k">def</span> <span class="nf">mean_curvature</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Compute mean curvature of this surface using the Laplace-Beltrami operator.</span>
+<div class="viewcode-block" id="Surface.mean_curvature">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.mean_curvature.html#cortex.polyutils.Surface.mean_curvature">[docs]</a>
+    <span class="k">def</span> <span class="nf">mean_curvature</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute mean curvature of this surface using the Laplace-Beltrami operator.</span>
 <span class="sd">        Curvature is computed at each vertex. It&#39;s probably pretty noisy, and should</span>
 <span class="sd">        be smoothed using smooth().</span>
 
@@ -226,8 +232,11 @@
         <span class="n">curv</span> <span class="o">=</span> <span class="p">(</span><span class="n">L</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertex_normals</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">curv</span></div>
 
-<div class="viewcode-block" id="Surface.smooth"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.smooth.html#cortex.polyutils.Surface.smooth">[docs]</a>    <span class="k">def</span> <span class="nf">smooth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalars</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Smooth vertex-wise function given by `scalars` across the surface using</span>
+
+<div class="viewcode-block" id="Surface.smooth">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.smooth.html#cortex.polyutils.Surface.smooth">[docs]</a>
+    <span class="k">def</span> <span class="nf">smooth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalars</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Smooth vertex-wise function given by `scalars` across the surface using</span>
 <span class="sd">        mean curvature flow method (see http://brickisland.net/cs177fa12/?p=302).</span>
 
 <span class="sd">        Amount of smoothing is controlled by `factor`.</span>
@@ -262,19 +271,22 @@
         <span class="n">smscalars</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">scalars</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
         <span class="n">smscalars</span><span class="p">[</span><span class="n">goodrows</span><span class="p">]</span> <span class="o">=</span> <span class="n">from_smooth</span>
         <span class="k">return</span> <span class="n">smscalars</span></div>
+
         
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">avg_edge_length</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Average length of all edges in the surface.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Average length of all edges in the surface.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">adj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adj</span>
         <span class="n">tadj</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">adj</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="c1"># only entries above main diagonal, in coo format</span>
         <span class="n">edgelens</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">tadj</span><span class="o">.</span><span class="n">row</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">tadj</span><span class="o">.</span><span class="n">col</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">edgelens</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 
-<div class="viewcode-block" id="Surface.surface_gradient"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.surface_gradient.html#cortex.polyutils.Surface.surface_gradient">[docs]</a>    <span class="k">def</span> <span class="nf">surface_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalars</span><span class="p">,</span> <span class="n">at_verts</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Gradient of a function with values `scalars` at each vertex on the surface.</span>
+<div class="viewcode-block" id="Surface.surface_gradient">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.surface_gradient.html#cortex.polyutils.Surface.surface_gradient">[docs]</a>
+    <span class="k">def</span> <span class="nf">surface_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scalars</span><span class="p">,</span> <span class="n">at_verts</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gradient of a function with values `scalars` at each vertex on the surface.</span>
 <span class="sd">        If `at_verts`, returns values at each vertex. Otherwise, returns values at each</span>
 <span class="sd">        face.</span>
 
@@ -284,7 +296,7 @@
 <span class="sd">            A scalar-valued function across the cortex.</span>
 <span class="sd">        at_verts : bool, optional</span>
 <span class="sd">            If True (default), values will be returned for each vertex. Otherwise,</span>
-<span class="sd">            values will be retruned for each face.</span>
+<span class="sd">            values will be returned for each face.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -307,8 +319,11 @@
             <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">gradu</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">A</span><span class="o">.</span><span class="n">squeeze</span><span class="p">())</span><span class="o">.</span><span class="n">T</span>
         <span class="k">return</span> <span class="n">gradu</span></div>
 
-<div class="viewcode-block" id="Surface.create_biharmonic_solver"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.create_biharmonic_solver.html#cortex.polyutils.Surface.create_biharmonic_solver">[docs]</a>    <span class="k">def</span> <span class="nf">create_biharmonic_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">boundary_verts</span><span class="p">,</span> <span class="n">clip_D</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set up biharmonic equation with Dirichlet boundary conditions on the cortical</span>
+
+<div class="viewcode-block" id="Surface.create_biharmonic_solver">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.create_biharmonic_solver.html#cortex.polyutils.Surface.create_biharmonic_solver">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_biharmonic_solver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">boundary_verts</span><span class="p">,</span> <span class="n">clip_D</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Set up biharmonic equation with Dirichlet boundary conditions on the cortical</span>
 <span class="sd">        mesh and precompute Cholesky factorization for solving it. The vertices listed in</span>
 <span class="sd">        `boundary_verts` are considered part of the boundary, and will not be included in</span>
 <span class="sd">        the factorization.</span>
@@ -369,8 +384,9 @@
         
         <span class="k">return</span> <span class="n">lhs</span><span class="p">,</span> <span class="n">D</span><span class="p">,</span> <span class="n">Dinv</span><span class="p">,</span> <span class="n">lhsfac</span><span class="p">,</span> <span class="n">notboundary</span></div>
 
+
     <span class="k">def</span> <span class="nf">_create_interp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">bhsolver</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Creates interpolator that will interpolate values at the given `verts` using</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates interpolator that will interpolate values at the given `verts` using</span>
 <span class="sd">        biharmonic interpolation.</span>
 
 <span class="sd">        Parameters</span>
@@ -395,7 +411,7 @@
         
         <span class="n">npt</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
         <span class="k">def</span> <span class="nf">_interp</span><span class="p">(</span><span class="n">vals</span><span class="p">):</span>
-            <span class="sd">&quot;&quot;&quot;Interpolate function with values `vals` at the knot points.&quot;&quot;&quot;</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Interpolate function with values `vals` at the knot points.&quot;&quot;&quot;</span>
             <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">vals</span><span class="p">)</span>
             <span class="n">nd</span><span class="p">,</span><span class="n">nv</span> <span class="o">=</span> <span class="n">v2</span><span class="o">.</span><span class="n">shape</span>
             <span class="n">ij</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span><span class="n">nv</span><span class="o">*</span><span class="n">nd</span><span class="p">))</span>
@@ -418,8 +434,10 @@
 
         <span class="k">return</span> <span class="n">_interp</span>
 
-<div class="viewcode-block" id="Surface.interp"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.interp.html#cortex.polyutils.Surface.interp">[docs]</a>    <span class="k">def</span> <span class="nf">interp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">vals</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Interpolates a function between N knot points `verts` with the values `vals`.</span>
+<div class="viewcode-block" id="Surface.interp">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.interp.html#cortex.polyutils.Surface.interp">[docs]</a>
+    <span class="k">def</span> <span class="nf">interp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">vals</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Interpolates a function between N knot points `verts` with the values `vals`.</span>
 <span class="sd">        `vals` can be a D x N array to interpolate multiple functions with the same</span>
 <span class="sd">        knot points.</span>
 
@@ -444,6 +462,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_interp</span><span class="p">(</span><span class="n">verts</span><span class="p">)(</span><span class="n">vals</span><span class="p">)</span></div>
 
+
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">_facenorm_cross_edge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -454,8 +473,10 @@
         <span class="n">fe31</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">fnorms</span><span class="p">,</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">2</span><span class="p">])</span>
         <span class="k">return</span> <span class="n">fe12</span><span class="p">,</span> <span class="n">fe23</span><span class="p">,</span> <span class="n">fe31</span>
 
-<div class="viewcode-block" id="Surface.approx_geodesic_distance"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.approx_geodesic_distance.html#cortex.polyutils.Surface.approx_geodesic_distance">[docs]</a>    <span class="k">def</span> <span class="nf">approx_geodesic_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Computes approximate geodesic distance (in mm) from each vertex in </span>
+<div class="viewcode-block" id="Surface.approx_geodesic_distance">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.approx_geodesic_distance.html#cortex.polyutils.Surface.approx_geodesic_distance">[docs]</a>
+    <span class="k">def</span> <span class="nf">approx_geodesic_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes approximate geodesic distance (in mm) from each vertex in </span>
 <span class="sd">        the surface to any vertex in the collection `verts`. This approximation</span>
 <span class="sd">        is computed using Varadhan&#39;s formula for geodesic distance based on the</span>
 <span class="sd">        heat kernel. This is very fast (quite a bit faster than `geodesic_distance`)</span>
@@ -505,8 +526,11 @@
 
         <span class="k">return</span> <span class="o">-</span><span class="mi">4</span> <span class="o">*</span> <span class="n">t</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">u</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Surface.geodesic_distance"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.geodesic_distance.html#cortex.polyutils.Surface.geodesic_distance">[docs]</a>    <span class="k">def</span> <span class="nf">geodesic_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fem</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Minimum mesh geodesic distance (in mm) from each vertex in surface to any</span>
+
+<div class="viewcode-block" id="Surface.geodesic_distance">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.geodesic_distance.html#cortex.polyutils.Surface.geodesic_distance">[docs]</a>
+    <span class="k">def</span> <span class="nf">geodesic_distance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verts</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">fem</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Minimum mesh geodesic distance (in mm) from each vertex in surface to any</span>
 <span class="sd">        vertex in the collection `verts`.</span>
 
 <span class="sd">        Geodesic distance is estimated using heat-based method (see &#39;Geodesics in Heat&#39;,</span>
@@ -603,8 +627,11 @@
 
         <span class="k">return</span> <span class="n">phi</span></div>
 
-<div class="viewcode-block" id="Surface.geodesic_path"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.geodesic_path.html#cortex.polyutils.Surface.geodesic_path">[docs]</a>    <span class="k">def</span> <span class="nf">geodesic_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">max_len</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Finds the shortest path between two points `a` and `b`.</span>
+
+<div class="viewcode-block" id="Surface.geodesic_path">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.geodesic_path.html#cortex.polyutils.Surface.geodesic_path">[docs]</a>
+    <span class="k">def</span> <span class="nf">geodesic_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">max_len</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Finds the shortest path between two points `a` and `b`.</span>
 
 <span class="sd">        This shortest path is based on geodesic distances across the surface.</span>
 <span class="sd">        The path starts at point `a` and selects the neighbor of `a` in the </span>
@@ -650,6 +677,7 @@
                 <span class="k">return</span> <span class="n">path</span>
         <span class="k">return</span> <span class="n">path</span></div>
 
+
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">_cot_edge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -677,7 +705,7 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">boundary_vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;return mask of boundary vertices</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;return mask of boundary vertices</span>
 
 <span class="sd">        algorithm: for simple mesh, every edge appears in either 1 or 2 polys</span>
 <span class="sd">            1 -&gt; border edge</span>
@@ -724,7 +752,7 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">iter_surfedges_weighted</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;iterate through edges</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;iterate through edges</span>
 
 <span class="sd">        - same iteration order as self.edge_lengths</span>
 <span class="sd">            - border edges will be iterated once, non-border edges will be iterated twice</span>
@@ -740,20 +768,23 @@
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;NetworkX undirected graph representing this Surface.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;NetworkX undirected graph representing this Surface.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
         <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
         <span class="n">graph</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter_surfedges</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">graph</span>
 
-<div class="viewcode-block" id="Surface.get_graph"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.get_graph.html#cortex.polyutils.Surface.get_graph">[docs]</a>    <span class="k">def</span> <span class="nf">get_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Surface.get_graph">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.get_graph.html#cortex.polyutils.Surface.get_graph">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span></div>
+
 
     <span class="nd">@property</span>
     <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">edge_lengths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;return vector of edge lengths</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;return vector of edge lengths</span>
 
 <span class="sd">        - same iteration order as iter_surfedges_listed()</span>
 <span class="sd">            - border edges will be iterated once, non-border edges will be iterated twice</span>
@@ -779,8 +810,10 @@
         <span class="n">weighted_graph</span><span class="o">.</span><span class="n">add_weighted_edges_from</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter_surfedges_weighted</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">weighted_graph</span>
 
-<div class="viewcode-block" id="Surface.extract_chunk"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.extract_chunk.html#cortex.polyutils.Surface.extract_chunk">[docs]</a>    <span class="k">def</span> <span class="nf">extract_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nfaces</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auxpts</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&#39;&#39;&#39;Extract a chunk of the surface using breadth first search, for testing purposes&#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Surface.extract_chunk">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.extract_chunk.html#cortex.polyutils.Surface.extract_chunk">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nfaces</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auxpts</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;Extract a chunk of the surface using breadth first search, for testing purposes&#39;&#39;&#39;</span>
         <span class="n">node</span> <span class="o">=</span> <span class="n">seed</span>
         <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">node</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pts</span><span class="p">))</span>
@@ -814,8 +847,11 @@
 
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Surface.extract_geodesic_chunk"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.extract_geodesic_chunk.html#cortex.polyutils.Surface.extract_geodesic_chunk">[docs]</a>    <span class="k">def</span> <span class="nf">extract_geodesic_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Extract a chunk of the surface that is within radius of the origin by</span>
+
+<div class="viewcode-block" id="Surface.extract_geodesic_chunk">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.extract_geodesic_chunk.html#cortex.polyutils.Surface.extract_geodesic_chunk">[docs]</a>
+    <span class="k">def</span> <span class="nf">extract_geodesic_chunk</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract a chunk of the surface that is within radius of the origin by</span>
 <span class="sd">        geodesic distance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">dist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">origin</span><span class="p">])</span>
@@ -837,8 +873,11 @@
         <span class="k">return</span> <span class="n">sel_pts</span><span class="p">,</span> <span class="n">sel_polys</span></div>
 
 
-<div class="viewcode-block" id="Surface.polyhedra"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.polyhedra.html#cortex.polyutils.Surface.polyhedra">[docs]</a>    <span class="k">def</span> <span class="nf">polyhedra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wm</span><span class="p">):</span>
-        <span class="sd">&#39;&#39;&#39;Iterates through the polyhedra that make up the closest volume to a certain vertex&#39;&#39;&#39;</span>
+
+<div class="viewcode-block" id="Surface.polyhedra">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.polyhedra.html#cortex.polyutils.Surface.polyhedra">[docs]</a>
+    <span class="k">def</span> <span class="nf">polyhedra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wm</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;Iterates through the polyhedra that make up the closest volume to a certain vertex&#39;&#39;&#39;</span>
         <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">facerow</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">):</span>
             <span class="n">faces</span> <span class="o">=</span> <span class="n">facerow</span><span class="o">.</span><span class="n">indices</span>
             <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">_ptset</span><span class="p">(),</span> <span class="n">_quadset</span><span class="p">()</span>
@@ -867,7 +906,10 @@
 
             <span class="k">yield</span> <span class="n">pts</span><span class="o">.</span><span class="n">points</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">polys</span><span class="o">.</span><span class="n">triangles</span><span class="p">))</span></div>
 
-<div class="viewcode-block" id="Surface.patches"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.patches.html#cortex.polyutils.Surface.patches">[docs]</a>    <span class="k">def</span> <span class="nf">patches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auxpts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Surface.patches">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.patches.html#cortex.polyutils.Surface.patches">[docs]</a>
+    <span class="k">def</span> <span class="nf">patches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auxpts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">align_polys</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
             <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">polys</span> <span class="o">==</span> <span class="n">p</span><span class="p">)</span>
             <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">y</span><span class="p">,</span> <span class="p">(</span><span class="n">y</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">,</span> <span class="p">(</span><span class="n">y</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span><span class="o">%</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
@@ -911,10 +953,15 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="kc">None</span></div>
 
-<div class="viewcode-block" id="Surface.edge_collapse"><a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.edge_collapse.html#cortex.polyutils.Surface.edge_collapse">[docs]</a>    <span class="k">def</span> <span class="nf">edge_collapse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Surface.edge_collapse">
+<a class="viewcode-back" href="../../../generated/Surface/cortex.polyutils.Surface.edge_collapse.html#cortex.polyutils.Surface.edge_collapse">[docs]</a>
+    <span class="k">def</span> <span class="nf">edge_collapse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
         <span class="n">face1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">[</span><span class="n">p1</span><span class="p">]</span>
-        <span class="n">face2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">[</span><span class="n">p2</span><span class="p">]</span></div></div>
+        <span class="n">face2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connected</span><span class="p">[</span><span class="n">p2</span><span class="p">]</span></div>
+</div>
+
 
 
 <span class="k">class</span> <span class="nc">_ptset</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -996,7 +1043,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../../search.html" method="get">
@@ -1004,8 +1051,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -1019,11 +1066,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

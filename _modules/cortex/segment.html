@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.segment &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>cortex.segment &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -58,8 +57,10 @@
 <span class="n">slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="init_subject"><a class="viewcode-back" href="../../generated/cortex.segment.init_subject.html#cortex.segment.init_subject">[docs]</a><span class="k">def</span> <span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy (in Freesurfer).</span>
+<div class="viewcode-block" id="init_subject">
+<a class="viewcode-back" href="../../generated/cortex.segment.init_subject.html#cortex.segment.init_subject">[docs]</a>
+<span class="k">def</span> <span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy (in Freesurfer).</span>
 
 <span class="sd">    This function creates a Freesurfer subject and runs autorecon-all, </span>
 <span class="sd">    then (optionally) imports the subject into the pycortex database.</span>
@@ -100,11 +101,12 @@
         <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
 
 
+
 <span class="k">def</span> <span class="nf">edit_segmentation</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span>
                       <span class="n">volumes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;aseg.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;brainmask.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;wm.mgz&#39;</span><span class="p">),</span>
                       <span class="n">surfaces</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;lh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;lh.pial&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.pial&#39;</span><span class="p">),</span>
                       <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Edit automatic segmentation results using freeview</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Edit automatic segmentation results using freeview</span>
 
 <span class="sd">    Opens an instance of freeview with relevant files loaded.</span>
 
@@ -160,10 +162,12 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;pia&#39;)`&quot;</span><span class="o">%</span><span class="n">subject</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="cut_surface"><a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a><span class="k">def</span> <span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<div class="viewcode-block" id="cut_surface">
+<a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a>
+<span class="k">def</span> <span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> 
                 <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blender_cmd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
 <span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
 <span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
 <span class="sd">    open the file. After edits are made, remember to save the file, then exit</span>
@@ -181,14 +185,15 @@
 <span class="sd">        Which hemisphere to flatten. Should be &quot;lh&quot; or &quot;rh&quot;</span>
 <span class="sd">    name : str, optional</span>
 <span class="sd">        String name of the current flatten attempt. Defaults to &quot;flatten&quot;</span>
-<span class="sd">    data : Dataview</span>
-<span class="sd">        A data view object to display on the surface as a cutting guide.</span>
+<span class="sd">    data : Dataview or List(Dataview)</span>
+<span class="sd">        A data view object or list of data view objects to display on the </span>
+<span class="sd">        surface as a cutting guide.</span>
 <span class="sd">    fs_subject : str</span>
 <span class="sd">        Name of Freesurfer subject (if different from pycortex subject)</span>
 <span class="sd">        None defaults to `cx_subject`</span>
 <span class="sd">    freesurfer_subject_dir : str</span>
 <span class="sd">        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR</span>
-<span class="sd">        environment varible</span>
+<span class="sd">        environment variable</span>
 <span class="sd">    flatten_with : str</span>
 <span class="sd">        &#39;freesurfer&#39; or &#39;SLIM&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s </span>
 <span class="sd">        `mris_flatten` function to flatten the cut surface. &#39;SLIM&#39; uses</span>
@@ -219,7 +224,11 @@
         <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">)</span>
     <span class="c1"># Add localizer data to facilitate cutting</span>
     <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">blender_cmd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">blender_cmd</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
     <span class="c1"># May be redundant after blender.fs_cut above...</span>
@@ -270,9 +279,10 @@
     <span class="k">return</span></div>
 
 
+
 <span class="k">def</span> <span class="nf">flatten_slim</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">slim_path</span><span class="o">=</span><span class="n">slim_path</span><span class="p">,</span> <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Flatten brain w/ slim object flattening</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flatten brain w/ slim object flattening</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -371,7 +381,7 @@
 
 
 <span class="k">def</span> <span class="nf">show_surface</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    subject: str</span>
@@ -419,8 +429,10 @@
 
 <span class="c1">### DEPRECATED ###</span>
 
-<div class="viewcode-block" id="fix_wm"><a class="viewcode-back" href="../../generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm">[docs]</a><span class="k">def</span> <span class="nf">fix_wm</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Initializes an interface to make white matter edits to the surface.</span>
+<div class="viewcode-block" id="fix_wm">
+<a class="viewcode-back" href="../../generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm">[docs]</a>
+<span class="k">def</span> <span class="nf">fix_wm</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes an interface to make white matter edits to the surface.</span>
 <span class="sd">    This will open two windows -- a tkmedit window that makes the actual edits,</span>
 <span class="sd">    as well as a mayavi window to display the surface. Clicking on the mayavi window</span>
 <span class="sd">    will drop markers which can be loaded using the &quot;Goto Save Point&quot; button in tkmedit.</span>
@@ -455,9 +467,12 @@
 
     <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="fix_pia"><a class="viewcode-back" href="../../generated/cortex.segment.fix_pia.html#cortex.segment.fix_pia">[docs]</a><span class="k">def</span> <span class="nf">fix_pia</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Initializes an interface to make pial surface edits.</span>
-<span class="sd">    This function will open two windows -- a tkmedit window that makse the actual edits,</span>
+
+<div class="viewcode-block" id="fix_pia">
+<a class="viewcode-back" href="../../generated/cortex.segment.fix_pia.html#cortex.segment.fix_pia">[docs]</a>
+<span class="k">def</span> <span class="nf">fix_pia</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes an interface to make pial surface edits.</span>
+<span class="sd">    This function will open two windows -- a tkmedit window that makes the actual edits,</span>
 <span class="sd">    as well as a mayavi window to display the surface. Clicking on the mayavi window</span>
 <span class="sd">    will drop markers which can be loaded using the &quot;Goto Save Point&quot; button in tkmedit.</span>
 
@@ -490,6 +505,7 @@
         <span class="k">return</span>
 
     <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
+
 
 
 
@@ -561,7 +577,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
@@ -569,8 +585,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -584,11 +600,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

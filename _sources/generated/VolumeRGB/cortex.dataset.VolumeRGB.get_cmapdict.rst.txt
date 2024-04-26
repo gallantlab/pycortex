@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.get\_cmapdict
+======================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VolumeRGB.get_cmapdict

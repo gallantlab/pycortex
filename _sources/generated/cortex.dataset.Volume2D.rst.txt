@@ -16,6 +16,7 @@
      ~Volume2D.__init__
      ~Volume2D.copy
      ~Volume2D.from_hdf
+     ~Volume2D.get_cmapdict
      ~Volume2D.to_json
      ~Volume2D.uniques
    

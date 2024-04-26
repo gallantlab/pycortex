@@ -17,6 +17,7 @@
      ~VertexRGB.blend_curvature
      ~VertexRGB.copy
      ~VertexRGB.from_hdf
+     ~VertexRGB.get_cmapdict
      ~VertexRGB.to_json
      ~VertexRGB.uniques
    
@@ -29,6 +30,7 @@
    .. autosummary::
       :toctree: VertexRGB
    
+      ~VertexRGB.alpha
       ~VertexRGB.left
       ~VertexRGB.name
       ~VertexRGB.priority

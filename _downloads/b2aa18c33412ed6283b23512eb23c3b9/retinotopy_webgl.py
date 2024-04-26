@@ -8,7 +8,7 @@ in a web viewer. In order for this demo to work, you need to download this
 dataset_, but that can also be done automatically through the `urllib`
 command that is included.
 
-.. _dataset: http://gallantlab.org/pycortex/S1_retinotopy.hdf
+.. _dataset: https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf
 
 S1 is the example subject that comes with pycortex, but if you want to plot
 data onto a different subject, you will need to have them in your filestore.
@@ -21,15 +21,14 @@ yourself you will get a viewer showing something like the following.
 """
 
 import cortex
-try: #  python 2
-    from urllib import urlretrieve
-except ImportError:  # python 3
-    from urllib.request import urlretrieve
+from urllib.request import urlretrieve
 
 
 # Download and load in retinotopy data
-_ = urlretrieve("http://gallantlab.org/pycortex/S1_retinotopy.hdf",
-                "S1_retinotopy.hdf")
+_ = urlretrieve(
+    "https://s3.us-west-1.wasabisys.com/glab-public-datasets/S1_retinotopy.hdf", 
+    "S1_retinotopy.hdf"
+)
 ret_data = cortex.load("S1_retinotopy.hdf")
 
 # Open the webviewer

@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.xfm &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>cortex.xfm &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -39,14 +38,18 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">string_types</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
 
-<div class="viewcode-block" id="Transform"><a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform">[docs]</a><span class="k">class</span> <span class="nc">Transform</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Transform">
+<a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform">[docs]</a>
+<span class="k">class</span> <span class="nc">Transform</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    A standard affine transform. Typically holds a transform from anatomical</span>
 <span class="sd">    magnet space to epi file space.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-<div class="viewcode-block" id="Transform.__init__"><a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">reference</span><span class="p">):</span>
+<div class="viewcode-block" id="Transform.__init__">
+<a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">reference</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span> <span class="o">=</span> <span class="n">xfm</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -62,6 +65,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">reference</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
+
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">pts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span><span class="mi">1</span><span class="p">))])</span><span class="o">.</span><span class="n">T</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
@@ -104,7 +108,7 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_fsl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Converts an fsl transform to a pycortex transform.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts an fsl transform to a pycortex transform.</span>
 
 <span class="sd">        Converts a transform computed using FSL&#39;s FLIRT to a transform (&quot;xfm&quot;) object in pycortex.</span>
 <span class="sd">        The transform must have been computed FROM the nifti volume specified in `func_nii` TO the</span>
@@ -141,10 +145,10 @@
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
 
         <span class="c1"># Load transform from text file, if string is provided</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
                 <span class="n">L</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
-            <span class="n">xfm</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+            <span class="n">xfm</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
 
         <span class="c1"># Internally, pycortex computes the OPPOSITE transform: from anatomical volume to functional volume.</span>
         <span class="c1"># Thus, assign anat to &quot;infile&quot; (starting point for transform)</span>
@@ -160,8 +164,8 @@
             <span class="n">inIm</span> <span class="o">=</span> <span class="n">infile</span>
 
         <span class="n">refIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reffile</span><span class="p">)</span>
-        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
-        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="n">refIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="n">refIm</span><span class="o">.</span><span class="n">header</span>
         <span class="c1"># get_zooms gets the positive voxel sizes as returned in the header</span>
         <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
         <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
@@ -173,17 +177,17 @@
         <span class="k">if</span> <span class="n">npl</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_best_affine</span><span class="p">())</span><span class="o">&gt;=</span><span class="mi">0</span><span class="p">:</span>
             <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
 
-        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()</span>
+        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">affine</span>
 
         <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv</span><span class="p">(</span><span class="n">refspace</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inspace</span><span class="p">,</span><span class="n">inv</span><span class="p">(</span><span class="n">inAffine</span><span class="p">))))</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">to_fsl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Converts a pycortex transform to an FSL transform.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a pycortex transform to an FSL transform.</span>
 
 <span class="sd">        Uses the stored &quot;reference&quot; file provided when the transform was created (usually</span>
 <span class="sd">        a functional data or statistical volume) and the supplied anatomical file to</span>
-<span class="sd">        create an FSL transform. By default, returns the transform FROM the refernce volume</span>
+<span class="sd">        create an FSL transform. By default, returns the transform FROM the reference volume</span>
 <span class="sd">        (usually the functional data volume) to the anatomical volume (`anat_nii` input).</span>
 
 <span class="sd">        Parameters</span>
@@ -213,8 +217,8 @@
             <span class="n">inIm</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">infile</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="n">inIm</span> <span class="o">=</span> <span class="n">infile</span>
-        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
-        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_header</span><span class="p">()</span>
+        <span class="n">in_hdr</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">ref_hdr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">header</span>
         <span class="c1"># get_zooms gets the positive voxel sizes as returned in the header</span>
         <span class="n">inspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">in_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
         <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()[:</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
@@ -228,7 +232,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Determinant is &gt; 0: FLIPPING!&quot;</span><span class="p">)</span>
             <span class="n">refspace</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span> <span class="n">_x_flipper</span><span class="p">(</span><span class="n">ref_hdr</span><span class="o">.</span><span class="n">get_data_shape</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
 
-        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()</span>
+        <span class="n">inAffine</span> <span class="o">=</span> <span class="n">inIm</span><span class="o">.</span><span class="n">affine</span>
 
         <span class="n">fslx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">refspace</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inAffine</span><span class="p">,</span><span class="n">inv</span><span class="p">(</span><span class="n">inspace</span><span class="p">))))</span>
         <span class="k">if</span> <span class="n">direction</span><span class="o">==</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">:</span>
@@ -238,7 +242,7 @@
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">from_freesurfer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Converts a FreeSurfer transform to a pycortex transform.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a FreeSurfer transform to a pycortex transform.</span>
 
 <span class="sd">        Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to</span>
 <span class="sd">        a transform (&quot;xfm&quot;) object in pycortex. The transform must have been computed</span>
@@ -280,11 +284,10 @@
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
 
         <span class="c1"># Load anatomical to functional transform from register.dat file, if string is provided</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
                 <span class="n">L</span> <span class="o">=</span> <span class="n">fid</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
-
-            <span class="n">anat2func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">8</span><span class="p">]])</span>
+            <span class="n">anat2func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">8</span><span class="p">]])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">anat2func</span> <span class="o">=</span> <span class="n">fs_register</span>
 
@@ -299,34 +302,16 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras&#39;</span><span class="p">,</span> <span class="n">anat_mgz</span><span class="p">)</span>
             <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-            <span class="n">anat_vox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+            <span class="n">anat_vox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
         <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occurred while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
             <span class="k">raise</span>
 
-        <span class="c1"># Read tkrvox2ras transform for the  anatomical volume</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">anat_mgz</span><span class="p">)</span>
-            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-            <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
-        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
-            <span class="k">raise</span>
+        <span class="c1"># Read tkrvox2ras transform for the anatomical volume</span>
+        <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">_vox2ras_tkr</span><span class="p">(</span><span class="n">anat_mgz</span><span class="p">)</span>
 
         <span class="c1"># Read tkvox2ras transform for the functional volume</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">)</span>
-            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-            <span class="c1"># The [1:] index skips a first line that is present only if an error occurs</span>
-            <span class="c1"># or some info is missing when the transform is created - i.e.</span>
-            <span class="c1"># not in all cases, just in the case that the transform is </span>
-            <span class="c1"># created exactly as it is now. </span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
-                <span class="n">L</span> <span class="o">=</span> <span class="n">L</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
-            <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
-        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
-            <span class="k">raise</span>
+        <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">_vox2ras_tkr</span><span class="p">(</span><span class="n">func_nii</span><span class="p">)</span>
 
         <span class="c1"># Calculate pycorex transform (i.e. scanner to functional transform)</span>
         <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv</span><span class="p">(</span><span class="n">func_tkrvox2ras</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat2func</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat_tkrvox2ras</span><span class="p">,</span> <span class="n">inv</span><span class="p">(</span><span class="n">anat_vox2ras</span><span class="p">))))</span>
@@ -338,8 +323,9 @@
 
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
 
+
     <span class="k">def</span> <span class="nf">to_freesurfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Converts a pycortex transform to a FreeSurfer transform.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a pycortex transform to a FreeSurfer transform.</span>
 
 <span class="sd">        Converts a transform stored in pycortex xfm object to the FreeSurfer format</span>
 <span class="sd">        (i.e., register.dat format: https://surfer.nmr.mgh.harvard.edu/fswiki/RegisterDat)</span>
@@ -371,31 +357,10 @@
         <span class="n">anat_vox2ras</span> <span class="o">=</span> <span class="n">anat</span><span class="o">.</span><span class="n">affine</span>
 
         <span class="c1"># Read tkrvox2ras transform for the  anatomical volume</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">anat</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
-            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-            <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
-        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
-            <span class="k">raise</span>
+        <span class="n">anat_tkrvox2ras</span> <span class="o">=</span> <span class="n">_vox2ras_tkr</span><span class="p">(</span><span class="n">anat</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
 
         <span class="c1"># Read tkvox2ras transform for the functional volume</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
-            <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
-            <span class="c1"># The [1:] index skips a first line that is present only if an error occurs</span>
-            <span class="c1"># or some info is missing when the transform is created - i.e.</span>
-            <span class="c1"># not in all cases, just in the case that the transform is </span>
-            <span class="c1"># created exactly as it is now. </span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
-            	<span class="n">L</span> <span class="o">=</span> <span class="n">L</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
-            <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
-        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;Error occured while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
-            <span class="k">raise</span>
-        <span class="c1"># Debugging code</span>
-        <span class="c1">#print(&#39;Shape of func_tkrvox2ras is: [SHOULD BE (4,4) !!]&#39;)</span>
-        <span class="c1">#print(func_tkrvox2ras.shape)</span>
+        <span class="n">func_tkrvox2ras</span> <span class="o">=</span> <span class="n">_vox2ras_tkr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
 
         <span class="c1"># Read voxel resolution of the functional volume</span>
         <span class="n">func_voxres</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_zooms</span><span class="p">()</span>
@@ -403,9 +368,6 @@
         <span class="c1"># Calculate FreeSurfer transform</span>
         <span class="n">fs_anat2func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">func_tkrvox2ras</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">anat_vox2ras</span><span class="p">,</span> <span class="n">inv</span><span class="p">(</span><span class="n">anat_tkrvox2ras</span><span class="p">))))</span>
 
-        <span class="c1"># Debugging code</span>
-        <span class="c1">#if not fs_anat2func.shape == (4, 4):</span>
-        <span class="c1">#    raise Exception(&quot;bad assumptions led to bad transformation matrix.&quot;)</span>
         <span class="c1"># Write out to `fs_register` in register.dat format</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fs_register</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fid</span><span class="p">:</span>
             <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject</span><span class="p">))</span>
@@ -419,8 +381,9 @@
 
         <span class="k">return</span> <span class="n">fs_anat2func</span></div>
 
+
 <span class="k">def</span> <span class="nf">isstr</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Check for stringy-ness in python 2.7 or 3&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check for stringy-ness in python 2.7 or 3&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">basestring</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
@@ -437,6 +400,32 @@
     <span class="n">flipr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
     <span class="n">flipr</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">N_i</span> <span class="o">-</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="n">flipr</span>
+
+
+<span class="k">def</span> <span class="nf">_vox2ras_tkr</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run `mri_info --vox2ras-tkr` on `image` and return a numpy array with the</span>
+<span class="sd">    output affine&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;mri_info&#39;</span><span class="p">,</span> <span class="s1">&#39;--vox2ras-tkr&#39;</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">decode</span><span class="p">(</span><span class="n">subprocess</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+        <span class="c1"># Skip headers/additional information. Example output of</span>
+        <span class="c1"># mri_info --vox2ras-tkr</span>
+        <span class="c1">#</span>
+        <span class="c1"># niiRead(): NIFTI_UNITS_UNKNOWN, assuming mm</span>
+        <span class="c1">#   -2.61900    0.00000    0.00000   81.18900</span>
+        <span class="c1">#    0.00000    0.00000    2.60000  -63.70000</span>
+        <span class="c1">#    0.00000   -2.61900    0.00000   87.73650</span>
+        <span class="c1">#    0.00000    0.00000    0.00000    1.00000</span>
+        <span class="c1">#</span>
+        <span class="c1"># Just take the last 4 lines because the length of the extra info is</span>
+        <span class="c1"># unpredictable.</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">L</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span>
+        <span class="n">tkrvox2ras</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[[</span><span class="n">np</span><span class="o">.</span><span class="n">float_</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">ll</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">ll</span> <span class="ow">in</span> <span class="n">L</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error occurred while executing:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+        <span class="k">raise</span> <span class="n">e</span>
+    <span class="k">return</span> <span class="n">tkrvox2ras</span>
 </pre></div>
 
           </div>
@@ -487,7 +476,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
@@ -495,8 +484,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -510,11 +499,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

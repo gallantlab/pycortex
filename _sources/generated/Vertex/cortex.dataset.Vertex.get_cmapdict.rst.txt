@@ -1,0 +1,6 @@
+cortex.dataset.Vertex.get\_cmapdict
+===================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: Vertex.get_cmapdict

@@ -1,0 +1,242 @@
+
+
+.. _sphx_glr_auto_examples_quickflat:
+
+Quickflat Examples
+------------------------------
+
+Examples demonstrating how to create flatmaps.
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The sulci are defined in a sub-layer of the sulci layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_sulci_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot sulci on the flatmap</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to disp...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_dropout_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot dropout regions on the flatmap</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Cutouts are manually generated cuts of the cortical surface to highlight a region of interest.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_cutouts_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot cutouts on the flatmap</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="ROIs are defined as sub-layers of the roi layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_rois_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot ROIs on the flatmap</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a giv...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_connected_vertices_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot which vertices are inside the same voxels</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is t...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_gif_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Animate a series of volumes as a GIF</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in th...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_thickness_nanmean_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Ignore NaN (not-a-number) values in thickness mapping</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The locatio...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_zoom_to_roi_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plotting a zoomed view of one ROI</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="quickflat visualizations use matplotlib to generate figure-quality 2D flatmaps.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_figure_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot a 2D static flatmap</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sul...">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_advanced_compositing_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot with advanced compositing</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/quickflat/plot_sulci
+   /auto_examples/quickflat/plot_dropout
+   /auto_examples/quickflat/plot_make_png
+   /auto_examples/quickflat/plot_make_svg
+   /auto_examples/quickflat/plot_cutouts
+   /auto_examples/quickflat/plot_rois
+   /auto_examples/quickflat/plot_connected_vertices
+   /auto_examples/quickflat/plot_make_gif
+   /auto_examples/quickflat/plot_thickness_nanmean
+   /auto_examples/quickflat/plot_zoom_to_roi
+   /auto_examples/quickflat/plot_make_figure
+   /auto_examples/quickflat/plot_advanced_compositing
+

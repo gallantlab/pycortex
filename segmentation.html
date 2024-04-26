@@ -1,29 +1,28 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Segmentation Tutorial &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/doctools.js"></script>
+    <title>Segmentation Tutorial &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -36,20 +35,20 @@
           <div class="body" role="main">
             
   <section id="segmentation-tutorial">
-<h1>Segmentation Tutorial<a class="headerlink" href="#segmentation-tutorial" title="Permalink to this headline">¶</a></h1>
+<h1>Segmentation Tutorial<a class="headerlink" href="#segmentation-tutorial" title="Link to this heading">¶</a></h1>
 <p>In order to plot data, you will need to create surfaces for your particular subject. General surfaces such as fsaverage is NOT recommended, since individual subject anatomay can be highly variable. Averaging across subjects will destroy your signal specificity!  The recommended path for generating surfaces is with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>.</p>
 <p>This document will walk you through a general guide for how to create a Freesurfer surface usable with pycortex.</p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p>Unfortunately, there is no simple unified method for installing Freesurfer on your computer. You will need to download a package, then acquire a (free) registration. For additional instructions, go to <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/fswiki/Download">http://surfer.nmr.mgh.harvard.edu/fswiki/Download</a>.</p>
 </section>
 <section id="segmentation">
-<h2>Segmentation<a class="headerlink" href="#segmentation" title="Permalink to this headline">¶</a></h2>
+<h2>Segmentation<a class="headerlink" href="#segmentation" title="Link to this heading">¶</a></h2>
 <p>Segmentation is the process of identifying the boundary between white matter and gray matter, and between gray matter and dura. With <a class="reference external" href="http://brainvis.wustl.edu/wiki/index.php/Caret:Download">Caret</a>, only one surface is estimated: the midway point between white matter and pia, also known as the “fiducial” surface. This boundary is converted into a triangular mesh representation using a <a class="reference external" href="http://en.wikipedia.org/wiki/Marching_Cubes">marching cubes</a> algorithm. However, segmenting this boundary is nontrivial.</p>
 <p>Pycortex wraps many of the segmentation steps from <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a> for a simpler, more integrated process. Generally, the four functions in cortex.segment is all that’s required to go from anatomical image to segmented and flattened surface.</p>
 </section>
 <section id="quickstart">
-<h2>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline">¶</a></h2>
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h2>
 <blockquote>
 <div><ol class="arabic simple">
 <li><p>Collect a T1 MPRAGE image of the subject. <a class="reference external" href="http://freesurfer.net/fswiki/FreeSurferWiki?action=AttachFile&amp;do=get&amp;target=FreeSurfer_Suggested_Morphometry_Protocols.pdf">Preferred protocols</a>: some variety of multiecho T1.</p></li>
@@ -106,7 +105,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -114,8 +113,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -129,11 +128,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="_sources/segmentation.rst.txt"

@@ -17,6 +17,7 @@
      ~Vertex2D.blend_curvature
      ~Vertex2D.copy
      ~Vertex2D.from_hdf
+     ~Vertex2D.get_cmapdict
      ~Vertex2D.to_json
      ~Vertex2D.uniques
    

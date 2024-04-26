@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -32,7 +32,7 @@ All you need to do is supply a surface object and two vertices on that surface
 and you can find the geodesic path. This script additionally makes a plot to
 show all of the vertices listed in the path.
 
-.. GENERATED FROM PYTHON SOURCE LINES 16-45
+.. GENERATED FROM PYTHON SOURCE LINES 16-47
 
 
 
@@ -44,16 +44,10 @@ show all of the vertices listed in the path.
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages/scipy/sparse/linalg/_dsolve/linsolve.py:322: SparseEfficiencyWarning: splu requires CSC matrix format
-      warn('splu requires CSC matrix format', SparseEfficiencyWarning)
-    Failed to get connection
-    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5462): CRITICAL **: 01:32:15.597: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -62,7 +56,7 @@ show all of the vertices listed in the path.
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
     import cortex.polyutils
@@ -75,6 +69,8 @@ show all of the vertices listed in the path.
     surfs = [cortex.polyutils.Surface(*d)
              for d in cortex.db.get_surf(subject, "fiducial")]
     numl = surfs[0].pts.shape[0]
+    numr = surfs[1].pts.shape[0]
+    num_vertices = numl + numr
 
     # Now we need to pick the start and end points of the line we will draw
     pt_a = 100
@@ -84,41 +80,35 @@ show all of the vertices listed in the path.
     path = surfs[0].geodesic_path(pt_a, pt_b)
 
     # In order to plot this on the cortical surface, we need an array that is the
-    # same size as the number of vertices in the left hemisphere
-    path_data = np.zeros(numl)
+    # same size as the number of vertices
+    path_data = np.zeros(num_vertices) * np.nan
     for v in path:
         path_data[v] = 1
 
     # And now plot these distances onto the cortical surface
-    path_verts = cortex.Vertex(path_data, subject, cmap="Blues_r")
-    cortex.quickshow(path_verts, with_colorbar=False)
+    path_verts = cortex.Vertex(path_data, subject, cmap="Reds", vmin=0, vmax=1)
+    cortex.quickshow(path_verts, with_colorbar=False, with_curvature=True)
     plt.show()
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  8.814 seconds)
+   **Total running time of the script:** (0 minutes 7.153 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_geodesic_path.ipynb <plot_geodesic_path.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_geodesic_path.py <plot_geodesic_path.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_geodesic_path.ipynb <plot_geodesic_path.ipynb>`
+      :download:`Download Python source code: plot_geodesic_path.py <plot_geodesic_path.py>`
 
 
 .. only:: html

@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.dataset.dataset &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
-    <script src="../../../_static/jquery.js"></script>
-    <script src="../../../_static/underscore.js"></script>
-    <script src="../../../_static/doctools.js"></script>
+    <title>cortex.dataset.dataset &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
   <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -46,22 +45,29 @@
 <span class="kn">from</span> <span class="nn">.views</span> <span class="kn">import</span> <span class="n">normalize</span> <span class="k">as</span> <span class="n">_vnorm</span>
 <span class="kn">from</span> <span class="nn">.views</span> <span class="kn">import</span> <span class="n">Dataview</span><span class="p">,</span> <span class="n">Volume</span><span class="p">,</span> <span class="n">_from_hdf_data</span>
 
-<div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../../generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Dataset">
+<a class="viewcode-back" href="../../../generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset">[docs]</a>
+<span class="k">class</span> <span class="nc">Dataset</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wrapper for multiple data objects. This often does not need to be used </span>
 <span class="sd">    explicitly--for example, if a dictionary of data objects is passed to </span>
 <span class="sd">    `cortex.webshow`, it will automatically be converted into a `Dataset`.</span>
 
 <span class="sd">    All kwargs should be `BrainData` or `Dataset` objects.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="Dataset.__init__"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.__init__.html#cortex.dataset.Dataset.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<div class="viewcode-block" id="Dataset.__init__">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.__init__.html#cortex.dataset.Dataset.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">h5</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">views</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.append"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.append.html#cortex.dataset.Dataset.append">[docs]</a>    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Add the `BrainData` or `Dataset` objects in `kwargs` into this </span>
+
+<div class="viewcode-block" id="Dataset.append">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.append.html#cortex.dataset.Dataset.append">[docs]</a>
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the `BrainData` or `Dataset` objects in `kwargs` into this </span>
 <span class="sd">        dataset.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -75,6 +81,7 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown input </span><span class="si">%s</span><span class="s2">=</span><span class="si">%r</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
 
         <span class="k">return</span> <span class="bp">self</span></div>
+
 
     <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">:</span>
@@ -101,8 +108,27 @@
     <span class="k">def</span> <span class="fm">__dir__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">views</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
-<div class="viewcode-block" id="Dataset.from_file"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.from_file.html#cortex.dataset.Dataset.from_file">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<div class="viewcode-block" id="Dataset.from_file">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.from_file.html#cortex.dataset.Dataset.from_file">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_file</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load a pycortex Dataset (cortex.Dataset class) from a file</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        filename : str</span>
+<span class="sd">            .hdf file from which to load</span>
+<span class="sd">        subject : str, optional</span>
+<span class="sd">            string ID for pycortex subject, if subject name has changed</span>
+<span class="sd">            since the Dataset was created. `None` input assumes subject </span>
+<span class="sd">            name in saved file is a subject in your current pycortex</span>
+<span class="sd">            filestore. By default None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataset</span>
+<span class="sd">            pycortex Dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>        
         <span class="n">ds</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
         <span class="n">ds</span><span class="o">.</span><span class="n">h5</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
 
@@ -113,14 +139,17 @@
             <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;subjects&quot;</span><span class="p">,</span> <span class="s2">&quot;views&quot;</span><span class="p">):</span>
                 <span class="k">continue</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">ds</span><span class="o">.</span><span class="n">views</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_from_hdf_data</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">views</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_from_hdf_data</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No metadata found for &quot;</span><span class="si">%s</span><span class="s1">&quot;, skipping...&#39;</span><span class="o">%</span><span class="n">name</span><span class="p">)</span>
 
         <span class="c1">#load up the views generated by pycortex</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">h5</span><span class="p">[</span><span class="s1">&#39;views&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">ds</span><span class="o">.</span><span class="n">views</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">from_hdf</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+                <span class="n">ds</span><span class="o">.</span><span class="n">views</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">from_hdf</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Could not load file; old subject name? Try using `subject` kwarg to specify a current pycortex subject&quot;</span><span class="p">)</span>
+                <span class="k">raise</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="kn">import</span> <span class="nn">traceback</span>
                 <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
@@ -128,9 +157,12 @@
         <span class="n">db</span><span class="o">.</span><span class="n">auxfile</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">return</span> <span class="n">ds</span></div>
+
         
-<div class="viewcode-block" id="Dataset.uniques"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.uniques.html#cortex.dataset.Dataset.uniques">[docs]</a>    <span class="k">def</span> <span class="nf">uniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collapse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the set of unique BrainData objects contained by this dataset&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Dataset.uniques">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.uniques.html#cortex.dataset.Dataset.uniques">[docs]</a>
+    <span class="k">def</span> <span class="nf">uniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collapse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the set of unique BrainData objects contained by this dataset&quot;&quot;&quot;</span>
         <span class="n">uniques</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">sv</span> <span class="ow">in</span> <span class="n">view</span><span class="o">.</span><span class="n">uniques</span><span class="p">(</span><span class="n">collapse</span><span class="o">=</span><span class="n">collapse</span><span class="p">):</span>
@@ -138,7 +170,10 @@
 
         <span class="k">return</span> <span class="n">uniques</span></div>
 
-<div class="viewcode-block" id="Dataset.save"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.save.html#cortex.dataset.Dataset.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Dataset.save">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.save.html#cortex.dataset.Dataset.save">[docs]</a>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">h5</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">h5</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -167,7 +202,10 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">h5</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
 
-<div class="viewcode-block" id="Dataset.get_surf"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_surf.html#cortex.dataset.Dataset.get_surf">[docs]</a>    <span class="k">def</span> <span class="nf">get_surf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Dataset.get_surf">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_surf.html#cortex.dataset.Dataset.get_surf">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_surf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s1">&#39;both&#39;</span><span class="p">:</span>
             <span class="n">left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="n">nudge</span><span class="p">)</span>
             <span class="n">right</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="n">nudge</span><span class="p">)</span>
@@ -194,21 +232,30 @@
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Subject not found in package&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.get_xfm"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_xfm.html#cortex.dataset.Dataset.get_xfm">[docs]</a>    <span class="k">def</span> <span class="nf">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Dataset.get_xfm">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_xfm.html#cortex.dataset.Dataset.get_xfm">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h5</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="n">subject</span><span class="p">][</span><span class="s1">&#39;transforms&#39;</span><span class="p">][</span><span class="n">xfmname</span><span class="p">]</span>
             <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">][:],</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]))</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Transform not found in package&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.get_mask"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_mask.html#cortex.dataset.Dataset.get_mask">[docs]</a>    <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">maskname</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Dataset.get_mask">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_mask.html#cortex.dataset.Dataset.get_mask">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">maskname</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h5</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="n">subject</span><span class="p">][</span><span class="s1">&#39;transforms&#39;</span><span class="p">][</span><span class="n">xfmname</span><span class="p">][</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span>
             <span class="k">return</span> <span class="n">group</span><span class="p">[</span><span class="n">maskname</span><span class="p">]</span>
         <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Mask not found in package&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.get_overlay"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_overlay.html#cortex.dataset.Dataset.get_overlay">[docs]</a>    <span class="k">def</span> <span class="nf">get_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Dataset.get_overlay">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.get_overlay.html#cortex.dataset.Dataset.get_overlay">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">group</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h5</span><span class="p">[</span><span class="s1">&#39;subjects&#39;</span><span class="p">][</span><span class="n">subject</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">type</span> <span class="o">==</span> <span class="s2">&quot;rois&quot;</span><span class="p">:</span>
@@ -221,15 +268,20 @@
 
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unknown overlay type&#39;</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Dataset.prepend"><a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.prepend.html#cortex.dataset.Dataset.prepend">[docs]</a>    <span class="k">def</span> <span class="nf">prepend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Adds the given `prefix` to the name of every data object and returns</span>
+
+<div class="viewcode-block" id="Dataset.prepend">
+<a class="viewcode-back" href="../../../generated/Dataset/cortex.dataset.Dataset.prepend.html#cortex.dataset.Dataset.prepend">[docs]</a>
+    <span class="k">def</span> <span class="nf">prepend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adds the given `prefix` to the name of every data object and returns</span>
 <span class="sd">        a new Dataset.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
             <span class="n">ds</span><span class="p">[</span><span class="n">prefix</span><span class="o">+</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
 
-        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="o">**</span><span class="n">ds</span><span class="p">)</span></div></div>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="o">**</span><span class="n">ds</span><span class="p">)</span></div>
+</div>
+
 
 <span class="k">def</span> <span class="nf">normalize</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">Dataview</span><span class="p">)):</span>
@@ -320,7 +372,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../../search.html" method="get">
@@ -328,8 +380,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -343,11 +395,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

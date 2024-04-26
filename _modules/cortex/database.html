@@ -1,28 +1,27 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.database &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
+    <title>cortex.database &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
   <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -38,18 +37,19 @@
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Contains a singleton object `db` of type `Database` which allows easy access to surface files, anatomical images, and transforms that are stored in the pycortex filestore.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">glob</span>
 <span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">import</span> <span class="nn">functools</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">hashlib</span> <span class="kn">import</span> <span class="n">sha1</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">from</span> <span class="nn">builtins</span> <span class="kn">import</span> <span class="nb">input</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="kn">import</span> <span class="n">sha1</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">options</span>
 
@@ -141,7 +141,8 @@
         <span class="k">raise</span> <span class="ne">AttributeError</span>
     
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;Transforms: [</span><span class="si">{xfms}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfms</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfms</span><span class="p">))</span>
+        <span class="n">xfms</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfms</span><span class="p">))</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Available transforms for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="si">}</span><span class="s2">:</span><span class="se">\n</span><span class="si">{</span><span class="n">xfms</span><span class="si">}</span><span class="s2">&quot;</span>
 
 <span class="k">class</span> <span class="nc">XfmSet</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">filestore</span><span class="o">=</span><span class="n">default_filestore</span><span class="p">):</span>
@@ -171,13 +172,15 @@
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">nibabel</span>
-        <span class="k">return</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masks</span><span class="p">[</span><span class="n">item</span><span class="p">])</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masks</span><span class="p">[</span><span class="n">item</span><span class="p">])</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="s2">&quot;Masks: [</span><span class="si">{types}</span><span class="s2">]&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">types</span><span class="o">=</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_masks</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
 
-<div class="viewcode-block" id="Database"><a class="viewcode-back" href="../../generated/cortex.database.Database.html#cortex.database.Database">[docs]</a><span class="k">class</span> <span class="nc">Database</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Database">
+<a class="viewcode-back" href="../../generated/cortex.database.Database.html#cortex.database.Database">[docs]</a>
+<span class="k">class</span> <span class="nc">Database</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Database()</span>
 
 <span class="sd">    Surface database</span>
@@ -186,10 +189,13 @@
 <span class="sd">    ----------</span>
 <span class="sd">    This database object dynamically generates handles to all subjects within the filestore.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-<div class="viewcode-block" id="Database.__init__"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.__init__.html#cortex.database.Database.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filestore</span><span class="o">=</span><span class="n">default_filestore</span><span class="p">):</span>
+<div class="viewcode-block" id="Database.__init__">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.__init__.html#cortex.database.Database.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filestore</span><span class="o">=</span><span class="n">default_filestore</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filestore</span> <span class="o">=</span> <span class="n">filestore</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subjects</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auxfile</span> <span class="o">=</span> <span class="kc">None</span></div>
+
     
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">subjs</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">   &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subjects</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
@@ -214,16 +220,22 @@
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subjects</span>
         <span class="n">subjs</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">))</span>
         <span class="n">subjs</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subjs</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">s</span><span class="p">))]</span>
+        <span class="n">subjs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">subjs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subjects</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="n">sname</span><span class="p">,</span> <span class="n">SubjectDB</span><span class="p">(</span><span class="n">sname</span><span class="p">,</span> <span class="n">filestore</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">))</span> <span class="k">for</span> <span class="n">sname</span> <span class="ow">in</span> <span class="n">subjs</span><span class="p">])</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subjects</span>
 
-<div class="viewcode-block" id="Database.reload_subjects"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.reload_subjects.html#cortex.database.Database.reload_subjects">[docs]</a>    <span class="k">def</span> <span class="nf">reload_subjects</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Force the reload of the subject dictionary.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Database.reload_subjects">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.reload_subjects.html#cortex.database.Database.reload_subjects">[docs]</a>
+    <span class="k">def</span> <span class="nf">reload_subjects</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Force the reload of the subject dictionary.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subjects</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">subjects</span></div>
 
-<div class="viewcode-block" id="Database.get_anat"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_anat.html#cortex.database.Database.get_anat">[docs]</a>    <span class="k">def</span> <span class="nf">get_anat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return anatomical information from the filestore. Anatomical information is defined as</span>
+
+<div class="viewcode-block" id="Database.get_anat">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_anat.html#cortex.database.Database.get_anat">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_anat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return anatomical information from the filestore. Anatomical information is defined as</span>
 <span class="sd">        any volume-space anatomical information pertaining to the subject, such as T1 image,</span>
 <span class="sd">        white matter masks, etc. Volumes not found in the database will be automatically generated.</span>
 
@@ -259,10 +271,13 @@
             <span class="k">return</span> <span class="n">anatnib</span>
 
         <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">volume</span>
-        <span class="k">return</span> <span class="n">volume</span><span class="o">.</span><span class="n">anat2epispace</span><span class="p">(</span><span class="n">anatnib</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">),</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">volume</span><span class="o">.</span><span class="n">anat2epispace</span><span class="p">(</span><span class="n">anatnib</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_surfinfo"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo">[docs]</a>    <span class="k">def</span> <span class="nf">get_surfinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return auxillary surface information from the filestore. Surface info is defined as </span>
+
+<div class="viewcode-block" id="Database.get_surfinfo">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_surfinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return auxiliary surface information from the filestore. Surface info is defined as </span>
 <span class="sd">        anatomical information specific to a subject in surface space. A Vertex class will be returned</span>
 <span class="sd">        as necessary. Info not found in the filestore will be automatically generated.</span>
 
@@ -312,11 +327,14 @@
             <span class="n">npz</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">return</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">verts</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">npz</span></div>
+
     
-<div class="viewcode-block" id="Database.get_mri_surf2surf_matrix"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mri_surf2surf_matrix.html#cortex.database.Database.get_mri_surf2surf_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">get_mri_surf2surf_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> 
+<div class="viewcode-block" id="Database.get_mri_surf2surf_matrix">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mri_surf2surf_matrix.html#cortex.database.Database.get_mri_surf2surf_matrix">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_mri_surf2surf_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> 
                                  <span class="n">fs_subj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_subj</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> 
                                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get matrix generated by surf2surf to map one subject&#39;s surface to another&#39;s</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get matrix generated by surf2surf to map one subject&#39;s surface to another&#39;s</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -355,8 +373,12 @@
         <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">load_sparse_array</span><span class="p">,</span> <span class="n">save_sparse_array</span>
         <span class="k">if</span> <span class="n">fs_subj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">fs_subj</span> <span class="o">=</span> <span class="n">subject</span>
-        <span class="n">fpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;surf2surf&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">fs_subj</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target_subj</span><span class="p">)</span>
-        <span class="c1"># Backward compatiblity</span>
+        <span class="n">fpath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;surf2surf&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">source</span><span class="o">=</span><span class="n">fs_subj</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target_subj</span><span class="p">,</span>
+            <span class="n">surface_type</span><span class="o">=</span><span class="n">surface_type</span>
+        <span class="p">)</span>
+        <span class="c1"># Backward compatibility</span>
         <span class="n">fdir</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fpath</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fdir</span><span class="p">):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating surf2surf directory for subject </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">subject</span><span class="p">))</span>
@@ -376,12 +398,15 @@
                 <span class="n">save_sparse_array</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="n">tmp</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">mats</span></div>
 
-<div class="viewcode-block" id="Database.get_overlay"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_overlay.html#cortex.database.Database.get_overlay">[docs]</a>    <span class="k">def</span> <span class="nf">get_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Database.get_overlay">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_overlay.html#cortex.database.Database.get_overlay">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_overlay</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">svgoverlay</span>
         <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
-        <span class="c1"># NOTE: This try loop is broken, in that it does nothing for the inteded </span>
+        <span class="c1"># NOTE: This try loop is broken, in that it does nothing for the intended </span>
         <span class="c1"># use case (loading an overlay from a packed subject) - needs fixing. </span>
         <span class="c1"># This hasn&#39;t come up yet due to very rare use of packed subjects.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auxfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -403,9 +428,12 @@
         <span class="k">if</span> <span class="n">overlay_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">overlay_file</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="s1">&#39;overlays&#39;</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">svgoverlay</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">overlay_file</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
     
-<div class="viewcode-block" id="Database.save_xfm"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_xfm.html#cortex.database.Database.save_xfm">[docs]</a>    <span class="k">def</span> <span class="nf">save_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;magnet&quot;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Database.save_xfm">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_xfm.html#cortex.database.Database.save_xfm">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;magnet&quot;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Load a transform into the surface database. If the transform exists already, update it</span>
 <span class="sd">        If it does not exist, copy the reference epi into the filestore and insert.</span>
 
@@ -440,12 +468,12 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please specify a reference&quot;</span><span class="p">)</span>
             <span class="n">fpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;reference.nii.gz&quot;</span><span class="p">)</span>
             <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
-            <span class="n">data</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
                 <span class="kn">import</span> <span class="nn">warnings</span>
                 <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;You are importing a 4D dataset, automatically selecting the first volume as reference&#39;</span><span class="p">)</span>
                 <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">out</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">header</span><span class="o">=</span><span class="n">nib</span><span class="o">.</span><span class="n">get_header</span><span class="p">())</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">nib</span><span class="o">.</span><span class="n">header</span><span class="p">)</span>
             <span class="n">nibabel</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">fpath</span><span class="p">)</span>
 
             <span class="n">jsdict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -453,10 +481,10 @@
         <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;reference.nii.gz&quot;</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">xfmtype</span> <span class="o">==</span> <span class="s2">&quot;magnet&quot;</span><span class="p">:</span>
             <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;magnet&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-            <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;coord&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()),</span> <span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;coord&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">),</span> <span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="k">elif</span> <span class="n">xfmtype</span> <span class="o">==</span> <span class="s2">&quot;coord&quot;</span><span class="p">:</span>
             <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;coord&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-            <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;magnet&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">(),</span> <span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="n">jsdict</span><span class="p">[</span><span class="s1">&#39;magnet&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">,</span> <span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         
         <span class="n">files</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">files</span><span class="p">[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;*&quot;</span><span class="p">)))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -464,9 +492,12 @@
             
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
             <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">jsdict</span><span class="p">,</span> <span class="n">fp</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span></div>
+
     
-<div class="viewcode-block" id="Database.get_xfm"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_xfm.html#cortex.database.Database.get_xfm">[docs]</a>    <span class="k">def</span> <span class="nf">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;coord&quot;</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Retrieves a transform from the filestore</span>
+<div class="viewcode-block" id="Database.get_xfm">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_xfm.html#cortex.database.Database.get_xfm">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;coord&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieves a transform from the filestore</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -486,7 +517,7 @@
 
         <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;identity&quot;</span><span class="p">:</span>
             <span class="n">nib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;raw&#39;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()),</span> <span class="n">nib</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">nib</span><span class="o">.</span><span class="n">affine</span><span class="p">),</span> <span class="n">nib</span><span class="p">)</span>
 
         <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;transforms&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;matrices.xfm&quot;</span><span class="p">)</span>
         <span class="n">reference</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;transforms&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;reference.nii.gz&quot;</span><span class="p">)</span>
@@ -494,9 +525,12 @@
             <span class="n">xfmdict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">xfmdict</span><span class="p">[</span><span class="n">xfmtype</span><span class="p">],</span> <span class="n">reference</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_surf"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf">[docs]</a>    <span class="nd">@_memo</span>
+
+<div class="viewcode-block" id="Database.get_surf">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf">[docs]</a>
+    <span class="nd">@_memo</span>
     <span class="k">def</span> <span class="nf">get_surf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&#39;&#39;&#39;Return the surface pair for the given subject, surface type, and hemisphere.</span>
+<span class="w">        </span><span class="sd">&#39;&#39;&#39;Return the surface pair for the given subject, surface type, and hemisphere.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -558,7 +592,10 @@
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">IOError</span></div>
 
-<div class="viewcode-block" id="Database.save_mask"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_mask.html#cortex.database.Database.save_mask">[docs]</a>    <span class="k">def</span> <span class="nf">save_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Database.save_mask">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_mask.html#cortex.database.Database.save_mask">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
         <span class="n">fname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite existing mask&#39;</span><span class="p">)</span>
@@ -567,11 +604,14 @@
         <span class="n">xfm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid mask shape: must match shape of reference image&quot;</span><span class="p">)</span>
-        <span class="n">affine</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_affine</span><span class="p">()</span>
+        <span class="n">affine</span> <span class="o">=</span> <span class="n">xfm</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">affine</span>
         <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">Nifti1Image</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">affine</span><span class="p">)</span>
         <span class="n">nib</span><span class="o">.</span><span class="n">to_filename</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_mask"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mask.html#cortex.database.Database.get_mask">[docs]</a>    <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;thick&#39;</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Database.get_mask">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mask.html#cortex.database.Database.get_mask">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;thick&#39;</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="s1">&#39;decode&#39;</span><span class="p">):</span>
             <span class="nb">type</span> <span class="o">=</span> <span class="nb">type</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf8&#39;</span><span class="p">)</span>        
 
@@ -584,7 +624,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">import</span> <span class="nn">nibabel</span>
             <span class="n">nib</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span><span class="o">.</span><span class="n">T</span> <span class="o">!=</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="n">nib</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span><span class="o">.</span><span class="n">T</span> <span class="o">!=</span> <span class="mi">0</span>
         <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Mask not found, generating...&#39;</span><span class="p">)</span>
             <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">get_cortical_mask</span>
@@ -592,8 +632,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">save_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">mask</span></div>
 
-<div class="viewcode-block" id="Database.get_shared_voxels"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_shared_voxels.html#cortex.database.Database.get_shared_voxels">[docs]</a>    <span class="k">def</span> <span class="nf">get_shared_voxels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_astar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get an array indicating which vertices are inappropriately mapped to the same voxel.</span>
+
+<div class="viewcode-block" id="Database.get_shared_voxels">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_shared_voxels.html#cortex.database.Database.get_shared_voxels">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_shared_voxels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_astar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an array indicating which vertices are inappropriately mapped to the same voxel.</span>
 
 <span class="sd">        For a given transform and surface, returns an array containing a list of vertices which </span>
 <span class="sd">        are spatially distant on the cortical surface but that map to the same voxels (this occurs</span>
@@ -618,8 +661,11 @@
             <span class="n">voxels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shared_voxel_file</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">voxels</span></div>
 
-<div class="viewcode-block" id="Database.get_coords"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_coords.html#cortex.database.Database.get_coords">[docs]</a>    <span class="k">def</span> <span class="nf">get_coords</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">magnet</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space</span>
+
+<div class="viewcode-block" id="Database.get_coords">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_coords.html#cortex.database.Database.get_coords">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_coords</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemisphere</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">magnet</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -649,7 +695,10 @@
 
         <span class="k">return</span> <span class="n">coords</span></div>
 
-<div class="viewcode-block" id="Database.get_cache"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_cache.html#cortex.database.Database.get_cache">[docs]</a>    <span class="k">def</span> <span class="nf">get_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Database.get_cache">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_cache.html#cortex.database.Database.get_cache">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">auxfile</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
             <span class="c1">#generate the hashed name of the filename and subject as the directory name</span>
@@ -669,8 +718,11 @@
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cachedir</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">cachedir</span></div>
 
-<div class="viewcode-block" id="Database.clear_cache"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.clear_cache.html#cortex.database.Database.clear_cache">[docs]</a>    <span class="k">def</span> <span class="nf">clear_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">clear_all_caches</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Clears config-specified and default file caches for a subject.</span>
+
+<div class="viewcode-block" id="Database.clear_cache">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.clear_cache.html#cortex.database.Database.clear_cache">[docs]</a>
+    <span class="k">def</span> <span class="nf">clear_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">clear_all_caches</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clears config-specified and default file caches for a subject.</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">local_cachedir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
@@ -690,8 +742,11 @@
                 <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">default_cachedir</span><span class="p">)</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">default_cachedir</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_paths"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_paths.html#cortex.database.Database.get_paths">[docs]</a>    <span class="k">def</span> <span class="nf">get_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.</span>
+
+<div class="viewcode-block" id="Database.get_paths">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_paths.html#cortex.database.Database.get_paths">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">surfpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;surfaces&quot;</span><span class="p">)</span>
 
@@ -723,12 +778,15 @@
             <span class="n">rois</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;rois.svg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">),</span>
             <span class="n">overlays</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;overlays.svg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">),</span>
             <span class="n">views</span><span class="o">=</span><span class="nb">sorted</span><span class="p">([</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">f</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">views</span><span class="p">]),</span>
-            <span class="n">surf2surf</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;surf2surf&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{source}</span><span class="s2">_to_</span><span class="si">{target}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;matrices.hdf&quot;</span><span class="p">),</span>
+            <span class="n">surf2surf</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;surf2surf&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{source}</span><span class="s2">_to_</span><span class="si">{target}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;matrices_</span><span class="si">{surface_type}</span><span class="s2">.hdf&quot;</span><span class="p">),</span>
         <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">filenames</span></div>
 
-<div class="viewcode-block" id="Database.make_subj"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.make_subj.html#cortex.database.Database.make_subj">[docs]</a>    <span class="k">def</span> <span class="nf">make_subj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
+
+<div class="viewcode-block" id="Database.make_subj">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.make_subj.html#cortex.database.Database.make_subj">[docs]</a>
+    <span class="k">def</span> <span class="nf">make_subj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filestore</span><span class="p">,</span> <span class="n">subject</span><span class="p">)):</span>
             <span class="k">if</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Are you sure you want to overwrite this existing subject?</span><span class="se">\n</span><span class="s2">&quot;</span>
                      <span class="s2">&quot;This will delete all files for this subject in the filestore, &quot;</span>
@@ -743,9 +801,12 @@
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error making directory </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">path</span><span class="p">)</span></div>
+
     
-<div class="viewcode-block" id="Database.save_view"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_view.html#cortex.database.Database.save_view">[docs]</a>    <span class="k">def</span> <span class="nf">save_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vw</span><span class="p">,</span><span class="n">subject</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">is_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the view for an open webshow instance from a saved view</span>
+<div class="viewcode-block" id="Database.save_view">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.save_view.html#cortex.database.Database.save_view">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vw</span><span class="p">,</span><span class="n">subject</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">is_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the view for an open webshow instance from a saved view</span>
 
 <span class="sd">        Sets the view in a currently-open cortex.webshow instance (with handle `vw`)</span>
 <span class="sd">        to the saved view named `name`</span>
@@ -772,8 +833,11 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sName</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
             <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">view</span><span class="p">,</span> <span class="n">fp</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_view"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_view.html#cortex.database.Database.get_view">[docs]</a>    <span class="k">def</span> <span class="nf">get_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vw</span><span class="p">,</span><span class="n">subject</span><span class="p">,</span><span class="n">name</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the view for an open webshow instance from a saved view</span>
+
+<div class="viewcode-block" id="Database.get_view">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_view.html#cortex.database.Database.get_view">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_view</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vw</span><span class="p">,</span><span class="n">subject</span><span class="p">,</span><span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the view for an open webshow instance from a saved view</span>
 
 <span class="sd">        Sets the view in a currently-open cortex.webshow instance (with handle `vw`)</span>
 <span class="sd">        to the saved view named `name`</span>
@@ -796,8 +860,11 @@
             <span class="n">view</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
         <span class="n">vw</span><span class="o">.</span><span class="n">_set_view</span><span class="p">(</span><span class="o">**</span><span class="n">view</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="Database.get_mnixfm"><a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mnixfm.html#cortex.database.Database.get_mnixfm">[docs]</a>    <span class="k">def</span> <span class="nf">get_mnixfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Get transform from the space specified by `xfm` to MNI space.</span>
+
+<div class="viewcode-block" id="Database.get_mnixfm">
+<a class="viewcode-back" href="../../generated/Database/cortex.database.Database.get_mnixfm.html#cortex.database.Database.get_mnixfm">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_mnixfm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">template</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get transform from the space specified by `xfm` to MNI space.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -845,7 +912,9 @@
             <span class="c1"># Cache the result</span>
             <span class="n">mni</span><span class="o">.</span><span class="n">_save_fsl_xfm</span><span class="p">(</span><span class="n">mnixfmfile</span><span class="p">,</span> <span class="n">mnixfm</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">mnixfm</span></div></div>
+        <span class="k">return</span> <span class="n">mnixfm</span></div>
+</div>
+
 
 <span class="n">db</span> <span class="o">=</span> <span class="n">Database</span><span class="p">()</span>
 </pre></div>
@@ -898,7 +967,7 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
@@ -906,8 +975,8 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -921,11 +990,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
 

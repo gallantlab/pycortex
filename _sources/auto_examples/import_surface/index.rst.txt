@@ -1,0 +1,45 @@
+
+
+.. _sphx_glr_auto_examples_import_surface:
+
+Importing Surfaces Examples
+------------------------------
+
+Examples demonstrating how to import surfraces from other software (e.g.
+FreeSurfer, fmriprep).
+
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatom...">
+
+.. only:: html
+
+  .. image:: /auto_examples/import_surface/images/thumb/sphx_glr_import_fmriprep_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_import_surface_import_fmriprep.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Import fmriprep output</div>
+    </div>
+
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/import_surface/import_fmriprep
+

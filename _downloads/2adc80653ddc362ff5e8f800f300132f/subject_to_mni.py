@@ -32,7 +32,7 @@ data = cortex.Volume.random('S1', 'fullhead')
 mni_data = mni.transform_to_mni(data, s1_to_mni)
 # mni_data is a nibabel Nifti1Image
 
-mni_data_vol = mni_data.get_data() # the actual array, shape=(182,218,182)
+mni_data_vol = mni_data.get_fdata() # the actual array, shape=(182,218,182)
 
 # That was the manual method. pycortex can also cache these transforms for you
 # if you get them using the pycortex database

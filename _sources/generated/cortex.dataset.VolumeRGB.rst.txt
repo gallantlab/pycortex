@@ -17,6 +17,7 @@
      ~VolumeRGB.color_voxels
      ~VolumeRGB.copy
      ~VolumeRGB.from_hdf
+     ~VolumeRGB.get_cmapdict
      ~VolumeRGB.to_json
      ~VolumeRGB.uniques
    
@@ -29,6 +30,7 @@
    .. autosummary::
       :toctree: VolumeRGB
    
+      ~VolumeRGB.alpha
       ~VolumeRGB.name
       ~VolumeRGB.priority
       ~VolumeRGB.raw

@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.get\_cmapdict
+======================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.get_cmapdict

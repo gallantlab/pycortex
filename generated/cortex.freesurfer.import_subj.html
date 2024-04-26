@@ -1,29 +1,28 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="../">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>cortex.freesurfer.import_subj &#8212; pycortex 1.2.4 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css" />
-    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/doctools.js"></script>
+    <title>cortex.freesurfer.import_subj &#8212; pycortex 1.2.8 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -36,10 +35,10 @@
           <div class="body" role="main">
             
   <section id="cortex-freesurfer-import-subj">
-<h1>cortex.freesurfer.import_subj<a class="headerlink" href="#cortex-freesurfer-import-subj" title="Permalink to this headline">¶</a></h1>
+<h1>cortex.freesurfer.import_subj<a class="headerlink" href="#cortex-freesurfer-import-subj" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.freesurfer.import_subj">
-<span class="sig-prename descclassname"><span class="pre">cortex.freesurfer.</span></span><span class="sig-name descname"><span class="pre">import_subj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fs_subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cx_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freesurfer_subject_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whitematter_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'smoothwm'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_subj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.freesurfer.import_subj" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">cortex.freesurfer.</span></span><span class="sig-name descname"><span class="pre">import_subj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freesurfer_subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pycortex_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freesurfer_subject_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whitematter_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'smoothwm'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#import_subj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.freesurfer.import_subj" title="Link to this definition">¶</a></dt>
 <dd><p>Imports a subject from freesurfer</p>
 <p>This will overwrite (after giving a warning and an option to continue) the 
 pre-existing subject, including all blender cuts, masks, transforms, etc., and
@@ -47,23 +46,31 @@ re-generate surface info files (curvature, sulcal depth, thickness) stored in
 the surfinfo/ folder for the subject. All cached files for the subject will be 
 deleted.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>fs_subject</strong><span class="classifier">string</span></dt><dd><p>Freesurfer subject name</p>
+<dt><strong>freesurfer_subject</strong><span class="classifier">str</span></dt><dd><p>Freesurfer subject name</p>
 </dd>
-<dt><strong>cx_subject</strong><span class="classifier">string, optional</span></dt><dd><p>Pycortex subject name (These variable names should be changed). By default uses
-the same name as the freesurfer subject. Best to stick to that convention, if 
-possible (your life will go more smoothly.) This optional kwarg is for edge cases.</p>
+<dt><strong>pycortex_subject</strong><span class="classifier">str, optional</span></dt><dd><p>Pycortex subject name. By default it uses the freesurfer subject name. 
+It is advised to stick to that convention, if possible 
+(your life will go more smoothly.)</p>
 </dd>
-<dt><strong>freesurfer_subject_dir</strong><span class="classifier">string, optional</span></dt><dd><p>Freesurfer subject directory to pull data from. By default uses the directory
+<dt><strong>freesurfer_subject_dir</strong><span class="classifier">str, optional</span></dt><dd><p>Freesurfer subject directory to pull data from. By default uses the directory
 given by the environment variable $SUBJECTS_DIR.</p>
 </dd>
-<dt><strong>whitematter_surf</strong><span class="classifier">string, optional</span></dt><dd><p>Which whitematter surface to import as ‘wm’. By default uses ‘smoothwm’, but that
-surface is smoothed and may not be appropriate. A good alternative is ‘white’.</p>
+<dt><strong>whitematter_surf</strong><span class="classifier">str, optional</span></dt><dd><p>Which whitematter surface to import as ‘wm’. By default uses ‘smoothwm’, but 
+that surface is smoothed and may not be appropriate. 
+A good alternative is ‘white’.</p>
 </dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>This function uses command line functions from freesurfer, so you should make sure
+to have freesurfer sourced before running this function.</p>
+<p>This function will also generate the fiducial surfaces for the subject, which are
+halfway between the white matter and pial surfaces. The surfaces will be stored
+in the freesurfer subject’s directory. These fiducial surfaces are used for 
+cutting and flattening.</p>
 </dd></dl>
 
 </section>
@@ -115,7 +122,7 @@ surface is smoothed and may not be appropriate. A good alternative is ‘white�
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
@@ -123,8 +130,8 @@ surface is smoothed and may not be appropriate. A good alternative is ‘white�
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -138,11 +145,11 @@ surface is smoothed and may not be appropriate. A good alternative is ‘white�
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2012, James Gao.
+      &#169;2012, James Gao.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="../_sources/generated/cortex.freesurfer.import_subj.rst.txt"

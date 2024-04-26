@@ -75,7 +75,7 @@ There's weird gray blobs - click anywhere to get rid of them.
 .. image:: ./aligner/snapshot2.png
 	:width: 600 px
 
-Here you see 4 different views, showing the saggital, coronal, and transverse slices, and also the three slices in 3D.
+Here you see 4 different views, showing the sagittal, coronal, and transverse slices, and also the three slices in 3D.
 The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
 You'll be moving the mesh until it's aligned as much as possible with the reference.
 
@@ -105,7 +105,7 @@ You can also use the ``contrast`` and ``brightness`` sliders to adjust the color
 	:width: 600 px
 
 The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
-Also, the sliders can be used to chane line and point weights.
+Also, the sliders can be used to change line and point weights.
 Here, we changed it to a green points only representation, with smaller points.
 
 .. image:: ./aligner/surface.png

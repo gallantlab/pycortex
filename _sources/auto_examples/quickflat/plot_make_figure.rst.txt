@@ -10,7 +10,7 @@
     .. note::
         :class: sphx-glr-download-link-note
 
-        Click :ref:`here <sphx_glr_download_auto_examples_quickflat_plot_make_figure.py>`
+        :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_make_figure.py>`
         to download the full example code
 
 .. rst-class:: sphx-glr-example-title
@@ -92,30 +92,18 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-script-out
 
- Out:
-
  .. code-block:: none
 
-    Failed to get connection
-    ** (inkscape:5402): CRITICAL **: 01:31:11.806: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5402): CRITICAL **: 01:31:11.806: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5402): CRITICAL **: 01:31:11.806: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5406): CRITICAL **: 01:31:12.783: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5406): CRITICAL **: 01:31:12.783: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5406): CRITICAL **: 01:31:12.783: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5409): CRITICAL **: 01:31:13.881: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5409): CRITICAL **: 01:31:13.881: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5409): CRITICAL **: 01:31:13.881: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5412): CRITICAL **: 01:31:14.979: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5412): CRITICAL **: 01:31:14.979: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5412): CRITICAL **: 01:31:14.979: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
-    Failed to get connection
-    ** (inkscape:5415): CRITICAL **: 01:31:16.268: dbus_g_proxy_new_for_name: assertion 'connection != NULL' failed
-    ** (inkscape:5415): CRITICAL **: 01:31:16.269: dbus_g_proxy_call: assertion 'DBUS_IS_G_PROXY (proxy)' failed
-    ** (inkscape:5415): CRITICAL **: 01:31:16.269: dbus_g_connection_register_g_object: assertion 'connection != NULL' failed
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    Background RRGGBBAA: ffffff00
+    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 
 
 
@@ -124,7 +112,7 @@ This can be helpful if you think there is no reason that the
 
 |
 
-.. code-block:: default
+.. code-block:: Python
 
     import cortex
     import matplotlib.pyplot as plt
@@ -172,28 +160,22 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  11.182 seconds)
+   **Total running time of the script:** (0 minutes 8.499 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_figure.py:
 
+.. only:: html
 
-.. only :: html
+  .. container:: sphx-glr-footer sphx-glr-footer-example
 
- .. container:: sphx-glr-footer
-    :class: sphx-glr-footer-example
+    .. container:: sphx-glr-download sphx-glr-download-jupyter
 
+      :download:`Download Jupyter notebook: plot_make_figure.ipynb <plot_make_figure.ipynb>`
 
+    .. container:: sphx-glr-download sphx-glr-download-python
 
-  .. container:: sphx-glr-download sphx-glr-download-python
-
-     :download:`Download Python source code: plot_make_figure.py <plot_make_figure.py>`
-
-
-
-  .. container:: sphx-glr-download sphx-glr-download-jupyter
-
-     :download:`Download Jupyter notebook: plot_make_figure.ipynb <plot_make_figure.ipynb>`
+      :download:`Download Python source code: plot_make_figure.py <plot_make_figure.py>`
 
 
 .. only:: html
