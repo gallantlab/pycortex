@@ -14,8 +14,8 @@ try:
     from matplotlib.cm import register_cmap
 except ImportError:
     from matplotlib import colormaps
-    def register_cmap(*args, **kwargs):
-        return colormaps.register(*args, **kwargs)
+    def register_cmap(cmap):
+        return colormaps.register(cmap)
 
 
 def normalize(data):
@@ -219,8 +219,9 @@ class Dataview(object):
                 raise ValueError('Unkown color map %s' % self.cmap)
             I = plt.imread(colormaps[self.cmap])
             cmap = colors.ListedColormap(np.squeeze(I))
+            cmap.name = self.cmap
             # Register colormap to matplotlib to avoid loading it again
-            register_cmap(self.cmap, cmap)
+            register_cmap(cmap)
 
         return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 

@@ -27,8 +27,8 @@ try:
     from matplotlib.cm import register_cmap
 except ImportError:
     from matplotlib import colormaps
-    def register_cmap(*args, **kwargs):
-        return colormaps.register(*args, **kwargs)
+    def register_cmap(cmap):
+        return colormaps.register(cmap)
 
 
 class DocLoader(object):
@@ -1008,8 +1008,9 @@ def get_cmap(name):
     if name in colormaps:
         I = plt.imread(colormaps[name])
         cmap = colors.ListedColormap(np.squeeze(I))
+        cmap.name = name
         try:
-            register_cmap(name, cmap)
+            register_cmap(cmap)
         except:
             print(f"Color map {name} is already registered.")
     else:
