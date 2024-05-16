@@ -407,5 +407,5 @@ def u(s, encoding='utf8'):
         return s
 
 
-from .view2D import Vertex2D, Volume2D
 from .viewRGB import Colors, VertexRGB, VolumeRGB
+from .view2D import Vertex2D, Volume2D
