@@ -160,6 +160,7 @@ def vertical_flip_path(path, overlay):
 
 
 def determine_path_hemi(overlay, path, percent_cutoff=.4):
+    """Returns 0 (False) for left, 1 (True) for right hemisphere"""
     if isinstance(path, matplotlib.path.Path):
         path = path.vertices
     middle_x = overlay.svgshape[0]/2
@@ -178,7 +179,9 @@ def center_of_mass(X):
     -------
     center_of_mass
         array of shape (2,) that contains (x, y) center of mass
-    """    
+    """
+    if not np.all(np.isclose(X[0], X[-1])):
+        X = np.vstack([X, X[0]])
     # calculate center of mass of a closed polygon
     x = X[:, 0]
     y = X[:, 1]
@@ -378,6 +381,7 @@ def _angles_from_vertex(overlay, start_idx, target_idxs=None, period=2*np.pi, th
 
 
 def get_roi_paths(overlay, roi, cleaned=True, filter_zeros=True, vertical_flip=True, overlay_file=None):
+    """returns left, right hemisphere paths"""
     if roi in list(overlay.rois.shapes.keys()):
         paths = overlay.rois[roi].splines
     elif roi in list(overlay.sulci.shapes.keys()):
@@ -670,7 +674,7 @@ def show_dartboard(data,
     """
     if max_radius is None:
         max_radius = 1
-    data = np.array(data).astype(np.float)
+    data = np.array(data).astype(float)
     if isinstance(data2, np.ndarray):
         data = np.stack([data, data2], axis=0)
     else:
@@ -746,6 +750,27 @@ def show_dartboard(data,
     axis.add_patch(circ)
     axis.axis("off")
     return axis
+
+
+def clockwise_test(pts):
+    """Test for clockwise ordering of points
+    
+    Parameters
+    ----------
+    pts : array
+        2D array (n_pts, xy) defining polygon points to be evaluated for clockwise rotation
+
+    Returns
+    -------
+    is_clockwise : bool
+        True for clockwise, False for counter-clockwise
+    """
+    if not np.all(pts[0] == pts[-1]):
+        pts = np.vstack([pts, pts[0]])
+    sum = 0
+    for c0, c1 in zip(pts[:-1], pts[1:]):
+        sum += (c1[0] - c0[0]) * (c1[1] + c0[1])
+    return sum > 0
 
 
 def interpolate_outlines(phi, rho, resolution=50):
@@ -873,40 +898,54 @@ def sort_roi_border(xy, angles, start_angle=0, start_index=None, max_deg_from_ze
         if start_index is None:
             start_index = np.argmin(
                 np.abs(circ_dist(angles, start_angle, degrees=False)))
-    vertex_order = [start_index]
-    ct = 0
-    for i_vert in range(len(xy)):
-        # Special case for first one: go clockwise
-        if i_vert == 0:
-            new_verts = np.argsort(dsts[start_index])[:5]
-            new_verts = np.array([x for x in new_verts if x not in vertex_order])
-            angles_from_origin = circ_dist(angles[new_verts], angles[start_index], degrees=False)
-            is_clockwise = angles_from_origin > 0
-            #if ~any(is_clockwise):
-            #    plt.plot(*xy.T)
-            #    plt.plot()
-            min_clockwise_angle = np.min(angles_from_origin[is_clockwise])
-            j = new_verts[angles_from_origin == min_clockwise_angle][0]
-            vertex_order.append(j)
-        else:
-            success = False
-            n = 3
-            while (not success) and (n<15):
-                new_verts = np.argsort(dsts[vertex_order[-1]])[:n]
-                new_verts = np.array([x for x in new_verts if x not in vertex_order])
-                success = len(new_verts==1)
-                n += 1
-                #if n > 4:
-                #    print(n)
-            if len(new_verts) > 0:
-                vertex_order.append(new_verts[-1])
-            else:
-                ct += 1
-                if verbose:
-                    print(f"Skipped a vertex ({ct} skipped)")
-                #1/0
-    vertex_order.append(vertex_order[0])
-    return np.array(vertex_order)
+    is_clockwise = clockwise_test(xy)
+    n = len(xy)
+    if is_clockwise:
+        print('Detected CLOCKWISE order')
+        vertex_order = np.hstack([np.arange(start_index, n),
+                                  np.arange(0, start_index),
+                                  start_index])
+    else:
+        print('Detected COUNTER-CLOCKWISE order')
+        vertex_order = np.hstack([np.arange(start_index, 0, -1),
+                                  np.arange(n-1, start_index, -1),
+                                  start_index])
+
+    # vertex_order = [start_index]
+    # ct = 0
+    # for i_vert in range(len(xy)):
+    #     # Special case for first one: go clockwise
+    #     if i_vert == 0:
+    #         new_verts = np.argsort(dsts[start_index])[:5]
+    #         new_verts = np.array([x for x in new_verts if x not in vertex_order])
+    #         angles_from_origin = circ_dist(angles[new_verts], angles[start_index], degrees=False)
+    #         is_clockwise = angles_from_origin > 0
+    #         #if ~any(is_clockwise):
+    #         #    plt.plot(*xy.T)
+    #         #    plt.plot()
+    #         min_clockwise_angle = np.min(angles_from_origin[is_clockwise])
+    #         j = new_verts[angles_from_origin == min_clockwise_angle][0]
+    #         vertex_order.append(j)
+    #     else:
+    #         success = False
+    #         n = 3
+    #         while (not success) and (n<15):
+    #             new_verts = np.argsort(dsts[vertex_order[-1]])[:n]
+    #             new_verts = np.array([x for x in new_verts if x not in vertex_order])
+    #             success = len(new_verts==1)
+    #             n += 1
+    #             #if n > 4:
+    #             #    print(n)
+    #         if len(new_verts) > 0:
+    #             vertex_order.append(new_verts[-1])
+    #         else:
+    #             ct += 1
+    #             if verbose:
+    #                 print(f"Skipped a vertex ({ct} skipped)")
+    #             #1/0
+    # vertex_order.append(vertex_order[0])
+    # return np.array(vertex_order)
+    return vertex_order
 
 
 def get_interpolated_outlines(overlay, 
@@ -926,15 +965,18 @@ def get_interpolated_outlines(overlay,
         svgoverlay for a given subject
     outline_roi : str
         name of ROI to plot (must sexist in overlays.svg)
-    center_roi : str
-        name of center ROI for dartboard
-    anchor_angles : array
-        array of angles ??
     geodesic_distances : bool, optional
         Flag for whether to compute geodesic distances for eccentricity bins,
         by default True
     resolution : int, optional
         number of points estimated for outline, by default 100
+    every_n : int, optional
+        smooth path by fitting a cubic spline to `every_n` vertices on border
+    recache : bool, optional
+        whether to force re-computation (recache=True) or allow loading from cached
+        file (recache=False)
+    verbose : bool, optional
+        verbose output or not
 
     Returns
     -------
@@ -1163,8 +1205,8 @@ def show_dartboard_pair(dartboard_data,
         space, a little smoothing usually helps aesthetically. 1 is no smoothing
         , by default 5
     even_sampling_over : str, optional
-        How to resample ROI paths, by angle or along path length. 'angle' is perhaps slightly
-        more principled for convex ROIs, but 'path_length' gives better results for non-convex
+        How to resample ROI paths, by angle or along path length. 'polar angle' is slightly
+        more principled for convex ROIs, but 'path length' gives better results for non-convex
         ROIs, by default 'path length'
     roi_linewidth : int, optional
         width of lines for drawn ROIs, by default 1
@@ -1566,10 +1608,17 @@ def _get_anchor_points(svg, center_roi, anchors, return_indices=True):
             anchor_name, anchor_type = anchor, 'centroid'
         if j == 0:
             center_name, center_type = anchor_name, anchor_type
-        if anchor_type == 'nearest':
-            centroids[anchor_name] = _get_closest_vertex_to_roi(svg, anchor_name, center_name, return_indices=return_indices)
+        if 'nearest' in anchor_type:
+            if '_to_' in anchor_type:
+                _, _, roi_to = anchor_type.split('_')
+                centroids[f'{anchor_name}-{roi_to}'] = _get_closest_vertex_to_roi(svg, anchor_name, roi_to, return_indices=return_indices)
+            else:
+                centroids[anchor_name] = _get_closest_vertex_to_roi(svg, anchor_name, center_name, return_indices=return_indices)
         elif anchor_type == 'centroid':
             centroids[anchor_name] = get_roi_centroids(svg, anchor_name, return_indices=return_indices)
+        elif anchor_type == 'superior':
+            pass
+            #centroids[anchor_name] = _get_closest_vertex_to_roi(svg, anchor_name, center_name, return_indices=return_indices)
         else:
             raise ValueError("unknown anchor type specified: %s\n(Must be 'nearest' or 'centroid')"%(anchor_type))    
     return centroids
