@@ -1007,8 +1007,7 @@ def get_cmap(name):
     colormaps = dict((c[:-4], os.path.join(cmapdir, c)) for c in colormaps)
     if name in colormaps:
         I = plt.imread(colormaps[name])
-        cmap = colors.ListedColormap(np.squeeze(I))
-        cmap.name = name
+        cmap = colors.ListedColormap(np.squeeze(I), name=name)
         try:
             register_cmap(cmap)
         except:

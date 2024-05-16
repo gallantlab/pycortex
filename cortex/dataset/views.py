@@ -218,8 +218,8 @@ class Dataview(object):
             if self.cmap not in colormaps:
                 raise ValueError('Unkown color map %s' % self.cmap)
             I = plt.imread(colormaps[self.cmap])
-            cmap = colors.ListedColormap(np.squeeze(I))
-            cmap.name = self.cmap
+            name = self.cmap if isinstance(self.cmap, str) else self.cmap.name
+            cmap = colors.ListedColormap(np.squeeze(I), name=name)
             # Register colormap to matplotlib to avoid loading it again
             register_cmap(cmap)
 
