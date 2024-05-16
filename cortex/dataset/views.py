@@ -1,13 +1,21 @@
-import os
 import glob
 import json
+import os
+
 import h5py
 import numpy as np
 
 from .. import options
-from .braindata import BrainData, VolumeData, VertexData
+from .braindata import BrainData, VertexData, VolumeData
 
 default_cmap = options.config.get("basic", "default_cmap")
+
+try:
+    from matplotlib.cm import register_cmap
+except ImportError:
+    from matplotlib import colormaps
+    def register_cmap(*args, **kwargs):
+        return colormaps.register(*args, **kwargs)
 
 
 def normalize(data):
@@ -193,7 +201,8 @@ class Dataview(object):
     def get_cmapdict(self):
         """Returns a dictionary with cmap information."""
 
-        from matplotlib import colors, pyplot as plt
+        from matplotlib import colors
+        from matplotlib import pyplot as plt
 
         try:
             # plt.get_cmap accepts:
@@ -206,18 +215,18 @@ class Dataview(object):
             cmapdir = options.config.get('webgl', 'colormaps')
             colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
             colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
-            if not self.cmap in colormaps:
+            if self.cmap not in colormaps:
                 raise ValueError('Unkown color map %s' % self.cmap)
             I = plt.imread(colormaps[self.cmap])
             cmap = colors.ListedColormap(np.squeeze(I))
             # Register colormap to matplotlib to avoid loading it again
-            plt.register_cmap(self.cmap, cmap)
+            register_cmap(self.cmap, cmap)
 
         return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
     def raw(self):
-        from matplotlib import colors, cm
+        from matplotlib import cm, colors
 
         cmap = self.get_cmapdict()['cmap']
         # Normalize colors according to vmin, vmax
@@ -398,5 +407,5 @@ def u(s, encoding='utf8'):
         return s
 
 
-from .viewRGB import VolumeRGB, VertexRGB, Colors
-from .view2D import Volume2D, Vertex2D
+from .view2D import Vertex2D, Volume2D
+from .viewRGB import Colors, VertexRGB, VolumeRGB

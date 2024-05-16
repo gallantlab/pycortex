@@ -23,6 +23,13 @@ from .polyutils import Surface
 from .testing_utils import INKSCAPE_VERSION
 from .volume import anat2epispace
 
+try:
+    from matplotlib.cm import register_cmap
+except ImportError:
+    from matplotlib import colormaps
+    def register_cmap(*args, **kwargs):
+        return colormaps.register(*args, **kwargs)
+
 
 class DocLoader(object):
     def __init__(self, func, mod, package):
@@ -1002,7 +1009,7 @@ def get_cmap(name):
         I = plt.imread(colormaps[name])
         cmap = colors.ListedColormap(np.squeeze(I))
         try:
-            plt.cm.register_cmap(name,cmap)
+            register_cmap(name, cmap)
         except:
             print(f"Color map {name} is already registered.")
     else:
