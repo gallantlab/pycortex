@@ -23,12 +23,13 @@ from .polyutils import Surface
 from .testing_utils import INKSCAPE_VERSION
 from .volume import anat2epispace
 
+# register_cmap is deprecated in matplotlib > 3.7.0 and replaced by colormaps.register
 try:
-    from matplotlib.cm import register_cmap
-except ImportError:
-    from matplotlib import colormaps
+    from matplotlib import colormaps as cm
     def register_cmap(cmap):
-        return colormaps.register(cmap)
+        return cm.register(cmap)
+except ImportError:
+    from matplotlib.cm import register_cmap
 
 
 class DocLoader(object):
