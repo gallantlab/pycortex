@@ -38,7 +38,7 @@ jobs:
         pip install build wheel numpy "cython<3.0"
 
     - name: Create the wheel
-      run: python -m build
+      run: python setup.py bdist_wheel
 
     - name: Install from the wheel
       run: |
