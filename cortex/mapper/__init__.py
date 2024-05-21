@@ -4,6 +4,7 @@ import numpy as np
 
 from .. import dataset
 from .mapper import Mapper, _savecache
+from .utils import nanproject, vol2surf
 
 
 def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
