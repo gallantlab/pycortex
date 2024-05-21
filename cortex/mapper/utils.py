@@ -116,7 +116,7 @@ def vol2surf(
     # Select only voxels in the thick mask
     voxel2fsnative = [vfs[:, mask] for vfs in voxel2fsnative]
     if target_surface == "native":
-        data_projected = nanproject(data, voxel2fsnative)
+        data_projected = nanproject(data, scipy.sparse.vstack(voxel2fsnative))
     else:
         fsnative2fsaverage = cortex.db.get_mri_surf2surf_matrix(
             subject, "fiducial", fs_subj=subject_freesurfer, target_subj=target_surface
