@@ -35,7 +35,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y inkscape
         pip install --upgrade pip
-        pip install wheel numpy "cython<3.0"
+        pip install build wheel numpy "cython<3.0"
 
     - name: Create the wheel
       run: python -m build
