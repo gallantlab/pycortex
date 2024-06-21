@@ -10,3 +10,5 @@ def test_download_subject():
     assert "fsaverage" not in cortex.db.subjects
     cortex.utils.download_subject(subject_id='fsaverage')
     assert "fsaverage" in cortex.db.subjects
+    # test that downloading it again works
+    cortex.utils.download_subject(subject_id='fsaverage', download_again=True)
