@@ -43,9 +43,13 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pip install -q pytest pytest-cov codecov
+        pip install -q pytest pytest-cov
         pytest --cov=./
 
-    - name: Run codecov
-      run: |
-        codecov
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        env_vars: OS,PYTHON
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: false
