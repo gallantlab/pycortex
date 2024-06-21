@@ -1079,25 +1079,28 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
             "the subject again.".format(subject_id))
         return
     # Map codes to URLs; more coming eventually
-    id_to_url = dict(fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
-                     )
+    id_to_url = dict(
+        fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
+    )
     if url is None:
-        if not subject_id in id_to_url:
+        if subject_id not in id_to_url:
             raise ValueError('Unknown subject_id!')
         url = id_to_url[subject_id]
-    print("Downloading from: {}".format(url))
-    # Download to temp dir
-    tmp_dir = tempfile.gettempdir()
-    wget.download(url, tmp_dir)
-    print('Downloaded subject {} to {}'.format(subject_id, tmp_dir))
-    # Un-tar to pycortex store
+    # Setup pycortex store location
     if pycortex_store is None:
         # Default location is current filestore in cortex.db
         pycortex_store = db.filestore
-    pycortex_store = os.path.expanduser(pycortex_store)
-    with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
-        print("Extracting subject {} to {}".format(subject_id, pycortex_store))
-        tar.extractall(path=pycortex_store)
+    pycortex_store = os.path.abspath(os.path.expanduser(pycortex_store))
+    # Download to temp dir
+    print("Downloading from: {}".format(url))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        print('Downloading subject {} to {}'.format(subject_id, tmp_dir))
+        wget.download(url, tmp_dir)
+        print('Done downloading')
+        # Un-tar to pycortex store
+        with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
+            print("Extracting subject {} to {}".format(subject_id, pycortex_store))
+            tar.extractall(path=pycortex_store)
 
     # reload all subjects from the filestore
     db.reload_subjects()
