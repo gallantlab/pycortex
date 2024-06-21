@@ -32,7 +32,7 @@ subject = 'S1'
 # create some artificial data
 
 shape = cortex.db.get_xfm(subject, 'identity').shape
-data = np.arange(np.product(shape)).reshape(shape)
+data = np.arange(np.prod(shape)).reshape(shape)
 volume = cortex.Volume(data, subject=subject, xfmname='identity')
 
 ###############################################################################
