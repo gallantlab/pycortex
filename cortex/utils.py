@@ -13,7 +13,7 @@ from importlib import import_module
 
 import h5py
 import numpy as np
-import wget
+import urllib.request
 
 from . import formats
 from .database import db
@@ -1095,10 +1095,13 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
     print("Downloading from: {}".format(url))
     with tempfile.TemporaryDirectory() as tmp_dir:
         print('Downloading subject {} to {}'.format(subject_id, tmp_dir))
-        wget.download(url, tmp_dir)
-        print('Done downloading')
+        fnout, _ = urllib.request.urlretrieve(
+            url,
+            os.path.join(tmp_dir, f"{subject_id}.tar.gz")
+        )
+        print(f'Done downloading to {fnout}')
         # Un-tar to pycortex store
-        with tarfile.open(os.path.join(tmp_dir, subject_id + '.tar.gz'), "r:gz") as tar:
+        with tarfile.open(fnout, "r:gz") as tar:
             print("Extracting subject {} to {}".format(subject_id, pycortex_store))
             tar.extractall(path=pycortex_store)
 
