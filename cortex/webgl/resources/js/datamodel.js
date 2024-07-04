@@ -152,7 +152,6 @@ NParray.fromURL = function(url, callback) {
             var length = array.dtype.BYTES_PER_ELEMENT * array.size;
             var increment = array._slice * array.dtype.BYTES_PER_ELEMENT || length;
             var offset = 10 + headerLength;
-            var offset = nbytes + 10;
             Stream(url, length, increment, offset).progress(array.update.bind(array)).done(hideload);
         } else if (xhr.status == 200) { 
             // Server doesn't support partial data, returned the whole thing
