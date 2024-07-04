@@ -21,12 +21,14 @@ class Package(object):
     """Package the data into a form usable by javascript"""
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = data.uniques(collapse=True)
+        self.uniques = list(data.uniques(collapse=True))
+        self.subjects = set()
         
         self.brains = dict()
         self.images = dict()
         for brain in self.uniques:
             name = brain.name
+            self.subjects.add(brain.subject)
             self.brains[name] = brain.to_json(simple=True)
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 encdata = brain.vertices
@@ -59,10 +61,6 @@ class Package(object):
                 meta['attrs']['stim'] = os.path.split(meta['attrs']['stim'])[1] 
             metadata.append(meta)
         return metadata
-
-    @property
-    def subjects(self):
-        return set(braindata.subject for braindata in self.uniques)
 
     def reorder(self, subjects):
         indices = dict((k, np.load(os.path.splitext(v)[0]+".npz")) for k, v in subjects.items())

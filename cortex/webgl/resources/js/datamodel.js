@@ -84,6 +84,7 @@ NParray.fromJSON = function(json) {
     return NParray.fromData(data, json.dtype, json.shape);
 }
 NParray.fromURL = function(url, callback) {
+    console.log("Loading numpy array from " + url);
     loadCount++;
     $("#dataload").show();
     var hideload = function() {
@@ -91,43 +92,99 @@ NParray.fromURL = function(url, callback) {
         if (loadCount == 0)
             $("#dataload").hide();
     };
-    $.ajax(url, {
-        headers: {Range: 'bytes=0-1023'},
-        dataType: 'text',
-        success: function(data, status, headerxhr) {
-            if (data.slice(1, 6) != 'NUMPY')
-                throw "Invalid npy file"
-            console.log("npy version "+data.charCodeAt(6)+"."+data.charCodeAt(7));
-            var nbytes = data.charCodeAt(8) + (data.charCodeAt(9) << 8);
-            var info = parse_dict(data.slice(10, 10+nbytes));
-            var shape = info.shape.slice(1, info.shape.length-1).split(',');
-            shape = shape.map(function(num) { return parseInt(num.trim()) });
-            var array = new NParray(dtypeNames[info.descr], shape);
 
-            if (headerxhr.status == 206) {
-                var length = array.dtype.BYTES_PER_ELEMENT * array.size;
-                var increment = array._slice * array.dtype.BYTES_PER_ELEMENT || length;
-                var offset = nbytes + 10;
-                Stream(url, length, increment, offset).progress(array.update.bind(array)).done(hideload);
-            } else if (headerxhr.status == 200) { 
-                //Server doesn't support partial data, returned the whole thing
-                var chars = new Uint8Array(data.length - nbytes - 10);
-                for (var i = 0, il = chars.length; i < il; i++)
-                    chars[i] = data.charCodeAt(i+nbytes+10);
-                array.update(chars.buffer);
-                hideload();
-            } else throw "Invalid response from server";
-            callback(array);
-        },
-    });
+    // With thanks to https://gist.github.com/nvictus/88b3b5bfe587d32ac1ab519fd0009607
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.setRequestHeader("Range", "bytes=0-1023");
+    xhr.responseType = "arraybuffer";
+
+    xhr.onload = function() {
+        if (xhr.status !== 200 && xhr.status !== 206) {
+            console.error("Failed to fetch file: status " + xhr.status);
+            hideload();
+            return;
+        }
+
+        function asciiDecode(buf) {
+            return String.fromCharCode.apply(null, new Uint8Array(buf));
+        }
+
+        function readUint16LE(buffer) {
+            var view = new DataView(buffer);
+            var val = view.getUint8(0);
+            val |= view.getUint8(1) << 8;
+            return val;
+        }
+
+        var buffer = xhr.response;
+        console.log("Got buffer: " + buffer);
+        console.log("Buffer length: " + buffer.byteLength);
+
+        // Check we got a valid npy file
+        var magic = asciiDecode(buffer.slice(0, 6));
+        if (magic.slice(1, 6) != 'NUMPY')
+            throw "Invalid npy file"
+        console.log("Magic: "+magic);
+
+        // OK, now let's parse the header and get some info
+        var version = new Uint8Array(buffer.slice(6, 8));
+        console.log("npy version " + version);
+
+        var headerLength = readUint16LE(buffer.slice(8, 10));
+        console.log("Header length: " + headerLength);
+
+        var headerStr = asciiDecode(buffer.slice(10, 10 + headerLength));
+        console.log("Header: " + headerStr);
+
+        // Create the array object
+        var info = parse_dict(asciiDecode(buffer.slice(10, 10 + headerLength)));
+        var shape = info.shape.slice(1, info.shape.length-1).split(',');
+        shape = shape.map(function(num) { return parseInt(num.trim()) });
+        var array = new NParray(dtypeNames[info.descr], shape);
+
+        console.log("Array shape: " + array.shape);
+        console.log("Array size: " + array.size);
+        console.log("Array dtype: " + array.dtype);
+
+        if (xhr.status == 206) {
+            // We got partial data, we're streaming it
+            var length = array.dtype.BYTES_PER_ELEMENT * array.size;
+            var increment = array._slice * array.dtype.BYTES_PER_ELEMENT || length;
+            var offset = 10 + headerLength;
+            var offset = nbytes + 10;
+            Stream(url, length, increment, offset).progress(array.update.bind(array)).done(hideload);
+        } else if (xhr.status == 200) { 
+            // Server doesn't support partial data, returned the whole thing
+            array.update(buffer.slice(10 + headerLength));
+            hideload();
+        }
+        console.log("Data length: " + array.data.length);
+        console.log("Data: " + array.data);
+
+        // Finish up
+        hideload();
+        callback(array);
+    }
+
+    xhr.onerror = function() {
+        console.error("Failed to fetch file");
+        hideload();
+    };
+
+    xhr.send();
 }
 NParray.prototype.update = function(buffer) {
-    if (this.shape.length > 1) {
-        this.data = new this.dtype(buffer, 0, (++this.available)*this._slice);
-        this.loaded.notify(this.available);
-    } else {
-        this.data = new this.dtype(buffer);
-        this.loaded.resolve();
+    try {
+        if (this.shape.length > 1) {
+            this.data = new this.dtype(buffer, 0, (++this.available)*this._slice);
+            this.loaded.notify(this.available);
+        } else {
+            this.data = new this.dtype(buffer);
+            this.loaded.resolve();
+        }
+    } catch (e) {
+        console.error("Error updating array:", e);
     }
 }
 NParray.prototype.view = function() {
