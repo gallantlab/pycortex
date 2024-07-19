@@ -40,10 +40,27 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
-def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r",
-                template="static.html", layout=None, anonymize=False, overlays_available=None,
-                html_embed=True, overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
-                overlay_file=None, copy_ctmfiles=True, title='Brain', **kwargs):
+def make_static(
+    outpath,
+    data,
+    recache=False,
+    template="static.html",
+    anonymize=False,
+    overlays_available=None,
+    overlays_visible=("rois", "sulci"),
+    labels_visible=("rois",),
+    types=("inflated",),
+    html_embed=True,
+    copy_ctmfiles=True,
+    title="Brain",
+    layout=None,
+    overlay_file=None,
+    curvature_brightness=None,
+    curvature_contrast=None,
+    curvature_smoothness=None,
+    surface_specularity=None,
+    **kwargs,
+):
     """
     Creates a static webGL MRI viewer in your filesystem so that it can easily
     be posted publicly for sharing or just saved for later viewing.
@@ -77,20 +94,12 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         Labels for the listed layers will be set visible by default. Labels for
         layers not listed here will be hidden by default (but can be enabled in
         the viewer GUI). Default ('rois', )
-    **kwargs
-        All additional keyword arguments are passed to the template renderer.
 
     Other parameters
     ----------------
     types : tuple, optional
         Types of surfaces to include in addition to the original (fiducial, pial,
         and white matter) and flat surfaces. Default ('inflated', )
-    cmap : string, optional
-        Name of default colormap. Default 'RdBu_r'
-        TODO: DOES THIS DO ANYTHING ANYMORE?
-    overlay_file : str, optional
-        Custom overlays.svg file to use instead of the default one for this
-        subject (if not None). Default None.
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
@@ -104,8 +113,26 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         a browser.
     layout : None or list of (int, int)
         The layout of the viewer subwindows for showing multiple subjects, passed to
-        the template generator. 
+        the template generator.
         Default to None, corresponding to no subwindows.
+    overlay_file : str or None, optional
+        Custom overlays.svg file to use instead of the default one for this
+        subject (if not None). Default None.
+    curvature_brightness : float or None, optional
+        Brightness of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    curvature_contrast : float or None, optional
+        Contrast of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    curvature_smoothness : float or None, optional
+        Smoothness of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    surface_specularity : float or None, optional
+        Specularity of surfaces visualized with the WebGL viewer. 
+        Default None, which uses the value specified in the config file under
+        `webgl_viewopts.specularity`.
+    **kwargs
+        All additional keyword arguments are passed to the template renderer.
 
     Notes
     -----
@@ -113,13 +140,8 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     don't handle xsrf correctly
     """
 
-    outpath = os.path.abspath(os.path.expanduser(outpath)) # To handle ~ expansion
-    if not os.path.exists(outpath):
-        os.makedirs(outpath)
-    if not os.path.exists(os.path.join(outpath, 'data')):
-        # Don't lump together w/ outpath, because of edge cases
-        # for which outpath exists but not sub-folder `data`
-        os.makedirs(os.path.join(outpath, "data"))
+    outpath = os.path.abspath(os.path.expanduser(outpath))  # To handle ~ expansion
+    os.makedirs(os.path.join(outpath, "data"), exist_ok=True)
 
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
@@ -130,10 +152,14 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     package = Package(data)
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache, external_svg=overlay_file,
-                   overlays_available=overlays_available)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
-                for subj in subjects)
+    ctmargs = dict(
+        method="mg2",
+        level=9,
+        recache=recache,
+        external_svg=overlay_file,
+        overlays_available=overlays_available,
+    )
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
     package.reorder(ctms)
 
     db.auxfile = None
@@ -144,15 +170,15 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
         oldpath, fname = os.path.split(ctmfile)
         fname, ext = os.path.splitext(fname)
         if anonymize:
-            newfname = "S%d"%i
+            newfname = "S%d" % i
             submap[subj] = newfname
         else:
             newfname = fname
-        ctms[subj] = newfname+".json"
+        ctms[subj] = newfname + ".json"
 
-        for ext in ['json', 'ctm', 'svg']:
-            srcfile = os.path.join(oldpath, "%s.%s"%(fname, ext))
-            newfile = os.path.join(outpath, "%s.%s"%(newfname, ext))
+        for ext in ["json", "ctm", "svg"]:
+            srcfile = os.path.join(oldpath, "%s.%s" % (fname, ext))
+            newfile = os.path.join(outpath, "%s.%s" % (newfname, ext))
             if os.path.exists(newfile):
                 os.unlink(newfile)
 
@@ -170,30 +196,31 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
                 ofh.close()
     if anonymize:
         old_subjects = sorted(list(ctms.keys()))
-        ctms = dict(('S%d'%i, ctms[k]) for i, k in enumerate(old_subjects))
+        ctms = dict(("S%d" % i, ctms[k]) for i, k in enumerate(old_subjects))
     if len(submap) == 0:
         submap = None
 
-    #Process the data
+    # Process the data
     metadata = package.metadata(fmt="data/{name}_{frame}.png", submap=submap)
     images = package.images
-    #Write out the PNGs
+    # Write out the PNGs
     for name, imgs in images.items():
         impath = os.path.join(outpath, "data", "{name}_{frame}.png")
         for i, img in enumerate(imgs):
             with open(impath.format(name=name, frame=i), "wb") as binfile:
                 binfile.write(img)
 
-    #Copy any stimulus files
+    # Copy any stimulus files
     stimpath = os.path.join(outpath, "stim")
     for name, view in data:
-        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
+        if "stim" in view.attrs and os.path.exists(view.attrs["stim"]):
             if not os.path.exists(stimpath):
                 os.makedirs(stimpath)
-            shutil.copy2(view.attrs['stim'], stimpath)
+            shutil.copy2(view.attrs["stim"], stimpath)
 
-    #Parse the html file and paste all the js and css files directly into the html
+    # Parse the html file and paste all the js and css files directly into the html
     from . import htmlembed
+
     if os.path.exists(template):
         ## Load locally
         templatedir, templatefile = os.path.split(os.path.abspath(template))
@@ -206,27 +233,46 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
     tpl = loader.load(templatefile)
 
     # Put together all view options
-    my_viewopts = dict(options.config.items('webgl_viewopts'))
-    my_viewopts['overlays_visible'] = overlays_visible
-    my_viewopts['labels_visible'] = labels_visible
-    my_viewopts['brightness'] = options.config.get('curvature', 'brightness')
-    my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth')
-    my_viewopts['contrast'] = options.config.get('curvature', 'contrast')
+    my_viewopts = dict(options.config.items("webgl_viewopts"))
+    my_viewopts["overlays_visible"] = overlays_visible
+    my_viewopts["labels_visible"] = labels_visible
+    my_viewopts["brightness"] = (
+        options.config.get("curvature", "brightness")
+        if curvature_brightness is None
+        else curvature_brightness
+    )
+    my_viewopts["contrast"] = (
+        options.config.get("curvature", "contrast")
+        if curvature_contrast is None
+        else curvature_contrast
+    )
+    my_viewopts["smoothness"] = (
+        options.config.get("curvature", "webgl_smooth")
+        if curvature_smoothness is None
+        else curvature_smoothness
+    )
+    my_viewopts["specularity"] = (
+        options.config.get("webgl_viewopts", "specularity")
+        if surface_specularity is None
+        else surface_specularity
+    )
 
     for sec in options.config.sections():
-        if 'paths' in sec or 'labels' in sec:
+        if "paths" in sec or "labels" in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
 
-    html = tpl.generate(data=json.dumps(metadata),
-                        colormaps=colormaps,
-                        default_cmap=cmap,
-                        python_interface=False,
-                        leapmotion=True,
-                        layout=layout,
-                        subjects=json.dumps(ctms),
-                        viewopts=json.dumps(my_viewopts),
-                        title=title,
-                        **kwargs)
+    html = tpl.generate(
+        data=json.dumps(metadata),
+        colormaps=colormaps,
+        default_cmap="RdBu_r",
+        python_interface=False,
+        leapmotion=True,
+        layout=layout,
+        subjects=json.dumps(ctms),
+        viewopts=json.dumps(my_viewopts),
+        title=title,
+        **kwargs,
+    )
     desthtml = os.path.join(outpath, "index.html")
     if html_embed:
         htmlembed.embed(html, desthtml, rootdirs)
@@ -235,15 +281,27 @@ def make_static(outpath, data, types=("inflated",), recache=False, cmap="RdBu_r"
             htmlfile.write(html)
 
 
-def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
-         autoclose=None, open_browser=None, port=None, pickerfun=None,
-         template="mixer.html", overlays_available=None,
-         overlays_visible=('rois', 'sulci'), labels_visible=('rois', ),
-         overlay_file=None,
-         curvature_brightness=None,
-         curvature_smoothness=None,
-         curvature_contrast=None,
-         title='Brain', **kwargs):
+def show(
+    data,
+    autoclose=None,
+    open_browser=None,
+    port=None,
+    pickerfun=None,
+    recache=False,
+    template="mixer.html",
+    overlays_available=None,
+    overlays_visible=("rois", "sulci"),
+    labels_visible=("rois",),
+    types=("inflated",),
+    overlay_file=None,
+    curvature_brightness=None,
+    curvature_contrast=None,
+    curvature_smoothness=None,
+    surface_specularity=None,
+    title="Brain",
+    layout=None,
+    **kwargs,
+):
     """
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
@@ -273,6 +331,10 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         Force recreation of CTM and SVG files for surfaces. Default False
     template : string, optional
         Name of template HTML file. Default 'mixer.html'
+    overlays_available : tuple, optional
+        Overlays available in the viewer. If None, then all overlay layers of the
+        svg file will be potentially available in the viewer (whether initially
+        visible or not). 
     overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
@@ -281,29 +343,28 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         Labels for the listed layers will be set visible by default. Labels for
         layers not listed here will be hidden by default (but can be enabled in
         the viewer GUI). Default ('rois', )
-    **kwargs
-        All additional keyword arguments are passed to the template renderer.
 
     Other parameters
     ----------------
     types : tuple, optional
         Types of surfaces to include in addition to the original (fiducial, pial,
         and white matter) and flat surfaces. Default ('inflated', )
-    cmap : string, optional
-        Name of default colormap. Default 'RdBu_r'
-        TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str or None, optional
         Custom overlays.svg file to use instead of the default one for this
         subject (if not None). Default None.
     curvature_brightness : float or None, optional
         Brightness of curvature overlay. Default None, which uses the value
         specified in the config file.
-    curvature_smoothness : float or None, optional
-        Smoothness of curvature overlay. Default None, which uses the value
-        specified in the config file.
     curvature_contrast : float or None, optional
         Contrast of curvature overlay. Default None, which uses the value
         specified in the config file.
+    curvature_smoothness : float or None, optional
+        Smoothness of curvature overlay. Default None, which uses the value
+        specified in the config file.
+    surface_specularity : float or None, optional
+        Specularity of surfaces visualized with the WebGL viewer. 
+        Default None, which uses the value specified in the config file under
+        `webgl_viewopts.specularity`.
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
@@ -311,6 +372,8 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
         The layout of the viewer subwindows for showing multiple subjects, passed to
         the template generator.
         Default None, corresponding to no subwindows.
+    **kwargs
+        All additional keyword arguments are passed to the template renderer.
     """
 
     # populate default webshow args
@@ -361,12 +424,26 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
     my_viewopts = dict(options.config.items('webgl_viewopts'))
     my_viewopts['overlays_visible'] = overlays_visible
     my_viewopts['labels_visible'] = labels_visible
-    my_viewopts['brightness'] = options.config.get('curvature', 'brightness') \
-        if curvature_brightness is None else curvature_brightness
-    my_viewopts['smoothness'] = options.config.get('curvature', 'webgl_smooth') \
-        if curvature_smoothness is None else curvature_smoothness
-    my_viewopts['contrast'] = options.config.get('curvature', 'contrast') \
-        if curvature_contrast is None else curvature_contrast
+    my_viewopts["brightness"] = (
+        options.config.get("curvature", "brightness")
+        if curvature_brightness is None
+        else curvature_brightness
+    )
+    my_viewopts["contrast"] = (
+        options.config.get("curvature", "contrast")
+        if curvature_contrast is None
+        else curvature_contrast
+    )
+    my_viewopts["smoothness"] = (
+        options.config.get("curvature", "webgl_smooth")
+        if curvature_smoothness is None
+        else curvature_smoothness
+    )
+    my_viewopts["specularity"] = (
+        options.config.get("webgl_viewopts", "specularity")
+        if surface_specularity is None
+        else surface_specularity
+    )
 
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
@@ -441,7 +518,7 @@ def show(data, types=("inflated", ), recache=False, cmap='RdBu_r', layout=None,
             self.set_header("Content-Type", "text/html")
             generated = html.generate(data=metadata,
                                       colormaps=colormaps,
-                                      default_cmap=cmap,
+                                      default_cmap="RdBu_r",
                                       python_interface=True,
                                       leapmotion=True,
                                       layout=layout,
