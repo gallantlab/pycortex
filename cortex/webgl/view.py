@@ -50,7 +50,6 @@ def make_static(
     overlays_visible=("rois", "sulci"),
     labels_visible=("rois",),
     types=("inflated",),
-    cmap="RdBu_r",
     html_embed=True,
     copy_ctmfiles=True,
     title="Brain",
@@ -101,9 +100,6 @@ def make_static(
     types : tuple, optional
         Types of surfaces to include in addition to the original (fiducial, pial,
         and white matter) and flat surfaces. Default ('inflated', )
-    cmap : string, optional
-        Name of default colormap. Default 'RdBu_r'
-        TODO: DOES THIS DO ANYTHING ANYMORE?
     html_embed : bool, optional
         Whether to embed the webgl resources in the html output.  Default 'True'.
         If 'False', the webgl resources must be served by your web server.
@@ -268,7 +264,7 @@ def make_static(
     html = tpl.generate(
         data=json.dumps(metadata),
         colormaps=colormaps,
-        default_cmap=cmap,
+        default_cmap="RdBu_r",
         python_interface=False,
         leapmotion=True,
         layout=layout,
@@ -297,7 +293,6 @@ def show(
     overlays_visible=("rois", "sulci"),
     labels_visible=("rois",),
     types=("inflated",),
-    cmap="RdBu_r",
     overlay_file=None,
     curvature_brightness=None,
     curvature_contrast=None,
@@ -354,9 +349,6 @@ def show(
     types : tuple, optional
         Types of surfaces to include in addition to the original (fiducial, pial,
         and white matter) and flat surfaces. Default ('inflated', )
-    cmap : string, optional
-        Name of default colormap. Default 'RdBu_r'
-        TODO: DOES THIS DO ANYTHING ANYMORE?
     overlay_file : str or None, optional
         Custom overlays.svg file to use instead of the default one for this
         subject (if not None). Default None.
@@ -526,7 +518,7 @@ def show(
             self.set_header("Content-Type", "text/html")
             generated = html.generate(data=metadata,
                                       colormaps=colormaps,
-                                      default_cmap=cmap,
+                                      default_cmap="RdBu_r",
                                       python_interface=True,
                                       leapmotion=True,
                                       layout=layout,
