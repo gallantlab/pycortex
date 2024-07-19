@@ -118,24 +118,24 @@ NParray.fromURL = function(url, callback) {
         }
 
         var buffer = xhr.response;
-        console.log("Got buffer: " + buffer);
-        console.log("Buffer length: " + buffer.byteLength);
+        // console.log("Got buffer: " + buffer);
+        // console.log("Buffer length: " + buffer.byteLength);
 
         // Check we got a valid npy file
         var magic = asciiDecode(buffer.slice(0, 6));
         if (magic.slice(1, 6) != 'NUMPY')
             throw "Invalid npy file"
-        console.log("Magic: "+magic);
+        // console.log("Magic: "+magic);
 
         // OK, now let's parse the header and get some info
         var version = new Uint8Array(buffer.slice(6, 8));
-        console.log("npy version " + version);
+        // console.log("npy version " + version);
 
         var headerLength = readUint16LE(buffer.slice(8, 10));
-        console.log("Header length: " + headerLength);
+        // console.log("Header length: " + headerLength);
 
         var headerStr = asciiDecode(buffer.slice(10, 10 + headerLength));
-        console.log("Header: " + headerStr);
+        // console.log("Header: " + headerStr);
 
         // Create the array object
         var info = parse_dict(asciiDecode(buffer.slice(10, 10 + headerLength)));
@@ -143,9 +143,9 @@ NParray.fromURL = function(url, callback) {
         shape = shape.map(function(num) { return parseInt(num.trim()) });
         var array = new NParray(dtypeNames[info.descr], shape);
 
-        console.log("Array shape: " + array.shape);
-        console.log("Array size: " + array.size);
-        console.log("Array dtype: " + array.dtype);
+        // console.log("Array shape: " + array.shape);
+        // console.log("Array size: " + array.size);
+        // console.log("Array dtype: " + array.dtype);
 
         if (xhr.status == 206) {
             // We got partial data, we're streaming it
@@ -157,9 +157,9 @@ NParray.fromURL = function(url, callback) {
             // Server doesn't support partial data, returned the whole thing
             array.update(buffer.slice(10 + headerLength));
             hideload();
+            // console.log("Data length: " + array.data.length);
+            // console.log("Data: " + array.data);
         }
-        console.log("Data length: " + array.data.length);
-        console.log("Data: " + array.data);
 
         // Finish up
         hideload();
