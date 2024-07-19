@@ -691,9 +691,6 @@ var mriview = (function(module) {
                 event.clientY,
             )
             this.svgOn(this.surfs)
-            if (coords === -1) {
-                return -1
-            }
             // console.log("coords: " + JSON.stringify(coords));
             return coords
         }
@@ -704,7 +701,11 @@ var mriview = (function(module) {
         if (this.surfs[0].pick && this.surfs[0].surf.picker) {
             let coords = this.getCoords(event)
             // console.log(coords)
-            return this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+            if (coords !== -1) {
+                return this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+            } else {
+                return -1
+            }
         }
         return -1
     };
@@ -833,10 +834,12 @@ var mriview = (function(module) {
                 value = this.active.data[0].verts[0][hemiIdx].array[vertex]
             }
         } else {
-            // Get index of the mosaic to get the value
-            let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
-            if (mouse_index !== -1) {
-                value = this.active.data[0].textures[0].image.data[mouse_index]
+            if (coords !== -1) {
+                // Get index of the mosaic to get the value
+                let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+                if (mouse_index !== -1) {
+                    value = this.active.data[0].textures[0].image.data[mouse_index]
+                }
             }
         }
         console.log("Value on click: " + value);
