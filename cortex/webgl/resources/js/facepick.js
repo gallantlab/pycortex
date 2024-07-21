@@ -211,7 +211,7 @@ PickPosition.prototype = {
                 Math.round(vec_float.z),
             )
 
-            return {'vertex': vertex, 'voxel': voxel}
+            return {'vertex': vertex, 'voxel': voxel, 'hemi': p.hemi}
         } else {
             return -1
         }
@@ -234,7 +234,7 @@ PickPosition.prototype = {
                 var idx = this.revIndex[p.hemi][p.ptidx];
                 console.log("Picked vertex "+idx+" (orig "+p.ptidx+") in "+p.hemi+" hemisphere, voxel=["+vec.x+","+vec.y+","+vec.z+"]");
     	    this.process_pick(vec, p.hemi, p.ptidx, keep);
-            return {'vertex': idx, 'voxel': vec}
+            return {'vertex': idx, 'voxel': vec, 'hemi': p.hemi}
     	}
     	else {
     	    this.process_nonpick();

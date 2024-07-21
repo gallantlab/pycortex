@@ -636,16 +636,39 @@ var mriview = (function(module) {
 
         $("#brain").on('mousemove',
             function (event) {
-                // only implemented for 1d volume datasets
-                if (this.active.data.length != 1 || this.active.data[0].raw  || this.active.data[0].verts) {
+                // only implemented for 1d volume datasets or vertex datasets
+                if (this.active.data.length != 1 || this.active.data[0].raw) {
                     $('#mouseover_value').css('display', 'none')
                     return
                 }
-
-                // set mouseover value if mouse is over a vertex
-                mouse_index = this.getMouseIndex(event)
-                if (mouse_index !== -1) {
-                    value = this.active.data[0].textures[0].image.data[mouse_index]
+                // We need to use a different logic if we have a VolumeData or a VertexData object
+                let value = null;
+                if (this.active.vertex) {
+                    coords = this.getCoords(event)
+                    if (coords !== -1) {
+                        hemiIdx = (coords.hemi == 'left') ? 0 : 1
+                        // console.log('hemiIdx: ', hemiIdx)
+                        vertex = coords.vertex
+                        // console.log('vertex: ', vertex)
+                        // Now we need to map back with the index map
+                        // First figure out the subject, then get the index map
+                        subject = this.active.data[0].subject
+                        indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                        // console.log("vertex before: " + vertex);
+                        vertex = indexMap[vertex]
+                        // console.log("vertex after: " + vertex);
+                        // Now access the data
+                        value = this.active.data[0].verts[0][hemiIdx].array[vertex]
+                    }
+                } else {
+                    // Get index of the mosaic to get the value
+                    mouse_index = this.getMouseIndex(event)
+                    if (mouse_index !== -1) {
+                        value = this.active.data[0].textures[0].image.data[mouse_index]
+                    }
+                }
+                // console.log("Value on mouseover: " + value);
+                if (value !== null) {
                     $('#mouseover_value').text(parseFloat(value).toPrecision(3))
                     $('#mouseover_value').css('display', 'block')
                 } else {
@@ -658,7 +681,7 @@ var mriview = (function(module) {
         return surf;
     };
 
-    module.Viewer.prototype.getMouseIndex = function(event) {
+    module.Viewer.prototype.getCoords = function(event) {
         if (this.surfs[0].pick && this.surfs[0].surf.picker) {
             this.svgOff(this.surfs)
             let coords = this.surfs[0].surf.picker.get_vertex_index(
@@ -668,11 +691,21 @@ var mriview = (function(module) {
                 event.clientY,
             )
             this.svgOn(this.surfs)
-            if (coords === -1) {
+            // console.log("coords: " + JSON.stringify(coords));
+            return coords
+        }
+        return -1
+    };
+
+    module.Viewer.prototype.getMouseIndex = function(event) {
+        if (this.surfs[0].pick && this.surfs[0].surf.picker) {
+            let coords = this.getCoords(event)
+            // console.log(coords)
+            if (coords !== -1) {
+                return this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+            } else {
                 return -1
             }
-            // console.log(coords)
-            return this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
         }
         return -1
     };
@@ -779,20 +812,38 @@ var mriview = (function(module) {
             if (this.surfs[i].pick)
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
         }
-
-        // 
-        // // set the picked value display
-        // 
-
-        // only implemented for 1d volume datasets
-        if (this.active.data.length != 1 || this.active.data[0].raw || this.active.data[0].verts) {
+        // set the picked value display
+        // only implemented for 1d volume datasets or vertex datasets
+        if (this.active.data.length != 1 || this.active.data[0].raw) {
             $('#picked_value').css('display', 'none')
             return
         }
 
-        if (coords !== -1) {
-            let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
-            value = this.active.data[0].textures[0].image.data[mouse_index]
+        // We need to use a different logic if we have a VolumeData or a VertexData object
+        let value = null;
+        if (this.active.vertex) {
+            if (coords !== -1) {
+                hemiIdx = (coords.hemi == 'left') ? 0 : 1
+                vertex = coords.vertex
+                // Now we need to map back with the index map
+                // First figure out the subject, then get the index map
+                subject = this.active.data[0].subject
+                indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                vertex = indexMap[vertex]
+                // Now access the data
+                value = this.active.data[0].verts[0][hemiIdx].array[vertex]
+            }
+        } else {
+            if (coords !== -1) {
+                // Get index of the mosaic to get the value
+                let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
+                if (mouse_index !== -1) {
+                    value = this.active.data[0].textures[0].image.data[mouse_index]
+                }
+            }
+        }
+        console.log("Value on click: " + value);
+        if (value !== null) {
             $('#picked_value').text(parseFloat(value).toPrecision(3))
             $('#picked_value').css('display', 'block')
         } else {
