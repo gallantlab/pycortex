@@ -68,6 +68,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
         of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/overlays.svg
+    sulci_list : list
+        List of sulci to include
 
     Other Parameters
     ----------------

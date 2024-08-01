@@ -236,7 +236,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_
         Height of image. None defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels for sulci
-    sulci_list : array-like
+    sulci_list : list
         List of sulci to include
 
     Other Parameters
