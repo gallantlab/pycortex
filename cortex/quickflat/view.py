@@ -36,7 +36,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                 linewidth=None, linecolor=None, roifill=None, shadow=None,
                 labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
                 curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location='center', roi_list=None,
+                colorbar_ticks=None, colorbar_location='center', roi_list=None, sulci_list=None,
                 nanmean=False, **kwargs):
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
@@ -68,6 +68,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     cutout : str
         Name of flatmap cutout with which to clip the full flatmap. Should be the name
         of a sub-layer of the 'cutouts' layer in <filestore>/<subject>/overlays.svg
+    sulci_list : list
+        List of sulci to include
 
     Other Parameters
     ----------------
@@ -203,7 +205,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_sulci:
         sulc_im = composite.add_sulci(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
                                       shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels,
-                                      overlay_file=overlay_file)
+                                      overlay_file=overlay_file, sulci_list=sulci_list)
         layers['sulci'] = sulc_im
     # Add custom
     if extra_disp is not None:

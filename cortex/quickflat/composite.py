@@ -220,7 +220,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     return img
 
 
-def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, overlay_file=None, **kwargs):
+def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_list=None, overlay_file=None, **kwargs):
     """Add sulci layer to figure
 
     Parameters
@@ -236,6 +236,8 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, overla
         Height of image. None defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels for sulci
+    sulci_list : list
+        List of sulci to include
 
     Other Parameters
     ----------------
@@ -252,7 +254,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, overla
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
     layer_kws.update(svg_kws)
-    sulc = svgobject.get_texture('sulci', height, labels=with_labels, **layer_kws)
+    sulc = svgobject.get_texture('sulci', height, labels=with_labels, shape_list=sulci_list, **layer_kws)
     if extents is None:
         extents = _get_extents(fig)
     _, ax = _get_fig_and_ax(fig)
