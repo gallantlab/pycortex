@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_webgl_single_dataset.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -57,6 +57,10 @@ A webgl viewer displays a 3D view of brain data in a web browser
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: single_dataset.py <single_dataset.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: single_dataset.zip <single_dataset.zip>`
 
 
 .. only:: html

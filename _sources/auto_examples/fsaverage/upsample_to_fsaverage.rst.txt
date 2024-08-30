@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_fsaverage_upsample_to_fsaverage.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -72,6 +72,10 @@ template for visualization.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: upsample_to_fsaverage.py <upsample_to_fsaverage.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: upsample_to_fsaverage.zip <upsample_to_fsaverage.zip>`
 
 
 .. only:: html

@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>cortex.utils.get_ctmmap &#8212; pycortex 1.2.8 documentation</title>
+    <title>cortex.utils.get_ctmmap &#8212; pycortex 1.2.9 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../_static/documentation_options.js?v=e917149c"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -39,20 +39,33 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.utils.get_ctmmap">
 <span class="sig-prename descclassname"><span class="pre">cortex.utils.</span></span><span class="sig-name descname"><span class="pre">get_ctmmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#get_ctmmap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.utils.get_ctmmap" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
+<dd><p>Return a mapping from the vertices in the CTM surface to the vertices
+in the freesurfer surface. 
+The mapping is a numpy array, such that <cite>ctm2fs_left[i] = j</cite> means that the
+i-th vertex in the CTM surface corresponds to the j-th vertex in the freesurfer
+surface.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Subject name</p>
+</dd>
+<dt><strong>kwargs</strong><span class="classifier">dict</span></dt><dd><p>Keyword arguments to pass to get_ctmpack. The most relevant keyword for this
+function is the <cite>method</cite> kwarg (either <cite>mg2</cite> or <cite>raw</cite>).</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>lnew</dt><dd></dd>
-<dt>rnew</dt><dd></dd>
+<dt><strong>ctm2fs_left</strong><span class="classifier">array (n_vertices_left,)</span></dt><dd><p>Mapping from CTM vertices to freesurfer vertices for the left hemisphere.</p>
+</dd>
+<dt><strong>ctm2fs_right</strong><span class="classifier">array (n_vertices_right,)</span></dt><dd><p>Mapping from CTM vertices to freesurfer vertices for the right hemisphere.</p>
+</dd>
 </dl>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>This mapping is absolutely necessary when the CTM surfaces are saved with the <cite>mg2</cite>
+method, which corresponds to storing surfaces with a compressed format.</p>
 </dd></dl>
 
 </section>
@@ -62,7 +75,7 @@
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="../index.html">pycortex</a></h1>
 
@@ -130,7 +143,7 @@
       &#169;2012, James Gao.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |

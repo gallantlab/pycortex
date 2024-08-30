@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**01:42.654** total execution time for 6 files **from auto_examples/surface_analyses**:
+**01:36.566** total execution time for 6 files **from auto_examples/surface_analyses**:
 
 .. container::
 
@@ -33,20 +33,20 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py` (``plot_tissots_indicatrix.py``)
-     - 00:25.962
+     - 00:24.946
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py` (``plot_flatmap_distortion.py``)
-     - 00:23.561
+     - 00:22.676
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py` (``plot_subsurfaces.py``)
-     - 00:19.551
+     - 00:16.767
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py` (``plot_geodesic_distance.py``)
-     - 00:14.610
+     - 00:13.547
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py` (``plot_interpolate_data.py``)
-     - 00:11.818
+     - 00:11.917
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py` (``plot_geodesic_path.py``)
-     - 00:07.153
+     - 00:06.713
      - 0.0

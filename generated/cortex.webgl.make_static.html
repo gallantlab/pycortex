@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>cortex.webgl.make_static &#8212; pycortex 1.2.8 documentation</title>
+    <title>cortex.webgl.make_static &#8212; pycortex 1.2.9 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../_static/documentation_options.js?v=e917149c"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -38,7 +38,7 @@
 <h1>cortex.webgl.make_static<a class="headerlink" href="#cortex-webgl-make-static" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.webgl.make_static">
-<span class="sig-prename descclassname"><span class="pre">cortex.webgl.</span></span><span class="sig-name descname"><span class="pre">make_static</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('inflated',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RdBu_r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'static.html'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">anonymize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">html_embed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',</span> <span class="pre">'sulci')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_ctmfiles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Brain'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/webgl/view.html#make_static"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.webgl.make_static" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">cortex.webgl.</span></span><span class="sig-name descname"><span class="pre">make_static</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outpath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'static.html'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">anonymize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_available</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlays_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',</span> <span class="pre">'sulci')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels_visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('rois',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('inflated',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">html_embed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_ctmfiles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Brain'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlay_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curvature_brightness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curvature_contrast</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">curvature_smoothness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">surface_specularity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/webgl/view.html#make_static"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.webgl.make_static" title="Link to this definition">¶</a></dt>
 <dd><p>Creates a static webGL MRI viewer in your filesystem so that it can easily
 be posted publicly for sharing or just saved for later viewing.</p>
 <dl class="field-list simple">
@@ -71,20 +71,12 @@ Default (‘rois’, ‘sulci’)</p>
 layers not listed here will be hidden by default (but can be enabled in
 the viewer GUI). Default (‘rois’, )</p>
 </dd>
-<dt><strong>**kwargs</strong></dt><dd><p>All additional keyword arguments are passed to the template renderer.</p>
-</dd>
 </dl>
 </dd>
 <dt class="field-even">Other Parameters<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt><strong>types</strong><span class="classifier">tuple, optional</span></dt><dd><p>Types of surfaces to include in addition to the original (fiducial, pial,
 and white matter) and flat surfaces. Default (‘inflated’, )</p>
-</dd>
-<dt><strong>cmap</strong><span class="classifier">string, optional</span></dt><dd><p>Name of default colormap. Default ‘RdBu_r’
-TODO: DOES THIS DO ANYTHING ANYMORE?</p>
-</dd>
-<dt><strong>overlay_file</strong><span class="classifier">str, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
-subject (if not None). Default None.</p>
 </dd>
 <dt><strong>html_embed</strong><span class="classifier">bool, optional</span></dt><dd><p>Whether to embed the webgl resources in the html output.  Default ‘True’.
 If ‘False’, the webgl resources must be served by your web server.</p>
@@ -98,8 +90,26 @@ then be served with your web server).</p>
 a browser.</p>
 </dd>
 <dt><strong>layout</strong><span class="classifier">None or list of (int, int)</span></dt><dd><p>The layout of the viewer subwindows for showing multiple subjects, passed to
-the template generator. 
+the template generator.
 Default to None, corresponding to no subwindows.</p>
+</dd>
+<dt><strong>overlay_file</strong><span class="classifier">str or None, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
+subject (if not None). Default None.</p>
+</dd>
+<dt><strong>curvature_brightness</strong><span class="classifier">float or None, optional</span></dt><dd><p>Brightness of curvature overlay. Default None, which uses the value
+specified in the config file.</p>
+</dd>
+<dt><strong>curvature_contrast</strong><span class="classifier">float or None, optional</span></dt><dd><p>Contrast of curvature overlay. Default None, which uses the value
+specified in the config file.</p>
+</dd>
+<dt><strong>curvature_smoothness</strong><span class="classifier">float or None, optional</span></dt><dd><p>Smoothness of curvature overlay. Default None, which uses the value
+specified in the config file.</p>
+</dd>
+<dt><strong>surface_specularity</strong><span class="classifier">float or None, optional</span></dt><dd><p>Specularity of surfaces visualized with the WebGL viewer. 
+Default None, which uses the value specified in the config file under
+<cite>webgl_viewopts.specularity</cite>.</p>
+</dd>
+<dt><strong>**kwargs</strong></dt><dd><p>All additional keyword arguments are passed to the template renderer.</p>
 </dd>
 </dl>
 </dd>
@@ -116,7 +126,7 @@ don’t handle xsrf correctly</p>
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="../index.html">pycortex</a></h1>
 
@@ -184,7 +194,7 @@ don’t handle xsrf correctly</p>
       &#169;2012, James Gao.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |

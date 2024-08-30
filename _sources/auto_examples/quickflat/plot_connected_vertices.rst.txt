@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_connected_vertices.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -77,7 +77,7 @@ connecting lines.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 6.515 seconds)
+   **Total running time of the script:** (0 minutes 58.558 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_connected_vertices.py:
@@ -93,6 +93,10 @@ connecting lines.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_connected_vertices.py <plot_connected_vertices.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_connected_vertices.zip <plot_connected_vertices.zip>`
 
 
 .. only:: html

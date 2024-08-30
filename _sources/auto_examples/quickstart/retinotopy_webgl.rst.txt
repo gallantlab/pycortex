@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickstart_retinotopy_webgl.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -70,6 +70,10 @@ yourself you will get a viewer showing something like the following.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: retinotopy_webgl.py <retinotopy_webgl.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: retinotopy_webgl.zip <retinotopy_webgl.zip>`
 
 
 .. only:: html

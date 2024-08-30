@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**02:29.541** total execution time for 12 files **from auto_examples/quickflat**:
+**02:19.598** total execution time for 12 files **from auto_examples/quickflat**:
 
 .. container::
 
@@ -33,38 +33,38 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``plot_connected_vertices.py``)
-     - 01:06.515
+     - 00:58.558
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``plot_zoom_to_roi.py``)
-     - 00:36.630
+     - 00:36.209
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``plot_make_gif.py``)
-     - 00:09.046
+     - 00:08.917
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``plot_make_figure.py``)
-     - 00:08.499
+     - 00:08.288
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``plot_sulci.py``)
-     - 00:07.101
+     - 00:06.505
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``plot_rois.py``)
-     - 00:03.855
+     - 00:03.764
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``plot_advanced_compositing.py``)
-     - 00:03.674
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py` (``plot_thickness_nanmean.py``)
-     - 00:03.378
+     - 00:03.629
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)
-     - 00:03.343
+     - 00:03.230
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``plot_make_svg.py``)
-     - 00:03.335
+     - 00:03.212
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py` (``plot_thickness_nanmean.py``)
+     - 00:03.196
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``plot_dropout.py``)
-     - 00:02.353
+     - 00:02.293
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``plot_cutouts.py``)
-     - 00:01.811
+     - 00:01.796
      - 0.0

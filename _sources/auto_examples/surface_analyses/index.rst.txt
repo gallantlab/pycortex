@@ -14,10 +14,11 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is similar to what happens when a map of the globe is flattened into a 2-D map like a Mercator projection. For the cortical surface the amount and type of distortion will depend on the curvature of the surface (i.e. whether it is on a gyrus or a sulcus) and on the distance to the nearest cut.">
 
 .. only:: html
 
@@ -34,7 +35,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based on geodesic distances across the surface. The path starts at the given endpoint and selects the neighbor of that point in the surface map that is closest to the other endpoint. This process continues iteratilvely until the last vertex in the path is the endpoint you gave to it.">
 
 .. only:: html
 
@@ -51,7 +52,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on a surface. These two operations take the exact same amount of time to run.">
 
 .. only:: html
 
@@ -68,7 +69,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is similar to what happens when a map of the globe is flattened into a 2-D map like a Mercator projection. For the cortical surface the amount and type of distortion will depend on the curvature of the surface (i.e. whether it is on a gyrus or a sulcus) and on the distance to the nearest cut.">
 
 .. only:: html
 
@@ -102,7 +103,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the p...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the points in the cortical surface.">
 
 .. only:: html
 
@@ -116,6 +117,8 @@ Examples demonstrating operations and analyses done on brain surfaces.
       <div class="sphx-glr-thumbnail-title">Interpolate Data</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

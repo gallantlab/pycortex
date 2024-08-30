@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -159,7 +159,7 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 11.075 seconds)
+   **Total running time of the script:** (0 minutes 10.789 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:
@@ -175,6 +175,10 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_volumeRGB.py <plot_volumeRGB.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_volumeRGB.zip <plot_volumeRGB.zip>`
 
 
 .. only:: html

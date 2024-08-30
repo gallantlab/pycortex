@@ -12,10 +12,11 @@ Examples showing how to use PyCortex to visualize data on fsaverage.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how data in a lower resolution fsaverage template  (e.g., fsaverage5 or fsav...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how data in a lower resolution fsaverage template  (e.g., fsaverage5 or fsaverage6) can be upsampled to the high resolution fsaverage  template for visualization.">
 
 .. only:: html
 
@@ -29,6 +30,8 @@ Examples showing how to use PyCortex to visualize data on fsaverage.
       <div class="sphx-glr-thumbnail-title">Upsample data from a lower resolution fsaverage template to fsaverage for visualization</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

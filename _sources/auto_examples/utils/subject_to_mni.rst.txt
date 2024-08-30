@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_utils_subject_to_mni.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -74,6 +74,10 @@ to MNI space, and how to apply that transform to a dataset.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: subject_to_mni.py <subject_to_mni.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: subject_to_mni.zip <subject_to_mni.zip>`
 
 
 .. only:: html

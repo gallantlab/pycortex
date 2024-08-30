@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -98,7 +98,7 @@ vertex mapping of that data. You can plot both of these as you normally would.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 5.438 seconds)
+   **Total running time of the script:** (0 minutes 5.099 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume_to_vertex.py:
@@ -114,6 +114,10 @@ vertex mapping of that data. You can plot both of these as you normally would.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_volume_to_vertex.py <plot_volume_to_vertex.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_volume_to_vertex.zip <plot_volume_to_vertex.zip>`
 
 
 .. only:: html

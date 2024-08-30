@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -116,7 +116,7 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 14.610 seconds)
+   **Total running time of the script:** (0 minutes 13.547 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py:
@@ -132,6 +132,10 @@ The two hemispheres must be run separately.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_geodesic_distance.py <plot_geodesic_distance.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_geodesic_distance.zip <plot_geodesic_distance.zip>`
 
 
 .. only:: html

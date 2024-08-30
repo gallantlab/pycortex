@@ -15,10 +15,11 @@ FreeSurfer, fmriprep).
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatom...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatomical and functional data. Pycortex has a convenience function to import the output of this workflow.">
 
 .. only:: html
 
@@ -32,6 +33,8 @@ FreeSurfer, fmriprep).
       <div class="sphx-glr-thumbnail-title">Import fmriprep output</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

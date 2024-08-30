@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_utils_multi_panels_plots.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -61,7 +61,7 @@ create some artificial data
 
 
     shape = cortex.db.get_xfm(subject, 'identity').shape
-    data = np.arange(np.product(shape)).reshape(shape)
+    data = np.arange(np.prod(shape)).reshape(shape)
     volume = cortex.Volume(data, subject=subject, xfmname='identity')
 
 
@@ -143,6 +143,10 @@ List all predefined surfaces
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: multi_panels_plots.py <multi_panels_plots.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: multi_panels_plots.zip <multi_panels_plots.zip>`
 
 
 .. only:: html

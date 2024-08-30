@@ -14,10 +14,11 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the SVG ROI file (see /rois.rst).">
 
 .. only:: html
 
@@ -34,7 +35,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nea...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nearest vertex on the given surface. This function is used for generating ROI masks, cortical masks, etc.">
 
 .. only:: html
 
@@ -51,7 +52,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The function mosaic plots all of the slices in a volume in a matplotlib figure. Good for quick ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The function mosaic plots all of the slices in a volume in a matplotlib figure. Good for quick visualization or testing of volumes.">
 
 .. only:: html
 
@@ -68,7 +69,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas spaces (e.g. MNI-152). This functionality is built on top of FSL.">
 
 .. only:: html
 
@@ -85,7 +86,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Get proportion of each voxel that exists within a named ROI (this  constitutes a probability ma...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Get proportion of each voxel that exists within a named ROI (this  constitutes a probability map for the ROI, with values ranging from 0-1). Plot this probabilistic roi mask onto a flatmap. ">
 
 .. only:: html
 
@@ -102,7 +103,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas spaces (e.g. MNI-152). This functionality is built on top of FSL.">
 
 .. only:: html
 
@@ -119,7 +120,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The function cortex.export.plot_panels plots a number of 3d views of a given volume, in the sam...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The function cortex.export.plot_panels plots a number of 3d views of a given volume, in the same matplotlib figure. It does that by saving a temporary image for each view, and then aggregating them in the same figure.">
 
 .. only:: html
 
@@ -136,7 +137,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Create an index volume (similar to the aseg masks in freesurfer) with a different  integer inde...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Create an index volume (similar to the aseg masks in freesurfer) with a different  integer index for each ROI. ROIs in the left hemisphere will have negative values, ROIs in the right hemisphere will have positive values.">
 
 .. only:: html
 
@@ -150,6 +151,8 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
       <div class="sphx-glr-thumbnail-title">Get ROI Index Volume</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

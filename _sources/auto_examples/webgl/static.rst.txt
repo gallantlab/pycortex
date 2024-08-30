@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_webgl_static.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -63,6 +63,10 @@ The viewer directory must be hosted by a server such as nginx
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: static.py <static.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: static.zip <static.zip>`
 
 
 .. only:: html

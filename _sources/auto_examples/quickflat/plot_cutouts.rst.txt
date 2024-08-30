@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_cutouts.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -78,7 +78,7 @@ name of the flatmap cutout defined in the `overlays.svg` file.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.811 seconds)
+   **Total running time of the script:** (0 minutes 1.796 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_cutouts.py:
@@ -94,6 +94,10 @@ name of the flatmap cutout defined in the `overlays.svg` file.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_cutouts.py <plot_cutouts.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_cutouts.zip <plot_cutouts.zip>`
 
 
 .. only:: html

@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_dropout.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -80,7 +80,7 @@ of this using the following formula:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 2.353 seconds)
+   **Total running time of the script:** (0 minutes 2.293 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_dropout.py:
@@ -96,6 +96,10 @@ of this using the following formula:
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_dropout.py <plot_dropout.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_dropout.zip <plot_dropout.zip>`
 
 
 .. only:: html

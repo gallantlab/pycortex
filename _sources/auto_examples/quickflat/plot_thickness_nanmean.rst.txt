@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -103,7 +103,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.378 seconds)
+   **Total running time of the script:** (0 minutes 3.196 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:
@@ -119,6 +119,10 @@ has the value NaN.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_thickness_nanmean.py <plot_thickness_nanmean.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_thickness_nanmean.zip <plot_thickness_nanmean.zip>`
 
 
 .. only:: html

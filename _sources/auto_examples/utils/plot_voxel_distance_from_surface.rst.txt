@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_utils_plot_voxel_distance_from_surface.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -39,7 +39,7 @@ The utility function `get_vox_dist` returns the distance from each voxel in some
  .. code-block:: none
 
 
-    <matplotlib.colorbar.Colorbar object at 0x7f4873079b50>
+    <matplotlib.colorbar.Colorbar object at 0x7faee893c700>
 
 
 
@@ -71,7 +71,7 @@ The utility function `get_vox_dist` returns the distance from each voxel in some
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.643 seconds)
+   **Total running time of the script:** (0 minutes 3.556 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_voxel_distance_from_surface.py:
@@ -87,6 +87,10 @@ The utility function `get_vox_dist` returns the distance from each voxel in some
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_voxel_distance_from_surface.py <plot_voxel_distance_from_surface.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_voxel_distance_from_surface.zip <plot_voxel_distance_from_surface.zip>`
 
 
 .. only:: html

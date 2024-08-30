@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -42,27 +42,27 @@ ROIs in the right hemisphere will have positive values.
 
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (V3A) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in V3A!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in V3A!
       warnings.warn("No vertices found in {}!".format(name))
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (V3B) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in V3B!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in V3B!
       warnings.warn("No vertices found in {}!".format(name))
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (LO) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in LO!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in LO!
       warnings.warn("No vertices found in {}!".format(name))
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (V4) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in V4!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in V4!
       warnings.warn("No vertices found in {}!".format(name))
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (V7) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in V7!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in V7!
       warnings.warn("No vertices found in {}!".format(name))
     /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:499: UserWarning: Requested layer in svg file (IFSFP) contains no splines
       warnings.warn("Requested layer in svg file (%s) contains no splines"%self.name)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:371: UserWarning: No vertices found in IFSFP!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:508: UserWarning: No vertices found in IFSFP!
       warnings.warn("No vertices found in {}!".format(name))
     Found 100.00% of S1H
     Found 100.00% of S1M
@@ -73,9 +73,9 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of Broca
     Found 100.00% of SMFA
     Found 100.00% of M1M
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:665: RuntimeWarning: Mean of empty slice.
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:802: RuntimeWarning: Mean of empty slice.
       pct_coverage[roi] = vert_in_scan.mean() * 100
-    /opt/hostedtoolcache/Python/3.9.19/x64/lib/python3.9/site-packages/numpy/core/_methods.py:129: RuntimeWarning: invalid value encountered in scalar divide
+    /opt/hostedtoolcache/Python/3.9.19/x64/lib/python3.9/site-packages/numpy/_core/_methods.py:138: RuntimeWarning: invalid value encountered in scalar divide
       ret = ret.dtype.type(ret / rcount)
     Found nan% of V3A
     Found nan% of V3B
@@ -101,15 +101,15 @@ ROIs in the right hemisphere will have positive values.
     Found 100.00% of SMHA
     Found 100.00% of FFA
     Cutting 0 overlapping voxels (should be < ~50)
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:718: UserWarning: ROI S1F is only 97.23% contained in your scan protocol!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:855: UserWarning: ROI M1F is only 97.46% contained in your scan protocol!
       warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:718: UserWarning: ROI M1F is only 97.46% contained in your scan protocol!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:855: UserWarning: ROI AC is only 99.92% contained in your scan protocol!
       warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:718: UserWarning: ROI V1 is only 98.03% contained in your scan protocol!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:855: UserWarning: ROI V1 is only 98.03% contained in your scan protocol!
       warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:718: UserWarning: ROI SEF is only 91.46% contained in your scan protocol!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:855: UserWarning: ROI S1F is only 97.23% contained in your scan protocol!
       warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
-    /home/runner/work/pycortex/pycortex/cortex/utils.py:718: UserWarning: ROI AC is only 99.92% contained in your scan protocol!
+    /home/runner/work/pycortex/pycortex/cortex/utils.py:855: UserWarning: ROI SEF is only 91.46% contained in your scan protocol!
       warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
     Background RRGGBBAA: ffffff00
     Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
@@ -163,7 +163,7 @@ ROIs in the right hemisphere will have positive values.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 22.996 seconds)
+   **Total running time of the script:** (0 minutes 22.503 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_index_volume.py:
@@ -179,6 +179,10 @@ ROIs in the right hemisphere will have positive values.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_roi_voxel_index_volume.py <plot_roi_voxel_index_volume.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_roi_voxel_index_volume.zip <plot_roi_voxel_index_volume.zip>`
 
 
 .. only:: html

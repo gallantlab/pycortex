@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_webgl_dynamic_with_custom_template.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -94,6 +94,10 @@ the following css code:
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: dynamic_with_custom_template.py <dynamic_with_custom_template.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: dynamic_with_custom_template.zip <dynamic_with_custom_template.zip>`
 
 
 .. only:: html

@@ -15,6 +15,9 @@ Example Gallery
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -32,10 +35,11 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -52,7 +56,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then crea...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then create a cortex.Volume object. Then, you get a mapper to go between voxels and vertices for the specific subject and transform you are working with. Pass the voxel volume through the mapper and you get out a vertex mapping of that data. You can plot both of these as you normally would.">
 
 .. only:: html
 
@@ -69,7 +73,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -86,7 +90,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -103,7 +107,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -120,7 +124,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -137,7 +141,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat....">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -154,7 +158,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to a have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -168,6 +172,8 @@ Examples demonstrating how to create, manipulate, plot datasets.
       <div class="sphx-glr-thumbnail-title">Plot RGB Volume Data</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -183,10 +189,11 @@ Examples showing how to use PyCortex to visualize data on fsaverage.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how data in a lower resolution fsaverage template  (e.g., fsaverage5 or fsav...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how data in a lower resolution fsaverage template  (e.g., fsaverage5 or fsaverage6) can be upsampled to the high resolution fsaverage  template for visualization.">
 
 .. only:: html
 
@@ -200,6 +207,8 @@ Examples showing how to use PyCortex to visualize data on fsaverage.
       <div class="sphx-glr-thumbnail-title">Upsample data from a lower resolution fsaverage template to fsaverage for visualization</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -218,10 +227,11 @@ FreeSurfer, fmriprep).
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatom...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatomical and functional data. Pycortex has a convenience function to import the output of this workflow.">
 
 .. only:: html
 
@@ -235,6 +245,8 @@ FreeSurfer, fmriprep).
       <div class="sphx-glr-thumbnail-title">Import fmriprep output</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -252,6 +264,7 @@ Examples demonstrating how to create flatmaps.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -272,7 +285,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to disp...">
+    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to display such dropout regions.">
 
 .. only:: html
 
@@ -284,23 +297,6 @@ Examples demonstrating how to create flatmaps.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Plot dropout regions on the flatmap</div>
-    </div>
-
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
-
-.. only:: html
-
-  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
-    :alt:
-
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
     </div>
 
 
@@ -318,6 +314,23 @@ Examples demonstrating how to create flatmaps.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
     </div>
 
 
@@ -357,7 +370,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a giv...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a given scan.">
 
 .. only:: html
 
@@ -374,7 +387,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is t...">
+    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is to flip back and forth between them. This example shows how to make an animated gif in which each frame is a flatmap.">
 
 .. only:: html
 
@@ -391,7 +404,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in th...">
+    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in the resulting flatmap. If any of these layers contain a value of NaN (not-a-number), then the result of the average will also be Nan. This behavior might be undesirable. To avoid it, pass the argument nanmean=True to cortex.quickshow (or cortex.quickflat.make_figure). This will only take the mean of the non-NaN values when averaging across the thickness of cortex. A pixel will only have the value NaN if every voxel between pia and white matter  has the value NaN.">
 
 .. only:: html
 
@@ -408,7 +421,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The locatio...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The location of the ROI can be inferred automatically, making it easy to show just the region around that ROI.">
 
 .. only:: html
 
@@ -442,7 +455,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sul...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sulci, etc) and overlay each on top of the other.  Usually, quickflat.make_figure() handles all this for you, but each  layer can be manipulated independently for fancier effects with the  quickflat.composite sub-module. ">
 
 .. only:: html
 
@@ -456,6 +469,8 @@ Examples demonstrating how to create flatmaps.
       <div class="sphx-glr-thumbnail-title">Plot with advanced compositing</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -473,10 +488,11 @@ Examples demonstrating how to get started with pycortex.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In order for this demo to work, you need to download this dataset_, but that can also be done automatically through the urllib command that is included.">
 
 .. only:: html
 
@@ -493,7 +509,7 @@ Examples demonstrating how to get started with pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Easily locating your config file and filestore locations. This comes in useful when things don&#x27;...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Easily locating your config file and filestore locations. This comes in useful when things don&#x27;t work because the config file is not set correctly.">
 
 .. only:: html
 
@@ -510,7 +526,7 @@ Examples demonstrating how to get started with pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain on a flatmap. In ord...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain on a flatmap. In order for this demo to work, you need to download this dataset_, but that can also be done automatically through the urllib command that is included.">
 
 .. only:: html
 
@@ -524,6 +540,8 @@ Examples demonstrating how to get started with pycortex.
       <div class="sphx-glr-thumbnail-title">Plot Example Retinotopy Flatmaps</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -541,10 +559,11 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is similar to what happens when a map of the globe is flattened into a 2-D map like a Mercator projection. For the cortical surface the amount and type of distortion will depend on the curvature of the surface (i.e. whether it is on a gyrus or a sulcus) and on the distance to the nearest cut.">
 
 .. only:: html
 
@@ -561,7 +580,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This will plot a geodesic path between two vertices on the cortical surface. This path is based on geodesic distances across the surface. The path starts at the given endpoint and selects the neighbor of that point in the surface map that is closest to the other endpoint. This process continues iteratilvely until the last vertex in the path is the endpoint you gave to it.">
 
 .. only:: html
 
@@ -578,7 +597,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots the distances (in mm) between a vertex or set of vertices and all other vertices on a surface. These two operations take the exact same amount of time to run.">
 
 .. only:: html
 
@@ -595,7 +614,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is si...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is similar to what happens when a map of the globe is flattened into a 2-D map like a Mercator projection. For the cortical surface the amount and type of distortion will depend on the curvature of the surface (i.e. whether it is on a gyrus or a sulcus) and on the distance to the nearest cut.">
 
 .. only:: html
 
@@ -629,7 +648,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the p...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the points in the cortical surface.">
 
 .. only:: html
 
@@ -643,6 +662,8 @@ Examples demonstrating operations and analyses done on brain surfaces.
       <div class="sphx-glr-thumbnail-title">Interpolate Data</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -660,10 +681,11 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the SVG ROI file (see /rois.rst).">
 
 .. only:: html
 
@@ -680,7 +702,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nea...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nearest vertex on the given surface. This function is used for generating ROI masks, cortical masks, etc.">
 
 .. only:: html
 
@@ -697,7 +719,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The function mosaic plots all of the slices in a volume in a matplotlib figure. Good for quick ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The function mosaic plots all of the slices in a volume in a matplotlib figure. Good for quick visualization or testing of volumes.">
 
 .. only:: html
 
@@ -714,7 +736,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas spaces (e.g. MNI-152). This functionality is built on top of FSL.">
 
 .. only:: html
 
@@ -731,7 +753,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Get proportion of each voxel that exists within a named ROI (this  constitutes a probability ma...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Get proportion of each voxel that exists within a named ROI (this  constitutes a probability map for the ROI, with values ranging from 0-1). Plot this probabilistic roi mask onto a flatmap. ">
 
 .. only:: html
 
@@ -748,7 +770,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas s...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has built-in functionality for linearly transforming data to and from standard atlas spaces (e.g. MNI-152). This functionality is built on top of FSL.">
 
 .. only:: html
 
@@ -765,7 +787,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The function cortex.export.plot_panels plots a number of 3d views of a given volume, in the sam...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The function cortex.export.plot_panels plots a number of 3d views of a given volume, in the same matplotlib figure. It does that by saving a temporary image for each view, and then aggregating them in the same figure.">
 
 .. only:: html
 
@@ -782,7 +804,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Create an index volume (similar to the aseg masks in freesurfer) with a different  integer inde...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Create an index volume (similar to the aseg masks in freesurfer) with a different  integer index for each ROI. ROIs in the left hemisphere will have negative values, ROIs in the right hemisphere will have positive values.">
 
 .. only:: html
 
@@ -796,6 +818,8 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
       <div class="sphx-glr-thumbnail-title">Get ROI Index Volume</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -813,6 +837,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -850,7 +875,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of the viewer. The file &#x27;my_template.html&#x27; included in this directory has css code which changes the color scheme of the controls  window. The background is now white, with black text, and the sliders  are red instead of blue. ">
 
 .. only:: html
 
@@ -867,7 +892,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of the viewer. The file &#x27;my_template.html&#x27; included in this directory has css code which changes the color scheme of the controls  window. The background is now white, with black text, and the sliders  are red instead of blue. ">
 
 .. only:: html
 
@@ -898,6 +923,8 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
       <div class="sphx-glr-thumbnail-title">Create a 3D WebGL Viewer with Multiple Datasets</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

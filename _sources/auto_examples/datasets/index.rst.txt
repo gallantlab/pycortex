@@ -14,10 +14,11 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -34,7 +35,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then crea...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In order to move from Volume data to Vertex data, you start with data from voxels and then create a cortex.Volume object. Then, you get a mapper to go between voxels and vertices for the specific subject and transform you are working with. Pass the voxel volume through the mapper and you get out a vertex mapping of that data. You can plot both of these as you normally would.">
 
 .. only:: html
 
@@ -51,7 +52,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -68,7 +69,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -85,7 +86,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example 2D vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -102,7 +103,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example volume data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -119,7 +120,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat....">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots example RGB vertex data onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -136,7 +137,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to a have a flatmap for this subject in the pycortex filestore.">
 
 .. only:: html
 
@@ -150,6 +151,8 @@ Examples demonstrating how to create, manipulate, plot datasets.
       <div class="sphx-glr-thumbnail-title">Plot RGB Volume Data</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

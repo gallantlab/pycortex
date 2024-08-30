@@ -14,6 +14,7 @@ Examples demonstrating how to create flatmaps.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -34,7 +35,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to disp...">
+    <div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to display such dropout regions.">
 
 .. only:: html
 
@@ -46,23 +47,6 @@ Examples demonstrating how to create flatmaps.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Plot dropout regions on the flatmap</div>
-    </div>
-
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
-
-.. only:: html
-
-  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
-    :alt:
-
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
     </div>
 
 
@@ -80,6 +64,23 @@ Examples demonstrating how to create flatmaps.
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
     </div>
 
 
@@ -119,7 +120,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a giv...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Show lines connecting vertices on the flatmap that are actually within the same voxels in a given scan.">
 
 .. only:: html
 
@@ -136,7 +137,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is t...">
+    <div class="sphx-glr-thumbcontainer" tooltip="A convenient way to compare two flat maps (e.g., prediction performance or tuning weights) is to flip back and forth between them. This example shows how to make an animated gif in which each frame is a flatmap.">
 
 .. only:: html
 
@@ -153,7 +154,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in th...">
+    <div class="sphx-glr-thumbcontainer" tooltip="By default, pycortex quickshow averages across the thickness of the cortex for each pixel in the resulting flatmap. If any of these layers contain a value of NaN (not-a-number), then the result of the average will also be Nan. This behavior might be undesirable. To avoid it, pass the argument nanmean=True to cortex.quickshow (or cortex.quickflat.make_figure). This will only take the mean of the non-NaN values when averaging across the thickness of cortex. A pixel will only have the value NaN if every voxel between pia and white matter  has the value NaN.">
 
 .. only:: html
 
@@ -170,7 +171,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The locatio...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Sometimes it is useful to create a flatmap that is zoomed in one just a single ROI. The location of the ROI can be inferred automatically, making it easy to show just the region around that ROI.">
 
 .. only:: html
 
@@ -204,7 +205,7 @@ Examples demonstrating how to create flatmaps.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sul...">
+    <div class="sphx-glr-thumbcontainer" tooltip="The way flatmap plotting works in pycortex is to create different image layers (data, ROIs, sulci, etc) and overlay each on top of the other.  Usually, quickflat.make_figure() handles all this for you, but each  layer can be manipulated independently for fancier effects with the  quickflat.composite sub-module. ">
 
 .. only:: html
 
@@ -219,6 +220,8 @@ Examples demonstrating how to create flatmaps.
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -229,8 +232,8 @@ Examples demonstrating how to create flatmaps.
 
    /auto_examples/quickflat/plot_sulci
    /auto_examples/quickflat/plot_dropout
-   /auto_examples/quickflat/plot_make_png
    /auto_examples/quickflat/plot_make_svg
+   /auto_examples/quickflat/plot_make_png
    /auto_examples/quickflat/plot_cutouts
    /auto_examples/quickflat/plot_rois
    /auto_examples/quickflat/plot_connected_vertices

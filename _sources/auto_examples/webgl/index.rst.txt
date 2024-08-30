@@ -14,6 +14,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -51,7 +52,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of the viewer. The file &#x27;my_template.html&#x27; included in this directory has css code which changes the color scheme of the controls  window. The background is now white, with black text, and the sliders  are red instead of blue. ">
 
 .. only:: html
 
@@ -68,7 +69,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Pycortex has the functionality of provide a custom html template to specify  the attributes of the viewer. The file &#x27;my_template.html&#x27; included in this directory has css code which changes the color scheme of the controls  window. The background is now white, with black text, and the sliders  are red instead of blue. ">
 
 .. only:: html
 
@@ -99,6 +100,8 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
       <div class="sphx-glr-thumbnail-title">Create a 3D WebGL Viewer with Multiple Datasets</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

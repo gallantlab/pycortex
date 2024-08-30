@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_import_surface_import_fmriprep.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -71,6 +71,10 @@ NB: `cortex.fmriprep` is a work-in-progress and cannot currently handle multiple
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: import_fmriprep.py <import_fmriprep.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: import_fmriprep.zip <import_fmriprep.zip>`
 
 
 .. only:: html

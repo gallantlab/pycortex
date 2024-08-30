@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickstart_show_config.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -100,6 +100,10 @@ However, you *can* still look at options from within pycortex.
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: show_config.py <show_config.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: show_config.zip <show_config.zip>`
 
 
 .. only:: html

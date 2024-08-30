@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Python API Reference &#8212; pycortex 1.2.8 documentation</title>
+    <title>Python API Reference &#8212; pycortex 1.2.9 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="_static/documentation_options.js?v=e917149c"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -88,10 +88,10 @@
 <p>Makes an interactive viewer for viewing data in a browser</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.webgl.show.html#cortex.webgl.show" title="cortex.webgl.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a>(data[, types, recache, cmap, layout, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.webgl.show.html#cortex.webgl.show" title="cortex.webgl.show"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show</span></code></a>(data[, autoclose, open_browser, port, ...])</p></td>
 <td><p>Creates a webGL MRI viewer that is dynamically served by a tornado server running inside the current python process.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.webgl.make_static.html#cortex.webgl.make_static" title="cortex.webgl.make_static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_static</span></code></a>(outpath, data[, types, recache, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.webgl.make_static.html#cortex.webgl.make_static" title="cortex.webgl.make_static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_static</span></code></a>(outpath, data[, recache, ...])</p></td>
 <td><p>Creates a static webGL MRI viewer in your filesystem so that it can easily be posted publicly for sharing or just saved for later viewing.</p></td>
 </tr>
 </tbody>
@@ -345,11 +345,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
 <td><p>Gets the cortical mask for a particular transform</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap" title="cortex.utils.get_ctmmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmmap</span></code></a>(subject, **kwargs)</p></td>
-<td><p><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-</p></td>
+<td><p>Return a mapping from the vertices in the CTM surface to the vertices in the freesurfer surface.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.get_ctmpack.html#cortex.utils.get_ctmpack" title="cortex.utils.get_ctmpack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ctmpack</span></code></a>(subject[, types, method, level, ...])</p></td>
 <td><p>Creates ctm file for the specified input arguments.</p></td>
@@ -376,11 +372,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
 <td><p>Makes an .ogv movie</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/cortex.utils.vertex_to_voxel.html#cortex.utils.vertex_to_voxel" title="cortex.utils.vertex_to_voxel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_to_voxel</span></code></a>(subject)</p></td>
-<td><p><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p></p></dd>
-</dl>
-</p></td>
+<td><p></p></td>
 </tr>
 </tbody>
 </table>
@@ -439,7 +431,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="index.html">pycortex</a></h1>
 
@@ -531,7 +523,7 @@ for functions in <cite>polyutils.Surface</cite> and <cite>polyutils.Distortion</
       &#169;2012, James Gao.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |

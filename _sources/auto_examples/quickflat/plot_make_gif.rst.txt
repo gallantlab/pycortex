@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_quickflat_plot_make_gif.py>`
-        to download the full example code
+        to download the full example code.
 
 .. rst-class:: sphx-glr-example-title
 
@@ -182,7 +182,7 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 9.046 seconds)
+   **Total running time of the script:** (0 minutes 8.917 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:
@@ -198,6 +198,10 @@ Display gif inline in an IPython notebook
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_make_gif.py <plot_make_gif.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_make_gif.zip <plot_make_gif.zip>`
 
 
 .. only:: html

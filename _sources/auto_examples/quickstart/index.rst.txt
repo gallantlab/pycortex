@@ -14,10 +14,11 @@ Examples demonstrating how to get started with pycortex.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In order for this demo to work, you need to download this dataset_, but that can also be done automatically through the urllib command that is included.">
 
 .. only:: html
 
@@ -34,7 +35,7 @@ Examples demonstrating how to get started with pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Easily locating your config file and filestore locations. This comes in useful when things don&#x27;...">
+    <div class="sphx-glr-thumbcontainer" tooltip="Easily locating your config file and filestore locations. This comes in useful when things don&#x27;t work because the config file is not set correctly.">
 
 .. only:: html
 
@@ -51,7 +52,7 @@ Examples demonstrating how to get started with pycortex.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain on a flatmap. In ord...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain on a flatmap. In order for this demo to work, you need to download this dataset_, but that can also be done automatically through the urllib command that is included.">
 
 .. only:: html
 
@@ -65,6 +66,8 @@ Examples demonstrating how to get started with pycortex.
       <div class="sphx-glr-thumbnail-title">Plot Example Retinotopy Flatmaps</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

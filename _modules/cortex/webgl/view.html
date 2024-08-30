@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.webgl.view &#8212; pycortex 1.2.8 documentation</title>
+    <title>cortex.webgl.view &#8212; pycortex 1.2.9 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../../_static/documentation_options.js?v=4d6f9085"></script>
+    <script src="../../../_static/documentation_options.js?v=e917149c"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -78,10 +78,27 @@
 
 <div class="viewcode-block" id="make_static">
 <a class="viewcode-back" href="../../../generated/cortex.webgl.make_static.html#cortex.webgl.make_static">[docs]</a>
-<span class="k">def</span> <span class="nf">make_static</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span>
-                <span class="n">template</span><span class="o">=</span><span class="s2">&quot;static.html&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">anonymize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">html_embed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="s1">&#39;sulci&#39;</span><span class="p">),</span> <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="p">),</span>
-                <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy_ctmfiles</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Brain&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">make_static</span><span class="p">(</span>
+    <span class="n">outpath</span><span class="p">,</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">template</span><span class="o">=</span><span class="s2">&quot;static.html&quot;</span><span class="p">,</span>
+    <span class="n">anonymize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,</span> <span class="s2">&quot;sulci&quot;</span><span class="p">),</span>
+    <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,),</span>
+    <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span>
+    <span class="n">html_embed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">copy_ctmfiles</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Brain&quot;</span><span class="p">,</span>
+    <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_smoothness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">surface_specularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a static webGL MRI viewer in your filesystem so that it can easily</span>
 <span class="sd">    be posted publicly for sharing or just saved for later viewing.</span>
@@ -115,20 +132,12 @@
 <span class="sd">        Labels for the listed layers will be set visible by default. Labels for</span>
 <span class="sd">        layers not listed here will be hidden by default (but can be enabled in</span>
 <span class="sd">        the viewer GUI). Default (&#39;rois&#39;, )</span>
-<span class="sd">    **kwargs</span>
-<span class="sd">        All additional keyword arguments are passed to the template renderer.</span>
 
 <span class="sd">    Other parameters</span>
 <span class="sd">    ----------------</span>
 <span class="sd">    types : tuple, optional</span>
 <span class="sd">        Types of surfaces to include in addition to the original (fiducial, pial,</span>
 <span class="sd">        and white matter) and flat surfaces. Default (&#39;inflated&#39;, )</span>
-<span class="sd">    cmap : string, optional</span>
-<span class="sd">        Name of default colormap. Default &#39;RdBu_r&#39;</span>
-<span class="sd">        TODO: DOES THIS DO ANYTHING ANYMORE?</span>
-<span class="sd">    overlay_file : str, optional</span>
-<span class="sd">        Custom overlays.svg file to use instead of the default one for this</span>
-<span class="sd">        subject (if not None). Default None.</span>
 <span class="sd">    html_embed : bool, optional</span>
 <span class="sd">        Whether to embed the webgl resources in the html output.  Default &#39;True&#39;.</span>
 <span class="sd">        If &#39;False&#39;, the webgl resources must be served by your web server.</span>
@@ -142,8 +151,26 @@
 <span class="sd">        a browser.</span>
 <span class="sd">    layout : None or list of (int, int)</span>
 <span class="sd">        The layout of the viewer subwindows for showing multiple subjects, passed to</span>
-<span class="sd">        the template generator. </span>
+<span class="sd">        the template generator.</span>
 <span class="sd">        Default to None, corresponding to no subwindows.</span>
+<span class="sd">    overlay_file : str or None, optional</span>
+<span class="sd">        Custom overlays.svg file to use instead of the default one for this</span>
+<span class="sd">        subject (if not None). Default None.</span>
+<span class="sd">    curvature_brightness : float or None, optional</span>
+<span class="sd">        Brightness of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    curvature_contrast : float or None, optional</span>
+<span class="sd">        Contrast of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    curvature_smoothness : float or None, optional</span>
+<span class="sd">        Smoothness of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    surface_specularity : float or None, optional</span>
+<span class="sd">        Specularity of surfaces visualized with the WebGL viewer. </span>
+<span class="sd">        Default None, which uses the value specified in the config file under</span>
+<span class="sd">        `webgl_viewopts.specularity`.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        All additional keyword arguments are passed to the template renderer.</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -151,13 +178,8 @@
 <span class="sd">    don&#39;t handle xsrf correctly</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">outpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">outpath</span><span class="p">))</span> <span class="c1"># To handle ~ expansion</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outpath</span><span class="p">):</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)):</span>
-        <span class="c1"># Don&#39;t lump together w/ outpath, because of edge cases</span>
-        <span class="c1"># for which outpath exists but not sub-folder `data`</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">))</span>
+    <span class="n">outpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">outpath</span><span class="p">))</span>  <span class="c1"># To handle ~ expansion</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="n">data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
@@ -168,10 +190,14 @@
     <span class="n">package</span> <span class="o">=</span> <span class="n">Package</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="n">subjects</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">package</span><span class="o">.</span><span class="n">subjects</span><span class="p">)</span>
 
-    <span class="n">ctmargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;mg2&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span> <span class="n">external_svg</span><span class="o">=</span><span class="n">overlay_file</span><span class="p">,</span>
-                   <span class="n">overlays_available</span><span class="o">=</span><span class="n">overlays_available</span><span class="p">)</span>
-    <span class="n">ctms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">subj</span><span class="p">,</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_ctmpack</span><span class="p">(</span><span class="n">subj</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="o">**</span><span class="n">ctmargs</span><span class="p">))</span>
-                <span class="k">for</span> <span class="n">subj</span> <span class="ow">in</span> <span class="n">subjects</span><span class="p">)</span>
+    <span class="n">ctmargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">method</span><span class="o">=</span><span class="s2">&quot;mg2&quot;</span><span class="p">,</span>
+        <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+        <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span>
+        <span class="n">external_svg</span><span class="o">=</span><span class="n">overlay_file</span><span class="p">,</span>
+        <span class="n">overlays_available</span><span class="o">=</span><span class="n">overlays_available</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ctms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">subj</span><span class="p">,</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_ctmpack</span><span class="p">(</span><span class="n">subj</span><span class="p">,</span> <span class="n">types</span><span class="p">,</span> <span class="o">**</span><span class="n">ctmargs</span><span class="p">))</span> <span class="k">for</span> <span class="n">subj</span> <span class="ow">in</span> <span class="n">subjects</span><span class="p">)</span>
     <span class="n">package</span><span class="o">.</span><span class="n">reorder</span><span class="p">(</span><span class="n">ctms</span><span class="p">)</span>
 
     <span class="n">db</span><span class="o">.</span><span class="n">auxfile</span> <span class="o">=</span> <span class="kc">None</span>
@@ -182,15 +208,15 @@
         <span class="n">oldpath</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">ctmfile</span><span class="p">)</span>
         <span class="n">fname</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">anonymize</span><span class="p">:</span>
-            <span class="n">newfname</span> <span class="o">=</span> <span class="s2">&quot;S</span><span class="si">%d</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">i</span>
+            <span class="n">newfname</span> <span class="o">=</span> <span class="s2">&quot;S</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span>
             <span class="n">submap</span><span class="p">[</span><span class="n">subj</span><span class="p">]</span> <span class="o">=</span> <span class="n">newfname</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">newfname</span> <span class="o">=</span> <span class="n">fname</span>
-        <span class="n">ctms</span><span class="p">[</span><span class="n">subj</span><span class="p">]</span> <span class="o">=</span> <span class="n">newfname</span><span class="o">+</span><span class="s2">&quot;.json&quot;</span>
+        <span class="n">ctms</span><span class="p">[</span><span class="n">subj</span><span class="p">]</span> <span class="o">=</span> <span class="n">newfname</span> <span class="o">+</span> <span class="s2">&quot;.json&quot;</span>
 
-        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;json&#39;</span><span class="p">,</span> <span class="s1">&#39;ctm&#39;</span><span class="p">,</span> <span class="s1">&#39;svg&#39;</span><span class="p">]:</span>
-            <span class="n">srcfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">oldpath</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
-            <span class="n">newfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">newfname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="s2">&quot;ctm&quot;</span><span class="p">,</span> <span class="s2">&quot;svg&quot;</span><span class="p">]:</span>
+            <span class="n">srcfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">oldpath</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
+            <span class="n">newfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">newfname</span><span class="p">,</span> <span class="n">ext</span><span class="p">))</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">newfile</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">newfile</span><span class="p">)</span>
 
@@ -208,30 +234,31 @@
                 <span class="n">ofh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">anonymize</span><span class="p">:</span>
         <span class="n">old_subjects</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ctms</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
-        <span class="n">ctms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="s1">&#39;S</span><span class="si">%d</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">i</span><span class="p">,</span> <span class="n">ctms</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">old_subjects</span><span class="p">))</span>
+        <span class="n">ctms</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="s2">&quot;S</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="n">ctms</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">old_subjects</span><span class="p">))</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">submap</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">submap</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="c1">#Process the data</span>
+    <span class="c1"># Process the data</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">package</span><span class="o">.</span><span class="n">metadata</span><span class="p">(</span><span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;data/</span><span class="si">{name}</span><span class="s2">_</span><span class="si">{frame}</span><span class="s2">.png&quot;</span><span class="p">,</span> <span class="n">submap</span><span class="o">=</span><span class="n">submap</span><span class="p">)</span>
     <span class="n">images</span> <span class="o">=</span> <span class="n">package</span><span class="o">.</span><span class="n">images</span>
-    <span class="c1">#Write out the PNGs</span>
+    <span class="c1"># Write out the PNGs</span>
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">imgs</span> <span class="ow">in</span> <span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">impath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{name}</span><span class="s2">_</span><span class="si">{frame}</span><span class="s2">.png&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">imgs</span><span class="p">):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">impath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="n">i</span><span class="p">),</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">binfile</span><span class="p">:</span>
                 <span class="n">binfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
 
-    <span class="c1">#Copy any stimulus files</span>
+    <span class="c1"># Copy any stimulus files</span>
     <span class="n">stimpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;stim&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s1">&#39;stim&#39;</span> <span class="ow">in</span> <span class="n">view</span><span class="o">.</span><span class="n">attrs</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;stim&#39;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="s2">&quot;stim&quot;</span> <span class="ow">in</span> <span class="n">view</span><span class="o">.</span><span class="n">attrs</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;stim&quot;</span><span class="p">]):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">stimpath</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">stimpath</span><span class="p">)</span>
-            <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;stim&#39;</span><span class="p">],</span> <span class="n">stimpath</span><span class="p">)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;stim&quot;</span><span class="p">],</span> <span class="n">stimpath</span><span class="p">)</span>
 
-    <span class="c1">#Parse the html file and paste all the js and css files directly into the html</span>
+    <span class="c1"># Parse the html file and paste all the js and css files directly into the html</span>
     <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">htmlembed</span>
+
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">template</span><span class="p">):</span>
         <span class="c1">## Load locally</span>
         <span class="n">templatedir</span><span class="p">,</span> <span class="n">templatefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">template</span><span class="p">))</span>
@@ -244,27 +271,46 @@
     <span class="n">tpl</span> <span class="o">=</span> <span class="n">loader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templatefile</span><span class="p">)</span>
 
     <span class="c1"># Put together all view options</span>
-    <span class="n">my_viewopts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s1">&#39;webgl_viewopts&#39;</span><span class="p">))</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;overlays_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overlays_visible</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;labels_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels_visible</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;brightness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;smoothness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;webgl_smooth&#39;</span><span class="p">)</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;contrast&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;contrast&#39;</span><span class="p">)</span>
+    <span class="n">my_viewopts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s2">&quot;webgl_viewopts&quot;</span><span class="p">))</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;overlays_visible&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overlays_visible</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;labels_visible&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels_visible</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;brightness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;brightness&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_brightness</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_brightness</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;contrast&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;contrast&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_contrast</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_contrast</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;smoothness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;webgl_smooth&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_smoothness</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_smoothness</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;specularity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webgl_viewopts&quot;</span><span class="p">,</span> <span class="s2">&quot;specularity&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">surface_specularity</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">surface_specularity</span>
+    <span class="p">)</span>
 
     <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
-        <span class="k">if</span> <span class="s1">&#39;paths&#39;</span> <span class="ow">in</span> <span class="n">sec</span> <span class="ow">or</span> <span class="s1">&#39;labels&#39;</span> <span class="ow">in</span> <span class="n">sec</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;paths&quot;</span> <span class="ow">in</span> <span class="n">sec</span> <span class="ow">or</span> <span class="s2">&quot;labels&quot;</span> <span class="ow">in</span> <span class="n">sec</span><span class="p">:</span>
             <span class="n">my_viewopts</span><span class="p">[</span><span class="n">sec</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">sec</span><span class="p">))</span>
 
-    <span class="n">html</span> <span class="o">=</span> <span class="n">tpl</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">),</span>
-                        <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span>
-                        <span class="n">default_cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
-                        <span class="n">python_interface</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                        <span class="n">leapmotion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="n">layout</span><span class="o">=</span><span class="n">layout</span><span class="p">,</span>
-                        <span class="n">subjects</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">ctms</span><span class="p">),</span>
-                        <span class="n">viewopts</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">my_viewopts</span><span class="p">),</span>
-                        <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
-                        <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">html</span> <span class="o">=</span> <span class="n">tpl</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">),</span>
+        <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span>
+        <span class="n">default_cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span>
+        <span class="n">python_interface</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">leapmotion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">layout</span><span class="o">=</span><span class="n">layout</span><span class="p">,</span>
+        <span class="n">subjects</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">ctms</span><span class="p">),</span>
+        <span class="n">viewopts</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">my_viewopts</span><span class="p">),</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="n">desthtml</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outpath</span><span class="p">,</span> <span class="s2">&quot;index.html&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">html_embed</span><span class="p">:</span>
         <span class="n">htmlembed</span><span class="o">.</span><span class="n">embed</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">desthtml</span><span class="p">,</span> <span class="n">rootdirs</span><span class="p">)</span>
@@ -276,15 +322,27 @@
 
 <div class="viewcode-block" id="show">
 <a class="viewcode-back" href="../../../generated/cortex.webgl.show.html#cortex.webgl.show">[docs]</a>
-<span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,</span> <span class="p">),</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;RdBu_r&#39;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">autoclose</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">open_browser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pickerfun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">template</span><span class="o">=</span><span class="s2">&quot;mixer.html&quot;</span><span class="p">,</span> <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="s1">&#39;sulci&#39;</span><span class="p">),</span> <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rois&#39;</span><span class="p">,</span> <span class="p">),</span>
-         <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">curvature_smoothness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-         <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Brain&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">show</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">autoclose</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">open_browser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">port</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">pickerfun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">template</span><span class="o">=</span><span class="s2">&quot;mixer.html&quot;</span><span class="p">,</span>
+    <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">overlays_visible</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,</span> <span class="s2">&quot;sulci&quot;</span><span class="p">),</span>
+    <span class="n">labels_visible</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,),</span>
+    <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span>
+    <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_brightness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_contrast</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">curvature_smoothness</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">surface_specularity</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Brain&quot;</span><span class="p">,</span>
+    <span class="n">layout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a webGL MRI viewer that is dynamically served by a tornado server</span>
 <span class="sd">    running inside the current python process.</span>
@@ -314,6 +372,10 @@
 <span class="sd">        Force recreation of CTM and SVG files for surfaces. Default False</span>
 <span class="sd">    template : string, optional</span>
 <span class="sd">        Name of template HTML file. Default &#39;mixer.html&#39;</span>
+<span class="sd">    overlays_available : tuple, optional</span>
+<span class="sd">        Overlays available in the viewer. If None, then all overlay layers of the</span>
+<span class="sd">        svg file will be potentially available in the viewer (whether initially</span>
+<span class="sd">        visible or not). </span>
 <span class="sd">    overlays_visible : tuple, optional</span>
 <span class="sd">        The listed overlay layers will be set visible by default. Layers not listed</span>
 <span class="sd">        here will be hidden by default (but can be enabled in the viewer GUI).</span>
@@ -322,29 +384,28 @@
 <span class="sd">        Labels for the listed layers will be set visible by default. Labels for</span>
 <span class="sd">        layers not listed here will be hidden by default (but can be enabled in</span>
 <span class="sd">        the viewer GUI). Default (&#39;rois&#39;, )</span>
-<span class="sd">    **kwargs</span>
-<span class="sd">        All additional keyword arguments are passed to the template renderer.</span>
 
 <span class="sd">    Other parameters</span>
 <span class="sd">    ----------------</span>
 <span class="sd">    types : tuple, optional</span>
 <span class="sd">        Types of surfaces to include in addition to the original (fiducial, pial,</span>
 <span class="sd">        and white matter) and flat surfaces. Default (&#39;inflated&#39;, )</span>
-<span class="sd">    cmap : string, optional</span>
-<span class="sd">        Name of default colormap. Default &#39;RdBu_r&#39;</span>
-<span class="sd">        TODO: DOES THIS DO ANYTHING ANYMORE?</span>
 <span class="sd">    overlay_file : str or None, optional</span>
 <span class="sd">        Custom overlays.svg file to use instead of the default one for this</span>
 <span class="sd">        subject (if not None). Default None.</span>
 <span class="sd">    curvature_brightness : float or None, optional</span>
 <span class="sd">        Brightness of curvature overlay. Default None, which uses the value</span>
 <span class="sd">        specified in the config file.</span>
-<span class="sd">    curvature_smoothness : float or None, optional</span>
-<span class="sd">        Smoothness of curvature overlay. Default None, which uses the value</span>
-<span class="sd">        specified in the config file.</span>
 <span class="sd">    curvature_contrast : float or None, optional</span>
 <span class="sd">        Contrast of curvature overlay. Default None, which uses the value</span>
 <span class="sd">        specified in the config file.</span>
+<span class="sd">    curvature_smoothness : float or None, optional</span>
+<span class="sd">        Smoothness of curvature overlay. Default None, which uses the value</span>
+<span class="sd">        specified in the config file.</span>
+<span class="sd">    surface_specularity : float or None, optional</span>
+<span class="sd">        Specularity of surfaces visualized with the WebGL viewer. </span>
+<span class="sd">        Default None, which uses the value specified in the config file under</span>
+<span class="sd">        `webgl_viewopts.specularity`.</span>
 <span class="sd">    title : str, optional</span>
 <span class="sd">        The title that is displayed on the viewer website when it is loaded in</span>
 <span class="sd">        a browser.</span>
@@ -352,6 +413,8 @@
 <span class="sd">        The layout of the viewer subwindows for showing multiple subjects, passed to</span>
 <span class="sd">        the template generator.</span>
 <span class="sd">        Default None, corresponding to no subwindows.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        All additional keyword arguments are passed to the template renderer.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># populate default webshow args</span>
@@ -402,12 +465,26 @@
     <span class="n">my_viewopts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s1">&#39;webgl_viewopts&#39;</span><span class="p">))</span>
     <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;overlays_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overlays_visible</span>
     <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;labels_visible&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">labels_visible</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;brightness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> \
-        <span class="k">if</span> <span class="n">curvature_brightness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_brightness</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;smoothness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;webgl_smooth&#39;</span><span class="p">)</span> \
-        <span class="k">if</span> <span class="n">curvature_smoothness</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_smoothness</span>
-    <span class="n">my_viewopts</span><span class="p">[</span><span class="s1">&#39;contrast&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curvature&#39;</span><span class="p">,</span> <span class="s1">&#39;contrast&#39;</span><span class="p">)</span> \
-        <span class="k">if</span> <span class="n">curvature_contrast</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">curvature_contrast</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;brightness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;brightness&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_brightness</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_brightness</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;contrast&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;contrast&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_contrast</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_contrast</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;smoothness&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curvature&quot;</span><span class="p">,</span> <span class="s2">&quot;webgl_smooth&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">curvature_smoothness</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">curvature_smoothness</span>
+    <span class="p">)</span>
+    <span class="n">my_viewopts</span><span class="p">[</span><span class="s2">&quot;specularity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webgl_viewopts&quot;</span><span class="p">,</span> <span class="s2">&quot;specularity&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">surface_specularity</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">surface_specularity</span>
+    <span class="p">)</span>
 
     <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">():</span>
         <span class="k">if</span> <span class="s1">&#39;paths&#39;</span> <span class="ow">in</span> <span class="n">sec</span> <span class="ow">or</span> <span class="s1">&#39;labels&#39;</span> <span class="ow">in</span> <span class="n">sec</span><span class="p">:</span>
@@ -482,7 +559,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">set_header</span><span class="p">(</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">,</span> <span class="s2">&quot;text/html&quot;</span><span class="p">)</span>
             <span class="n">generated</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
                                       <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span>
-                                      <span class="n">default_cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+                                      <span class="n">default_cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">,</span>
                                       <span class="n">python_interface</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                       <span class="n">leapmotion</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                       <span class="n">layout</span><span class="o">=</span><span class="n">layout</span><span class="p">,</span>
@@ -896,7 +973,7 @@
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
 
@@ -966,7 +1043,7 @@
       &#169;2012, James Gao.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
     </div>
