@@ -9,7 +9,7 @@ import tarfile
 import tempfile
 import urllib.request
 import warnings
-from distutils.version import LooseVersion
+from looseversion import LooseVersion
 from importlib import import_module
 
 import h5py

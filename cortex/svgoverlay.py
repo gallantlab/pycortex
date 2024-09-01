@@ -11,7 +11,7 @@ from matplotlib.path import Path
 from scipy.spatial import cKDTree
 from builtins import zip, str
 
-from distutils.version import LooseVersion
+from looseversion import LooseVersion
 
 from lxml import etree
 from lxml.builder import E
