@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
       max-parallel: 5
 
     steps:
@@ -35,7 +35,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y inkscape
         pip install --upgrade pip
-        pip install build wheel numpy "cython<3.0"
+        pip install setuptools build wheel numpy "cython<3.0"
 
     - name: Create the wheel
       run: python setup.py bdist_wheel

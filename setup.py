@@ -2,7 +2,7 @@
 
 import os
 from glob import glob
-from numpy.distutils.misc_util import get_numpy_include_dirs
+import numpy
 
 try:
     import configparser
@@ -78,10 +78,10 @@ ctm = Extension('cortex.openctm', [
             'OpenCTM-1.0.3/lib/liblzma/LzFind.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaDec.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaEnc.c',
-            'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',], 
+            'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',],
             libraries=['m'], include_dirs=[
-            'OpenCTM-1.0.3/lib/', 
-            'OpenCTM-1.0.3/lib/liblzma/'] + get_numpy_include_dirs(),
+            'OpenCTM-1.0.3/lib/',
+            'OpenCTM-1.0.3/lib/liblzma/', numpy.get_include()],
             define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
@@ -89,7 +89,7 @@ ctm = Extension('cortex.openctm', [
             ]
         )
 formats = Extension('cortex.formats', ['cortex/formats.pyx'],
-                    include_dirs=get_numpy_include_dirs())
+                    include_dirs=[numpy.get_include()])
 
 DISTNAME = 'pycortex'
 # VERSION needs to be modified under cortex/version.py
