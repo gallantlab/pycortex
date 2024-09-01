@@ -8,6 +8,7 @@ from cortex.quickflat import make_figure as quickshow
 from cortex.volume import mosaic, unmask
 import cortex.export
 from cortex.version import __version__, __full_version__
+from cortex import dartboards
 
 try:
     from cortex import formats

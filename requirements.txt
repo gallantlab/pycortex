@@ -14,3 +14,4 @@ pillow
 nibabel>=2.1
 networkx>=2.1
 imageio
+wget
