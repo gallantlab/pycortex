@@ -45,7 +45,7 @@ jobs:
 
     - name: Publish to gh-pages if tagged
       if: startsWith(github.ref, 'refs/tags')
-      uses: JamesIves/github-pages-deploy-action@v4.6.3
+      uses: JamesIves/github-pages-deploy-action@v4.6.4
       with:
         branch: gh-pages
         folder: docs/_build/html
