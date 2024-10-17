@@ -83,6 +83,18 @@ var dataset = (function(module) {
         this.uniforms = {
             framemix:   { type:'f',   value:0},
             dataAlpha:  { type:'f', value:1.0},
+
+            slicexn:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            sliceyn:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            slicezn:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+
+            slicexc:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            sliceyc:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+            slicezc:     { type:'v3', value:new THREE.Vector3( 0,0,0 )},
+
+            doslicex:   { type:'i', value:false},
+            doslicey:   { type:'i', value:false},
+            doslicez:   { type:'i', value:false},
         }
 
         if (!this.vertex) {
