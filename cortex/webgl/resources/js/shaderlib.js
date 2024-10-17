@@ -363,18 +363,6 @@ var Shaderlib = (function() {
             "uniform int bumpyflat;",
             "float f_bumpyflat = float(bumpyflat);",
 
-            "uniform vec3 slicexn;",
-            "uniform vec3 sliceyn;",
-            "uniform vec3 slicezn;",
-
-            "uniform vec3 slicexc;",
-            "uniform vec3 sliceyc;",
-            "uniform vec3 slicezc;",
-
-            "uniform bool doslicex;",
-            "uniform bool doslicey;",
-            "uniform bool doslicez;",
-
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
@@ -391,7 +379,6 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vThickmix;",
-            "varying float vSliced;",
             "varying vec3 vWorldPosition;",
             // "varying float vDrop;",
 
@@ -435,8 +422,6 @@ var Shaderlib = (function() {
                 "vMedial = auxdat.x;",
                 "vCurv = auxdat.y;",
 
-                //"vSliced = float(mpos.y > slicey) * float(doslicey);",
-
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
 
@@ -461,9 +446,6 @@ var Shaderlib = (function() {
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
                 "vWorldPosition = pos;",
-
-                //"vSliced = float( ((dot(pos - sliceyc, sliceyn) > 0.0) && bool(doslicey)) || ((dot(pos - slicexc, slicexn) > 0.0) && bool(doslicex)) );",
-
             "}"
             ].join("\n");
 
@@ -521,7 +503,6 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vThickmix;",
-            "varying float vSliced;",
             "varying vec3 vWorldPosition;",
             
             utils.standard_frag_vars,
@@ -535,7 +516,6 @@ var Shaderlib = (function() {
                 //Curvature Underlay
                 "float ctmp = clamp(vCurv / smoothness, -0.5, 0.5);", // use limits here too
                 "float curv = clamp(ctmp * contrast + brightness, 0.0, 1.0);",
-                //"if (vSliced > 0.5) discard;",
                 
                 "bool clipx = dot(vWorldPosition - slicexc, slicexn) > 0.0;",
                 "bool clipy = dot(vWorldPosition - sliceyc, sliceyn) > 0.0;",
@@ -548,8 +528,7 @@ var Shaderlib = (function() {
                 "if (clipx && clipz && doslicex && !doslicey && doslicez) discard;",
                 "if (clipy && clipz && !doslicex && doslicey && doslicez) discard;",
                 "if (clipx && clipy && clipz && doslicex && doslicey && doslicez) discard;",
-                //"if( ((dot(vWorldPosition - sliceyc, sliceyn) > 0.0) && bool(doslicey)) && ((dot(vWorldPosition - slicexc, slicexn) > 0.0) && bool(doslicex)) && ((dot(vWorldPosition - slicezc, slicezn) > 0.0) && bool(doslicez)) ) discard;",
-                
+
                 "vec4 cColor = vec4(vec3(curv), 1.0);", 
 
                 "vec3 coord_x, coord_y;",
