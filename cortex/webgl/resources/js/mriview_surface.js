@@ -76,6 +76,13 @@ var mriview = (function(module) {
             }
         ]);
 
+        // Update uniform values based on the uniform illumination option
+        if (viewopts.uniform_illumination == 'true') {
+            this.uniforms.diffuse.value.set(0, 0, 0); // Set diffuse to 0
+            this.uniforms.specular.value.set(0, 0, 0); // Set specular to 0
+            this.uniforms.emissive.value.set(1, 1, 1); // Set emissive to 1
+        }
+
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
