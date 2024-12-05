@@ -108,6 +108,7 @@ var mriview = (function(module) {
             toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
+            uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
         
 
@@ -852,6 +853,21 @@ var mriview = (function(module) {
         this.mesh = new THREE.Mesh(this.sheets, null);
         this.object.add(this.mesh);
     }
+
+    module.Surface.prototype.setUniformIllumination = function(val) {
+        if (val === undefined)
+            return this.uniforms.emissive.value.x == 1; // Check current state
+        
+        if (val) {
+            this.uniforms.diffuse.value.set(0, 0, 0);
+            this.uniforms.specular.value.set(0, 0, 0);
+            this.uniforms.emissive.value.set(1, 1, 1);
+        } else {
+            this.uniforms.diffuse.value.set(.8, .8, .8);
+            this.uniforms.specular.value.set(.005, .005, .005);
+            this.uniforms.emissive.value.set(.2, .2, .2);
+        }
+    };
 
     return module;
 }(mriview || {}));
