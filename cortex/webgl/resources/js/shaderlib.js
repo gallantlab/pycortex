@@ -379,6 +379,7 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vThickmix;",
+            "varying vec3 vWorldPosition;",
             // "varying float vDrop;",
 
             "varying vec3 vPos_x[2];",
@@ -444,6 +445,7 @@ var Shaderlib = (function() {
 
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
+                "vWorldPosition = pos;",
             "}"
             ].join("\n");
 
@@ -477,6 +479,18 @@ var Shaderlib = (function() {
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
 
+            "uniform vec3 slicexn;",
+            "uniform vec3 sliceyn;",
+            "uniform vec3 slicezn;",
+
+            "uniform vec3 slicexc;",
+            "uniform vec3 sliceyc;",
+            "uniform vec3 slicezc;",
+
+            "uniform bool doslicex;",
+            "uniform bool doslicey;",
+            "uniform bool doslicez;",
+
             // "uniform float hatchAlpha;",
             // "uniform vec3 hatchColor;",
             // "uniform sampler2D hatch;",
@@ -489,6 +503,7 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vThickmix;",
+            "varying vec3 vWorldPosition;",
             
             utils.standard_frag_vars,
             utils.rand,
@@ -501,6 +516,19 @@ var Shaderlib = (function() {
                 //Curvature Underlay
                 "float ctmp = clamp(vCurv / smoothness, -0.5, 0.5);", // use limits here too
                 "float curv = clamp(ctmp * contrast + brightness, 0.0, 1.0);",
+                
+                "bool clipx = dot(vWorldPosition - slicexc, slicexn) > 0.0;",
+                "bool clipy = dot(vWorldPosition - sliceyc, sliceyn) > 0.0;",
+                "bool clipz = dot(vWorldPosition - slicezc, slicezn) > 0.0;",
+
+                "if (clipx && doslicex && !doslicey && !doslicez) discard;",
+                "if (clipy && !doslicex && doslicey && !doslicez) discard;",
+                "if (clipz && !doslicex && !doslicey && doslicez) discard;",
+                "if (clipx && clipy && doslicex && doslicey && !doslicez) discard;",
+                "if (clipx && clipz && doslicex && !doslicey && doslicez) discard;",
+                "if (clipy && clipz && !doslicex && doslicey && doslicez) discard;",
+                "if (clipx && clipy && clipz && doslicex && doslicey && doslicez) discard;",
+
                 "vec4 cColor = vec4(vec3(curv), 1.0);", 
 
                 "vec3 coord_x, coord_y;",
