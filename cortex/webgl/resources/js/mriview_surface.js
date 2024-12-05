@@ -76,6 +76,13 @@ var mriview = (function(module) {
             }
         ]);
 
+        // Update uniform values based on the uniform illumination option
+        if (viewopts.uniform_illumination == 'true') {
+            this.uniforms.diffuse.value.set(0, 0, 0); // Set diffuse to 0
+            this.uniforms.specular.value.set(0, 0, 0); // Set specular to 0
+            this.uniforms.emissive.value.set(1, 1, 1); // Set emissive to 1
+        }
+
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
             pivot: {action:[this, "setPivot", -180, 180]},
@@ -101,6 +108,7 @@ var mriview = (function(module) {
             toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
+            uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
         
 
@@ -845,6 +853,21 @@ var mriview = (function(module) {
         this.mesh = new THREE.Mesh(this.sheets, null);
         this.object.add(this.mesh);
     }
+
+    module.Surface.prototype.setUniformIllumination = function(val) {
+        if (val === undefined)
+            return this.uniforms.emissive.value.x == 1; // Check current state
+        
+        if (val) {
+            this.uniforms.diffuse.value.set(0, 0, 0);
+            this.uniforms.specular.value.set(0, 0, 0);
+            this.uniforms.emissive.value.set(1, 1, 1);
+        } else {
+            this.uniforms.diffuse.value.set(.8, .8, .8);
+            this.uniforms.specular.value.set(.005, .005, .005);
+            this.uniforms.emissive.value.set(.2, .2, .2);
+        }
+    };
 
     return module;
 }(mriview || {}));
