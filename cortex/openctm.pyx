@@ -2,7 +2,7 @@ import sys
 import numpy as np
 
 cimport cython
-cimport openctm
+from . cimport openctm
 cimport numpy as np
 
 uvmaps = [

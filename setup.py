@@ -85,6 +85,7 @@ ctm = Extension('cortex.openctm', [
             define_macros=[
                 ('LZMA_PREFIX_CTM', None),
                 ('OPENCTM_BUILD', None),
+                ('NPY_NO_DEPRECATED_API', 'NPY_1_7_API_VERSION'),
                 #('__DEBUG_', None),
             ]
         )
