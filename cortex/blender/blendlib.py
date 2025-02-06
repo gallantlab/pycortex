@@ -2,7 +2,7 @@
 It provides utility functions for adding meshes and saving them to communicate with the rest of pycortex
 """
 import struct
-import xdrlib
+import mda_xdrlib as xdrlib
 import tempfile
 
 import bpy.ops
