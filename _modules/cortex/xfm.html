@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.xfm &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.xfm &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -36,25 +36,25 @@
   <h1>Source code for cortex.xfm</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Affine transformation class</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
 
 <div class="viewcode-block" id="Transform">
 <a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform">[docs]</a>
-<span class="k">class</span> <span class="nc">Transform</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transform</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    A standard affine transform. Typically holds a transform from anatomical</span>
 <span class="sd">    magnet space to epi file space.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 <div class="viewcode-block" id="Transform.__init__">
 <a class="viewcode-back" href="../../generated/cortex.xfm.Transform.html#cortex.xfm.Transform.__init__">[docs]</a>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">reference</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">reference</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span> <span class="o">=</span> <span class="n">xfm</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">isstr</span><span class="p">(</span><span class="n">reference</span><span class="p">):</span>
-            <span class="kn">import</span> <span class="nn">nibabel</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -67,17 +67,17 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">3</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span></div>
 
 
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pts</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">pts</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">),</span><span class="mi">1</span><span class="p">))])</span><span class="o">.</span><span class="n">T</span><span class="p">)[:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">inv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inv</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
         <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
         <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
         <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
@@ -85,7 +85,7 @@
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">xfm</span>
         <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span>
         <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
@@ -93,21 +93,21 @@
             <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">xfm</span>
         <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">),</span> <span class="n">ref</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">path</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
             <span class="k">return</span> <span class="s2">&quot;&lt;Transform into </span><span class="si">%s</span><span class="s2"> space&gt;&quot;</span><span class="o">%</span><span class="n">fname</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="k">return</span> <span class="s2">&quot;&lt;Reference free affine transform&gt;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;magnet&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;magnet&quot;</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot save reference-free transforms into the database&#39;</span><span class="p">)</span>
-        <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
         <span class="n">db</span><span class="o">.</span><span class="n">save_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="n">xfmtype</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">())</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_fsl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_fsl</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts an fsl transform to a pycortex transform.</span>
 
 <span class="sd">        Converts a transform computed using FSL&#39;s FLIRT to a transform (&quot;xfm&quot;) object in pycortex.</span>
@@ -140,8 +140,8 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1">## -- Adapted from dipy.external.fsl.flirt2aff -- ##</span>
-        <span class="kn">import</span> <span class="nn">nibabel</span>
-        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.linalg</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npl</span>
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
 
         <span class="c1"># Load transform from text file, if string is provided</span>
@@ -182,7 +182,7 @@
         <span class="n">coord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inv</span><span class="p">(</span><span class="n">refspace</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">xfm</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">inspace</span><span class="p">,</span><span class="n">inv</span><span class="p">(</span><span class="n">inAffine</span><span class="p">))))</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">to_fsl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_fsl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">anat_nii</span><span class="p">,</span> <span class="n">direction</span><span class="o">=</span><span class="s1">&#39;func&gt;anat&#39;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a pycortex transform to an FSL transform.</span>
 
 <span class="sd">        Uses the stored &quot;reference&quot; file provided when the transform was created (usually</span>
@@ -205,8 +205,8 @@
 <span class="sd">        cortex.db.get_xfm(xfmtype=&#39;coord&#39;,...)). It will fail hard for &quot;magnet&quot; transforms!</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span> <span class="nn">nibabel</span>
-        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.linalg</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npl</span>
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
         <span class="c1">## -- Internal notes -- ##</span>
         <span class="c1"># pycortex transforms are internally stored as anatomical space -&gt; functional data space</span>
@@ -241,7 +241,7 @@
             <span class="k">return</span> <span class="n">fslx</span>
 
     <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_freesurfer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_freesurfer</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a FreeSurfer transform to a pycortex transform.</span>
 
 <span class="sd">        Converts a transform computed using FreeSurfer alignment tools (e.g., bbregister) to</span>
@@ -278,9 +278,9 @@
 <span class="sd">        bbregister --s &lt;subject&gt; --mov &lt;func_nii&gt; --reg &lt;fs_register&gt; ...</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span> <span class="nn">subprocess</span>
-        <span class="kn">import</span> <span class="nn">nibabel</span>
-        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.linalg</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npl</span>
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
 
         <span class="c1"># Load anatomical to functional transform from register.dat file, if string is provided</span>
@@ -324,7 +324,7 @@
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">coord</span><span class="p">,</span> <span class="n">refIm</span><span class="p">)</span>
 
 
-    <span class="k">def</span> <span class="nf">to_freesurfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_freesurfer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fs_register</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Converts a pycortex transform to a FreeSurfer transform.</span>
 
 <span class="sd">        Converts a transform stored in pycortex xfm object to the FreeSurfer format</span>
@@ -343,11 +343,11 @@
 <span class="sd">            by freesurfer)</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span> <span class="nn">tempfile</span>
-        <span class="kn">import</span> <span class="nn">subprocess</span>
-        <span class="kn">import</span> <span class="nn">nibabel</span>
-        <span class="kn">import</span> <span class="nn">numpy.linalg</span> <span class="k">as</span> <span class="nn">npl</span>
-        <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy.linalg</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npl</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
         <span class="n">inv</span> <span class="o">=</span> <span class="n">npl</span><span class="o">.</span><span class="n">inv</span>
 
         <span class="c1"># Set path to the anatomical volume for the FreeSurfer subject</span>
@@ -382,27 +382,27 @@
         <span class="k">return</span> <span class="n">fs_anat2func</span></div>
 
 
-<span class="k">def</span> <span class="nf">isstr</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">isstr</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Check for stringy-ness in python 2.7 or 3&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">basestring</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
     
-<span class="k">def</span> <span class="nf">decode</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">decode</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">obj</span>
         
 
-<span class="k">def</span> <span class="nf">_x_flipper</span><span class="p">(</span><span class="n">N_i</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_x_flipper</span><span class="p">(</span><span class="n">N_i</span><span class="p">):</span>
     <span class="c1">#Copied from dipy</span>
     <span class="n">flipr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
     <span class="n">flipr</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">N_i</span> <span class="o">-</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="n">flipr</span>
 
 
-<span class="k">def</span> <span class="nf">_vox2ras_tkr</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_vox2ras_tkr</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run `mri_info --vox2ras-tkr` on `image` and return a numpy array with the</span>
 <span class="sd">    output affine&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>

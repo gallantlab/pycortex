@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.mni &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.mni &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -39,35 +39,35 @@
 <span class="sd">functional data and surfaces to and from MNI space.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">nibabel</span>
-<span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">import</span> <span class="nn">subprocess</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">options</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">options</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
 
-<span class="kn">import</span> <span class="nn">shlex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 
 <span class="n">fslprefix</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;fsl_prefix&quot;</span><span class="p">)</span>
 <span class="n">fsldir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;FSLDIR&quot;</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">fsldir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">warnings</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find FSLDIR environment variable, assuming default FSL location..&quot;</span><span class="p">)</span>
     <span class="n">fsldir</span> <span class="o">=</span> <span class="s2">&quot;/usr/share/fsl/5.0&quot;</span>
 
 <span class="n">default_template</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fsldir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;standard&quot;</span><span class="p">,</span> <span class="s2">&quot;MNI152_T1_1mm_brain.nii.gz&quot;</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">_save_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_save_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">):</span>
     <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%0.10f</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">_load_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
 
 <div class="viewcode-block" id="compute_mni_transform">
 <a class="viewcode-back" href="../../generated/cortex.mni.compute_mni_transform.html#cortex.mni.compute_mni_transform">[docs]</a>
-<span class="k">def</span> <span class="nf">compute_mni_transform</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_mni_transform</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span>
                           <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute transform from the space specified by `xfm` to MNI standard space.</span>
@@ -114,7 +114,7 @@
 
 <div class="viewcode-block" id="transform_to_mni">
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_to_mni.html#cortex.mni.transform_to_mni">[docs]</a>
-<span class="k">def</span> <span class="nf">transform_to_mni</span><span class="p">(</span><span class="n">volumedata</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span> 
+<span class="k">def</span><span class="w"> </span><span class="nf">transform_to_mni</span><span class="p">(</span><span class="n">volumedata</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span> 
                      <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform data in `volumedata` to MNI space, resample at the resolution of </span>
@@ -157,7 +157,7 @@
 
 <div class="viewcode-block" id="transform_surface_to_mni">
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_surface_to_mni.html#cortex.mni.transform_surface_to_mni">[docs]</a>
-<span class="k">def</span> <span class="nf">transform_surface_to_mni</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surfname</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">transform_surface_to_mni</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surfname</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform the surface named `surfname` for subject called `subject` into</span>
 <span class="sd">    MNI coordinates. Returns [(lpts, lpolys), (rpts, rpolys)].</span>
@@ -198,7 +198,7 @@
 
 <div class="viewcode-block" id="transform_mni_to_subject">
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_mni_to_subject.html#cortex.mni.transform_mni_to_subject">[docs]</a>
-<span class="k">def</span> <span class="nf">transform_mni_to_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">volarray</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">transform_mni_to_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">volarray</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span>
                              <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Transform data in `volarray` from MNI space to functional space specified by `xfm`.</span>

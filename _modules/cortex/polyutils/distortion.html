@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.polyutils.distortion &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.polyutils.distortion &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -35,12 +35,12 @@
             
   <h1>Source code for cortex.polyutils.distortion</h1><div class="highlight"><pre>
 <span></span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 
 <div class="viewcode-block" id="Distortion">
 <a class="viewcode-back" href="../../../generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion">[docs]</a>
-<span class="k">class</span> <span class="nc">Distortion</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Distortion</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Used to compute distortion metrics between fiducial and another (e.g. flat)</span>
 <span class="sd">    surface.</span>
 
@@ -55,14 +55,14 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 <div class="viewcode-block" id="Distortion.__init__">
 <a class="viewcode-back" href="../../../generated/Distortion/cortex.polyutils.Distortion.__init__.html#cortex.polyutils.Distortion.__init__">[docs]</a>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">flat</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">flat</span> <span class="o">=</span> <span class="n">flat</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">ref</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">polys</span> <span class="o">=</span> <span class="n">polys</span></div>
 
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">areal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">areal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute areal distortion of the flatmap.</span>
 
 <span class="sd">        Areal distortion is calculated at each triangle as the log2 ratio of</span>
@@ -82,7 +82,7 @@
 <span class="sd">        vertratios : 1D ndarray, shape (total_verts,)</span>
 <span class="sd">            Areal distortion at each vertex.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">def</span> <span class="nf">area</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">area</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
             <span class="n">ppts</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="n">polys</span><span class="p">]</span>
             <span class="n">cross</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">ppts</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">ppts</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">cross</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
@@ -101,7 +101,7 @@
         <span class="k">return</span> <span class="n">vertratios</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">metric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metric</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute metric distortion of the flatmap.</span>
 
 <span class="sd">        Metric distortion is calculated as the difference in squared distance</span>
@@ -118,14 +118,14 @@
 <span class="sd">        vertdists : 1D ndarray, shape (total_verts,)</span>
 <span class="sd">            Metric distortion at each vertex.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
-        <span class="k">def</span> <span class="nf">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="n">tris</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span>
                 <span class="k">yield</span> <span class="n">b</span><span class="p">,</span><span class="n">c</span>
                 <span class="k">yield</span> <span class="n">a</span><span class="p">,</span><span class="n">c</span>
 
-        <span class="k">def</span> <span class="nf">make_surface_graph</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">make_surface_graph</span><span class="p">(</span><span class="n">tris</span><span class="p">):</span>
             <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">()</span>
             <span class="n">graph</span><span class="o">.</span><span class="n">add_edges_from</span><span class="p">(</span><span class="n">iter_surfedges</span><span class="p">(</span><span class="n">tris</span><span class="p">))</span>
             <span class="k">return</span> <span class="n">graph</span>

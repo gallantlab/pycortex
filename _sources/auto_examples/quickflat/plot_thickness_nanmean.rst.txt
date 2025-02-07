@@ -57,10 +57,8 @@ has the value NaN.
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:4867): WARNING **: 21:54:46.888: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4880): WARNING **: 21:54:47.893: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -103,7 +101,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.254 seconds)
+   **Total running time of the script:** (0 minutes 3.053 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:

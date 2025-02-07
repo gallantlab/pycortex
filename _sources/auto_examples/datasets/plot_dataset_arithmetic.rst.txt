@@ -63,12 +63,9 @@ normal arithmetic operators like +, -, *, /, and **
  .. code-block:: none
 
     Generating a flatmap cache
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:4347): WARNING **: 21:52:39.569: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4362): WARNING **: 21:52:40.545: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4375): WARNING **: 21:52:41.465: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -111,7 +108,7 @@ normal arithmetic operators like +, -, *, /, and **
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 14.267 seconds)
+   **Total running time of the script:** (0 minutes 14.258 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py:

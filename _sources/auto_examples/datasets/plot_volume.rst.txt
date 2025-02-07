@@ -69,12 +69,9 @@ on the brain.
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:4419): WARNING **: 21:52:49.520: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4432): WARNING **: 21:52:50.429: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4445): WARNING **: 21:52:51.347: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -118,7 +115,7 @@ on the brain.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.642 seconds)
+   **Total running time of the script:** (0 minutes 4.542 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume.py:

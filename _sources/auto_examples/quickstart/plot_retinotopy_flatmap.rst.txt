@@ -61,10 +61,8 @@ and you will also need a flatmap for them.
  .. code-block:: none
 
     Mask not found, generating...
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:5051): WARNING **: 21:55:39.269: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5064): WARNING **: 21:55:40.250: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -105,7 +103,7 @@ and you will also need a flatmap for them.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.567 seconds)
+   **Total running time of the script:** (0 minutes 4.722 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickstart_plot_retinotopy_flatmap.py:

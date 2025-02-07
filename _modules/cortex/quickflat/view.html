@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.quickflat.view &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.quickflat.view &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -34,16 +34,16 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.quickflat.view</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">io</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">import</span> <span class="nn">binascii</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">binascii</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">utils</span>
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">dataset</span>
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">make_flatmap_image</span>
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">composite</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_flatmap_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">composite</span>
 
 
 <span class="n">default_colorbar_locations</span> <span class="o">=</span> <span class="p">{</span>
@@ -53,7 +53,7 @@
 <span class="p">}</span>
 
 
-<span class="k">def</span> <span class="nf">_check_colorbar_location</span><span class="p">(</span><span class="n">colorbar_location</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_check_colorbar_location</span><span class="p">(</span><span class="n">colorbar_location</span><span class="p">):</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">colorbar_location</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
         <span class="k">return</span> <span class="n">colorbar_location</span>
 
@@ -66,7 +66,7 @@
 
 <div class="viewcode-block" id="make_figure">
 <a class="viewcode-back" href="../../../generated/cortex.quickflat.make_figure.html#cortex.quickflat.make_figure">[docs]</a>
-<span class="k">def</span> <span class="nf">make_figure</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thick</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_figure</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thick</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span>
                 <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_sulci</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">with_labels</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_borders</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">with_dropout</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extra_disp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -160,7 +160,7 @@
 <span class="sd">    nanmean : bool, optional (default = False)</span>
 <span class="sd">        If True, NaNs in the data will be ignored when averaging across layers.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
     <span class="n">dataview</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">braindata</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataview</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataview</span><span class="p">):</span>
@@ -187,7 +187,7 @@
     <span class="k">if</span> <span class="n">with_curvature</span><span class="p">:</span>
         <span class="c1"># backward compatibility</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">x</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;cvmin&#39;</span><span class="p">,</span> <span class="s1">&#39;cvmax&#39;</span><span class="p">,</span> <span class="s1">&#39;cvthr&#39;</span><span class="p">]]):</span>
-            <span class="kn">import</span> <span class="nn">warnings</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span><span class="s2">&quot;Use of `cvmin`, `cvmax`, and `cvthr` is deprecated! Please use </span><span class="se">\n</span><span class="s2">&quot;</span>
                            <span class="s2">&quot;`curvature_brightness`, `curvature_contrast`, and `curvature_threshold`</span><span class="se">\n</span><span class="s2">&quot;</span>
                            <span class="s2">&quot;to set appearance of background curvature.&quot;</span><span class="p">))</span>
@@ -293,7 +293,7 @@
 
 <div class="viewcode-block" id="make_png">
 <a class="viewcode-back" href="../../../generated/cortex.quickflat.make_png.html#cortex.quickflat.make_png">[docs]</a>
-<span class="k">def</span> <span class="nf">make_png</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_png</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pixelwise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
              <span class="n">bgcolor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a PNG of the VertexData or VolumeData on a flatmap.</span>
 
@@ -344,7 +344,7 @@
 <span class="sd">    labelcolor : tuple of float, optional</span>
 <span class="sd">        (R, G, B, A) specification for the label color</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
     <span class="n">fig</span> <span class="o">=</span> <span class="n">make_figure</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span>
                       <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span>
                       <span class="n">pixelwise</span><span class="o">=</span><span class="n">pixelwise</span><span class="p">,</span>
@@ -364,7 +364,7 @@
 
 <div class="viewcode-block" id="make_svg">
 <a class="viewcode-back" href="../../../generated/cortex.quickflat.make_svg.html#cortex.quickflat.make_svg">[docs]</a>
-<span class="k">def</span> <span class="nf">make_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">],</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_svg</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">braindata</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rois&#39;</span><span class="p">],</span>
              <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">with_dropout</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Save an svg file of the desired flatmap.</span>
 
@@ -397,7 +397,7 @@
 <span class="sd">        in the dropout dataset.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">fp</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-    <span class="kn">from</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">import</span> <span class="n">imsave</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="kn">import</span> <span class="n">imsave</span>
 
     <span class="c1">## Render PNG file &amp; retrieve image data</span>
     <span class="n">arr</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -415,7 +415,7 @@
 
     <span class="k">if</span> <span class="n">with_curvature</span><span class="p">:</span>
         <span class="c1"># no options. learn to love it.</span>
-        <span class="kn">from</span> <span class="nn">cortex</span> <span class="kn">import</span> <span class="n">db</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">cortex</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
         <span class="n">fpc</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
         <span class="n">curv_vertices</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
         <span class="n">curv_arr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">curv_vertices</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
@@ -457,7 +457,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">make_gif</span><span class="p">(</span><span class="n">output_destination</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">figure_kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_gif</span><span class="p">(</span><span class="n">output_destination</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">figure_kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Make an animated gif from several pycortex volumes</span>
 
 <span class="sd">    Parameters</span>
@@ -475,8 +475,8 @@
 <span class="sd">    -------</span>
 <span class="sd">    If output_destination is a file path, return the path. If stream-like, return the stream data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">imageio</span>
-    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">imageio</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
 
     <span class="n">tmpdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span>
 
@@ -498,23 +498,23 @@
         <span class="n">output_destination</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Wrapper for make_figure()&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">make_figure</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">make_movie</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_movie</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
                <span class="n">sampler</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">tr</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">interp</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
                <span class="n">vcodec</span><span class="o">=</span><span class="s1">&#39;libtheora&#39;</span><span class="p">,</span> <span class="n">bitrate</span><span class="o">=</span><span class="s2">&quot;8000k&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a movie of an 4D data set&quot;&quot;&quot;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-    <span class="kn">import</span> <span class="nn">sys</span>
-    <span class="kn">import</span> <span class="nn">shlex</span>
-    <span class="kn">import</span> <span class="nn">shutil</span>
-    <span class="kn">import</span> <span class="nn">tempfile</span>
-    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
-    <span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
 
-    <span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">interp1d</span>
 
     <span class="c1"># Make the flatmaps</span>
     <span class="n">ims</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">)</span>

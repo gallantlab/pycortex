@@ -100,8 +100,7 @@ plot data on subsurface
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:5131): WARNING **: 21:56:50.142: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -172,8 +171,7 @@ create many patches
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:5147): WARNING **: 21:56:54.773: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -235,12 +233,9 @@ create geodesic strip patch
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:5163): WARNING **: 21:57:02.731: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5176): WARNING **: 21:57:03.618: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5189): WARNING **: 21:57:04.506: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -248,7 +243,7 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 16.685 seconds)
+   **Total running time of the script:** (0 minutes 16.643 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py:

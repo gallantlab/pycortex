@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.align &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.align &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -36,21 +36,21 @@
   <h1>Source code for cortex.align</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Contains functions for making alignments between functional data and the surface, or, finding where the brain is.</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
-<span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">builtins</span> <span class="kn">import</span> <span class="nb">input</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">builtins</span><span class="w"> </span><span class="kn">import</span> <span class="nb">input</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
-<span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
-<span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.xfm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transform</span>
 
 
-<span class="k">def</span> <span class="nf">mayavi_manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mayavi_manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This</span>
 <span class="sd">    creates a new transform called `xfm`. The name of a nibabel-readable file (e.g. nii) should be</span>
 <span class="sd">    supplied as `reference`. This image will be copied into the database.</span>
@@ -88,13 +88,13 @@
                   <span class="s2">&quot;the `freeview` program in the freesurfer suite, to &quot;</span>
                   <span class="s2">&quot;perform manual alignment.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span>
                   <span class="p">)</span>
-    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
-    <span class="kn">from</span> <span class="nn">.mayavi_aligner</span> <span class="kn">import</span> <span class="n">get_aligner</span>
-    <span class="k">def</span> <span class="nf">save_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.mayavi_aligner</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_aligner</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
         <span class="n">db</span><span class="o">.</span><span class="n">save_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">aligner</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="s2">&quot;magnet&quot;</span><span class="p">),</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;magnet&#39;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;saved xfm&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">view_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">view_callback</span><span class="p">(</span><span class="n">aligner</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;view-only mode! ignoring changes&#39;</span><span class="p">)</span>
 
     <span class="c1"># Check whether transform w/ this xfmname already exists</span>
@@ -106,7 +106,7 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite reference for existing transform </span><span class="si">%s</span><span class="s1">, use reference=None to load stored reference&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
 
         <span class="c1"># if masks have been cached, quit! user must remove them by hand</span>
-        <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">glob</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">))):</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite existing transform </span><span class="si">%s</span><span class="s1"> because there are cached masks. Delete the masks manually if you want to modify the transform.&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
             <span class="n">checked</span> <span class="o">=</span> <span class="kc">False</span>
@@ -136,7 +136,7 @@
     <span class="k">return</span> <span class="n">m</span>
 
 
-<span class="k">def</span> <span class="nf">fs_manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">fs_manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Legacy name for cortex.align.manual. Please use that function, and see the help there.&quot;&quot;&quot;</span>
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span><span class="s2">&quot;Deprecated name - function has been renamed cortex.align.manual&quot;</span>
                    <span class="s2">&quot;This function name will be removed in a future release.&quot;</span>
@@ -146,7 +146,7 @@
 
 <div class="viewcode-block" id="manual">
 <a class="viewcode-back" href="../../generated/cortex.align.manual.html#cortex.align.manual">[docs]</a>
-<span class="k">def</span> <span class="nf">manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">output_name</span><span class="o">=</span><span class="s2">&quot;register.lta&quot;</span><span class="p">,</span> <span class="n">wm_color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span> 
+<span class="k">def</span><span class="w"> </span><span class="nf">manual</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">output_name</span><span class="o">=</span><span class="s2">&quot;register.lta&quot;</span><span class="p">,</span> <span class="n">wm_color</span><span class="o">=</span><span class="s2">&quot;yellow&quot;</span><span class="p">,</span> 
     <span class="n">pial_color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">wm_surface</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">noclean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inspect_only</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Open Freesurfer FreeView GUI for manually aligning/adjusting a functional</span>
 <span class="sd">    volume to the cortical surface for `subject`. This creates a new transform</span>
@@ -202,12 +202,12 @@
 <span class="sd">    Nothing unless noclean is true.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="kn">import</span> <span class="nn">shutil</span>
-    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
-    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 
-    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
-    <span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.xfm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transform</span>
 
     <span class="n">retval</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -217,7 +217,7 @@
             <span class="n">sub_xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
 
             <span class="c1"># if masks have been cached, quit! user must remove them by hand</span>
-            <span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">glob</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
             <span class="n">masks_exist</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;masks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">)))</span>
             <span class="k">if</span> <span class="n">masks_exist</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inspect_only</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Refusing to overwrite existing transform </span><span class="si">%s</span><span class="s1"> because there are cached masks. Delete the masks manually if you want to modify the transform.&#39;</span> <span class="o">%</span> <span class="n">xfmname</span><span class="p">)</span>
@@ -284,7 +284,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">automatic_fsl</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">automatic_fsl</span><span class="p">(</span>
     <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">noclean</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bbrtype</span><span class="o">=</span><span class="s2">&quot;signed&quot;</span><span class="p">,</span> <span class="n">pre_flirt_args</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Perform automatic alignment using the FLIRT boundary-based alignment (BBR) from </span>
@@ -388,7 +388,7 @@
 
 <div class="viewcode-block" id="automatic">
 <a class="viewcode-back" href="../../generated/cortex.align.automatic.html#cortex.align.automatic">[docs]</a>
-<span class="k">def</span> <span class="nf">automatic</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">automatic</span><span class="p">(</span>
     <span class="n">subject</span><span class="p">,</span>
     <span class="n">xfmname</span><span class="p">,</span>
     <span class="n">reference</span><span class="p">,</span>
@@ -510,7 +510,7 @@
 
 <div class="viewcode-block" id="autotweak">
 <a class="viewcode-back" href="../../generated/cortex.align.autotweak.html#cortex.align.autotweak">[docs]</a>
-<span class="k">def</span> <span class="nf">autotweak</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">autotweak</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Tweak an alignment using the FLIRT boundary-based alignment (BBR) from FSL.</span>
 <span class="sd">    Ideally this function should actually use a limited search range, but it doesn&#39;t.</span>
 <span class="sd">    It&#39;s probably not very useful.</span>
@@ -522,14 +522,14 @@
 <span class="sd">    xfmname : str</span>
 <span class="sd">        String identifying the transform to be tweaked.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">shlex</span>
-    <span class="kn">import</span> <span class="nn">shutil</span>
-    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
-    <span class="kn">import</span> <span class="nn">tempfile</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 
-    <span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
-    <span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
-    <span class="kn">from</span> <span class="nn">.xfm</span> <span class="kn">import</span> <span class="n">Transform</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.xfm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Transform</span>
 
     <span class="n">fsl_prefix</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;fsl_prefix&quot;</span><span class="p">)</span>
     <span class="n">schfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;bbr.sch&quot;</span><span class="p">)</span>

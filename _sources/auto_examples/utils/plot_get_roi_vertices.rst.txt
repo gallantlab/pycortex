@@ -39,8 +39,7 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:5204): WARNING **: 21:57:21.129: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
     <Figure size 1960x1024 with 2 Axes>
 
@@ -71,7 +70,7 @@ defined in the SVG ROI file (see :doc:`/rois.rst`).
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.812 seconds)
+   **Total running time of the script:** (0 minutes 3.873 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_get_roi_vertices.py:

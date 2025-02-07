@@ -52,11 +52,9 @@ show just the region around that ROI.
 
  .. code-block:: none
 
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+    ** (inkscape:4893): WARNING **: 21:54:50.013: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
     Generating a flatmap cache
-    Background RRGGBBAA: ffffff00
-    Area 0:0:1960.5:1024 exported to 3921 x 2048 pixels (192 dpi)
+    ** (inkscape:4925): WARNING **: 21:55:18.319: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -105,7 +103,7 @@ show just the region around that ROI.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 36.100 seconds)
+   **Total running time of the script:** (0 minutes 35.574 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_zoom_to_roi.py:

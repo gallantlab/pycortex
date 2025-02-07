@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.utils &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <title>cortex.utils &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -36,53 +36,53 @@
   <h1>Source code for cortex.utils</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Contain utility functions</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="kn">import</span> <span class="nn">binascii</span>
-<span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">import</span> <span class="nn">io</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">import</span> <span class="nn">tarfile</span>
-<span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">import</span> <span class="nn">urllib.request</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
-<span class="kn">from</span> <span class="nn">looseversion</span> <span class="kn">import</span> <span class="n">LooseVersion</span>
-<span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">import_module</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">binascii</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tarfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">looseversion</span><span class="w"> </span><span class="kn">import</span> <span class="n">LooseVersion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
 
-<span class="kn">import</span> <span class="nn">h5py</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">formats</span>
-<span class="kn">from</span> <span class="nn">.database</span> <span class="kn">import</span> <span class="n">db</span>
-<span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
-<span class="kn">from</span> <span class="nn">.options</span> <span class="kn">import</span> <span class="n">config</span>
-<span class="kn">from</span> <span class="nn">.polyutils</span> <span class="kn">import</span> <span class="n">Surface</span>
-<span class="kn">from</span> <span class="nn">.testing_utils</span> <span class="kn">import</span> <span class="n">INKSCAPE_VERSION</span>
-<span class="kn">from</span> <span class="nn">.volume</span> <span class="kn">import</span> <span class="n">anat2epispace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">formats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fs_aseg_dict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.polyutils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Surface</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.testing_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">INKSCAPE_VERSION</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.volume</span><span class="w"> </span><span class="kn">import</span> <span class="n">anat2epispace</span>
 
 <span class="c1"># register_cmap is deprecated in matplotlib &gt; 3.7.0 and replaced by colormaps.register</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">colormaps</span> <span class="k">as</span> <span class="n">cm</span>
-    <span class="k">def</span> <span class="nf">register_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">colormaps</span> <span class="k">as</span> <span class="n">cm</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">cm</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">cmap</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">matplotlib.cm</span> <span class="kn">import</span> <span class="n">register_cmap</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.cm</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_cmap</span>
 
 
-<span class="k">class</span> <span class="nc">DocLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DocLoader</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_load</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">package</span><span class="p">),</span> <span class="n">func</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;_load&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">(),</span> <span class="n">name</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">get_roipack</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roipack</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Please use db.get_overlay instead&#39;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
@@ -90,7 +90,7 @@
 
 <div class="viewcode-block" id="get_ctmpack">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_ctmpack.html#cortex.utils.get_ctmpack">[docs]</a>
-<span class="k">def</span> <span class="nf">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;raw&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">decimate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">external_svg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">overlays_available</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Creates ctm file for the specified input arguments.</span>
@@ -139,7 +139,7 @@
         <span class="k">return</span> <span class="n">ctmfile</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating new ctm file...&quot;</span><span class="p">)</span>
-    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">brainctm</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">brainctm</span>
     <span class="n">ptmap</span> <span class="o">=</span> <span class="n">brainctm</span><span class="o">.</span><span class="n">make_pack</span><span class="p">(</span><span class="n">ctmfile</span><span class="p">,</span>
                                <span class="n">subject</span><span class="p">,</span>
                                <span class="n">types</span><span class="o">=</span><span class="n">types</span><span class="p">,</span>
@@ -154,7 +154,7 @@
 
 <div class="viewcode-block" id="get_ctmmap">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_ctmmap.html#cortex.utils.get_ctmmap">[docs]</a>
-<span class="k">def</span> <span class="nf">get_ctmmap</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ctmmap</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a mapping from the vertices in the CTM surface to the vertices</span>
 <span class="sd">    in the freesurfer surface. </span>
 <span class="sd">    The mapping is a numpy array, such that `ctm2fs_left[i] = j` means that the</span>
@@ -181,9 +181,9 @@
 <span class="sd">    This mapping is absolutely necessary when the CTM surfaces are saved with the `mg2`</span>
 <span class="sd">    method, which corresponds to storing surfaces with a compressed format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">cKDTree</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
 
-    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">brainctm</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">brainctm</span>
     <span class="n">jsfile</span> <span class="o">=</span> <span class="n">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="n">ctmfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">jsfile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;.ctm&quot;</span>
 
@@ -204,7 +204,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">get_ctm2webgl_map</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_ctm2webgl_map</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a mapping from the vertices in the CTM surface to the vertices visualized</span>
 <span class="sd">    on the WebGL viewer.</span>
 <span class="sd">    The mapping is a numpy array such that `ctm2webgl_left[i] = j` means that the i-th</span>
@@ -231,7 +231,7 @@
 <span class="sd">    viewer to ensure that neighboring vertices are all stored in the same buffer with</span>
 <span class="sd">    maximum length of 65535.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">brainctm</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">brainctm</span>
     <span class="c1"># Load CTM surfaces</span>
     <span class="n">jsonfile</span> <span class="o">=</span> <span class="n">get_ctmpack</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="n">ctmfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">jsonfile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.ctm&quot;</span>
@@ -243,7 +243,7 @@
     <span class="c1"># Note that the logic for re-indexing &quot;sprawled&quot; faces in not implemented in the</span>
     <span class="c1"># python version. These faces shouldn&#39;t occur for cortical surfaces generated by</span>
     <span class="c1"># freesurfer, so this should not be a problem.</span>
-    <span class="k">def</span> <span class="nf">_compute_map</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="n">faces</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_map</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="n">faces</span><span class="p">):</span>
         <span class="n">coordinates</span> <span class="o">=</span> <span class="n">coordinates</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
         <span class="n">faces</span> <span class="o">=</span> <span class="n">faces</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
 
@@ -251,7 +251,7 @@
         <span class="n">reverse_index_map</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">vertex_counter</span> <span class="o">=</span> <span class="mi">0</span>
 
-        <span class="k">def</span> <span class="nf">handle_vertex</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">vertex_counter</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_index_map</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">handle_vertex</span><span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">vertex_counter</span><span class="p">,</span> <span class="n">index_map</span><span class="p">,</span> <span class="n">reverse_index_map</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">vertex</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">index_map</span><span class="p">:</span>
                 <span class="n">index_map</span><span class="p">[</span><span class="n">vertex</span><span class="p">]</span> <span class="o">=</span> <span class="n">vertex_counter</span>
                 <span class="n">reverse_index_map</span><span class="p">[</span><span class="n">vertex_counter</span><span class="p">]</span> <span class="o">=</span> <span class="n">vertex</span>
@@ -276,7 +276,7 @@
     <span class="k">return</span> <span class="n">ctm2webgl_left</span><span class="p">,</span> <span class="n">ctm2webgl_right</span>
 
 
-<span class="k">def</span> <span class="nf">get_fs2webgl_map</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_fs2webgl_map</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a mapping from the vertices in the freesurfer surface to the vertices</span>
 <span class="sd">    visualized on the WebGL viewer.</span>
 
@@ -315,7 +315,7 @@
 
 <div class="viewcode-block" id="get_cortical_mask">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_cortical_mask.html#cortex.utils.get_cortical_mask">[docs]</a>
-<span class="k">def</span> <span class="nf">get_cortical_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_cortical_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Gets the cortical mask for a particular transform</span>
 
 <span class="sd">    Parameters</span>
@@ -368,7 +368,7 @@
 
 <div class="viewcode-block" id="get_vox_dist">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_vox_dist.html#cortex.utils.get_vox_dist">[docs]</a>
-<span class="k">def</span> <span class="nf">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">max_dist</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_vox_dist</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">max_dist</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the distance (in mm) from each functional voxel to the closest</span>
 <span class="sd">    point on the surface.</span>
 
@@ -392,7 +392,7 @@
 <span class="sd">        Array with the same shape as the reference image of `xfmname` containing</span>
 <span class="sd">        for each voxel the index of the closest point on the surface.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">cKDTree</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
 
     <span class="n">fiducial</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surface</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
@@ -410,7 +410,7 @@
 
 <div class="viewcode-block" id="get_hemi_masks">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_hemi_masks.html#cortex.utils.get_hemi_masks">[docs]</a>
-<span class="k">def</span> <span class="nf">get_hemi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_hemi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;Returns a binary mask of the left and right hemisphere</span>
 <span class="sd">    surface voxels for the given subject.</span>
 
@@ -431,7 +431,7 @@
 
 <div class="viewcode-block" id="add_roi">
 <a class="viewcode-back" href="../../generated/cortex.utils.add_roi.html#cortex.utils.add_roi">[docs]</a>
-<span class="k">def</span> <span class="nf">add_roi</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;new_roi&quot;</span><span class="p">,</span> <span class="n">open_inkscape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_path</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_roi</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;new_roi&quot;</span><span class="p">,</span> <span class="n">open_inkscape</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">add_path</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
             <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add new flatmap image to the ROI file for a subject.</span>
 
@@ -463,9 +463,9 @@
 <span class="sd">    kwargs : dict</span>
 <span class="sd">        Passed to cortex.quickflat.make_png</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
 
-    <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">quickflat</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">quickflat</span>
 
     <span class="n">dv</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dv</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
@@ -488,7 +488,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_get_neighbors_dict</span><span class="p">(</span><span class="n">polys</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_neighbors_dict</span><span class="p">(</span><span class="n">polys</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a dictionary of {vertex : set(neighbor vertices)} for the given polys&quot;&quot;&quot;</span>
     <span class="n">neighbors_dict</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">poly</span> <span class="ow">in</span> <span class="n">polys</span><span class="p">:</span>
@@ -500,7 +500,7 @@
 
 <div class="viewcode-block" id="get_roi_verts">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_roi_verts.html#cortex.utils.get_roi_verts">[docs]</a>
-<span class="k">def</span> <span class="nf">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roi_verts</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return vertices for the given ROIs, or all ROIs if none are given.</span>
 
 <span class="sd">    Parameters</span>
@@ -569,7 +569,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">get_roi_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf_type</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roi_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf_type</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Similar to get_roi_verts, but gets both the points and the polys for an roi.</span>
 
 <span class="sd">    Parameters</span>
@@ -608,7 +608,7 @@
 
 <div class="viewcode-block" id="get_roi_mask">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_roi_mask.html#cortex.utils.get_roi_mask">[docs]</a>
-<span class="k">def</span> <span class="nf">get_roi_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roi_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a mask for the given ROI(s)</span>
 
 <span class="sd">    Deprecated - use get_roi_masks()</span>
@@ -645,7 +645,7 @@
 
 <div class="viewcode-block" id="get_aseg_mask">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_aseg_mask.html#cortex.utils.get_aseg_mask">[docs]</a>
-<span class="k">def</span> <span class="nf">get_aseg_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">aseg_name</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_aseg_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">aseg_name</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return an epi space mask of the given ID from freesurfer&#39;s automatic segmentation</span>
 
 <span class="sd">    Parameters</span>
@@ -686,7 +686,7 @@
 <span class="sd">    See also get_anat(subject, type=&#39;aseg&#39;)</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">from</span> <span class="nn">.freesurfer</span> <span class="kn">import</span> <span class="n">fs_aseg_dict</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">fs_aseg_dict</span>
     <span class="n">aseg</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;aseg&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">aseg_name</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
@@ -713,7 +713,7 @@
 
 <div class="viewcode-block" id="get_roi_masks">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_roi_masks.html#cortex.utils.get_roi_masks">[docs]</a>
-<span class="k">def</span> <span class="nf">get_roi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gm_sampler</span><span class="o">=</span><span class="s1">&#39;cortical&#39;</span><span class="p">,</span> <span class="n">split_lr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_roi_masks</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">roi_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gm_sampler</span><span class="o">=</span><span class="s1">&#39;cortical&#39;</span><span class="p">,</span> <span class="n">split_lr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">allow_overlap</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fail_for_missing_rois</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exclude_empty_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                   <span class="n">threshold</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">overlay_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a dictionary of roi masks</span>
@@ -934,7 +934,7 @@
 
 <div class="viewcode-block" id="get_dropout">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_dropout.html#cortex.utils.get_dropout">[docs]</a>
-<span class="k">def</span> <span class="nf">get_dropout</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_dropout</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a dropout Volume showing where EPI signal</span>
 <span class="sd">    is very low.</span>
 
@@ -962,13 +962,13 @@
     <span class="n">normdata</span> <span class="o">=</span> <span class="p">(</span><span class="n">rawdata</span> <span class="o">-</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="p">(</span><span class="n">rawdata</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">-</span> <span class="n">rawdata</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
     <span class="n">normdata</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">normdata</span><span class="p">)</span> <span class="o">**</span> <span class="n">power</span>
 
-    <span class="kn">from</span> <span class="nn">.dataset</span> <span class="kn">import</span> <span class="n">Volume</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Volume</span>
     <span class="k">return</span> <span class="n">Volume</span><span class="p">(</span><span class="n">normdata</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="make_movie">
 <a class="viewcode-back" href="../../generated/cortex.utils.make_movie.html#cortex.utils.make_movie">[docs]</a>
-<span class="k">def</span> <span class="nf">make_movie</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;640x480&quot;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_movie</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">outfile</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;640x480&quot;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Makes an .ogv movie</span>
 
 <span class="sd">    A simple wrapper for ffmpeg. Calls:</span>
@@ -989,8 +989,8 @@
 <span class="sd">    -------</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">shlex</span>
-    <span class="kn">import</span> <span class="nn">subprocess</span> <span class="k">as</span> <span class="nn">sp</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
     <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;ffmpeg -r </span><span class="si">{fps}</span><span class="s2"> -i </span><span class="si">{infile}</span><span class="s2"> -b 4800k -g 30 -s </span><span class="si">{size}</span><span class="s2"> -vcodec libtheora </span><span class="si">{outfile}</span><span class="s2">.ogv&quot;</span>
     <span class="n">fcmd</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">infile</span><span class="o">=</span><span class="n">stim</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">outfile</span><span class="o">=</span><span class="n">outfile</span><span class="p">)</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fcmd</span><span class="p">))</span></div>
@@ -998,7 +998,7 @@
 
 <div class="viewcode-block" id="vertex_to_voxel">
 <a class="viewcode-back" href="../../generated/cortex.utils.vertex_to_voxel.html#cortex.utils.vertex_to_voxel">[docs]</a>
-<span class="k">def</span> <span class="nf">vertex_to_voxel</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>  <span class="c1"># Am I deprecated in favor of mappers??? Maybe?</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">vertex_to_voxel</span><span class="p">(</span><span class="n">subject</span><span class="p">):</span>  <span class="c1"># Am I deprecated in favor of mappers??? Maybe?</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -1030,11 +1030,11 @@
 
 
 
-<span class="k">def</span> <span class="nf">_set_edge_distance_graph_attribute</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_set_edge_distance_graph_attribute</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    adds the attribute &#39;edge distance&#39; to a graph</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
 
     <span class="n">l2_distance</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">v1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts</span><span class="p">[</span><span class="n">v2</span><span class="p">])</span>
     <span class="n">heuristic</span> <span class="o">=</span> <span class="n">l2_distance</span> <span class="c1"># A* heuristic</span>
@@ -1051,7 +1051,7 @@
         <span class="n">nx</span><span class="o">.</span><span class="n">set_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">edge_distances</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;distance&#39;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">get_shared_voxels</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_astar</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_shared_voxels</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_astar</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&#39;&#39;&#39;Return voxels that are shared by multiple vertices, and for each such voxel,</span>
 <span class="sd">       also returns the mutually farthest pair of vertices mapping to the voxel</span>
 <span class="sd">    Parameters</span>
@@ -1075,8 +1075,8 @@
 <span class="sd">    farthest_pair[1])</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
-    <span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
-    <span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">find</span> <span class="k">as</span> <span class="n">sparse_find</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">networkx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nx</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">find</span> <span class="k">as</span> <span class="n">sparse_find</span>
     <span class="n">Lmask</span><span class="p">,</span> <span class="n">Rmask</span> <span class="o">=</span> <span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span><span class="o">.</span><span class="n">masks</span>  <span class="c1"># Get masks for left and right hemisphere</span>
     <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s1">&#39;both&#39;</span><span class="p">:</span>
         <span class="n">hemispheres</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]</span>
@@ -1136,7 +1136,7 @@
             <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">load_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">varname</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">varname</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a numpy sparse array from an hdf file</span>
 
 <span class="sd">    Parameters</span>
@@ -1151,14 +1151,14 @@
 <span class="sd">    This function relies on variables being stored with specific naming</span>
 <span class="sd">    conventions, so cannot be used to load arbitrary sparse arrays.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">scipy.sparse</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span>
     <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="k">as</span> <span class="n">hf</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_data&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">],</span> <span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_indices&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">],</span> <span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_indptr&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">])</span>
         <span class="n">sparsemat</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">hf</span><span class="p">[</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_shape&#39;</span><span class="o">%</span><span class="n">varname</span><span class="p">])</span>
     <span class="k">return</span> <span class="n">sparsemat</span>
 
 
-<span class="k">def</span> <span class="nf">save_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">varname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_sparse_array</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">varname</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Save a numpy sparse array to an hdf file</span>
 
 <span class="sd">    Results in relatively smaller file size than numpy.savez</span>
@@ -1174,7 +1174,7 @@
 <span class="sd">    mode : string</span>
 <span class="sd">        write / append mode set, one of [&#39;w&#39;,&#39;a&#39;] (passed to h5py.File())</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">scipy.sparse</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">scipy.sparse</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">):</span>
         <span class="n">data_</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
@@ -1192,7 +1192,7 @@
 
 <div class="viewcode-block" id="get_cmap">
 <a class="viewcode-back" href="../../generated/cortex.utils.get_cmap.html#cortex.utils.get_cmap">[docs]</a>
-<span class="k">def</span> <span class="nf">get_cmap</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_cmap</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Gets a colormaps</span>
 
 <span class="sd">    Parameters</span>
@@ -1205,8 +1205,8 @@
 <span class="sd">    cmap : ListedColormap</span>
 <span class="sd">        Matplotlib colormap object</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-    <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">colors</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">colors</span>
     <span class="c1"># unknown colormap, test whether it&#39;s in pycortex colormaps</span>
     <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">)</span>
     <span class="n">colormaps</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">)</span>
@@ -1227,7 +1227,7 @@
     <span class="k">return</span> <span class="n">cmap</span></div>
 
 
-<span class="k">def</span> <span class="nf">add_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cmapdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_cmap</span><span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cmapdir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a colormap to pycortex.</span>
 
 <span class="sd">    This stores a matplotlib colormap in the pycortex filestore, such that it can</span>
@@ -1246,7 +1246,7 @@
 <span class="sd">        specify this colormap in future calls to `cortex.quickflat.make_figure()`</span>
 <span class="sd">        or `cortex.webgl.show()`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 
     <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
     <span class="n">cmap_im</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
@@ -1258,7 +1258,7 @@
     <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span> <span class="n">cmap_im</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;png&quot;</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">download_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">download_subject</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="s1">&#39;fsaverage&#39;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pycortex_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                      <span class="n">download_again</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Download subjects to pycortex store</span>
 
@@ -1316,7 +1316,7 @@
     <span class="n">db</span><span class="o">.</span><span class="n">reload_subjects</span><span class="p">()</span>
 
 
-<span class="k">def</span> <span class="nf">rotate_flatmap</span><span class="p">(</span><span class="n">surf_id</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">rotate_flatmap</span><span class="p">(</span><span class="n">surf_id</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Rotate flatmap to be less V-shaped</span>
 <span class="sd">    </span>
 <span class="sd">    Parameters</span>
@@ -1330,7 +1330,7 @@
 <span class="sd">        Whether to make a coarse plot to visualize the changes</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Lazy load of matplotlib</span>
-    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
     <span class="n">paths</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">surf_id</span><span class="p">)[</span><span class="s1">&#39;surfs&#39;</span><span class="p">][</span><span class="s1">&#39;flat&#39;</span><span class="p">]</span>
     <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">plot</span><span class="p">:</span>

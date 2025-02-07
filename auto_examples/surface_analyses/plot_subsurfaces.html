@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Plot and Use Subsurface Tools &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+    <title>Plot and Use Subsurface Tools &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=12f20e84"></script>
+    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -44,12 +44,12 @@ to download the full example code.</p>
 <section class="sphx-glr-example-title" id="plot-and-use-subsurface-tools">
 <span id="sphx-glr-auto-examples-surface-analyses-plot-subsurfaces-py"></span><h1>Plot and Use Subsurface Tools<a class="headerlink" href="#plot-and-use-subsurface-tools" title="Link to this heading">¶</a></h1>
 <p>Subsurfaces can be used for efficient operations on subsets of cortical surface</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tempfile</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
 
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">import</span> <span class="nn">cortex.polyutils</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cortex.polyutils</span>
 
 
 <span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;S1&#39;</span>
@@ -75,8 +75,7 @@ to download the full example code.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_plot_subsurfaces_001.png" srcset="../../_images/sphx_glr_plot_subsurfaces_001.png" alt="example subsurface data" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Background RRGGBBAA: ffffff00
-Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+<img src="../../_images/sphx_glr_plot_subsurfaces_001.png" srcset="../../_images/sphx_glr_plot_subsurfaces_001.png" alt="example subsurface data" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>** (inkscape:5131): WARNING **: 21:56:50.142: Failed to wrap object of type &#39;GtkRecentManager&#39;. Hint: this error is commonly caused by failing to call a library init() function.
 </pre></div>
 </div>
 <p>plot subsurface as gif</p>
@@ -104,8 +103,7 @@ Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_plot_subsurfaces_002.png" srcset="../../_images/sphx_glr_plot_subsurfaces_002.png" alt="patches" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Background RRGGBBAA: ffffff00
-Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+<img src="../../_images/sphx_glr_plot_subsurfaces_002.png" srcset="../../_images/sphx_glr_plot_subsurfaces_002.png" alt="patches" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>** (inkscape:5147): WARNING **: 21:56:54.773: Failed to wrap object of type &#39;GtkRecentManager&#39;. Hint: this error is commonly caused by failing to call a library init() function.
 </pre></div>
 </div>
 <p>create geodesic strip patch</p>
@@ -132,15 +130,12 @@ Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
 <li><img src="../../_images/sphx_glr_plot_subsurfaces_004.png" srcset="../../_images/sphx_glr_plot_subsurfaces_004.png" alt="first coordinate, distance along central geodesic axis" class = "sphx-glr-multi-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_subsurfaces_005.png" srcset="../../_images/sphx_glr_plot_subsurfaces_005.png" alt="second coordinate, distance from central geodesic axis" class = "sphx-glr-multi-img"/></li>
 </ul>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Background RRGGBBAA: ffffff00
-Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-Background RRGGBBAA: ffffff00
-Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
-Background RRGGBBAA: ffffff00
-Area 0:0:1960.5:1024 exported to 1960 x 1024 pixels (96 dpi)
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>** (inkscape:5163): WARNING **: 21:57:02.731: Failed to wrap object of type &#39;GtkRecentManager&#39;. Hint: this error is commonly caused by failing to call a library init() function.
+** (inkscape:5176): WARNING **: 21:57:03.618: Failed to wrap object of type &#39;GtkRecentManager&#39;. Hint: this error is commonly caused by failing to call a library init() function.
+** (inkscape:5189): WARNING **: 21:57:04.506: Failed to wrap object of type &#39;GtkRecentManager&#39;. Hint: this error is commonly caused by failing to call a library init() function.
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 16.685 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 16.643 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-surface-analyses-plot-subsurfaces-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/387ca9e74b721456c024802f5fb1210c/plot_subsurfaces.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_subsurfaces.ipynb</span></code></a></p>

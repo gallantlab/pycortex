@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Pycortex Data Structures &#8212; pycortex 1.2.10 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <title>Pycortex Data Structures &#8212; pycortex 1.2.11 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="_static/documentation_options.js?v=12f20e84"></script>
+    <script src="_static/documentation_options.js?v=b68a8a9d"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -40,7 +40,7 @@
 <section id="quickstart">
 <h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h2>
 <p><a class="reference internal" href="generated/cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a> objects can be defined implicitly using a tuple syntax:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
 <span class="n">cortex</span><span class="o">.</span><span class="n">webshow</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">))</span>
 </pre></div>
 </div>
@@ -141,7 +141,7 @@
 <p>Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.</p>
 <p>In addition, Datasets provide data deduplication. This is especially important for the webgl views, in order to reduce the amount of data transfer between server and client. Deduplication is accomplished using a SHA1 hash of the raw numpy data. This is not a foolproof method, but given the constraints of visualizing volumetric data, additional Numpy attributes do not need to be included in the hash.</p>
 <p>To save data:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cortex</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
 <span class="n">ds</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">rand</span><span class="o">=</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">31</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="s2">&quot;fullhead&quot;</span><span class="p">))</span>
 <span class="n">ds</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;/tmp/dataset.hdf&quot;</span><span class="p">,</span> <span class="n">pack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
