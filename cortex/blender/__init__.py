@@ -2,7 +2,7 @@ import os
 import re
 import shlex
 import shutil
-import xdrlib
+import mda_xdrlib as xdrlib
 import tempfile
 import subprocess as sp
 
