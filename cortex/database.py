@@ -1,6 +1,7 @@
 """
 Contains a singleton object `db` of type `Database` which allows easy access to surface files, anatomical images, and transforms that are stored in the pycortex filestore.
 """
+from __future__ import annotations
 import copy
 import functools
 import glob
@@ -11,12 +12,25 @@ import shutil
 import tempfile
 import warnings
 from hashlib import sha1
+from typing import Optional, TypedDict
 
 import numpy as np
 
 from . import options
 
 default_filestore = options.config.get('basic', 'filestore')
+
+class PathsType(TypedDict):
+    surfs: dict[str, dict[str, str]]
+    xfms: list[str]
+    xfmdir: str
+    anats: str
+    surfinfo: str
+    masks: str
+    rois: str
+    overlays: str
+    views: list[str]
+    surf2surf: str
 
 
 def _memo(fn):
@@ -150,10 +164,10 @@ class Database:
     ----------
     This database object dynamically generates handles to all subjects within the filestore.
     """
-    def __init__(self, filestore=default_filestore):
+    def __init__(self, filestore: str=default_filestore):
         self.filestore = filestore
-        self._subjects = None
-        self.auxfile = None
+        self._subjects: Optional[dict[str, SubjectDB]] = None
+        self.auxfile: Optional[Database] = None
     
     def __repr__(self):
         subjs = "\n   ".join(sorted(self.subjects.keys()))
@@ -434,7 +448,7 @@ class Database:
         with open(fname, "w") as fp:
             json.dump(jsdict, fp, sort_keys=True, indent=4)
     
-    def get_xfm(self, subject, name, xfmtype="coord"):
+    def get_xfm(self, subject, name, xfmtype="coord") -> 'Transform':
         """Retrieves a transform from the filestore
 
         Parameters
@@ -464,7 +478,7 @@ class Database:
         return Transform(xfmdict[xfmtype], reference)
 
     @_memo
-    def get_surf(self, subject, type, hemisphere="both", merge=False, nudge=False):
+    def get_surf(self, subject, type: str, hemisphere="both", merge=False, nudge=False):
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
@@ -553,6 +567,7 @@ class Database:
         try:
             import nibabel
             nib = nibabel.load(fname)
+            #reveal_type(nib.get_fdata().T != 0)
             return nib.get_fdata().T != 0
         except IOError:
             print('Mask not found, generating...')
@@ -667,7 +682,7 @@ class Database:
         if self.subjects[subject]._warning is not None:
             warnings.warn(self.subjects[subject]._warning)
 
-        surfs = dict()
+        surfs: dict[str, dict[str, str]] = dict()
         for surf in os.listdir(surfpath):
             ssurf = os.path.splitext(surf)[0].split('_')
             name = '_'.join(ssurf[:-1])
@@ -682,7 +697,7 @@ class Database:
             os.makedirs(viewsdir)
         views = os.listdir(viewsdir)
 
-        filenames = dict(
+        filenames = PathsType(
             surfs=surfs,
             xfms=sorted(os.listdir(os.path.join(self.filestore, subject, "transforms"))),
             xfmdir=os.path.join(self.filestore, subject, "transforms", "{xfmname}", "matrices.xfm"),
