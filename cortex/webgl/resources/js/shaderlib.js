@@ -479,15 +479,15 @@ var Shaderlib = (function() {
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
 
-            "uniform vec3 slicexn;",
+            "uniform vec3 slicexn;", // normal vector for the x sliceplane
             "uniform vec3 sliceyn;",
             "uniform vec3 slicezn;",
 
-            "uniform vec3 slicexc;",
+            "uniform vec3 slicexc;", // centerpoint of the x sliceplane
             "uniform vec3 sliceyc;",
             "uniform vec3 slicezc;",
 
-            "uniform bool doslicex;",
+            "uniform bool doslicex;", // should we clip the surface on one side of the x sliceplane?
             "uniform bool doslicey;",
             "uniform bool doslicez;",
 
@@ -503,7 +503,7 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vThickmix;",
-            "varying vec3 vWorldPosition;",
+            "varying vec3 vWorldPosition;", // the x,y,z coordinates of this pixel
             
             utils.standard_frag_vars,
             utils.rand,
@@ -513,22 +513,23 @@ var Shaderlib = (function() {
             utils.samplers,
 
             "void main() {",
+                //Sliceplane Clipping
+                "bool clipx = dot(vWorldPosition - slicexc, slicexn) > 0.0;", // is this pixel on the wrong side of the x sliceplane?
+                "bool clipy = dot(vWorldPosition - sliceyc, sliceyn) > 0.0;",
+                "bool clipz = dot(vWorldPosition - slicezc, slicezn) > 0.0;",
+
+                "if (clipx && doslicex && !doslicey && !doslicez) discard;", // clip only in x
+                "if (clipy && !doslicex && doslicey && !doslicez) discard;", // clip only in y
+                "if (clipz && !doslicex && !doslicey && doslicez) discard;", // clip only in z
+                "if (clipx && clipy && doslicex && doslicey && !doslicez) discard;", // clip in x and y
+                "if (clipx && clipz && doslicex && !doslicey && doslicez) discard;", // clip in x and z
+                "if (clipy && clipz && !doslicex && doslicey && doslicez) discard;", // clip in y and z
+                "if (clipx && clipy && clipz && doslicex && doslicey && doslicez) discard;", // clip in x, y, and z
+
                 //Curvature Underlay
                 "float ctmp = clamp(vCurv / smoothness, -0.5, 0.5);", // use limits here too
                 "float curv = clamp(ctmp * contrast + brightness, 0.0, 1.0);",
                 
-                "bool clipx = dot(vWorldPosition - slicexc, slicexn) > 0.0;",
-                "bool clipy = dot(vWorldPosition - sliceyc, sliceyn) > 0.0;",
-                "bool clipz = dot(vWorldPosition - slicezc, slicezn) > 0.0;",
-
-                "if (clipx && doslicex && !doslicey && !doslicez) discard;",
-                "if (clipy && !doslicex && doslicey && !doslicez) discard;",
-                "if (clipz && !doslicex && !doslicey && doslicez) discard;",
-                "if (clipx && clipy && doslicex && doslicey && !doslicez) discard;",
-                "if (clipx && clipz && doslicex && !doslicey && doslicez) discard;",
-                "if (clipy && clipz && !doslicex && doslicey && doslicez) discard;",
-                "if (clipx && clipy && clipz && doslicex && doslicey && doslicez) discard;",
-
                 "vec4 cColor = vec4(vec3(curv), 1.0);", 
 
                 "vec3 coord_x, coord_y;",
