@@ -13,11 +13,14 @@ import tempfile
 import warnings
 from builtins import input
 from hashlib import sha1
-from typing import Optional, TypedDict
+from typing import Dict, List, Tuple, Union, Optional, TypedDict, TYPE_CHECKING
 
 import numpy as np
 
 from . import options
+if TYPE_CHECKING:
+    from cortex.dataset.views import Vertex
+    from cortex.svgoverlay import SVGOverlay
 
 default_filestore = options.config.get('basic', 'filestore')
 
@@ -170,11 +173,11 @@ class Database(object):
         self._subjects: Optional[dict[str, SubjectDB]] = None
         self.auxfile: Optional[Database] = None
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         subjs = "\n   ".join(sorted(self.subjects.keys()))
         return """Pycortex database\n  Subjects:\n   {subjs}""".format(subjs=subjs)
     
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str):
         if attr in self.subjects:
             if self.subjects[attr]._warning is not None:
                 warnings.warn(self.subjects[attr]._warning)
@@ -188,7 +191,7 @@ class Database(object):
                 'get_mri_surf2surf_matrix'] + list(self.subjects.keys())
 
     @property
-    def subjects(self):
+    def subjects(self) -> Dict[str, SubjectDB]:
         if self._subjects is not None:
             return self._subjects
         subjs = os.listdir(os.path.join(self.filestore))
@@ -241,7 +244,7 @@ class Database(object):
         from . import volume
         return volume.anat2epispace(anatnib.get_fdata().T.astype(float), subject, xfmname, order=order)
 
-    def get_surfinfo(self, subject, type="curvature", recache=False, **kwargs):
+    def get_surfinfo(self, subject: str, type: str="curvature", recache: bool=False, **kwargs) -> Vertex:
         """Return auxiliary surface information from the filestore. Surface info is defined as 
         anatomical information specific to a subject in surface space. A Vertex class will be returned
         as necessary. Info not found in the filestore will be automatically generated.
@@ -360,7 +363,7 @@ class Database(object):
                 save_sparse_array(fpath, tmp, h, mode='a')
         return mats
 
-    def get_overlay(self, subject, overlay_file=None, **kwargs):
+    def get_overlay(self, subject: str, overlay_file: Optional[str]=None, **kwargs) -> SVGOverlay:
         from . import svgoverlay
         pts, polys = self.get_surf(subject, "flat", merge=True, nudge=True)
 
@@ -449,7 +452,7 @@ class Database(object):
         with open(fname, "w") as fp:
             json.dump(jsdict, fp, sort_keys=True, indent=4)
     
-    def get_xfm(self, subject, name, xfmtype="coord") -> 'Transform':
+    def get_xfm(self, subject: str, name: str, xfmtype: str="coord") -> 'Transform':
         """Retrieves a transform from the filestore
 
         Parameters
@@ -479,7 +482,7 @@ class Database(object):
         return Transform(xfmdict[xfmtype], reference)
 
     @_memo
-    def get_surf(self, subject, type: str, hemisphere="both", merge=False, nudge=False):
+    def get_surf(self, subject: str, type: str, hemisphere: str="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[ndarray, ndarray], Tuple[ndarray, ndarray]], Tuple[ndarray, ndarray]]:
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
@@ -555,7 +558,7 @@ class Database(object):
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 
-    def get_mask(self, subject, xfmname, type='thick'):
+    def get_mask(self, subject: str, xfmname: str, type: str='thick') -> ndarray:
         if hasattr(type, 'decode'):
             type = type.decode('utf8')        
 
@@ -634,7 +637,7 @@ class Database(object):
 
         return coords
 
-    def get_cache(self, subject):
+    def get_cache(self, subject: str) -> str:
         try:
             self.auxfile.get_surf(subject, "fiducial")
             #generate the hashed name of the filename and subject as the directory name
@@ -675,7 +678,7 @@ class Database(object):
                 shutil.rmtree(default_cachedir)
                 os.makedirs(default_cachedir)
 
-    def get_paths(self, subject):
+    def get_paths(self, subject: str):
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
         surfpath = os.path.join(self.filestore, subject, "surfaces")

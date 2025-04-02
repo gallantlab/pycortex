@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import re
@@ -6,10 +8,12 @@ import shlex
 import tempfile
 import itertools
 import numpy as np
+import numpy.typing as npt
 import subprocess as sp
 from matplotlib.path import Path
 from scipy.spatial import cKDTree
 from builtins import zip, str
+from typing import overload, Literal, Optional
 
 from looseversion import LooseVersion
 
@@ -672,8 +676,16 @@ def make_svg(pts, polys):
 
     return svg
 
-def get_overlay(subject, svgfile, pts, polys, remove_medial=False, 
-                overlays_available=None, modify_svg_file=True, **kwargs):
+@overload
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: Literal[False]=False, 
+                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
+
+@overload
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: Literal[True], 
+                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, object]: ...
+
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: bool=False, 
+                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs):
     """Return a python represent of the overlays present in `svgfile`.
 
     Parameters
