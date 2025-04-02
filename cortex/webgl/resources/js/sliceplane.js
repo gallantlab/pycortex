@@ -56,6 +56,8 @@ var sliceplane = (function(module) {
         this.mesh = new THREE.Mesh(this.geometry, this.shader);
         this.mesh.doubleSided = true;
 
+        this.flip_clip = 1; // 1 or -1
+
         this.object.add(this.mesh);
         //this.scene.add(this.mesh);
         this.scene.add(this.object);
@@ -127,6 +129,9 @@ var sliceplane = (function(module) {
             imat.multiplyVector3(this.geometry.vertices[2].set(shape[0]-0.5,-0.5,slice));
             imat.multiplyVector3(this.geometry.vertices[3].set(shape[0]-0.5,shape[1]-0.5,slice));
         }
+        this.center = new THREE.Vector3().add(this.geometry.vertices[0]).add(this.geometry.vertices[1]).add(this.geometry.vertices[2]).add(this.geometry.vertices[3]).divideScalar(4);
+
+        this.updateClipping();
 
         this.geometry.computeBoundingSphere();
         var center = this.geometry.boundingSphere.center;
@@ -184,6 +189,8 @@ var sliceplane = (function(module) {
 
         this.mesh.rotation.set(0,0,0);
         this.mesh.rotateOnAxis(axis, angle / 180 * Math.PI);
+
+        this.updateClipping();
     }
     module.Plane.prototype.setVisible = function(val) {
         if (val === undefined)
@@ -191,8 +198,36 @@ var sliceplane = (function(module) {
 
         this._visible = val;
 
-        if (this.mesh !== undefined)
+        if (this.mesh !== undefined) {
             this.mesh.visible = this._visible;
+            this.updateClipping();
+        }
+
+    }
+    module.Plane.prototype.updateClipping = function() {
+        this.normal = this.geometry.faces[0].normal.clone().applyEuler(this.mesh.rotation).multiplyScalar(this.flip_clip);
+
+        if (this.dir == 0){
+            this.viewer.active.uniforms.slicexn.value.copy(this.normal);
+            this.viewer.active.uniforms.slicexc.value.copy(this.center);
+        } else if (this.dir == 1){
+            this.viewer.active.uniforms.sliceyn.value.copy(this.normal);
+            this.viewer.active.uniforms.sliceyc.value.copy(this.center);
+        } else if (this.dir == 2){
+            this.viewer.active.uniforms.slicezn.value.copy(this.normal);
+            this.viewer.active.uniforms.slicezc.value.copy(this.center);
+        }
+    }
+    module.Plane.prototype.setFlip = function(val) {
+        if (val === undefined) {
+            return this.flip_clip == -1;
+        }
+        if (val) {
+            this.flip_clip = -1;
+        } else {
+            this.flip_clip = 1;
+        }
+        this.updateClipping();
     }
 
     module.MIP = function(viewer) {
