@@ -463,7 +463,7 @@ def parse_curv(filename):
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
-        return np.fromstring(fp.read(), dtype='>f4').byteswap().newbyteorder()
+        return np.fromstring(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('='))
 
 
 def parse_patch(filename):
