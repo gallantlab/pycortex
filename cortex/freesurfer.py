@@ -283,6 +283,9 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
         List of hemispheres to import. Defaults to both hemispheres.
     cx_subject : str
         Pycortex subject name
+    flat_type : str
+        Type of flatmap to import. Defaults to 'freesurfer'.
+        Can be 'freesurfer', 'slim', or 'blender'.
     freesurfer_subject_dir : str
         directory for freesurfer subjects. None defaults to environment variable
         $SUBJECTS_DIR
@@ -308,15 +311,19 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
 
     from . import formats
     for hemi in hemis:
-        if flat_type == 'freesurfer':
-            pts, polys, _ = get_surf(fs_subject, hemi, "patch", patch+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
-            # Reorder axes: X, Y, Z instead of Y, X, Z
-            flat = pts[:, [1, 0, 2]]
-            # Flip Y axis upside down
-            flat[:, 1] = -flat[:, 1]
+        if flat_type in ['freesurfer', 'blender']:
+            surf_path = (patch + ".flat") if (flat_type == 'freesurfer') else (patch + ".flat.blender")
+            pts, polys, _ = get_surf(fs_subject, hemi, "patch", surf_path, freesurfer_subject_dir=freesurfer_subject_dir)
+
+            if flat_type == 'freesurfer':
+                # Reorder axes: X, Y, Z instead of Y, X, Z
+                flat = pts[:, [1, 0, 2]]
+                # Flip Y axis upside down
+                flat[:, 1] = -flat[:, 1]
+            else:
+                flat = pts
         elif flat_type == 'slim':
-            flat_file = get_paths(fs_subject, hemi, type='slim',
-                                  freesurfer_subject_dir=freesurfer_subject_dir)
+            flat_file = get_paths(fs_subject, hemi, type='slim', freesurfer_subject_dir=freesurfer_subject_dir)
             flat_file = flat_file.format(name=patch + ".flat")
             flat, polys = formats.read_obj(flat_file)
 
