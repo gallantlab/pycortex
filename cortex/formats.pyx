@@ -184,7 +184,7 @@ def write_stl(filename, object pts, object polys):
     data['f1'] = pts[polys].reshape(-1, 9)
     with open(filename, 'wb') as fp:
         fp.write(struct.pack('80xI', len(polys)))
-        fp.write(data.tostring())
+        fp.write(data.tobytes())
 
 
 

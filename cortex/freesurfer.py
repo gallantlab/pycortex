@@ -422,8 +422,8 @@ def write_surf(filename, pts, polys, comment=''):
         fp.write(b'\xff\xff\xfe')
         fp.write((comment+'\n\n').encode())
         fp.write(struct.pack('>2I', len(pts), len(polys)))
-        fp.write(pts.astype(np.float32).byteswap().tostring())
-        fp.write(polys.astype(np.uint32).byteswap().tostring())
+        fp.write(pts.astype(np.float32).byteswap().tobytes())
+        fp.write(polys.astype(np.uint32).byteswap().tobytes())
         fp.write(b'\n')
 
 
@@ -961,7 +961,7 @@ def write_decimated(path, pts, polys):
     with open(path+'.full.patch.3d', 'w') as fp:
         fp.write(struct.pack('>i', -1))
         fp.write(struct.pack('>i', len(dpts)))
-        fp.write(data.tostring())
+        fp.write(data.tobytes())
 
 
 class SpringLayout(object):
