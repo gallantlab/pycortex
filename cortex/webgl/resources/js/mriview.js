@@ -49,6 +49,9 @@ var mriview = (function(module) {
             y: new sliceplane.Plane(this, 1),
             z: new sliceplane.Plane(this, 2),
         };
+        this._clipx = false;
+        this._clipy = false;
+        this._clipz = false;
 
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
@@ -1164,6 +1167,18 @@ var mriview = (function(module) {
             rotate_z: {action:[this.sliceplanes.z, 'setAngle', -89, 89]}
         });
 
+        var sliceplane_clip = sliceplane_ui.addFolder("clip", true);
+        sliceplane_clip.add({
+            clip_x: {action:[this, "setClippingX"]},
+            flip_x: {action:[this.sliceplanes.x, "setFlip"]},
+            clip_y: {action:[this, "setClippingY"]},
+            flip_y: {action:[this.sliceplanes.y, "setFlip"]},
+            clip_z: {action:[this, "setClippingZ"]},
+            flip_z: {action:[this.sliceplanes.z, "setFlip"]},
+        })
+
+        //
+
         if ($(this.object).find("#colormap_category").length > 0) {
             $(this.object).find("#colormap").ddslick({ width:296, height:350,
                 onSelected: function() {
@@ -1294,6 +1309,39 @@ var mriview = (function(module) {
         this.sliceplanes.z.setVisible(!this.sliceplanes.z._visible);
         viewer.schedule();
     };
+    module.Viewer.prototype.setClippingX = function(val) {
+        if (val === undefined)
+            return this._clipx;
+
+        this._clipx = val;
+
+        if (this.active !== undefined) {
+            this.active.uniforms.doslicex.value = this._clipx;
+        }
+        this.schedule();
+    }
+    module.Viewer.prototype.setClippingY = function(val) {
+        if (val === undefined)
+            return this._clipy;
+
+        this._clipy = val;
+
+        if (this.active !== undefined) {
+            this.active.uniforms.doslicey.value = this._clipy;
+        }
+        this.schedule();
+    }
+    module.Viewer.prototype.setClippingZ = function(val) {
+        if (val === undefined)
+            return this._clipz;
+
+        this._clipz = val;
+
+        if (this.active !== undefined) {
+            this.active.uniforms.doslicez.value = this._clipz;
+        }
+        this.schedule();
+    }
 
     return module;
 }(mriview || {}));

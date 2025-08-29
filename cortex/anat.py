@@ -73,7 +73,7 @@ def voxelize(outfile, subject, surf='wm', mp=True):
     import nibabel
     from . import polyutils
     nib = db.get_anat(subject, "raw")
-    shape = nib.get_shape()
+    shape = nib.shape
     vox = np.zeros(shape, dtype=bool)
     for pts, polys in db.get_surf(subject, surf, nudge=False):
         xfm = Transform(np.linalg.inv(nib.affine), nib)
