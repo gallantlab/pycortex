@@ -2,13 +2,7 @@ import os
 import re
 import shlex
 import shutil
-try:
-    import xdrlib
-except ImportError:
-    try:
-        from mda_xdrlib import xdrlib
-    except ImportError:
-        import mda_xdrlib as xdrlib 
+from mda_xdrlib import xdrlib
 import tempfile
 import subprocess as sp
 
@@ -23,7 +17,7 @@ default_blender = options.config.get('dependency_paths', 'blender')
 
 _base_imports = """import sys
 sys.path.insert(0, '{path}')
-import xdrlib
+from mda_xdrlib import xdrlib
 import blendlib
 import bpy.ops
 from bpy import context as C
