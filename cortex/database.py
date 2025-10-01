@@ -13,11 +13,13 @@ import tempfile
 import warnings
 from builtins import input
 from hashlib import sha1
-from typing import Dict, List, Tuple, Union, Optional, TypedDict, TYPE_CHECKING
+from typing import Tuple, Union, Optional, TypedDict, TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 
 from . import options
+from .xfm import Transform
 if TYPE_CHECKING:
     from cortex.dataset.views import Vertex
     from cortex.svgoverlay import SVGOverlay
@@ -191,7 +193,7 @@ class Database(object):
                 'get_mri_surf2surf_matrix'] + list(self.subjects.keys())
 
     @property
-    def subjects(self) -> Dict[str, SubjectDB]:
+    def subjects(self) -> dict[str, SubjectDB]:
         if self._subjects is not None:
             return self._subjects
         subjs = os.listdir(os.path.join(self.filestore))
@@ -452,7 +454,7 @@ class Database(object):
         with open(fname, "w") as fp:
             json.dump(jsdict, fp, sort_keys=True, indent=4)
     
-    def get_xfm(self, subject: str, name: str, xfmtype: str="coord") -> 'Transform':
+    def get_xfm(self, subject: str, name: str, xfmtype: str="coord") -> Transform:
         """Retrieves a transform from the filestore
 
         Parameters
@@ -464,7 +466,6 @@ class Database(object):
         xfmtype : str, optional
             Type of transform to return. Defaults to coord.
         """
-        from .xfm import Transform
         if xfmtype == 'coord':
             try:
                 return self.auxfile.get_xfm(subject, name)
@@ -482,7 +483,7 @@ class Database(object):
         return Transform(xfmdict[xfmtype], reference)
 
     @_memo
-    def get_surf(self, subject: str, type: str, hemisphere: str="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[ndarray, ndarray], Tuple[ndarray, ndarray]], Tuple[ndarray, ndarray]]:
+    def get_surf(self, subject: str, type: str, hemisphere: str="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]], Tuple[npt.NDArray, npt.NDArray]]:
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
@@ -558,7 +559,7 @@ class Database(object):
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 
-    def get_mask(self, subject: str, xfmname: str, type: str='thick') -> ndarray:
+    def get_mask(self, subject: str, xfmname: str, type: str='thick') -> npt.NDArray:
         if hasattr(type, 'decode'):
             type = type.decode('utf8')        
 
