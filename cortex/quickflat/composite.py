@@ -1,10 +1,12 @@
 import copy
+from typing import Union
 import numpy as np
+
+from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
+from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 from .. import dataset
 from ..database import db
 from ..options import config
-from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 
 
 """ --- Individual compositing functions --- """
@@ -120,7 +122,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
                       zorder=0)
     return cvimg
 
-def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
+def add_data(fig, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height=1024, thick=32, depth=0.5, pixelwise=True,
              sampler='nearest', recache=False, nanmean=False):
     """Add data to quickflat plot
 
