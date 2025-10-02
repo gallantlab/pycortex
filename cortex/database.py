@@ -13,7 +13,7 @@ import tempfile
 import warnings
 from builtins import input
 from hashlib import sha1
-from typing import Tuple, Union, Optional, TypedDict, TYPE_CHECKING
+from typing import Literal, Tuple, Union, Optional, TypedDict, TYPE_CHECKING, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -482,8 +482,20 @@ class Database(object):
             xfmdict = json.load(f)
         return Transform(xfmdict[xfmtype], reference)
 
+    @overload
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
+        ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]]:
+        ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
+        ...
+
     @_memo
-    def get_surf(self, subject: str, type: str, hemisphere: str="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]], Tuple[npt.NDArray, npt.NDArray]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]], Tuple[npt.NDArray, npt.NDArray]]:
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
