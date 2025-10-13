@@ -6,8 +6,8 @@ import shlex
 import warnings
 import numpy as np
 import subprocess as sp
-from builtins import input
 import multiprocessing as mp
+from builtins import input
 
 from . import formats
 from . import blender
@@ -125,7 +125,8 @@ def edit_segmentation(subject,
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
                 freesurfer_subject_dir=None, flatten_with='freesurfer', 
-                do_import_subject=True, blender_cmd=None, **kwargs):
+                method=None, do_import_subject=True, blender_path=None,
+                recache=True, auto_overwrite=False, **kwargs):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
     surfaces to be cut along hand-defined seams. Blender will automatically
@@ -162,80 +163,122 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings) 
         to your computer and set the slim dependency path in your pycortex config 
         file to point to </path/to/your/slim/install>/ReweightedARAP
+    method : str
+        method to use for UV unwrap. When using Blender, it must be present and
+        can be one of 'CONFORMAL', 'ANGLE_BASED', 'MINIMUM_STRETCH'.
     do_import_subject : bool
         set option to automatically import flatmaps when both are completed 
         (if set to false, you must import later with `cortex.freesurfer.import_flat()`)
+    blender_path : str
+        Path to blender executable. If None, defaults to path specified in pycortexconfig file.
+    recache : boolean
+        Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+        resolves some errors. Useful if you've made changes to the alignment
+    auto_overwrite : bool
+        Whether to overwrite existing flatmaps. If True, the flatmap will be
+        overwritten without asking for confirmation.
     """
+
+    blender_path = blender_path or "/Applications/Blender.app/Contents/MacOS/Blender"
     if fs_subject is None:
         fs_subject = cx_subject
-    opts = "[hemi=%s,name=%s]"%(hemi, name)
-    fname = db.get_paths(cx_subject)['anats'].format(type='cutsurf', opts=opts, ext='blend')
+
     # Double-check that fiducial and inflated vertex counts match
-    # (these may not match if a subject is initially imported from freesurfer to pycortex, 
+    # (these may not match if a subject is initially imported from freesurfer to pycortex,
     # and then edited further for a better segmentation and not re-imported)
-    ipt, ipoly, inrm = freesurfer.get_surf(fs_subject, hemi, 'inflated')
-    fpt, fpoly, fnrm = freesurfer.get_surf(fs_subject, hemi, 'fiducial')
+    ipt, ipoly, inrm = freesurfer.get_surf(fs_subject, hemi, "inflated")
+    fpt, fpoly, fnrm = freesurfer.get_surf(fs_subject, hemi, "fiducial")
     if ipt.shape[0] != fpt.shape[0]:
-        raise ValueError("Please re-import subject - fiducial and inflated vertex counts don't match!")
+        raise ValueError(
+            "Please re-import subject - fiducial and inflated vertex counts don't match!"
+        )
     else:
-        print('Vert check ok!')
-    if not os.path.exists(fname):
-        blender.fs_cut(fname, fs_subject, hemi, freesurfer_subject_dir)
+        print("Vert check ok!")
+
+    # Create blender file with cuts
+    opts = "[hemi=%s,name=%s]" % (hemi, name)
+    fname = db.get_paths(cx_subject)["anats"].format(
+        type="cutsurf", opts=opts, ext="blend"
+    )
+    if not os.path.exists(fname) or recache:
+        if os.path.exists(fname):
+            os.remove(fname)
+        print("Initializing blender file %s..."%fname)
+        blender.fs_cut_init(fname, fs_subject, hemi, freesurfer_subject_dir, blender_path=blender_path)
+
     # Add localizer data to facilitate cutting
     if data is not None:
-        if isinstance(data, list):
-            for d in data:
-                blender.add_cutdata(fname, d, name=d.description)
-        else:
-            blender.add_cutdata(fname, data, name=data.description)
-    if blender_cmd is None:
-        blender_cmd = options.config.get('dependency_paths', 'blender')
-    # May be redundant after blender.fs_cut above...
-    if os.path.exists(fname):
-        blender._legacy_blender_backup(fname, blender_path=blender_cmd)
-    sp.call([blender_cmd, fname])
-    patchpath = freesurfer.get_paths(fs_subject, hemi,
-                                     freesurfer_subject_dir=freesurfer_subject_dir)
-    patchpath = patchpath.format(name=name)
-    blender.write_patch(fname, patchpath, blender_path=blender_cmd)
-    if flatten_with == 'freesurfer':
-        done = freesurfer.flatten(fs_subject, hemi, patch=name,
-                           freesurfer_subject_dir=freesurfer_subject_dir,
-                           **kwargs)
-        if not done:
-            # If flattening is aborted, skip the rest of this function
-            # (Do not attempt to import completed flatmaps)
-            return
-        if do_import_subject:
-            # Check to see if both hemispheres have been flattened
-            other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
-                                         freesurfer_subject_dir=freesurfer_subject_dir)
-            other = other.format(name=name+".flat")
-            # If so, go ahead and import subject
-            if os.path.exists(other):
-                freesurfer.import_flat(fs_subject, name, cx_subject=cx_subject,
-                            flat_type='freesurfer',
-                            freesurfer_subject_dir=freesurfer_subject_dir)
-    elif flatten_with == 'SLIM':
-        done = flatten_slim(fs_subject, hemi, patch=name,
-                            freesurfer_subject_dir=freesurfer_subject_dir,
-                            **kwargs)
-        if not done:
-            # If flattening is aborted, skip the rest of this function
-            # (Do not attempt to import completed flatmaps)
-            return
-        if do_import_subject:
-            other = freesurfer.get_paths(fs_subject, "lh" if hemi == "rh" else "rh",
-                                         type='slim',
-                                         freesurfer_subject_dir=freesurfer_subject_dir)
-            other = other.format(name=name)
-            # If so, go ahead and import subject
-            if os.path.exists(other):
-                freesurfer.import_flat(fs_subject, name, cx_subject=cx_subject,
-                            flat_type='slim',
-                            freesurfer_subject_dir=freesurfer_subject_dir)
+        data = data if isinstance(data, list) else [data]
+        for d in data:
+            blender.add_cutdata(fname, d, name=d.description, blender_path=blender_path)
+            
+    # Open blender for user to manually do the cuts
+    print("Opening blender file %s..."%fname)
+    blender.fs_cut_open(fname, blender_path=blender_path)
+    
+    # Generate 3D base freesurfer patch to flatten
+    base_patch_path = freesurfer.get_paths(
+        fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir
+    ).format(name=name)
+    if not os.path.exists(base_patch_path) or recache:
+        if os.path.exists(base_patch_path):
+            os.remove(base_patch_path)
+        print("Writing base patch to %s..."%base_patch_path)
+        blender.write_volume_patch(fname, base_patch_path, hemi, blender_path=blender_path)
+    """
+    pts_v, polys_v, _  = freesurfer.get_surf(fs_subject, hemi, "patch", name, freesurfer_subject_dir=freesurfer_subject_dir)
+    pts_f, polys_f, _  = freesurfer.get_surf(fs_subject, hemi, "patch", name+".flat", freesurfer_subject_dir=freesurfer_subject_dir)
+    """
 
-    return
+    # Flatten
+    if flatten_with == 'blender':
+        assert method is not None, "method must be provided when using blender"
+
+        flat_patch_path = freesurfer.get_paths(
+            fs_subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir
+        ).format(name=name + ".flat.blender")
+        if os.path.exists(flat_patch_path):
+            os.remove(flat_patch_path)
+
+        print("Generating flat patch via blender method %s to %s..."%(method, flat_patch_path))
+        done = blender.write_flat_patch(fname, flat_patch_path, hemi, method=method, blender_path=blender_path)
+        path_type, flat_type = "patch", "blender"
+    elif flatten_with == 'freesurfer':
+        print("Generating flat patch via freesurfer...")
+        done = freesurfer.flatten(
+            fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir, **kwargs
+        )
+        path_type, flat_type = "patch", "freesurfer"
+    elif flatten_with == 'SLIM':
+        print("Generating flat patch via SLIM...")
+        done = flatten_slim(
+            fs_subject, hemi, patch=name, freesurfer_subject_dir=freesurfer_subject_dir, **kwargs
+        )
+        path_type, flat_type = "slip", "slim"
+    else:
+        raise ValueError(f"Invalid flatten_with: {flatten_with}")
+
+    # If flattening is aborted, skip the rest of this function
+    # (Do not attempt to import completed flatmaps)
+    if not done:
+        return
+    
+    # Import from freesurfer to pycortex DB
+    if do_import_subject:
+        hemi = "lh" if hemi == "rh" else "rh"
+        other = freesurfer.get_paths(
+            fs_subject, hemi, path_type, freesurfer_subject_dir=freesurfer_subject_dir
+        ).format(name=name)
+
+        if os.path.exists(other):  # Only when both hemi flats are present
+            freesurfer.import_flat(
+                fs_subject,
+                name,
+                cx_subject=cx_subject,
+                flat_type=flat_type,
+                auto_overwrite=auto_overwrite,
+                freesurfer_subject_dir=freesurfer_subject_dir,
+            )
 
 
 def flatten_slim(subject, hemi, patch, n_iterations=20, freesurfer_subject_dir=None,
