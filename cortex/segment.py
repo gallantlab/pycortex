@@ -18,7 +18,8 @@ from .database import db
 from .freesurfer import autorecon as run_freesurfer_recon
 from .freesurfer import import_subj as import_freesurfer_subject
 
-slim_path = options.config.get('dependency_paths', 'slim')
+default_blender_path = options.config.get('dependency_paths', 'blender')
+default_slim_path = options.config.get('dependency_paths', 'slim')
 
 
 def init_subject(subject, filenames, do_import_subject=False, **kwargs):
@@ -125,7 +126,7 @@ def edit_segmentation(subject,
 
 def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
                 freesurfer_subject_dir=None, flatten_with='freesurfer', 
-                method=None, do_import_subject=True, blender_path=None,
+                method=None, do_import_subject=True, blender_path=default_blender_path,
                 recache=True, auto_overwrite=False, **kwargs):
     """Initializes an interface to cut the segmented surface for flatmapping.
     This function creates or opens a blend file in your filestore which allows
@@ -179,7 +180,6 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
         overwritten without asking for confirmation.
     """
 
-    blender_path = blender_path or "/Applications/Blender.app/Contents/MacOS/Blender"
     if fs_subject is None:
         fs_subject = cx_subject
 
@@ -282,7 +282,7 @@ def cut_surface(cx_subject, hemi, name='flatten', fs_subject=None, data=None,
 
 
 def flatten_slim(subject, hemi, patch, n_iterations=20, freesurfer_subject_dir=None,
-                 slim_path=slim_path, do_flatten=None):
+                 slim_path=default_slim_path, do_flatten=None):
     """Flatten brain w/ slim object flattening
 
     Parameters
