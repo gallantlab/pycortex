@@ -1,9 +1,14 @@
-"""This module is intended to be imported directly by blender.
-It provides utility functions for adding meshes and saving them to communicate with the rest of pycortex
+"""
+This module is intended to be imported directly by blender.
+It provides utility functions for adding meshes and saving them to communicate with the rest of pycortex.
+
+Read more about Blender Python API here: https://docs.blender.org/api/current/index.html.
 """
 import struct
 from mda_xdrlib import xdrlib
 import tempfile
+import time
+import math
 
 import bpy.ops
 from bpy import context as C
@@ -131,7 +136,7 @@ def add_shapekey(shape, name=None):
         key.data[i].co = shape[i]
     return key
 
-def write_patch(filename, pts, edges=None):
+def _write_patch(filename, pts, edges=None):
     """Writes a patch file that is readable by freesurfer.
     
     Parameters
@@ -154,8 +159,56 @@ def write_patch(filename, pts, edges=None):
                 fp.write(struct.pack('>i3f', -i-1, *pt))
             else:
                 fp.write(struct.pack('>i3f', i+1, *pt))
+    print("Wrote freesurfer patch to %s"%filename)
 
-def _get_pts_edges(mesh):
+def _circularize_uv_coords(pts, u_min, u_max, v_min, v_max):
+    """Transform UV coordinates into a circular shape while preserving relative positions.
+    
+    Parameters
+    ----------
+    pts : dict
+        Dictionary mapping vertex indices to (u, v, z) coordinates
+    u_min, u_max, v_min, v_max : float
+        Original bounds of the UV coordinates
+        
+    Returns
+    -------
+    dict
+        Dictionary mapping vertex indices to new (u, v, z) coordinates
+    """
+    # Convert to normalized coordinates in [-1, 1] range
+    u_center = (u_max + u_min) / 2
+    v_center = (v_max + v_min) / 2
+    u_scale = (u_max - u_min) / 2
+    v_scale = (v_max - v_min) / 2
+    
+    new_pts = {}
+    for idx, (u, v, z) in pts.items():
+        # Normalize coordinates
+        u_norm = (u - u_center) / u_scale
+        v_norm = (v - v_center) / v_scale
+        
+        # Convert to polar coordinates
+        r = math.sqrt(u_norm**2 + v_norm**2)
+        theta = math.atan2(v_norm, u_norm)
+        
+        # Normalize radius to create perfect circle
+        # Use square root to preserve area/density
+        r = math.sqrt(r)
+        
+        # Convert back to Cartesian coordinates
+        u_new = r * math.cos(theta)
+        v_new = r * math.sin(theta)
+        
+        # Scale back to original range
+        u_new = u_new * u_scale + u_center
+        v_new = v_new * v_scale + v_center
+        
+        new_pts[idx] = (u_new, v_new, z)
+    
+    return new_pts
+
+def _get_geometry(mesh, hemi, flatten, method=None):
     """Function called within blender to get non-cut vertices & edges
 
     Operates on a mesh object within an open instance of blender. 
@@ -164,10 +217,26 @@ def _get_pts_edges(mesh):
     ----------
     mesh : str
         name of mesh to cut
+    hemi : str
+        hemisphere name (lh or rh)
+    flatten : bool
+        if True, returns flattened coordinates using UV unwrap
+    method : str
+        method to use for UV unwrap. One of 'CONFORMAL', 'ANGLE_BASED', 'MINIMUM_STRETCH'.
+
+    Returns
+    -------
+    verts : set
+        set of vertex indices
+    pts : list
+        list of (vertex_index, flattened_coordinates) tuples
+    edges : set
+        set of edge vertex indices
     """
     if isinstance(mesh, str):
         mesh = D.meshes[mesh]
 
+    # Collect edge vertex indices
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
@@ -175,30 +244,33 @@ def _get_pts_edges(mesh):
     bpy.ops.mesh.select_non_manifold()
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    mwall_edge = set()
+    edge_vertex_idxs = set()  # Medial wall in standard case
     for edge in mesh.edges:
         if edge.select:
-            mwall_edge.add(edge.vertices[0])
-            mwall_edge.add(edge.vertices[1])
+            edge_vertex_idxs.add(edge.vertices[0])
+            edge_vertex_idxs.add(edge.vertices[1])
 
+    # Collect seam vertex indices & select seams
     bpy.ops.object.mode_set(mode='EDIT') 
     C.tool_settings.mesh_select_mode = True, False, False
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
-    seam = set()
+    seam_vertex_idxs = set()
     for edge in mesh.edges:
         if edge.use_seam:
-            seam.add(edge.vertices[0])
-            seam.add(edge.vertices[1])
+            seam_vertex_idxs.add(edge.vertices[0])
+            seam_vertex_idxs.add(edge.vertices[1])
             edge.select = True
 
+    # Expand seam selection & collect expanded vertex indices
     bpy.ops.object.mode_set(mode='EDIT') 
     bpy.ops.mesh.select_more()
     bpy.ops.object.mode_set(mode='OBJECT')
-    smore = set()
+    expanded_seam_vertex_idxs = set()
     for i, vert in enumerate(mesh.vertices):
         if vert.select:
-            smore.add(i)
+            expanded_seam_vertex_idxs.add(i)
+
     # Leave cuts (+ area around them) selected.
     # Uncomment the next lines to revert to previous behavior
     # (deselecting everything)
@@ -206,26 +278,93 @@ def _get_pts_edges(mesh):
     # bpy.ops.mesh.select_all(action='DESELECT')
     # bpy.ops.object.mode_set(mode='OBJECT')
 
-    fverts = set()
-    if hasattr(mesh, "polygons"):
-        faces = mesh.polygons
-    else:
-        faces = mesh.faces
-    for face in faces:
-        fverts.add(face.vertices[0])
-        fverts.add(face.vertices[1])
-        fverts.add(face.vertices[2])
+    face_vertices = set()
+    for face in getattr(mesh, "polygons", getattr(mesh, "faces", None)):
+        face_vertices.add(face.vertices[0])
+        face_vertices.add(face.vertices[1])
+        face_vertices.add(face.vertices[2])
 
-    print("exported %d faces"%len(fverts))
-    edges = mwall_edge | (smore - seam)
-    verts = fverts - seam
+    verts = face_vertices - seam_vertex_idxs
     pts = [(v, D.shape_keys['Key'].key_blocks['inflated'].data[v].co) for v in verts]
+    edges = edge_vertex_idxs | (expanded_seam_vertex_idxs - seam_vertex_idxs)
+
+    if flatten:
+        # Scales
+        u_coords, v_coords = [u for _, (u, _, _) in pts], [v for _, (_, v, _) in pts]
+        u_min, u_max, v_min, v_max = min(u_coords), max(u_coords), min(v_coords), max(v_coords)
+        print("u_min: %f, u_max: %f, v_min: %f, v_max: %f"%(u_min, u_max, v_min, v_max))
+
+        if not mesh.uv_layers:
+            mesh.uv_layers.new(name="FlattenUV")
+        
+        print("UV unwrapping mesh with method %s (may take a few minutes)..."%method)
+        start = time.time()
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.unwrap(method=method, margin=0.001)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        end = time.time()
+        print("UV unwrapping mesh took %.1f seconds" % (end - start))
+        
+        print("Collecting coordinates for %d verts..."%len(verts))
+        start = time.time()
+        pts = {}
+        for loop in mesh.loops:
+            if loop.vertex_index in verts:
+                coords2d = mesh.uv_layers.active.data[loop.index].uv
+                u_scaled = coords2d[0] * (u_max - u_min) + u_min
+                v_scaled = coords2d[1] * (v_max - v_min) + v_min
+                
+                if hemi == "rh":
+                    # Rotate 180 degrees clockwise
+                    u_center = (u_max + u_min) / 2
+                    v_center = (v_max + v_min) / 2
+                    u_rotated = 2 * u_center - u_scaled
+                    v_rotated = 2 * v_center - v_scaled
+                    pts[loop.vertex_index] = (u_rotated, v_rotated, 0.0)
+                else:
+                    pts[loop.vertex_index] = (u_scaled, v_scaled, 0.0)
+        
+        # Circularize the UV coordinates
+        print("Circularizing UV coordinates...")
+        pts = _circularize_uv_coords(pts, u_min, u_max, v_min, v_max)
+        
+        pts = sorted(pts.items(), key=lambda x: x[0])
+        end = time.time()
+        print("Collecting coordinates took %.1f seconds" % (end - start))
+
+    print("Collected geometry. verts: %d, pts: %d, edges: %d"%(len(verts), len(pts), len(edges)))
     return verts, pts, edges
 
-def save_patch(fname, mesh='hemi'):
-    """Saves patch to file that can be read by freesurfer"""
-    verts, pts, edges = _get_pts_edges(mesh)
-    write_patch(fname, pts, edges)
+
+def save_patch(fname, mesh="hemi"):
+    """Deprecated: please use write_volume_patch instead"""
+    return write_volume_patch(fname, "lh", mesh)
+
+
+def write_volume_patch(fname, hemi, mesh="hemi"):
+    """Write mesh patch in freesurfer format"""
+    _, pts, edges = _get_geometry(mesh, hemi, flatten=False)
+    _write_patch(fname, pts, edges)
+
+
+def write_flat_patch(fname, hemi, mesh="hemi", method="MINIMUM_STRETCH"):
+    """Write flat patch in freesurfer format
+    
+    Parameters
+    ----------
+    fname : str
+        Output filename
+    hemi : str
+        hemisphere name (lh or rh)
+    mesh : str
+        Name of the mesh to flatten
+    method : str
+        UV unwrapping method to use
+    """
+    _, pts, edges = _get_geometry(mesh, hemi, flatten=True, method=method)
+    _write_patch(fname, pts, edges)
+
 
 def read_xdr(filename):
     with open(filename, "rb") as fp:

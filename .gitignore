@@ -60,3 +60,6 @@ docs/_build
 docs/auto_examples
 docs/generated
 docs/colormaps.rst
+
+# Python virtual environment
+.venv

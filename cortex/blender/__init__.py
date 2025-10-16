@@ -5,6 +5,7 @@ import shutil
 from mda_xdrlib import xdrlib
 import tempfile
 import subprocess as sp
+import site
 
 import numpy as np
 
@@ -16,30 +17,76 @@ from .. import utils
 default_blender = options.config.get('dependency_paths', 'blender')
 
 _base_imports = """import sys
-sys.path.insert(0, '{path}')
+for site_dir in {site_dirs}:
+    print("Adding python site directory to sys.path:", site_dir)
+    sys.path.insert(0, site_dir)
+
 from mda_xdrlib import xdrlib
 import blendlib
 import bpy.ops
 from bpy import context as C
 from bpy import data as D
-""".format(path=os.path.split(os.path.abspath(__file__))[0])
+""".format(site_dirs=[
+    os.path.split(os.path.abspath(__file__))[0],
+    *site.getsitepackages(),
+])
 
-def _call_blender(filename, code, blender_path=default_blender):
-    """Call blender, while running the given code. If the filename doesn't exist, save a new file in that location.
+
+def _wrap_code(code, filename):
+    """
+    Wrap code for running in blender
+
+    Parameters
+    ----------
+    code : str
+        code to run in blender
+    filename : str
+        file path for blender file (must end in ".blend")
+    """
+    wrapped_code = _base_imports
+    if not os.path.exists(filename):
+        wrapped_code += "blendlib.clear_all()\n"
+    wrapped_code += code
+    wrapped_code += "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
+    return wrapped_code
+
+
+def _call_blender(filename, code=None, background=True, blender_path=default_blender):
+    """
+    Call blender, while running the given code. If the filename doesn't exist, save a new file in that location.
     New files will be initially cleared by deleting all objects.
+
+    Parameters
+    ----------
+    filename : str
+        file path for blender file (must end in ".blend")
+    code : str, optional
+        code to run in blender. If None, blender will be opened without running any code.
+    background : bool, optional
+        If True, blender will be opened in background mode.
+    blender_path : str, optional
+        Path to blender executable. If None, defaults to the path specified in pycortexconfig file.
     """
     with tempfile.NamedTemporaryFile() as tf:
         print("In new named temp file: %s"%tf.name)
-        startcode = _base_imports
-        endcode = "\nbpy.ops.wm.save_mainfile(filepath='{fname}')".format(fname=filename)
-        cmd = "{blender_path} -b {fname} -P {tfname}".format(blender_path=blender_path, fname=filename, tfname=tf.name)
-        if not os.path.exists(filename):
-            startcode += "blendlib.clear_all()\n"
-            cmd = "{blender_path} -b -P {tfname}".format(blender_path=blender_path, tfname=tf.name)
-        else:
+
+        # Backup
+        if os.path.exists(filename):
             _legacy_blender_backup(filename, blender_path=blender_path)
-        tf.write((startcode+code+endcode).encode())
-        tf.flush()
+
+        # Construct command
+        cmd = blender_path
+        if background:
+            cmd += " -b"
+        if os.path.exists(filename):
+            cmd += " " + filename
+        if code is not None:
+            wrapped_code = _wrap_code(code, filename)
+            tf.write(wrapped_code.encode())
+            tf.flush()
+            cmd += " -P {tfname}".format(tfname=tf.name)
+
+        print(f"Calling blender:\n    {cmd}")
         sp.check_call([w.encode() for w in shlex.split(cmd)],)
 
 
@@ -97,7 +144,7 @@ def _legacy_blender_backup(fname, blender_path=default_blender):
                 shutil.copy(fname, fname_bkup)
 
 
-def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi", blender_path=default_blender):
+def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi", blender_path=None):
     """Add data as vertex colors to blender mesh
     
     Useful to add localizer data for help in placing flatmap cuts
@@ -117,6 +164,8 @@ def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh=
     mesh : string
         ...
     """
+    blender_path = blender_path or default_blender
+
     if isinstance(braindata, dataset.Dataset):
         for view_name, data in braindata.views.items():
             add_cutdata(fname, data, name=view_name, projection=projection, mesh=mesh)
@@ -162,10 +211,12 @@ def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh=
     return 
 
 
-def gii_cut(fname, subject, hemi, blender_path=default_blender):
+def gii_cut(fname, subject, hemi, blender_path=None):
     '''
     Add gifti surface to blender
     '''
+    blender_path = blender_path or default_blender
+
     from ..database import db
     hemis = dict(lh='left',
                  rh='right')
@@ -194,16 +245,24 @@ def gii_cut(fname, subject, hemi, blender_path=default_blender):
         _call_blender(fname, code, blender_path=blender_path)
 
 
-def fs_cut(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=default_blender):
-    """Cut freesurfer surface using blender interface
+def fs_cut_init(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=None):
+    """Initialize a blender object from a freesurfer volume.
 
     Parameters
     ----------
     fname : str
         file path for new .blend file (must end in ".blend")
-
-    if `freesurfer_subject_dir` is None, it defaults to SUBJECTS_DIR environment variable
+    subject : str
+        subject name
+    hemi : str
+        hemisphere name (lh or rh)
+    freesurfer_subject_dir : str
+        path to freesurfer subject directory. If None, it defaults to SUBJECTS_DIR environment variable
+    blender_path : str
+        path to blender executable. If None, it defaults to the path specified in pycortexconfig file.
     """
+    blender_path = blender_path or default_blender
+    
     wpts, polys, curv = freesurfer.get_surf(subject, hemi, 'smoothwm', freesurfer_subject_dir=freesurfer_subject_dir)
     ipts, _, _ = freesurfer.get_surf(subject, hemi, 'inflated', freesurfer_subject_dir=freesurfer_subject_dir)
     rcurv = np.clip(((-curv + .6) / 1.2), 0, 1)
@@ -225,8 +284,29 @@ def fs_cut(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=defau
         """.format(tfname=tf.name)
         _call_blender(fname, code, blender_path=blender_path)
 
+
+def fs_cut_open(fname, blender_path=None):
+    """Open a blender file in blender for the manual cut
+
+    Parameters
+    ----------
+    fname : str
+        file path for blender file (must end in ".blend")
+    blender_path : str
+        path to blender executable. If None, it defaults to the path specified in pycortexconfig file.
+    """
+    blender_path = blender_path or default_blender
+    
+    _call_blender(fname, background=False, blender_path=blender_path)
+
+
 def write_patch(bname, pname, mesh="hemi", blender_path=default_blender):
-    """Write out the mesh 'mesh' in the blender file 'bname' into patch file 'pname'
+    """Deprecated: please use write_volume_patch instead"""
+    return write_volume_patch(bname, pname, "hemi", mesh, blender_path)
+
+
+def write_volume_patch(bname, pname, hemi, mesh="hemi", blender_path=None):
+    """Write volume patch in freesurfer format.
     This is a necessary step for flattening the surface in freesurfer
 
     Parameters
@@ -235,11 +315,18 @@ def write_patch(bname, pname, mesh="hemi", blender_path=default_blender):
         blender file name that contains the mesh
     pname : str
         name of patch file to be saved
+    hemi : str
+        hemisphere name (lh or rh)
     mesh : str
         name of mesh in blender file
+    blender_path : str, optional
+        path to blender executable. If None, it defaults to the path specified in pycortexconfig file.
     """
+    blender_path = blender_path or default_blender
+
     p = xdrlib.Packer()
     p.pack_string(pname.encode())
+    p.pack_string(hemi.encode())
     p.pack_string(mesh.encode())
     with tempfile.NamedTemporaryFile() as tf:
         tf.write(p.get_buffer())
@@ -247,8 +334,49 @@ def write_patch(bname, pname, mesh="hemi", blender_path=default_blender):
         code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             pname = u.unpack_string().decode('utf-8')
+            hemi = u.unpack_string().decode('utf-8')
             mesh = u.unpack_string().decode('utf-8')
-            blendlib.save_patch(pname, mesh)
+            blendlib.write_volume_patch(pname, hemi, mesh)
         """.format(tfname=tf.name)
         _call_blender(bname, code, blender_path=blender_path)
+    return True
 
+def write_flat_patch(bname, pname, hemi, mesh="hemi", method="MINIMUM_STRETCH", blender_path=None):
+    """Write flat patch in freesurfer format.
+    This is a necessary step for flattening the surface in freesurfer
+
+    Parameters
+    ----------
+    bname : str
+        blender file name that contains the mesh
+    pname : str
+        name of patch file to be saved
+    hemi : str
+        hemisphere name (lh or rh)
+    mesh : str
+        name of mesh in blender file
+    method : str
+        method to use for UV unwrap. One of 'CONFORMAL', 'ANGLE_BASED', 'MINIMUM_STRETCH'.
+    blender_path : str, optional
+        path to blender executable. If None, it defaults to the path specified in pycortexconfig file.
+    """
+    blender_path = blender_path or default_blender
+
+    p = xdrlib.Packer()
+    p.pack_string(pname.encode())
+    p.pack_string(hemi.encode())
+    p.pack_string(mesh.encode())
+    p.pack_string(method.encode())
+    with tempfile.NamedTemporaryFile() as tf:
+        tf.write(p.get_buffer())
+        tf.flush()
+        code = """with open('{tfname}', 'rb') as fp:
+            u = xdrlib.Unpacker(fp.read())
+            pname = u.unpack_string().decode('utf-8')
+            hemi = u.unpack_string().decode('utf-8')
+            mesh = u.unpack_string().decode('utf-8')
+            method = u.unpack_string().decode('utf-8')
+            blendlib.write_flat_patch(pname, hemi, mesh, method)
+        """.format(tfname=tf.name)
+        _call_blender(bname, code, blender_path=blender_path)
+    return True
