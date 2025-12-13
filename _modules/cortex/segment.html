@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.segment &#8212; pycortex 1.2.11 documentation</title>
+    <title>cortex.segment &#8212; pycortex 1.2.12 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=b68a8a9d"></script>
+    <script src="../../_static/documentation_options.js?v=817200f7"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -42,8 +42,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">builtins</span><span class="w"> </span><span class="kn">import</span> <span class="nb">input</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">builtins</span><span class="w"> </span><span class="kn">import</span> <span class="nb">input</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">formats</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">blender</span>
@@ -54,7 +54,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">autorecon</span> <span class="k">as</span> <span class="n">run_freesurfer_recon</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_subj</span> <span class="k">as</span> <span class="n">import_freesurfer_subject</span>
 
-<span class="n">slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
+<span class="n">default_blender_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
+<span class="n">default_slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="init_subject">
@@ -166,7 +167,8 @@
 <a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> 
-                <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blender_cmd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">default_blender_path</span><span class="p">,</span>
+                <span class="n">recache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">auto_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
 <span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
 <span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
@@ -195,7 +197,7 @@
 <span class="sd">        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR</span>
 <span class="sd">        environment variable</span>
 <span class="sd">    flatten_with : str</span>
-<span class="sd">        &#39;freesurfer&#39; or &#39;SLIM&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s </span>
+<span class="sd">        One of &#39;freesurfer&#39;,&#39;SLIM&#39;, or &#39;blender&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s </span>
 <span class="sd">        `mris_flatten` function to flatten the cut surface. &#39;SLIM&#39; uses</span>
 <span class="sd">        the SLIM algorithm, which takes much less time but tends to leave</span>
 <span class="sd">        more distortions in the flatmap. SLIM is an optional dependency, and </span>
@@ -203,85 +205,126 @@
 <span class="sd">        (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings) </span>
 <span class="sd">        to your computer and set the slim dependency path in your pycortex config </span>
 <span class="sd">        file to point to &lt;/path/to/your/slim/install&gt;/ReweightedARAP</span>
+<span class="sd">    method : str</span>
+<span class="sd">        method to use for UV unwrap. When using Blender, it must be present and</span>
+<span class="sd">        can be one of &#39;CONFORMAL&#39;, &#39;ANGLE_BASED&#39;, &#39;MINIMUM_STRETCH&#39;.</span>
 <span class="sd">    do_import_subject : bool</span>
 <span class="sd">        set option to automatically import flatmaps when both are completed </span>
 <span class="sd">        (if set to false, you must import later with `cortex.freesurfer.import_flat()`)</span>
+<span class="sd">    blender_path : str</span>
+<span class="sd">        Path to blender executable. If None, defaults to path specified in pycortexconfig file.</span>
+<span class="sd">    recache : boolean</span>
+<span class="sd">        Whether or not to recache intermediate files. Takes longer to plot this way, potentially</span>
+<span class="sd">        resolves some errors. Useful if you&#39;ve made changes to the alignment</span>
+<span class="sd">    auto_overwrite : bool</span>
+<span class="sd">        Whether to overwrite existing flatmaps. If True, the flatmap will be</span>
+<span class="sd">        overwritten without asking for confirmation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">if</span> <span class="n">fs_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fs_subject</span> <span class="o">=</span> <span class="n">cx_subject</span>
-    <span class="n">opts</span> <span class="o">=</span> <span class="s2">&quot;[hemi=</span><span class="si">%s</span><span class="s2">,name=</span><span class="si">%s</span><span class="s2">]&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-    <span class="n">fname</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)[</span><span class="s1">&#39;anats&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;cutsurf&#39;</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="s1">&#39;blend&#39;</span><span class="p">)</span>
+
     <span class="c1"># Double-check that fiducial and inflated vertex counts match</span>
-    <span class="c1"># (these may not match if a subject is initially imported from freesurfer to pycortex, </span>
+    <span class="c1"># (these may not match if a subject is initially imported from freesurfer to pycortex,</span>
     <span class="c1"># and then edited further for a better segmentation and not re-imported)</span>
-    <span class="n">ipt</span><span class="p">,</span> <span class="n">ipoly</span><span class="p">,</span> <span class="n">inrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;inflated&#39;</span><span class="p">)</span>
-    <span class="n">fpt</span><span class="p">,</span> <span class="n">fpoly</span><span class="p">,</span> <span class="n">fnrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">)</span>
+    <span class="n">ipt</span><span class="p">,</span> <span class="n">ipoly</span><span class="p">,</span> <span class="n">inrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;inflated&quot;</span><span class="p">)</span>
+    <span class="n">fpt</span><span class="p">,</span> <span class="n">fpoly</span><span class="p">,</span> <span class="n">fnrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">ipt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">fpt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please re-import subject - fiducial and inflated vertex counts don&#39;t match!&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Please re-import subject - fiducial and inflated vertex counts don&#39;t match!&quot;</span>
+        <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Vert check ok!&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
-        <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Vert check ok!&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create blender file with cuts</span>
+    <span class="n">opts</span> <span class="o">=</span> <span class="s2">&quot;[hemi=</span><span class="si">%s</span><span class="s2">,name=</span><span class="si">%s</span><span class="s2">]&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">)[</span><span class="s2">&quot;anats&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;cutsurf&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">=</span><span class="n">opts</span><span class="p">,</span> <span class="n">ext</span><span class="o">=</span><span class="s2">&quot;blend&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initializing blender file </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">fname</span><span class="p">)</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut_init</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+
     <span class="c1"># Add localizer data to facilitate cutting</span>
     <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-                <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">description</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">blender_cmd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">blender_cmd</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
-    <span class="c1"># May be redundant after blender.fs_cut above...</span>
-    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
-        <span class="n">blender</span><span class="o">.</span><span class="n">_legacy_blender_backup</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_cmd</span><span class="p">)</span>
-    <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="n">blender_cmd</span><span class="p">,</span> <span class="n">fname</span><span class="p">])</span>
-    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span>
-                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-    <span class="n">blender</span><span class="o">.</span><span class="n">write_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">patchpath</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_cmd</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
-        <span class="n">done</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-                           <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
-                           <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
-            <span class="c1"># If flattening is aborted, skip the rest of this function</span>
-            <span class="c1"># (Do not attempt to import completed flatmaps)</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
-            <span class="c1"># Check to see if both hemispheres have been flattened</span>
-            <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
-                                         <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;.flat&quot;</span><span class="p">)</span>
-            <span class="c1"># If so, go ahead and import subject</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
-                <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cx_subject</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
-                            <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span>
-                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;SLIM&#39;</span><span class="p">:</span>
-        <span class="n">done</span> <span class="o">=</span> <span class="n">flatten_slim</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
-                            <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
-            <span class="c1"># If flattening is aborted, skip the rest of this function</span>
-            <span class="c1"># (Do not attempt to import completed flatmaps)</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
-            <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span><span class="p">,</span>
-                                         <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
-                                         <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
-            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-            <span class="c1"># If so, go ahead and import subject</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
-                <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">cx_subject</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
-                            <span class="n">flat_type</span><span class="o">=</span><span class="s1">&#39;slim&#39;</span><span class="p">,</span>
-                            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+            
+    <span class="c1"># Open blender for user to manually do the cuts</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Opening blender file </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">fname</span><span class="p">)</span>
+    <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut_open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+    
+    <span class="c1"># Generate 3D base freesurfer patch to flatten</span>
+    <span class="n">base_patch_path</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+        <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing base patch to </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">base_patch_path</span><span class="p">)</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">write_volume_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">base_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    pts_v, polys_v, _  = freesurfer.get_surf(fs_subject, hemi, &quot;patch&quot;, name, freesurfer_subject_dir=freesurfer_subject_dir)</span>
+<span class="sd">    pts_f, polys_f, _  = freesurfer.get_surf(fs_subject, hemi, &quot;patch&quot;, name+&quot;.flat&quot;, freesurfer_subject_dir=freesurfer_subject_dir)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">return</span></div>
+    <span class="c1"># Flatten</span>
+    <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;blender&#39;</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">method</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;method must be provided when using blender&quot;</span>
+
+        <span class="n">flat_patch_path</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.flat.blender&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">flat_patch_path</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">flat_patch_path</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via blender method </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">))</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">blender</span><span class="o">.</span><span class="n">write_flat_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+        <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="s2">&quot;blender&quot;</span>
+    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via freesurfer...&quot;</span><span class="p">)</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
+            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+        <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="s2">&quot;freesurfer&quot;</span>
+    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;SLIM&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via SLIM...&quot;</span><span class="p">)</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">flatten_slim</span><span class="p">(</span>
+            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+        <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;slip&quot;</span><span class="p">,</span> <span class="s2">&quot;slim&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid flatten_with: </span><span class="si">{</span><span class="n">flatten_with</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># If flattening is aborted, skip the rest of this function</span>
+    <span class="c1"># (Do not attempt to import completed flatmaps)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+        <span class="k">return</span>
+    
+    <span class="c1"># Import from freesurfer to pycortex DB</span>
+    <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
+        <span class="n">hemi</span> <span class="o">=</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span>
+        <span class="n">other</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">path_type</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>  <span class="c1"># Only when both hemi flats are present</span>
+            <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span>
+                <span class="n">fs_subject</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">cx_subject</span><span class="o">=</span><span class="n">cx_subject</span><span class="p">,</span>
+                <span class="n">flat_type</span><span class="o">=</span><span class="n">flat_type</span><span class="p">,</span>
+                <span class="n">auto_overwrite</span><span class="o">=</span><span class="n">auto_overwrite</span><span class="p">,</span>
+                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+            <span class="p">)</span></div>
 
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">flatten_slim</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">slim_path</span><span class="o">=</span><span class="n">slim_path</span><span class="p">,</span> <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">slim_path</span><span class="o">=</span><span class="n">default_slim_path</span><span class="p">,</span> <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Flatten brain w/ slim object flattening</span>
 
 <span class="sd">    Parameters</span>

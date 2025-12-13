@@ -51,8 +51,8 @@ that use the parameter `bgcolor`.
 
  .. code-block:: none
 
-    ** (inkscape:4661): WARNING **: 21:53:28.684: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4675): WARNING **: 21:53:29.613: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4389): WARNING **: 00:07:15.381: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4403): WARNING **: 00:07:16.295: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -82,7 +82,7 @@ that use the parameter `bgcolor`.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.181 seconds)
+   **Total running time of the script:** (0 minutes 3.172 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_svg.py:

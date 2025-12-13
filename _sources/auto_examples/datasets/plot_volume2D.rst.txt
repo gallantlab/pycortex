@@ -76,9 +76,9 @@ used in the last flatmap is
 
  .. code-block:: none
 
-    ** (inkscape:4499): WARNING **: 21:52:59.151: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4512): WARNING **: 21:53:00.084: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4525): WARNING **: 21:53:01.031: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4253): WARNING **: 00:06:48.776: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4266): WARNING **: 00:06:49.716: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4279): WARNING **: 00:06:50.643: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -127,7 +127,7 @@ used in the last flatmap is
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.452 seconds)
+   **Total running time of the script:** (0 minutes 4.442 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume2D.py:

@@ -82,9 +82,9 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
  .. code-block:: none
 
-    ** (inkscape:4552): WARNING **: 21:53:05.288: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4565): WARNING **: 21:53:09.480: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4580): WARNING **: 21:53:13.667: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4305): WARNING **: 00:06:54.894: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4318): WARNING **: 00:06:59.126: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4333): WARNING **: 00:07:03.358: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -156,7 +156,7 @@ shared_vmax` will allow you to specify minimum and maximum values manually.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 10.904 seconds)
+   **Total running time of the script:** (0 minutes 10.977 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volumeRGB.py:

@@ -17,7 +17,7 @@ The brain model is exported to a 3D modeling program called Blender, where you w
 
 **3. Labeling ROIs**
 
-Here you will project functional data (semantic betas or localizer data, as well as retinotopic) onto the flatmaps, allowing you to label Regions of Interest on the brain - areas responsive to faces, scenes, or whatever else we’re analyzing.
+Here you will project functional data (semantic betas or localizer data, as well as retinotopic) onto the flatmaps, allowing you to label Regions of Interest on the brain - areas responsive to faces, scenes, or whatever else we're analyzing.
 
 In this guide, we will go over the first two steps.
 
@@ -46,7 +46,7 @@ To open freesurfer:
 For example:
     ``/auto/myfolder/freesurfer/SetUpFreeSurfer.sh``
 
-Create a “subjects” directory. If a "subjects" directory doesn't exist, make one in the FreeSurfer directory. Freesurfer is finicky about directories, so this step is crucial.
+Create a "subjects" directory. If a "subjects" directory doesn't exist, make one in the FreeSurfer directory. Freesurfer is finicky about directories, so this step is crucial.
 
 
 
@@ -69,7 +69,7 @@ In this case, you just give Freesurfer the name of the very first dicom file in 
 For example:
     ``/auto/myfolder/anatomy/Subject/Subject_t1_nii -s Subject``
 
-The ‘-s Subject’ portion creates a folder, in this case a folder titled "Subject". The folder should be named for the subject.
+The '-s Subject' portion creates a folder, in this case a folder titled "Subject". The folder should be named for the subject.
 
 
 
@@ -102,14 +102,14 @@ At this stage, you just want to make sure that autorecon1 ran successfully and t
 of non-brain anatomy were not left behind. If big chunks of eye or skull were left behind, it is
 good to manually delete them yourself. If autorecon1 ran successfully, you can probably skip
 manual editing even if some anatomy was left behind since the next step, autorecon2, is quite
-accurate at determining brain surfaces even if non-brain anatomy was left behind. However, it’s good to double check that everything worked out.
+accurate at determining brain surfaces even if non-brain anatomy was left behind. However, it's good to double check that everything worked out.
 
 To pull up the newly stripped brains and make manual edits, type in your terminal:
     ``ipython``
 
     ``import cortex``
 
-    ``cortex.segment.fix_wm(‘Subject’)``
+    ``cortex.segment.fix_wm('Subject')``
 
 This should cause three windows to pop up: a mayavi viewer with the 3D brain, one of the brain in 2D, and one of a tool bar. At this point, you want to edit individual voxels. This mostly consists of getting rid of remaining skull and eyes. To do this, click the edit voxels tool on the toolbox bar or press A on your keyboard as a shortcut. After this, to delete voxels, simply right click the areas you wish to delete. If you erase something by accident and want to undo it, press CTRL + Z (this only works for the last thing you erased so be careful).
 
@@ -151,12 +151,12 @@ Tools > Configure volume brush
     Set Clone Source to Aux Volume
 
 This lets you paint from the aux volume to the mask. 
-Set Mode back to New Value if you’re done.
+Set Mode back to New Value if you're done.
 
 To change brush size:
 Tools > Configure brush info > Change Radius
 
-To change the size of the "paintbrush”, in the tool bar, go to: tools > configure brush info and
+To change the size of the "paintbrush", in the tool bar, go to: tools > configure brush info and
 change the radius. A shortcut to do the same thing is to press the numbers on the keypad of
 your keyboard (where 1 is 1x1, 4 is 4x4, etc).
 Generally you should just work with a 1-pixel radius, though.
@@ -206,9 +206,9 @@ not labeled as white matter when they should be. The command to make these edits
     
     ``import cortex``
     
-    ``cortex.segment.fix_wm(“subject”)``
+    ``cortex.segment.fix_wm("subject")``
 
-We’ll look through the results of autorecon2, examining the white matter curve and masks, and then the pial (gray matter) curve. This can be a lengthy process; because it’s an entirely nonverbal task, I recommend listening to podcasts as you go.    
+We'll look through the results of autorecon2, examining the white matter curve and masks, and then the pial (gray matter) curve. This can be a lengthy process; because it's an entirely nonverbal task, I recommend listening to podcasts as you go.    
 
 |
 
@@ -221,10 +221,94 @@ it shouldn't (such as gray matter and/or leftover pieces of eye or skull) as wel
 green/yellow surfaces. Make sure to hit "A" to switch to edit mode.
 
 
-Autorecon on the white matter surface should take about 2 hours. These manual edits are an iterative process; when it’s done, go back and look over the 3D surface, and make any changes that seem necessary. New spikes can appear in unexpected places, so three or four iterations may be needed, probably more if you are just starting to learn how to do it.
+Autorecon on the white matter surface should take about 2 hours. These manual edits are an iterative process; when it's done, go back and look over the 3D surface, and make any changes that seem necessary. New spikes can appear in unexpected places, so three or four iterations may be needed, probably more if you are just starting to learn how to do it.
 
 
+Making cuts
+##################################
+
+After completing the segmentation phase, the next step is to make cuts in the brain surface to prepare it for flattening. This process involves creating cuts along the brain's sulci to transform the 3D surface into a 2D flatmap with minimal distortion.
+
+PyCortex provides three different methods for cutting and flattening brain surfaces:
+
+**1. Freesurfer (Recommended)**
+The traditional and most reliable method that uses Freesurfer's `mris_flatten` command. This method produces high-quality flatmaps with minimal distortion but takes approximately 2 hours per hemisphere.
+
+**2. SLIM**
+An experimental method using the SLIM algorithm that is very fast but tends to leave more distortions in the flatmap. Requires additional installation of the SLIM dependency.
+
+**3. Blender**
+A newer method that uses Blender's UV unwrapping capabilities for faster flattening (typically 5-15 minutes per hemisphere). While faster, it may introduce more distortion compared to Freesurfer.
+
+The complete process begins with manual cutting in Blender, where you'll make cuts to prepare the surface for flattening. Once the cuts are complete, the cut surface is automatically flattened using your chosen method. Finally, the resulting flatmap is imported into PyCortex for visualization and analysis.
+
+You may follow the steps below or a `Python notebook <https://colab.research.google.com/github/dmitry-mli/pycortex/blob/blender-flattening-support/examples/quickstart/fmri_flattening.ipynb>`_.
+
+Step 1: Manual Cutting in Blender
+***************************************************
+
+Start the cutting process by calling `cortex.segment.cut_surface()`. This function will create a Blender file with your brain surface, open Blender automatically, and allow you to make manual cuts for the left hemisphere.
+
+.. code-block:: python
+
+    import cortex
+    
+    cortex.segment.cut_surface(
+        "sub-01",                   # Your subject ID
+        "lh",                       # Left hemisphere
+        name="flatten",             # Name for this flattening attempt
+        flatten_with="freesurfer",  # Or "SLIM" or "blender"
+        recache=True,               # Force recache of the subject
+        do_import_subject=False,    # Don't import until both hemispheres are done
+    )
+
+To make the cuts please watch the `cutting tutorial video <https://www.youtube.com/watch?v=D4tylQ_mMuM>`_.
+
+Step 2: Repeat for Right Hemisphere
+***************************************************
+
+After completing the left hemisphere, repeat the process for the right hemisphere.
+
+.. code-block:: python
+
+    cortex.segment.cut_surface(
+        "sub-01",                   # Your subject ID
+        "rh",                       # Right hemisphere
+        name="flatten",             # Name for this flattening attempt
+        flatten_with="freesurfer",  # Or "SLIM" or "blender"
+        recache=True,               # Force recache of the subject
+        auto_overwrite=True,        # Overwrite PyCortex record
+        do_import_subject=True,     # Import both hemispheres when done
+    )
+
+After completing both hemispheres, your flatmap will be automatically imported into PyCortex and ready for visualization and analysis.
 
 
+Step 3: Verify the cuts
+***************************************************
 
+After completing both hemispheres, your flatmap will be automatically imported into PyCortex and ready for visualization and analysis.
 
+To verify that your cuts and flattening worked correctly, you can visualize the results using PyCortex's visualization tools. Here's a verification script:
+
+.. code-block:: python
+
+    import cortex
+    import numpy as np
+    from matplotlib import pyplot as plt
+    
+    test_data = np.random.rand(1000)  # Random data
+    
+    vol = cortex.Volume(
+        test_data,
+        subject="sub-01",
+        xfmname="full",
+        vmin=0,
+        vmax=1
+    )
+    
+    # Display the visualization on the flatmap
+    cortex.quickshow(vol, with_colorbar=True, recache=True)
+    plt.show()
+
+Alternatively, you may follow one of the examples from the gallery.

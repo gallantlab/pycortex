@@ -5,14 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>cortex.segment.cut_surface &#8212; pycortex 1.2.11 documentation</title>
+    <title>cortex.segment.cut_surface &#8212; pycortex 1.2.12 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../_static/documentation_options.js?v=b68a8a9d"></script>
+    <script src="../_static/documentation_options.js?v=817200f7"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -38,7 +38,7 @@
 <h1>cortex.segment.cut_surface<a class="headerlink" href="#cortex-segment-cut-surface" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.segment.cut_surface">
-<span class="sig-prename descclassname"><span class="pre">cortex.segment.</span></span><span class="sig-name descname"><span class="pre">cut_surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cx_subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hemi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flatten'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fs_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freesurfer_subject_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flatten_with</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'freesurfer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_import_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blender_cmd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#cut_surface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.segment.cut_surface" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">cortex.segment.</span></span><span class="sig-name descname"><span class="pre">cut_surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cx_subject</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hemi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'flatten'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fs_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freesurfer_subject_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flatten_with</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'freesurfer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_import_subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blender_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'blender'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/segment.html#cut_surface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.segment.cut_surface" title="Link to this definition">¶</a></dt>
 <dd><p>Initializes an interface to cut the segmented surface for flatmapping.
 This function creates or opens a blend file in your filestore which allows
 surfaces to be cut along hand-defined seams. Blender will automatically
@@ -65,7 +65,7 @@ None defaults to <cite>cx_subject</cite></p>
 <dt><strong>freesurfer_subject_dir</strong><span class="classifier">str</span></dt><dd><p>Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR
 environment variable</p>
 </dd>
-<dt><strong>flatten_with</strong><span class="classifier">str</span></dt><dd><p>‘freesurfer’ or ‘SLIM’ - ‘freesurfer’ (default) uses freesurfer’s 
+<dt><strong>flatten_with</strong><span class="classifier">str</span></dt><dd><p>One of ‘freesurfer’,’SLIM’, or ‘blender’ - ‘freesurfer’ (default) uses freesurfer’s 
 <cite>mris_flatten</cite> function to flatten the cut surface. ‘SLIM’ uses
 the SLIM algorithm, which takes much less time but tends to leave
 more distortions in the flatmap. SLIM is an optional dependency, and 
@@ -74,8 +74,19 @@ must be installed to work; clone the code
 to your computer and set the slim dependency path in your pycortex config 
 file to point to &lt;/path/to/your/slim/install&gt;/ReweightedARAP</p>
 </dd>
+<dt><strong>method</strong><span class="classifier">str</span></dt><dd><p>method to use for UV unwrap. When using Blender, it must be present and
+can be one of ‘CONFORMAL’, ‘ANGLE_BASED’, ‘MINIMUM_STRETCH’.</p>
+</dd>
 <dt><strong>do_import_subject</strong><span class="classifier">bool</span></dt><dd><p>set option to automatically import flatmaps when both are completed 
 (if set to false, you must import later with <cite>cortex.freesurfer.import_flat()</cite>)</p>
+</dd>
+<dt><strong>blender_path</strong><span class="classifier">str</span></dt><dd><p>Path to blender executable. If None, defaults to path specified in pycortexconfig file.</p>
+</dd>
+<dt><strong>recache</strong><span class="classifier">boolean</span></dt><dd><p>Whether or not to recache intermediate files. Takes longer to plot this way, potentially
+resolves some errors. Useful if you’ve made changes to the alignment</p>
+</dd>
+<dt><strong>auto_overwrite</strong><span class="classifier">bool</span></dt><dd><p>Whether to overwrite existing flatmaps. If True, the flatmap will be
+overwritten without asking for confirmation.</p>
 </dd>
 </dl>
 </dd>

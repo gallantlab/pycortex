@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**02:18.569** total execution time for 12 files **from auto_examples/quickflat**:
+**02:21.529** total execution time for 12 files **from auto_examples/quickflat**:
 
 .. container::
 
@@ -33,38 +33,38 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``plot_connected_vertices.py``)
-     - 00:58.463
+     - 01:00.590
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``plot_zoom_to_roi.py``)
-     - 00:35.574
+     - 00:36.188
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``plot_make_gif.py``)
-     - 00:08.884
+     - 00:08.874
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``plot_make_figure.py``)
-     - 00:07.803
+     - 00:07.745
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``plot_sulci.py``)
-     - 00:06.485
+     - 00:06.791
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``plot_rois.py``)
-     - 00:03.670
+     - 00:03.675
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``plot_advanced_compositing.py``)
-     - 00:03.522
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)
-     - 00:03.181
+     - 00:03.515
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``plot_make_svg.py``)
-     - 00:03.181
+     - 00:03.172
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)
+     - 00:03.160
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py` (``plot_thickness_nanmean.py``)
-     - 00:03.053
+     - 00:03.058
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``plot_cutouts.py``)
-     - 00:02.552
+     - 00:02.553
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``plot_dropout.py``)
-     - 00:02.200
+     - 00:02.206
      - 0.0

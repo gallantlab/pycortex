@@ -46,7 +46,7 @@ show all of the vertices listed in the path.
 
  .. code-block:: none
 
-    ** (inkscape:5087): WARNING **: 21:56:12.345: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4924): WARNING **: 00:10:06.079: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -92,7 +92,7 @@ show all of the vertices listed in the path.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 6.687 seconds)
+   **Total running time of the script:** (0 minutes 6.821 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_path.py:

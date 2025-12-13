@@ -47,7 +47,7 @@ overlays.svg file in the pycortex filestore for this subject.
     Found 100.00% of EBA
     Cutting 0 overlapping voxels (should be < ~50)
     Generating a flatmap cache
-    ** (inkscape:5225): WARNING **: 21:57:33.397: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5057): WARNING **: 00:11:28.388: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -93,7 +93,7 @@ overlays.svg file in the pycortex filestore for this subject.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 8.256 seconds)
+   **Total running time of the script:** (0 minutes 8.357 seconds)
 
 
 .. _sphx_glr_download_auto_examples_utils_plot_roi_voxel_mask.py:

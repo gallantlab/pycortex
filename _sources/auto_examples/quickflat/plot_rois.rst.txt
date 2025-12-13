@@ -64,8 +64,8 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 
  .. code-block:: none
 
-    ** (inkscape:4715): WARNING **: 21:53:34.689: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4728): WARNING **: 21:53:35.612: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4470): WARNING **: 00:07:24.716: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4484): WARNING **: 00:07:25.635: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -100,7 +100,7 @@ By default, ROIs and ROI labels are displayed when a flatmap is plotted using
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.670 seconds)
+   **Total running time of the script:** (0 minutes 3.675 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_rois.py:

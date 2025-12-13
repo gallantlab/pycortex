@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**05:21.517** total execution time for 44 files **from all galleries**:
+**05:27.349** total execution time for 44 files **from all galleries**:
 
 .. container::
 
@@ -33,100 +33,100 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``../examples/quickflat/plot_connected_vertices.py``)
-     - 00:58.463
+     - 01:00.590
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``../examples/quickflat/plot_zoom_to_roi.py``)
-     - 00:35.574
+     - 00:36.188
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py` (``../examples/surface_analyses/plot_tissots_indicatrix.py``)
-     - 00:24.472
+     - 00:24.906
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py` (``../examples/surface_analyses/plot_flatmap_distortion.py``)
-     - 00:22.369
+     - 00:23.126
      - 0.0
    * - :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py` (``../examples/utils/plot_roi_voxel_index_volume.py``)
-     - 00:22.006
+     - 00:22.647
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py` (``../examples/surface_analyses/plot_subsurfaces.py``)
-     - 00:16.643
+     - 00:17.016
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py` (``../examples/datasets/plot_dataset_arithmetic.py``)
-     - 00:14.258
+     - 00:14.393
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py` (``../examples/surface_analyses/plot_geodesic_distance.py``)
-     - 00:13.402
+     - 00:13.493
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py` (``../examples/surface_analyses/plot_interpolate_data.py``)
-     - 00:11.549
+     - 00:11.456
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py` (``../examples/datasets/plot_volumeRGB.py``)
-     - 00:10.904
+     - 00:10.977
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``../examples/quickflat/plot_make_gif.py``)
-     - 00:08.884
+     - 00:08.874
      - 0.0
    * - :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_mask.py` (``../examples/utils/plot_roi_voxel_mask.py``)
-     - 00:08.256
+     - 00:08.357
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``../examples/quickflat/plot_make_figure.py``)
-     - 00:07.803
+     - 00:07.745
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py` (``../examples/surface_analyses/plot_geodesic_path.py``)
-     - 00:06.687
+     - 00:06.821
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``../examples/quickflat/plot_sulci.py``)
-     - 00:06.485
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py` (``../examples/datasets/plot_volume_to_vertex.py``)
-     - 00:05.005
+     - 00:06.791
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickstart_plot_retinotopy_flatmap.py` (``../examples/quickstart/plot_retinotopy_flatmap.py``)
-     - 00:04.722
+     - 00:05.064
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py` (``../examples/datasets/plot_volume_to_vertex.py``)
+     - 00:05.032
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volume.py` (``../examples/datasets/plot_volume.py``)
-     - 00:04.542
+     - 00:04.537
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py` (``../examples/datasets/plot_volume2D.py``)
-     - 00:04.452
+     - 00:04.442
      - 0.0
    * - :ref:`sphx_glr_auto_examples_utils_plot_get_roi_vertices.py` (``../examples/utils/plot_get_roi_vertices.py``)
-     - 00:03.873
+     - 00:03.782
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``../examples/quickflat/plot_rois.py``)
-     - 00:03.670
+     - 00:03.675
      - 0.0
    * - :ref:`sphx_glr_auto_examples_utils_plot_voxel_distance_from_surface.py` (``../examples/utils/plot_voxel_distance_from_surface.py``)
-     - 00:03.581
+     - 00:03.611
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``../examples/quickflat/plot_advanced_compositing.py``)
-     - 00:03.522
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py` (``../examples/datasets/plot_vertex.py``)
-     - 00:03.184
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``../examples/quickflat/plot_make_png.py``)
-     - 00:03.181
+     - 00:03.515
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``../examples/quickflat/plot_make_svg.py``)
-     - 00:03.181
+     - 00:03.172
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``../examples/quickflat/plot_make_png.py``)
+     - 00:03.160
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py` (``../examples/datasets/plot_vertex.py``)
+     - 00:03.148
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py` (``../examples/quickflat/plot_thickness_nanmean.py``)
-     - 00:03.053
+     - 00:03.058
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``../examples/quickflat/plot_cutouts.py``)
-     - 00:02.552
+     - 00:02.553
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``../examples/quickflat/plot_dropout.py``)
-     - 00:02.200
+     - 00:02.206
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py` (``../examples/datasets/plot_vertex2D.py``)
-     - 00:01.436
+     - 00:01.416
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py` (``../examples/datasets/plot_vertexRGB.py``)
-     - 00:01.421
+     - 00:01.407
      - 0.0
    * - :ref:`sphx_glr_auto_examples_utils_plot_mosaic.py` (``../examples/utils/plot_mosaic.py``)
-     - 00:00.187
+     - 00:00.191
      - 0.0
    * - :ref:`sphx_glr_auto_examples_fsaverage_upsample_to_fsaverage.py` (``../examples/fsaverage/upsample_to_fsaverage.py``)
      - 00:00.000

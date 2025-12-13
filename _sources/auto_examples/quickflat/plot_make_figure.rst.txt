@@ -94,11 +94,11 @@ This can be helpful if you think there is no reason that the
 
  .. code-block:: none
 
-    ** (inkscape:4938): WARNING **: 21:55:25.888: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4953): WARNING **: 21:55:26.761: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4966): WARNING **: 21:55:27.724: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4979): WARNING **: 21:55:28.729: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4992): WARNING **: 21:55:29.840: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4750): WARNING **: 00:09:18.705: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4763): WARNING **: 00:09:19.580: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4776): WARNING **: 00:09:20.552: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4789): WARNING **: 00:09:21.516: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4802): WARNING **: 00:09:22.615: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -155,7 +155,7 @@ This can be helpful if you think there is no reason that the
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 7.803 seconds)
+   **Total running time of the script:** (0 minutes 7.745 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_figure.py:

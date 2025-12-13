@@ -69,9 +69,9 @@ on the brain.
 
  .. code-block:: none
 
-    ** (inkscape:4419): WARNING **: 21:52:49.520: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4432): WARNING **: 21:52:50.429: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4445): WARNING **: 21:52:51.347: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4171): WARNING **: 00:06:39.189: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4184): WARNING **: 00:06:40.094: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4197): WARNING **: 00:06:40.997: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -115,7 +115,7 @@ on the brain.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.542 seconds)
+   **Total running time of the script:** (0 minutes 4.537 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_volume.py:

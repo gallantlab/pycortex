@@ -228,6 +228,13 @@ Greys_r
    :width: 200px
 
 
+HCP_MMP1
+
+.. image:: ../filestore/colormaps/HCP_MMP1.png
+   :height: 25px
+   :width: 200px
+
+
 J4
 
 .. image:: ../filestore/colormaps/J4.png
@@ -634,6 +641,20 @@ Reds_r
    :width: 200px
 
 
+Retinotopy_HSV_2x_alpha
+
+.. image:: ../filestore/colormaps/Retinotopy_HSV_2x_alpha.png
+   :height: 200px
+   :width: 200px
+
+
+Retinotopy_HSV_alpha
+
+.. image:: ../filestore/colormaps/Retinotopy_HSV_alpha.png
+   :height: 200px
+   :width: 200px
+
+
 Retinotopy_RYBCR
 
 .. image:: ../filestore/colormaps/Retinotopy_RYBCR.png
@@ -942,6 +963,20 @@ cubehelix_r
    :width: 200px
 
 
+custom2D_RB_bins_256
+
+.. image:: ../filestore/colormaps/custom2D_RB_bins_256.png
+   :height: 200px
+   :width: 200px
+
+
+eccentricity_alpha_2D
+
+.. image:: ../filestore/colormaps/eccentricity_alpha_2D.png
+   :height: 200px
+   :width: 200px
+
+
 fire
 
 .. image:: ../filestore/colormaps/fire.png
@@ -1201,6 +1236,13 @@ nipy_spectral
    :width: 200px
 
 
+nipy_spectral_alpha
+
+.. image:: ../filestore/colormaps/nipy_spectral_alpha.png
+   :height: 200px
+   :width: 200px
+
+
 nipy_spectral_r
 
 .. image:: ../filestore/colormaps/nipy_spectral_r.png
@@ -1292,6 +1334,13 @@ seismic
    :width: 200px
 
 
+seismic_alpha
+
+.. image:: ../filestore/colormaps/seismic_alpha.png
+   :height: 200px
+   :width: 200px
+
+
 seismic_r
 
 .. image:: ../filestore/colormaps/seismic_r.png
@@ -1303,6 +1352,13 @@ spectral
 
 .. image:: ../filestore/colormaps/spectral.png
    :height: 25px
+   :width: 200px
+
+
+spectral_alpha
+
+.. image:: ../filestore/colormaps/spectral_alpha.png
+   :height: 200px
    :width: 200px
 
 
