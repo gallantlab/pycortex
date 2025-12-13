@@ -17,7 +17,7 @@ from os.path import lexists, dirname, join as opj, curdir
 # since the __version__ will be later automatically parsed by adding the git
 # commit hash
 # so valid versions will be 1.2.1.dev0, 1.4.dev0, etc
-__version__ = '1.3.0.dev0'
+__version__ = '1.2.12'
 __hardcoded_version__ = __version__
 __full_version__ = __version__
 
