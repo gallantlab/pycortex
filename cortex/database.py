@@ -483,7 +483,7 @@ class Database(object):
         return Transform(xfmdict[xfmtype], reference)
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both'], merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
         ...
 
     @overload
