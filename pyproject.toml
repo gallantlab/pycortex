@@ -1,8 +1,12 @@
 [build-system]
 # Minimum requirements for the build system to execute, according to PEP518
 # specification.
-requires = ["setuptools", "build", "numpy", "cython", "wheel"]
+requires = ["setuptools>=64", "setuptools-scm>=8", "build", "numpy", "cython", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_file = "cortex/_version.py"
+local_scheme = "no-local-version"
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,*.css,*.min.*,*.gii,resources,OpenCTM-1.0.3,filestore,build,_build'
