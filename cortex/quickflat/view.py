@@ -173,6 +173,11 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
                                           legacy_mode=legacy_mode,
                                           recache=recache)
         layers['curvature'] = curv_im
+
+    # Check for unsupported kwargs
+    if len(kwargs) > 0:
+        raise TypeError(f"make_figure() got unexpected keyword argument(s): {', '.join(sorted(kwargs))}")
+
     # Add dropout
     if with_dropout is not False:
         # Support old api:
