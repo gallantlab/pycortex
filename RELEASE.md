@@ -5,61 +5,75 @@ This document describes how to release a new version of pycortex.
 ## Prerequisites
 
 - Push access to the main repository
-- PyPI publishing is handled automatically via GitHub Actions
+- Maintainer access to create GitHub releases
+- PyPI/TestPyPI environments must be configured with trusted publishing (done by repository admins)
 
-## Steps
+## Simplified Release Process
 
-### 1. Update the version number
+Version numbers are now automatically derived from git tags using `setuptools-scm`. You no longer need to manually edit version files.
 
-Edit `cortex/version.py` and change the version from development to release:
+### Steps
 
-```python
-# Change from:
-__version__ = '1.3.0.dev0'
+#### 1. Create a GitHub Release
 
-# To:
-__version__ = '1.2.12'
-```
+1. Go to https://github.com/gallantlab/pycortex/releases
+2. Click "Draft a new release"
+3. Click "Choose a tag" and type a new tag name following semantic versioning (e.g., `v1.3.0`)
+4. Click "Create new tag: vX.Y.Z on publish"
+5. Set the release title (e.g., "Version 1.3.0")
+6. Use "Generate release notes" to auto-populate from merged PRs, or write custom notes
+7. Click "Publish release"
 
-### 2. Commit the version change
+That's it! The GitHub Actions workflow will automatically:
+- Detect the new release event
+- Checkout the code with full git history
+- Use `setuptools-scm` to derive the version from the git tag
+- Build the source distribution and wheel
+- Publish to PyPI (from the `pypi` environment)
+- Publish to TestPyPI (from the `testpypi` environment)
 
-```bash
-git add cortex/version.py
-git commit -m "MNT version 1.2.12"
-```
+#### 2. Verify the Release
 
-### 3. Create and push the tag
-
-Use an annotated tag:
-
-```bash
-git tag -a 1.2.12 -m "Version 1.2.12"
-git push origin main
-git push origin 1.2.12
-```
-
-This triggers GitHub Actions to:
-- Build and publish the source distribution to PyPI
-- Build and deploy documentation to GitHub Pages
-
-### 4. Create GitHub Release (optional)
-
-Go to https://github.com/gallantlab/pycortex/releases and create a new release from the tag. Use "Generate release notes" to auto-populate from merged PRs.
-
-### 5. Bump back to development version
-
-```bash
-# Edit cortex/version.py back to dev version
-# e.g., __version__ = '1.3.0.dev0'
-
-git add cortex/version.py
-git commit -m "MNT back to dev [skip ci]"
-git push origin main
-```
+- Check that the GitHub Actions workflow completed successfully
+- Verify the package appears on PyPI: https://pypi.org/project/pycortex/
+- Verify the package appears on TestPyPI: https://test.pypi.org/project/pycortex/
+- Test installing the new version: `pip install --upgrade pycortex`
 
 ## Versioning
 
-- Release versions: `X.Y.Z` (e.g., `1.2.12`)
-- Development versions: `X.Y.Z.dev0` (e.g., `1.3.0.dev0`)
+- Version numbers are automatically derived from git tags by `setuptools-scm`
+- Release versions: `vX.Y.Z` (e.g., `v1.3.0`) → published as `X.Y.Z` on PyPI
+- Development versions between releases: `X.Y.Z.devN` (automatically generated)
+- Use semantic versioning: MAJOR.MINOR.PATCH
 
-The version in `cortex/version.py` is the single source of truth, used by `setup.py` and documentation.
+## Manual Testing (TestPyPI only)
+
+To test the release process without publishing to PyPI:
+
+1. Go to https://github.com/gallantlab/pycortex/actions/workflows/publish.yml
+2. Click "Run workflow"
+3. Select the branch to test
+4. Click "Run workflow"
+
+This will build the package and publish only to TestPyPI, not to PyPI.
+
+## Troubleshooting
+
+### Build fails due to shallow clone
+
+The workflow uses `fetch-depth: 0` to ensure full git history is available for `setuptools-scm`. If builds fail with version detection errors, check that this setting is present in the workflow.
+
+### Version number is incorrect
+
+`setuptools-scm` derives versions from git tags. Ensure:
+- Tags follow the format `vX.Y.Z` or `X.Y.Z`
+- Tags are annotated tags (created with `git tag -a`)
+- The repository has at least one tag
+
+### Publishing fails
+
+Check that:
+- The PyPI/TestPyPI environments are configured in the repository settings
+- Trusted publishing is configured for this repository on PyPI/TestPyPI
+- The workflow has the necessary permissions (`id-token: write`)
+
