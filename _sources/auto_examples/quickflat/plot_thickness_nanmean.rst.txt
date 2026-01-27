@@ -57,8 +57,8 @@ has the value NaN.
 
  .. code-block:: none
 
-    ** (inkscape:4859): WARNING **: 02:12:04.443: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4872): WARNING **: 02:12:05.449: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4785): WARNING **: 02:16:24.748: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4798): WARNING **: 02:16:25.757: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -101,7 +101,7 @@ has the value NaN.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.083 seconds)
+   **Total running time of the script:** (0 minutes 3.033 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_thickness_nanmean.py:

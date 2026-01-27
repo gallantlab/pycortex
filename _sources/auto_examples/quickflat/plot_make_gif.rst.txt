@@ -102,8 +102,8 @@ Plot flat maps individually
 
  .. code-block:: none
 
-    ** (inkscape:4780): WARNING **: 02:11:55.613: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4793): WARNING **: 02:11:56.513: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4684): WARNING **: 02:16:15.955: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4697): WARNING **: 02:16:16.866: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -129,8 +129,8 @@ Generate an animated gif that switches between frames every 1.5 seconds
 
  .. code-block:: none
 
-    ** (inkscape:4806): WARNING **: 02:11:58.722: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4820): WARNING **: 02:11:59.979: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4727): WARNING **: 02:16:19.080: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4740): WARNING **: 02:16:20.348: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -162,8 +162,8 @@ Display gif inline in an IPython notebook
 
  .. code-block:: none
 
-    ** (inkscape:4833): WARNING **: 02:12:01.601: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4846): WARNING **: 02:12:02.853: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4753): WARNING **: 02:16:21.952: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4772): WARNING **: 02:16:23.216: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
     <IPython.core.display.Image object>
 
@@ -176,7 +176,7 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 8.572 seconds)
+   **Total running time of the script:** (0 minutes 8.551 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:

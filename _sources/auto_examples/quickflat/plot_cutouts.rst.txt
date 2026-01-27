@@ -45,8 +45,8 @@ name of the flatmap cutout defined in the `overlays.svg` file.
 
  .. code-block:: none
 
-    ** (inkscape:4670): WARNING **: 02:10:49.084: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4683): WARNING **: 02:10:49.880: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4591): WARNING **: 02:15:09.283: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4605): WARNING **: 02:15:10.068: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -76,7 +76,7 @@ name of the flatmap cutout defined in the `overlays.svg` file.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 2.547 seconds)
+   **Total running time of the script:** (0 minutes 2.524 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_cutouts.py:

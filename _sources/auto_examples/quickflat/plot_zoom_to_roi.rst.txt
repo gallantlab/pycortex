@@ -52,9 +52,9 @@ show just the region around that ROI.
 
  .. code-block:: none
 
-    ** (inkscape:4885): WARNING **: 02:12:07.620: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4811): WARNING **: 02:16:27.860: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
     Generating a flatmap cache
-    ** (inkscape:4907): WARNING **: 02:12:37.018: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4833): WARNING **: 02:16:56.303: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -103,7 +103,7 @@ show just the region around that ROI.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 37.087 seconds)
+   **Total running time of the script:** (0 minutes 35.663 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_zoom_to_roi.py:

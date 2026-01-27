@@ -42,9 +42,9 @@ quickflat.composite sub-module.
 
  .. code-block:: none
 
-    ** (inkscape:4985): WARNING **: 02:12:53.071: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4998): WARNING **: 02:12:53.735: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:5011): WARNING **: 02:12:54.477: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4916): WARNING **: 02:17:11.803: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4929): WARNING **: 02:17:12.462: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4942): WARNING **: 02:17:13.199: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -95,7 +95,7 @@ quickflat.composite sub-module.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 3.520 seconds)
+   **Total running time of the script:** (0 minutes 3.488 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_advanced_compositing.py:

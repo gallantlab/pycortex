@@ -100,7 +100,7 @@ plot data on subsurface
 
  .. code-block:: none
 
-    ** (inkscape:5127): WARNING **: 02:14:11.127: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5033): WARNING **: 02:18:28.750: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -171,7 +171,7 @@ create many patches
 
  .. code-block:: none
 
-    ** (inkscape:5141): WARNING **: 02:14:15.777: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5049): WARNING **: 02:18:33.368: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -233,9 +233,9 @@ create geodesic strip patch
 
  .. code-block:: none
 
-    ** (inkscape:5154): WARNING **: 02:14:23.830: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:5168): WARNING **: 02:14:24.694: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:5181): WARNING **: 02:14:25.555: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5064): WARNING **: 02:18:41.428: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5077): WARNING **: 02:18:42.283: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:5090): WARNING **: 02:18:43.140: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -243,7 +243,7 @@ create geodesic strip patch
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 16.685 seconds)
+   **Total running time of the script:** (0 minutes 16.626 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_subsurfaces.py:

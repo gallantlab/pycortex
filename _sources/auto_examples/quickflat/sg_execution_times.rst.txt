@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**02:20.651** total execution time for 12 files **from auto_examples/quickflat**:
+**02:18.978** total execution time for 12 files **from auto_examples/quickflat**:
 
 .. container::
 
@@ -33,38 +33,38 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py` (``plot_connected_vertices.py``)
-     - 00:59.301
+     - 00:59.496
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py` (``plot_zoom_to_roi.py``)
-     - 00:37.087
+     - 00:35.663
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py` (``plot_make_gif.py``)
-     - 00:08.572
+     - 00:08.551
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py` (``plot_make_figure.py``)
-     - 00:07.752
+     - 00:07.687
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py` (``plot_sulci.py``)
-     - 00:06.647
+     - 00:06.433
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py` (``plot_rois.py``)
-     - 00:03.643
+     - 00:03.698
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py` (``plot_advanced_compositing.py``)
-     - 00:03.520
+     - 00:03.488
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py` (``plot_make_svg.py``)
-     - 00:03.155
+     - 00:03.125
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py` (``plot_make_png.py``)
-     - 00:03.141
+     - 00:03.111
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py` (``plot_thickness_nanmean.py``)
-     - 00:03.083
+     - 00:03.033
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py` (``plot_cutouts.py``)
-     - 00:02.547
+     - 00:02.524
      - 0.0
    * - :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py` (``plot_dropout.py``)
-     - 00:02.202
+     - 00:02.167
      - 0.0
