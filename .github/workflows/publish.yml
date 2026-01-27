@@ -28,7 +28,7 @@ jobs:
         python -m pip install build
 
     - name: Build package
-      run: python -m build
+      run: python -m build --sdist
 
     - name: Check package with twine (informational)
       run: |
