@@ -43,8 +43,8 @@ displaying the sulci on the surface.
  .. code-block:: none
 
     Generating curvature surface info...
-    ** (inkscape:4349): WARNING **: 00:07:10.268: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4362): WARNING **: 00:07:11.064: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4577): WARNING **: 02:10:37.303: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    ** (inkscape:4590): WARNING **: 02:10:38.097: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
 
@@ -71,7 +71,7 @@ displaying the sulci on the surface.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 6.791 seconds)
+   **Total running time of the script:** (0 minutes 6.647 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_sulci.py:

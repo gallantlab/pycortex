@@ -4,14 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cortex.segment &#8212; pycortex 1.2.12 documentation</title>
+    <title>cortex.segment &#8212; pycortex 1.3.0.dev0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <script src="../../_static/documentation_options.js?v=817200f7"></script>
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
     <script src="../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -34,10 +34,9 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.segment</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Controls functions for segmentation of white/gray matter and other things in the brain.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Controls functions for segmentation of white/gray matter and other things in the brain.&quot;&quot;&quot;</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -54,8 +53,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">autorecon</span> <span class="k">as</span> <span class="n">run_freesurfer_recon</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.freesurfer</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_subj</span> <span class="k">as</span> <span class="n">import_freesurfer_subject</span>
 
-<span class="n">default_blender_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;blender&#39;</span><span class="p">)</span>
-<span class="n">default_slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;slim&#39;</span><span class="p">)</span>
+<span class="n">default_blender_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_paths&quot;</span><span class="p">,</span> <span class="s2">&quot;blender&quot;</span><span class="p">)</span>
+<span class="n">default_slim_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_paths&quot;</span><span class="p">,</span> <span class="s2">&quot;slim&quot;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="init_subject">
@@ -63,12 +62,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">init_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">filenames</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the first initial segmentation for a subject&#39;s anatomy (in Freesurfer).</span>
 
-<span class="sd">    This function creates a Freesurfer subject and runs autorecon-all, </span>
+<span class="sd">    This function creates a Freesurfer subject and runs autorecon-all,</span>
 <span class="sd">    then (optionally) imports the subject into the pycortex database.</span>
 
-<span class="sd">    NOTE: This function requires a functional Freesurfer install! </span>
+<span class="sd">    NOTE: This function requires a functional Freesurfer install!</span>
 <span class="sd">    Also, still can&#39;t handle T2 weighted anatomical volume input. Please use</span>
-<span class="sd">    Freesurfer directly (and then import) for advanced recon-all input </span>
+<span class="sd">    Freesurfer directly (and then import) for advanced recon-all input</span>
 <span class="sd">    options; this is just a convenience function.</span>
 
 <span class="sd">    Parameters</span>
@@ -82,18 +81,20 @@
 <span class="sd">        file, etc.</span>
 <span class="sd">    do_import_subject : bool</span>
 <span class="sd">        Whether to import the Freesurfer-processed subject (without further)</span>
-<span class="sd">        editing) into pycortex. False by default, since we recommend editing </span>
-<span class="sd">        (or at least inspecting) the brain mask and white matter segmentations </span>
+<span class="sd">        editing) into pycortex. False by default, since we recommend editing</span>
+<span class="sd">        (or at least inspecting) the brain mask and white matter segmentations</span>
 <span class="sd">        prior to importing into pycortex.</span>
 <span class="sd">    kwargs : keyword arguments passed to cortex.freesurfer.autorecon()</span>
 <span class="sd">        useful ones: parallel=True, n_cores=4 (or more, if you have them)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="s1">&#39;run_all&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;`run_all` is deprecated - please use do_import_subject keyword arg instead!&#39;</span><span class="p">)</span>
-        <span class="n">do_import_subject</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;run_all&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;run_all&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;`run_all` is deprecated - please use do_import_subject keyword arg instead!&quot;</span>
+        <span class="p">)</span>
+        <span class="n">do_import_subject</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;run_all&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filenames</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
         <span class="n">filenames</span> <span class="o">=</span> <span class="p">[</span><span class="n">filenames</span><span class="p">]</span>
-    <span class="n">filenames</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;-i </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">])</span>
+    <span class="n">filenames</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;-i </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">])</span>
     <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;recon-all </span><span class="si">{fname}</span><span class="s2"> -s </span><span class="si">{subj}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="n">filenames</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling:</span><span class="se">\n</span><span class="s2">%</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="p">))</span>
@@ -103,10 +104,12 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">edit_segmentation</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span>
-                      <span class="n">volumes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;aseg.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;brainmask.mgz&#39;</span><span class="p">,</span> <span class="s1">&#39;wm.mgz&#39;</span><span class="p">),</span>
-                      <span class="n">surfaces</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;lh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.smoothwm&#39;</span><span class="p">,</span> <span class="s1">&#39;lh.pial&#39;</span><span class="p">,</span> <span class="s1">&#39;rh.pial&#39;</span><span class="p">),</span>
-                      <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">edit_segmentation</span><span class="p">(</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">volumes</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;aseg.mgz&quot;</span><span class="p">,</span> <span class="s2">&quot;brainmask.mgz&quot;</span><span class="p">,</span> <span class="s2">&quot;wm.mgz&quot;</span><span class="p">),</span>
+    <span class="n">surfaces</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;lh.smoothwm&quot;</span><span class="p">,</span> <span class="s2">&quot;rh.smoothwm&quot;</span><span class="p">,</span> <span class="s2">&quot;lh.pial&quot;</span><span class="p">,</span> <span class="s2">&quot;rh.pial&quot;</span><span class="p">),</span>
+    <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Edit automatic segmentation results using freeview</span>
 
 <span class="sd">    Opens an instance of freeview with relevant files loaded.</span>
@@ -128,47 +131,60 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
-    <span class="n">cmaps</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;brain&#39;</span><span class="p">:</span> <span class="s1">&#39;grayscale&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;aseg&#39;</span><span class="p">:</span> <span class="s1">&#39;lut&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;brainmask&#39;</span><span class="p">:</span> <span class="s1">&#39;gray&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;wm&#39;</span><span class="p">:</span> <span class="s1">&#39;heat&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;smoothwm&#39;</span><span class="p">:</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;white&#39;</span><span class="p">:</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span>
-             <span class="s1">&#39;pial&#39;</span><span class="p">:</span> <span class="s1">&#39;blue&#39;</span>
-             <span class="p">}</span>
-    <span class="n">opacity</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;brain&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-             <span class="s1">&#39;aseg&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
-             <span class="s1">&#39;brainmask&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
-             <span class="s1">&#39;wm&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
-             <span class="p">}</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SUBJECTS_DIR&quot;</span><span class="p">]</span>
+    <span class="n">cmaps</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;brain&quot;</span><span class="p">:</span> <span class="s2">&quot;grayscale&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;aseg&quot;</span><span class="p">:</span> <span class="s2">&quot;lut&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;brainmask&quot;</span><span class="p">:</span> <span class="s2">&quot;gray&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;wm&quot;</span><span class="p">:</span> <span class="s2">&quot;heat&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;smoothwm&quot;</span><span class="p">:</span> <span class="s2">&quot;yellow&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;white&quot;</span><span class="p">:</span> <span class="s2">&quot;green&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;pial&quot;</span><span class="p">:</span> <span class="s2">&quot;blue&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">opacity</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;brain&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s2">&quot;aseg&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+        <span class="s2">&quot;brainmask&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s2">&quot;wm&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+    <span class="p">}</span>
     <span class="n">vols</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">volumes</span><span class="p">:</span>
-        <span class="n">vpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;mri&#39;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+        <span class="n">vpath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;mri&quot;</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
         <span class="n">vv</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-        <span class="n">vextra</span> <span class="o">=</span> <span class="s1">&#39;:colormap=</span><span class="si">{cm}</span><span class="s1">:opacity=</span><span class="si">{op:0.2f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cm</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">vv</span><span class="p">],</span> <span class="n">op</span><span class="o">=</span><span class="n">opacity</span><span class="p">[</span><span class="n">vv</span><span class="p">])</span>
+        <span class="n">vextra</span> <span class="o">=</span> <span class="s2">&quot;:colormap=</span><span class="si">{cm}</span><span class="s2">:opacity=</span><span class="si">{op:0.2f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cm</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">vv</span><span class="p">],</span> <span class="n">op</span><span class="o">=</span><span class="n">opacity</span><span class="p">[</span><span class="n">vv</span><span class="p">])</span>
         <span class="n">vols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vpath</span> <span class="o">+</span> <span class="n">vextra</span><span class="p">)</span>
     <span class="n">surfs</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">surfaces</span><span class="p">:</span>
-        <span class="n">spath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s1">&#39;surf&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">ss</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
-        <span class="n">sextra</span> <span class="o">=</span> <span class="s1">&#39;:edgecolor=</span><span class="si">{col}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">ss</span><span class="p">])</span>
+        <span class="n">spath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;surf&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">ss</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+        <span class="n">sextra</span> <span class="o">=</span> <span class="s2">&quot;:edgecolor=</span><span class="si">{col}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col</span><span class="o">=</span><span class="n">cmaps</span><span class="p">[</span><span class="n">ss</span><span class="p">])</span>
         <span class="n">surfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spath</span> <span class="o">+</span> <span class="n">sextra</span><span class="p">)</span>
-    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;freeview&quot;</span><span class="p">,</span> <span class="s1">&#39;-v&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">vols</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;-f&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">surfs</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;freeview&quot;</span><span class="p">,</span> <span class="s2">&quot;-v&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">vols</span> <span class="o">+</span> <span class="p">[</span><span class="s2">&quot;-f&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">surfs</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;If you have edited the white matter surface, you should run:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;wm&#39;)`</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">subject</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;wm&#39;)`</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">subject</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;If you have edited the brainmask (pial surface), you should run:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;pia&#39;)`&quot;</span><span class="o">%</span><span class="n">subject</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    `cortex.segment.run_freesurfer_recon(&#39;</span><span class="si">%s</span><span class="s2">&#39;, &#39;pia&#39;)`&quot;</span> <span class="o">%</span> <span class="n">subject</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="cut_surface">
 <a class="viewcode-back" href="../../generated/cortex.segment.cut_surface.html#cortex.segment.cut_surface">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">cut_surface</span><span class="p">(</span><span class="n">cx_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;flatten&#39;</span><span class="p">,</span> <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_with</span><span class="o">=</span><span class="s1">&#39;freesurfer&#39;</span><span class="p">,</span> 
-                <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">default_blender_path</span><span class="p">,</span>
-                <span class="n">recache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">auto_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cut_surface</span><span class="p">(</span>
+    <span class="n">cx_subject</span><span class="p">,</span>
+    <span class="n">hemi</span><span class="p">,</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;flatten&quot;</span><span class="p">,</span>
+    <span class="n">fs_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">flatten_with</span><span class="o">=</span><span class="s2">&quot;freesurfer&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">do_import_subject</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">blender_path</span><span class="o">=</span><span class="n">default_blender_path</span><span class="p">,</span>
+    <span class="n">recache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">auto_overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Initializes an interface to cut the segmented surface for flatmapping.</span>
 <span class="sd">    This function creates or opens a blend file in your filestore which allows</span>
 <span class="sd">    surfaces to be cut along hand-defined seams. Blender will automatically</span>
@@ -177,7 +193,7 @@
 
 <span class="sd">    The surface will be automatically extracted from blender then run through</span>
 <span class="sd">    the mris_flatten command in freesurfer. The flatmap will be imported once</span>
-<span class="sd">    that command finishes if `do_import_subject` is True (default value). </span>
+<span class="sd">    that command finishes if `do_import_subject` is True (default value).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -188,7 +204,7 @@
 <span class="sd">    name : str, optional</span>
 <span class="sd">        String name of the current flatten attempt. Defaults to &quot;flatten&quot;</span>
 <span class="sd">    data : Dataview or List(Dataview)</span>
-<span class="sd">        A data view object or list of data view objects to display on the </span>
+<span class="sd">        A data view object or list of data view objects to display on the</span>
 <span class="sd">        surface as a cutting guide.</span>
 <span class="sd">    fs_subject : str</span>
 <span class="sd">        Name of Freesurfer subject (if different from pycortex subject)</span>
@@ -197,19 +213,19 @@
 <span class="sd">        Name of Freesurfer subject directory. None defaults to SUBJECTS_DIR</span>
 <span class="sd">        environment variable</span>
 <span class="sd">    flatten_with : str</span>
-<span class="sd">        One of &#39;freesurfer&#39;,&#39;SLIM&#39;, or &#39;blender&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s </span>
+<span class="sd">        One of &#39;freesurfer&#39;,&#39;SLIM&#39;, or &#39;blender&#39; - &#39;freesurfer&#39; (default) uses freesurfer&#39;s</span>
 <span class="sd">        `mris_flatten` function to flatten the cut surface. &#39;SLIM&#39; uses</span>
 <span class="sd">        the SLIM algorithm, which takes much less time but tends to leave</span>
-<span class="sd">        more distortions in the flatmap. SLIM is an optional dependency, and </span>
-<span class="sd">        must be installed to work; clone the code </span>
-<span class="sd">        (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings) </span>
-<span class="sd">        to your computer and set the slim dependency path in your pycortex config </span>
+<span class="sd">        more distortions in the flatmap. SLIM is an optional dependency, and</span>
+<span class="sd">        must be installed to work; clone the code</span>
+<span class="sd">        (https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings)</span>
+<span class="sd">        to your computer and set the slim dependency path in your pycortex config</span>
 <span class="sd">        file to point to &lt;/path/to/your/slim/install&gt;/ReweightedARAP</span>
 <span class="sd">    method : str</span>
 <span class="sd">        method to use for UV unwrap. When using Blender, it must be present and</span>
 <span class="sd">        can be one of &#39;CONFORMAL&#39;, &#39;ANGLE_BASED&#39;, &#39;MINIMUM_STRETCH&#39;.</span>
 <span class="sd">    do_import_subject : bool</span>
-<span class="sd">        set option to automatically import flatmaps when both are completed </span>
+<span class="sd">        set option to automatically import flatmaps when both are completed</span>
 <span class="sd">        (if set to false, you must import later with `cortex.freesurfer.import_flat()`)</span>
 <span class="sd">    blender_path : str</span>
 <span class="sd">        Path to blender executable. If None, defaults to path specified in pycortexconfig file.</span>
@@ -227,8 +243,12 @@
     <span class="c1"># Double-check that fiducial and inflated vertex counts match</span>
     <span class="c1"># (these may not match if a subject is initially imported from freesurfer to pycortex,</span>
     <span class="c1"># and then edited further for a better segmentation and not re-imported)</span>
-    <span class="n">ipt</span><span class="p">,</span> <span class="n">ipoly</span><span class="p">,</span> <span class="n">inrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;inflated&quot;</span><span class="p">)</span>
-    <span class="n">fpt</span><span class="p">,</span> <span class="n">fpoly</span><span class="p">,</span> <span class="n">fnrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
+    <span class="n">ipt</span><span class="p">,</span> <span class="n">ipoly</span><span class="p">,</span> <span class="n">inrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span>
+        <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;inflated&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span>
+    <span class="n">fpt</span><span class="p">,</span> <span class="n">fpoly</span><span class="p">,</span> <span class="n">fnrm</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span>
+        <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">ipt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">fpt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="s2">&quot;Please re-import subject - fiducial and inflated vertex counts don&#39;t match!&quot;</span>
@@ -244,19 +264,21 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fname</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initializing blender file </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">fname</span><span class="p">)</span>
-        <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut_init</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Initializing blender file </span><span class="si">%s</span><span class="s2">...&quot;</span> <span class="o">%</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut_init</span><span class="p">(</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span>
+        <span class="p">)</span>
 
     <span class="c1"># Add localizer data to facilitate cutting</span>
     <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
             <span class="n">blender</span><span class="o">.</span><span class="n">add_cutdata</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
-            
+
     <span class="c1"># Open blender for user to manually do the cuts</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Opening blender file </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">fname</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Opening blender file </span><span class="si">%s</span><span class="s2">...&quot;</span> <span class="o">%</span> <span class="n">fname</span><span class="p">)</span>
     <span class="n">blender</span><span class="o">.</span><span class="n">fs_cut_open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
-    
+
     <span class="c1"># Generate 3D base freesurfer patch to flatten</span>
     <span class="n">base_patch_path</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
         <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
@@ -264,15 +286,17 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">base_patch_path</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing base patch to </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="n">base_patch_path</span><span class="p">)</span>
-        <span class="n">blender</span><span class="o">.</span><span class="n">write_volume_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">base_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing base patch to </span><span class="si">%s</span><span class="s2">...&quot;</span> <span class="o">%</span> <span class="n">base_patch_path</span><span class="p">)</span>
+        <span class="n">blender</span><span class="o">.</span><span class="n">write_volume_patch</span><span class="p">(</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">base_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span>
+        <span class="p">)</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    pts_v, polys_v, _  = freesurfer.get_surf(fs_subject, hemi, &quot;patch&quot;, name, freesurfer_subject_dir=freesurfer_subject_dir)</span>
 <span class="sd">    pts_f, polys_f, _  = freesurfer.get_surf(fs_subject, hemi, &quot;patch&quot;, name+&quot;.flat&quot;, freesurfer_subject_dir=freesurfer_subject_dir)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># Flatten</span>
-    <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;blender&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s2">&quot;blender&quot;</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">method</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;method must be provided when using blender&quot;</span>
 
         <span class="n">flat_patch_path</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
@@ -281,19 +305,32 @@
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">flat_patch_path</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">flat_patch_path</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via blender method </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">...&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">))</span>
-        <span class="n">done</span> <span class="o">=</span> <span class="n">blender</span><span class="o">.</span><span class="n">write_flat_patch</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Generating flat patch via blender method </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">...&quot;</span>
+            <span class="o">%</span> <span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">blender</span><span class="o">.</span><span class="n">write_flat_patch</span><span class="p">(</span>
+            <span class="n">fname</span><span class="p">,</span> <span class="n">flat_patch_path</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">blender_path</span><span class="o">=</span><span class="n">blender_path</span>
+        <span class="p">)</span>
         <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="s2">&quot;blender&quot;</span>
-    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;freesurfer&#39;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s2">&quot;freesurfer&quot;</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via freesurfer...&quot;</span><span class="p">)</span>
         <span class="n">done</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span>
-            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="n">fs_subject</span><span class="p">,</span>
+            <span class="n">hemi</span><span class="p">,</span>
+            <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="s2">&quot;freesurfer&quot;</span>
-    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s1">&#39;SLIM&#39;</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">flatten_with</span> <span class="o">==</span> <span class="s2">&quot;SLIM&quot;</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generating flat patch via SLIM...&quot;</span><span class="p">)</span>
         <span class="n">done</span> <span class="o">=</span> <span class="n">flatten_slim</span><span class="p">(</span>
-            <span class="n">fs_subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="n">fs_subject</span><span class="p">,</span>
+            <span class="n">hemi</span><span class="p">,</span>
+            <span class="n">patch</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">path_type</span><span class="p">,</span> <span class="n">flat_type</span> <span class="o">=</span> <span class="s2">&quot;slip&quot;</span><span class="p">,</span> <span class="s2">&quot;slim&quot;</span>
     <span class="k">else</span><span class="p">:</span>
@@ -303,7 +340,7 @@
     <span class="c1"># (Do not attempt to import completed flatmaps)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
         <span class="k">return</span>
-    
+
     <span class="c1"># Import from freesurfer to pycortex DB</span>
     <span class="k">if</span> <span class="n">do_import_subject</span><span class="p">:</span>
         <span class="n">hemi</span> <span class="o">=</span> <span class="s2">&quot;lh&quot;</span> <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span> <span class="k">else</span> <span class="s2">&quot;rh&quot;</span>
@@ -323,8 +360,15 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">flatten_slim</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">slim_path</span><span class="o">=</span><span class="n">default_slim_path</span><span class="p">,</span> <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">flatten_slim</span><span class="p">(</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">hemi</span><span class="p">,</span>
+    <span class="n">patch</span><span class="p">,</span>
+    <span class="n">n_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+    <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">slim_path</span><span class="o">=</span><span class="n">default_slim_path</span><span class="p">,</span>
+    <span class="n">do_flatten</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Flatten brain w/ slim object flattening</span>
 
 <span class="sd">    Parameters</span>
@@ -342,29 +386,44 @@
 <span class="sd">    slim_path : str</span>
 <span class="sd">        path to SLIM flattening. Defaults to path specified in config file.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">slim_path</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
-        <span class="n">slim_url</span> <span class="o">=</span> <span class="s1">&#39;https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings&#39;</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Please download SLIM (</span><span class="si">{slim_url}</span><span class="s2">) and set the path to it in the `slim` field</span><span class="se">\n</span><span class="s2">&quot;</span>
-                         <span class="s2">&quot;in the `[dependency_paths]` section of your config file (</span><span class="si">{usercfg}</span><span class="s2">) </span><span class="se">\n</span><span class="s2">&quot;</span>
-                         <span class="s2">&quot;if you wish to use slim!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">slim_url</span><span class="o">=</span><span class="n">slim_url</span><span class="p">,</span> <span class="n">usercfg</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">slim_path</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
+        <span class="n">slim_url</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;https://github.com/MichaelRabinovich/Scalable-Locally-Injective-Mappings&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Please download SLIM (</span><span class="si">{slim_url}</span><span class="s2">) and set the path to it in the `slim` field</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;in the `[dependency_paths]` section of your config file (</span><span class="si">{usercfg}</span><span class="s2">) </span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;if you wish to use slim!&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">slim_url</span><span class="o">=</span><span class="n">slim_url</span><span class="p">,</span> <span class="n">usercfg</span><span class="o">=</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
     <span class="k">if</span> <span class="n">do_flatten</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s1">&#39;Flattening with SLIM will take a few mins. Continue? (type y or n and press return)&#39;</span><span class="p">)</span>
-        <span class="n">do_flatten</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;yes&#39;</span><span class="p">)</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span>
+            <span class="s2">&quot;Flattening with SLIM will take a few mins. Continue? (type y or n and press return)&quot;</span>
+        <span class="p">)</span>
+        <span class="n">do_flatten</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">do_flatten</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not flattening...&quot;</span><span class="p">)</span>
         <span class="k">return</span>
 
     <span class="c1"># File paths</span>
     <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
-    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span>
-                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SUBJECTS_DIR&quot;</span><span class="p">]</span>
+    <span class="n">patchpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+        <span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span>
     <span class="n">patchpath</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
-    <span class="n">obj_in</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.patch.3d&#39;</span><span class="p">,</span> <span class="s1">&#39;.obj&#39;</span><span class="p">)</span>
-    <span class="n">obj_out</span> <span class="o">=</span> <span class="n">obj_in</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.obj&#39;</span><span class="p">,</span> <span class="s1">&#39;_slim.obj&#39;</span><span class="p">)</span>
+    <span class="n">obj_in</span> <span class="o">=</span> <span class="n">patchpath</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.patch.3d&quot;</span><span class="p">,</span> <span class="s2">&quot;.obj&quot;</span><span class="p">)</span>
+    <span class="n">obj_out</span> <span class="o">=</span> <span class="n">obj_in</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.obj&quot;</span><span class="p">,</span> <span class="s2">&quot;_slim.obj&quot;</span><span class="p">)</span>
 
     <span class="c1"># Load freesurfer surface exported from blender</span>
-    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="s2">&quot;patch&quot;</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span>
+        <span class="n">subject</span><span class="p">,</span>
+        <span class="n">hemi</span><span class="p">,</span>
+        <span class="s2">&quot;patch&quot;</span><span class="p">,</span>
+        <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span>
+        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="c1"># Cull pts that are not in manifold</span>
     <span class="n">pi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">))</span>
     <span class="n">pii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">pi</span><span class="p">,</span> <span class="n">polys</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
@@ -373,14 +432,14 @@
     <span class="c1"># Match indices in polys to new index for pts</span>
     <span class="n">polys_new</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">polys</span><span class="o">.</span><span class="n">T</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
     <span class="c1"># save out obj file</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing input to SLIM: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">obj_in</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Writing input to SLIM: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obj_in</span><span class="p">)</span>
     <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">obj_in</span><span class="p">,</span> <span class="n">pts_new</span><span class="p">,</span> <span class="n">polys_new</span><span class="p">)</span>
     <span class="c1"># Call slim to write new obj file</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Flattening with SLIM (will take a few minutes)...&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Flattening with SLIM (will take a few minutes)...&quot;</span><span class="p">)</span>
     <span class="n">slim_cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">slim_path</span><span class="p">,</span> <span class="n">obj_in</span><span class="p">,</span> <span class="n">obj_out</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">n_iterations</span><span class="p">)]</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Calling: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">slim_cmd</span><span class="p">)))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calling: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">slim_cmd</span><span class="p">)))</span>
     <span class="n">out</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="n">slim_cmd</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SLIM code wrote </span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">obj_out</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SLIM code wrote </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obj_out</span><span class="p">)</span>
     <span class="c1"># Load resulting obj file</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">uv</span> <span class="o">=</span> <span class="n">formats</span><span class="o">.</span><span class="n">read_obj</span><span class="p">(</span><span class="n">obj_out</span><span class="p">,</span> <span class="n">uv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">uv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">uv</span><span class="p">)</span>
@@ -390,8 +449,8 @@
     <span class="c1"># fiducial brains.</span>
     <span class="n">uv</span> <span class="o">-=</span> <span class="n">uv</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="n">uv</span> <span class="o">/=</span> <span class="n">uv</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-    <span class="n">uv</span> <span class="o">-=</span> <span class="p">(</span><span class="n">uv</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
-    <span class="n">infl_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pts_new</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">-</span><span class="n">pts_new</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)))</span>
+    <span class="n">uv</span> <span class="o">-=</span> <span class="n">uv</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">infl_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pts_new</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">pts_new</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)))</span>
     <span class="c1"># This is a magic number based on the approximate scale of the flatmap</span>
     <span class="c1"># (created by freesurfer) to the inflated map in a couple other subjects.</span>
     <span class="c1"># For two hemispheres in two other subjects, it ranged from 1.37 to 1.5.</span>
@@ -401,7 +460,7 @@
     <span class="c1"># distortions, just the overall scale of the thing. So here we are.</span>
     <span class="c1"># ML 2018.07.05</span>
     <span class="n">extra_scale</span> <span class="o">=</span> <span class="mf">1.4</span>
-    <span class="n">uv</span> <span class="o">*=</span> <span class="p">(</span><span class="n">infl_scale</span> <span class="o">*</span> <span class="n">extra_scale</span><span class="p">)</span>
+    <span class="n">uv</span> <span class="o">*=</span> <span class="n">infl_scale</span> <span class="o">*</span> <span class="n">extra_scale</span>
     <span class="c1"># put back polys, etc that were missing</span>
     <span class="n">pts_flat</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">pts_flat</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">uv</span>
@@ -411,19 +470,26 @@
     <span class="n">nz</span> <span class="o">=</span> <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span>
     <span class="n">pts_flat</span><span class="p">[</span><span class="n">nz</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pts_flat</span><span class="p">[</span><span class="n">nz</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
     <span class="c1"># Flip X axis for right hem (necessary?)</span>
-    <span class="k">if</span> <span class="n">hemi</span><span class="o">==</span><span class="s1">&#39;rh&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">hemi</span> <span class="o">==</span> <span class="s2">&quot;rh&quot;</span><span class="p">:</span>
         <span class="c1"># Flip Y axis upside down</span>
         <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
         <span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">pts_flat</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
     <span class="c1"># Modify output .obj file to reflect flattening</span>
-    <span class="c1">#surfpath = os.path.join(freesurfer_subject_dir, subject, &quot;surf&quot;, &quot;flat_{hemi}.gii&quot;)</span>
-    <span class="c1">#fname = surfpath.format(hemi=hemi)</span>
-    <span class="c1">#print(&quot;Writing %s&quot;%fname)</span>
-    <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">obj_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_slim&#39;</span><span class="p">,</span><span class="s1">&#39;.flat_slim&#39;</span><span class="p">),</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts_flat</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">polys</span><span class="p">)</span>
+    <span class="c1"># surfpath = os.path.join(freesurfer_subject_dir, subject, &quot;surf&quot;, &quot;flat_{hemi}.gii&quot;)</span>
+    <span class="c1"># fname = surfpath.format(hemi=hemi)</span>
+    <span class="c1"># print(&quot;Writing %s&quot;%fname)</span>
+    <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">obj_out</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_slim&quot;</span><span class="p">,</span> <span class="s2">&quot;.flat_slim&quot;</span><span class="p">),</span> <span class="n">pts</span><span class="o">=</span><span class="n">pts_flat</span><span class="p">,</span> <span class="n">polys</span><span class="o">=</span><span class="n">polys</span><span class="p">)</span>
     <span class="k">return</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">show_surface</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span> <span class="n">patch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">flatten_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">show_surface</span><span class="p">(</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">hemi</span><span class="p">,</span>
+    <span class="n">surface_type</span><span class="p">,</span>
+    <span class="n">patch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">flatten_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -438,31 +504,36 @@
 <span class="sd">        name of patch, e.g. &#39;flatten.flat&#39;,  &#39;flatten2.flat&#39;, etc</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dependency_paths&#39;</span><span class="p">,</span> <span class="s1">&#39;meshlab&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">meshlab_path</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+    <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dependency_paths&quot;</span><span class="p">,</span> <span class="s2">&quot;meshlab&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">meshlab_path</span> <span class="o">==</span> <span class="s2">&quot;None&quot;</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># exists in system but not available in config</span>
-            <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="s1">&#39;command -v meshlab&#39;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Using system meshlab: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="n">meshlab_path</span><span class="p">)</span>
+            <span class="n">meshlab_path</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">check_output</span><span class="p">(</span><span class="s2">&quot;command -v meshlab&quot;</span><span class="p">,</span> <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Using system meshlab: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">meshlab_path</span><span class="p">)</span>
         <span class="k">except</span> <span class="n">sp</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;You must have installed meshlab to call this function.&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;You must have installed meshlab to call this function.&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">freesurfer_subject_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;SUBJECTS_DIR&#39;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">surface_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;inflated&#39;</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">):</span>
-        <span class="n">input_type</span> <span class="o">=</span> <span class="s1">&#39;surf&#39;</span>
+        <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;SUBJECTS_DIR&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">surface_type</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;inflated&quot;</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">):</span>
+        <span class="n">input_type</span> <span class="o">=</span> <span class="s2">&quot;surf&quot;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">input_type</span> <span class="o">=</span> <span class="n">surface_type</span>
-    <span class="n">fpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">input_type</span><span class="p">,</span>
-                                     <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="n">fpath</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+        <span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">input_type</span><span class="p">,</span> <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;obj&#39;</span> <span class="ow">in</span> <span class="n">fpath</span><span class="p">:</span>
-        <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">curv</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">surface_type</span><span class="p">,</span>
-                                               <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span>
-                                               <span class="n">flatten_step</span><span class="o">=</span><span class="n">flatten_step</span><span class="p">,</span>
-                                               <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s2">&quot;obj&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fpath</span><span class="p">:</span>
+        <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">,</span> <span class="n">curv</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span>
+            <span class="n">subject</span><span class="p">,</span>
+            <span class="n">hemi</span><span class="p">,</span>
+            <span class="n">surface_type</span><span class="p">,</span>
+            <span class="n">patch</span><span class="o">=</span><span class="n">patch</span><span class="p">,</span>
+            <span class="n">flatten_step</span><span class="o">=</span><span class="n">flatten_step</span><span class="p">,</span>
+            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="c1"># TODO: use tempfile library here</span>
-        <span class="n">objf</span> <span class="o">=</span> <span class="s1">&#39;/tmp/temp_surf.obj&#39;</span>
+        <span class="n">objf</span> <span class="o">=</span> <span class="s2">&quot;/tmp/temp_surf.obj&quot;</span>
         <span class="n">formats</span><span class="o">.</span><span class="n">write_obj</span><span class="p">(</span><span class="n">objf</span><span class="p">,</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">objf</span> <span class="o">=</span> <span class="n">fpath</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">patch</span><span class="p">)</span>
@@ -471,6 +542,7 @@
 
 
 <span class="c1">### DEPRECATED ###</span>
+
 
 <div class="viewcode-block" id="fix_wm">
 <a class="viewcode-back" href="../../generated/cortex.segment.fix_wm.html#cortex.segment.fix_wm">[docs]</a>
@@ -493,13 +565,19 @@
 <span class="sd">    subject : str</span>
 <span class="sd">        Name of the subject to edit</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span>
+    <span class="p">)</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;smoothwm&quot;</span><span class="p">)</span>
-    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> wm.mgz lh.smoothwm -aux brainmask.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> wm.mgz lh.smoothwm -aux brainmask.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="p">)</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">)))</span>
     <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;1) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">2) Run autorecon-cp?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span><span class="p">)</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span>
+        <span class="s2">&quot;1) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">2) Run autorecon-cp?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
         <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
@@ -509,6 +587,7 @@
         <span class="k">return</span>
 
     <span class="n">import_freesurfer_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span></div>
+
 
 
 <div class="viewcode-block" id="fix_pia">
@@ -532,13 +611,19 @@
 <span class="sd">    subject : str</span>
 <span class="sd">        Name of the subject to edit</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span><span class="p">)</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="s2">&quot;Deprecated! We recommend using edit_segmentation() and rerun_recon() instead of fix_wm() and fix_pia().&quot;</span>
+    <span class="p">)</span>
     <span class="n">status</span> <span class="o">=</span> <span class="n">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pial&quot;</span><span class="p">)</span>
-    <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> brainmask.mgz lh.smoothwm -aux T1.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;tkmedit </span><span class="si">{subj}</span><span class="s2"> brainmask.mgz lh.smoothwm -aux T1.mgz -aux-surface rh.smoothwm&quot;</span>
+    <span class="p">)</span>
     <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">)))</span>
     <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;1) Run autorecon-pia?</span><span class="se">\n</span><span class="s2">2) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span><span class="p">)</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span>
+        <span class="s2">&quot;1) Run autorecon-pia?</span><span class="se">\n</span><span class="s2">2) Run autorecon-wm?</span><span class="se">\n</span><span class="s2">3) Do nothing?</span><span class="se">\n</span><span class="s2"> (Choose 1, 2, or 3)&quot;</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span><span class="p">:</span>
         <span class="n">freesurfer</span><span class="o">.</span><span class="n">autorecon</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">resp</span> <span class="o">==</span> <span class="s2">&quot;2&quot;</span><span class="p">:</span>
@@ -551,19 +636,19 @@
 
 
 
-
 <span class="k">def</span><span class="w"> </span><span class="nf">_cycle_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surf</span><span class="p">):</span>
-    <span class="n">status</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Value</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Value</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">cycle_surf</span><span class="p">():</span>
-        <span class="n">idx</span><span class="p">,</span> <span class="n">hemis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">]</span>
+        <span class="n">idx</span><span class="p">,</span> <span class="n">hemis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">]</span>
         <span class="k">while</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">hemi</span> <span class="o">=</span> <span class="n">hemis</span><span class="p">[</span><span class="n">idx</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">hemis</span><span class="p">)]</span>
+            <span class="n">hemi</span> <span class="o">=</span> <span class="n">hemis</span><span class="p">[</span><span class="n">idx</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">hemis</span><span class="p">)]</span>
             <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="c1">#HELLISH CODE FOLLOWS, I heavily apologize for this awful code</span>
-            <span class="c1">#In order for this to work well, mayavi has to block until you close the window</span>
-            <span class="c1">#Unfortunately, with IPython&#39;s event hook, mlab.show does not block anymore</span>
-            <span class="c1">#There is no way to force mayavi to block, and hooking directly into backend vtk objects cause it to crash out</span>
-            <span class="c1">#Thus, the only safe way is to call python using subprocess</span>
+            <span class="c1"># HELLISH CODE FOLLOWS, I heavily apologize for this awful code</span>
+            <span class="c1"># In order for this to work well, mayavi has to block until you close the window</span>
+            <span class="c1"># Unfortunately, with IPython&#39;s event hook, mlab.show does not block anymore</span>
+            <span class="c1"># There is no way to force mayavi to block, and hooking directly into backend vtk objects cause it to crash out</span>
+            <span class="c1"># Thus, the only safe way is to call python using subprocess</span>
             <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;python -m cortex.freesurfer </span><span class="si">{subj}</span><span class="s2"> </span><span class="si">{hemi}</span><span class="s2"> </span><span class="si">{surf}</span><span class="s2">&quot;</span>
             <span class="n">sp</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subj</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">,</span> <span class="n">surf</span><span class="o">=</span><span class="n">surf</span><span class="p">)))</span>
 
