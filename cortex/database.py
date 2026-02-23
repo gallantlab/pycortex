@@ -526,7 +526,7 @@ class Database(object):
             fnm = str(os.path.splitext(files[type][hemi])[0])
             return formats.read(fnm)
         except KeyError:
-            raise IOError
+            raise IOError(f"Surface type '{type}' not found for {hemi} hemisphere of subject '{subject}'")
 
     def save_mask(self, subject, xfmname, type, mask):
         fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
