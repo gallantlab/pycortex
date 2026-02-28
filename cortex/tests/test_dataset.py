@@ -314,7 +314,7 @@ def test_blend_curvature():
 
     # blend_curvature is deprecated; the warning should fire on every call.
     with pytest.warns(DeprecationWarning, match="blend_curvature is deprecated"):
-        view_rgb = view.blend_curvature(alpha)
+        view_rgb: cortex.VertexRGB = view.blend_curvature(alpha)
     with pytest.warns(DeprecationWarning):
         view_rgb = view.blend_curvature(alpha > 0.3)
     # test that it returns a VertexRGB
