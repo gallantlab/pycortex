@@ -1,7 +1,9 @@
 """Affine transformation class
 """
 import os
+from typing import Union
 import numpy as np
+import numpy.typing as npt
 import subprocess
 
 class Transform(object):
@@ -9,7 +11,7 @@ class Transform(object):
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
     '''
-    def __init__(self, xfm, reference):
+    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple, npt.NDArray]):
         self.xfm = xfm
         self.reference = None
 
