@@ -1,4 +1,5 @@
 import tempfile
+from typing import Union, overload
 import numpy as np
 import h5py
 
@@ -7,7 +8,7 @@ from ..xfm import Transform
 
 from .braindata import _hdf_write
 from .views import normalize as _vnorm
-from .views import Dataview, Volume, _from_hdf_data
+from .views import Dataview, Vertex, Volume, _from_hdf_data
 
 class Dataset(object):
     """
@@ -15,15 +16,16 @@ class Dataset(object):
     explicitly--for example, if a dictionary of data objects is passed to 
     `cortex.webshow`, it will automatically be converted into a `Dataset`.
 
+    # TODO: should be BrainData & Dataview, or just Dataview
     All kwargs should be `BrainData` or `Dataset` objects.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]):
         self.h5 = None
-        self.views = {}
+        self.views: dict[str, Dataview] = {}
 
         self.append(**kwargs)
 
-    def append(self, **kwargs):
+    def append(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> "Dataset":
         """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
         dataset.
         """
@@ -214,7 +216,16 @@ class Dataset(object):
 
         return Dataset(**ds)
 
-def normalize(data):
+@overload
+def normalize(data: Dataview) -> Dataview: ...
+
+@overload
+def normalize(data: Union[Dataset, dict, str]) -> Dataset: ...
+
+@overload
+def normalize(data: tuple) -> Union[Vertex, Volume]: ...
+
+def normalize(data: Union[Dataset, Dataview, dict, str, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
     if isinstance(data, (Dataset, Dataview)):
         return data
     elif isinstance(data, dict):

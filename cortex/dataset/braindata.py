@@ -1,8 +1,15 @@
 import hashlib
 from copy import deepcopy
+import sys
+from typing import Optional, Union, cast
+if sys.version_info < (3, 10):
+    from typing_extensions import Self
+else:
+    from typing import Self
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 
 from ..database import db
 
@@ -19,11 +26,11 @@ class BrainData(object):
     subject : str
         Subject identifier. Must exist in the pycortex database.
     """
-    def __init__(self, data, subject, **kwargs):
+    def __init__(self, data: Union[npt.NDArray, str], subject: str, **kwargs):
         if isinstance(data, str):
             import nibabel
             nib = nibabel.load(data)
-            data = nib.get_fdata().T
+            data = cast(npt.NDArray, nib.get_fdata().T)
         self._data = data
         try:
             basestring
@@ -39,7 +46,7 @@ class BrainData(object):
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: npt.NDArray):
         self._data = data
 
     @property
@@ -133,7 +140,7 @@ class VolumeData(BrainData):
     **kwargs
         Other keyword arguments are passed to superclass inits.
     """
-    def __init__(self, data, subject, xfmname, mask=None, **kwargs):
+    def __init__(self, data: npt.NDArray, subject: str, xfmname: str, mask: Optional[npt.NDArray]=None, **kwargs):
         if self.__class__ == VolumeData:
             raise TypeError('Cannot directly instantiate VolumeData objects')
         super(VolumeData, self).__init__(data, subject, **kwargs)
@@ -146,7 +153,7 @@ class VolumeData(BrainData):
         self._check_size(mask)
         self.masked = _masker(self)
 
-    def to_json(self, simple=False):
+    def to_json(self, simple: bool=False):
         """Creates JSON description of this brain data.
         """
         if simple:
@@ -160,7 +167,7 @@ class VolumeData(BrainData):
         return sdict
 
     @classmethod
-    def empty(cls, subject, xfmname, value=0, **kwargs):
+    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs):
         """
         Create a constant-valued VolumeData for the given subject and xfmname.
         Often useful for testing purposes.
@@ -187,7 +194,7 @@ class VolumeData(BrainData):
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
-    def random(cls, subject, xfmname, **kwargs):
+    def random(cls, subject: str, xfmname: str, **kwargs):
         """
         Create a random-valued VolumeData for the given subject and xfmname.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -212,7 +219,7 @@ class VolumeData(BrainData):
         shape = xfm.shape
         return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
 
-    def _check_size(self, mask):
+    def _check_size(self, mask: Union[npt.NDArray, str, None]) -> None:
         if self.data.ndim not in (1, 2, 3, 4):
             raise ValueError("Invalid data shape")
         
@@ -222,7 +229,7 @@ class VolumeData(BrainData):
         if self.linear:
             #Guess the mask
             if mask is None:
-                nvox = self.data.shape[-1]
+                nvox: int = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
             elif isinstance(mask, np.ndarray):
                 self.mask = mask > 0
@@ -356,7 +363,7 @@ class VertexData(BrainData):
     **kwargs
         Other keyword arguments are passed to the superclass init function.
     """
-    def __init__(self, data, subject, **kwargs):
+    def __init__(self, data: npt.NDArray, subject: str, **kwargs):
         if self.__class__ == VertexData:
             raise TypeError('Cannot directly instantiate VertexData objects')
         super(VertexData, self).__init__(data, subject, **kwargs)
@@ -369,7 +376,7 @@ class VertexData(BrainData):
         self._set_data(data)
 
     @classmethod
-    def empty(cls, subject, value=0, **kwargs):
+    def empty(cls, subject: str, value: float = 0, **kwargs):
         """
         Create a constant-valued VertexData for the given subject.
         Often useful for testing purposes.
@@ -397,7 +404,7 @@ class VertexData(BrainData):
         return cls(np.ones((nverts,))*value, subject, **kwargs)
 
     @classmethod
-    def random(cls, subject, **kwargs):
+    def random(cls, subject: str, **kwargs):
         """
         Create a random-valued VertexData for the given subject.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -423,7 +430,7 @@ class VertexData(BrainData):
         nverts = len(left[0]) + len(right[0])
         return cls(np.random.randn(nverts), subject, **kwargs)
 
-    def _set_data(self, data):
+    def _set_data(self, data: npt.NDArray):
         """
         Stores data for this VertexData. Also sets flags if `data` appears to
         be in 'movie' or 'raw' format. See __init__ for `data` shape possibilities.
@@ -452,7 +459,7 @@ class VertexData(BrainData):
         else:
             raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
-    def copy(self, data):
+    def copy(self, data: npt.NDArray) -> Self:
         """
         Return a new VertexData object for the same subject but with data
         replaced by the given `data`. 
@@ -507,7 +514,7 @@ class VertexData(BrainData):
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
 
-    def to_json(self, simple=False):
+    def to_json(self, simple: bool = False):
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super(VertexData, self).to_json(simple=simple))
@@ -571,6 +578,7 @@ class VertexData(BrainData):
             The original map blended with a curvature map.
         """
         from .views import Vertex
+        from .viewRGB import VertexRGB
         # prepare curvature map
         curvature = db.get_surfinfo(self.subject, smooth=smooth).data
         curvature = (curvature > threshold).astype("float")
@@ -582,7 +590,8 @@ class VertexData(BrainData):
         alpha = np.clip(alpha.astype("float"), 0, 1)
 
         # blend original map with curvature map
-        blended = deepcopy(self.raw)  # copy because VertexRGB.raw returns self
+        # self.raw comes from the implementation of Dataview (e.g. Vertex, Volume, etc.)
+        blended = cast(VertexRGB, deepcopy(self.raw))  # copy because VertexRGB.raw returns self
         blended.red.data = blended.red.data * alpha + (1 - alpha) * curvature_raw.red.data
         blended.green.data = blended.green.data * alpha + (1 - alpha) * curvature_raw.green.data
         blended.blue.data = blended.blue.data * alpha + (1 - alpha) * curvature_raw.blue.data
@@ -593,7 +602,7 @@ class VertexData(BrainData):
         return blended
 
 
-def _find_mask(nvox, subject, xfmname):
+def _find_mask(nvox: int, subject: str, xfmname: str):
     import glob
     import os
     import re
@@ -602,7 +611,7 @@ def _find_mask(nvox, subject, xfmname):
     files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
-        mask = nib.get_fdata().T != 0
+        mask = cast(npt.NDArray[np.integer], nib.get_fdata().T != 0)
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_(.+).nii.gz').search(fname)
@@ -612,7 +621,7 @@ def _find_mask(nvox, subject, xfmname):
 
 
 class _masker(object):
-    def __init__(self, dv):
+    def __init__(self, dv: VolumeData): # TODO: should be braindata + dataview
         self.dv = dv
 
         self.data = None
@@ -624,7 +633,8 @@ class _masker(object):
             mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
             return self.dv.copy(self.dv.volume[:,mask].squeeze())
         except:
-            self.dv.copy(self.dv.volume[:, mask].squeeze())
+            # TODO: should be return?
+            return self.dv.copy(self.dv.volume[:, mask].squeeze())
 
 def _hash(array):
     '''A simple numpy hash function'''
