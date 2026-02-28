@@ -1,12 +1,22 @@
+from __future__ import annotations
 import os
 import errno
 import shutil
+import sys
 import tempfile
+from typing import Any, Optional, TypedDict, Union
+if sys.version_info < (3, 10):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
 
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
-from .save_views import save_3d_views
+from ..dataset import Volume, Vertex
+from .save_views import save_3d_views, ViewParams
 from ._default_params import (
     params_inflatedless_lateral_medial_ventral,
     params_occipital_triple_view,
@@ -15,23 +25,40 @@ from ._default_params import (
     params_flatmap_inflated_lateral_medial_ventral
 )
 
+PanelView = TypedDict(
+    "PanelView",
+    {
+        "angle": Union[str, tuple[str, ViewParams]],
+        "surface": Union[str, ViewParams],
+        # TODO: optionals?
+        "hemisphere": NotRequired[str],
+        "zoom": NotRequired[tuple[float, float, float, float]],
+    }
+)
+PanelParams = TypedDict(
+    "PanelParams",
+    {
+        "view": PanelView,
+        "extent": tuple[float, float, float, float],
+    }
+)
 
 def plot_panels(
-    volume,
-    panels,
-    figsize=(16, 9),
-    windowsize=(1600 * 4, 900 * 4),
-    save_name=None,
-    sleep=10,
-    viewer_params=dict(labels_visible=[], overlays_visible=["rois"]),
-    interpolation="nearest",
-    layers=1,
-):
+    volume: Union[Volume, Vertex],
+    panels: list[PanelParams],
+    figsize: npt.ArrayLike=(16, 9),
+    windowsize: tuple[int, int]=(1600 * 4, 900 * 4),
+    save_name: Optional[str]=None,
+    sleep: float=10,
+    viewer_params: dict[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
+    interpolation: str="nearest",
+    layers: int=1,
+) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
 
     Parameters
     ----------
-    volume : cortex.Volume
+    volume : cortex.Volume | cortex.Vertex
         The data to plot.
 
     panels : list of dict
@@ -91,6 +118,8 @@ def plot_panels(
     ]
     # remove redundant couples, e.g. left and right
     angles_and_surfaces = list(set(angles_and_surfaces))
+    list_angles: list[Union[str, tuple[str, ViewParams]]]
+    list_surfaces: list[Union[str, ViewParams]]
     list_angles, list_surfaces = list(zip(*angles_and_surfaces))
 
     # create all images
