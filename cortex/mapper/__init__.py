@@ -7,11 +7,11 @@ from .mapper import Mapper, _savecache
 from .utils import nanproject, vol2surf
 
 
-def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
+def get_mapper(subject: str, xfmname: str, type: str='nearest', recache: bool=False, **kwargs):
     from ..database import db
     from . import point, patch, line
 
-    mapcls = dict(
+    mapcls: dict[str, type[Mapper]] = dict(
         nearest=point.PointNN,
         trilinear=point.PointTrilin,
         gaussian=point.PointGauss,

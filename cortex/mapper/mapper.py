@@ -1,4 +1,7 @@
+from typing import Union, overload
+
 import numpy as np
+import numpy.typing as npt
 from scipy import sparse
 
 from .. import dataset
@@ -39,7 +42,7 @@ class Mapper(object):
         ptype = self.__class__.__name__
         return '<%s mapper with %d vertices>'%(ptype, self.nverts)
 
-    def __call__(self, data):
+    def __call__(self, data: Union[dataset.Dataview, npt.NDArray, tuple]) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
         if isinstance(data, tuple):
             data = dataset.Volume(*data)
 
@@ -71,7 +74,7 @@ class Mapper(object):
 
         return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
 
-    def backwards(self, vertexdata):
+    def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]):
         '''Projects vertex data back into volume space.
 
         Parameters
@@ -91,7 +94,7 @@ class Mapper(object):
         # dot the vertex data with the stacked mappers
         partial_vertex = bothmappers.T.dot(to_map)
         # solve the inverse mapping problem
-        voxeldata = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
+        voxeldata: npt.NDArray = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
         if Vert2Vol:
             # construct a volume object with the new data
             return dataset.Volume(voxeldata, self.subject, self.xfmname)
