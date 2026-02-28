@@ -4,6 +4,7 @@ import tempfile
 import pytest
 
 from cortex import dataset
+import cortex.quickflat.utils # for ty
 from cortex.testing_utils import has_installed
 from cortex.webgl.data import Package
 

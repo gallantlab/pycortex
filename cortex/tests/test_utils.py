@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 import cortex
+import cortex.utils
 
 
 @pytest.fixture
