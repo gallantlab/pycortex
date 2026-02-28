@@ -9,6 +9,7 @@ import random
 import shutil
 import threading
 import time
+from typing import Union, cast, Any, Callable, Optional
 import warnings
 import webbrowser
 from configparser import NoOptionError
@@ -20,6 +21,7 @@ import numpy as np
 from tornado import web
 
 from .. import dataset, options, utils, volume
+from ..dataset.views import Dataview
 from ..database import db
 from . import serve
 from .data import Package
@@ -282,24 +284,24 @@ def make_static(
 
 
 def show(
-    data,
-    autoclose=None,
-    open_browser=None,
-    port=None,
-    pickerfun=None,
-    recache=False,
-    template="mixer.html",
-    overlays_available=None,
-    overlays_visible=("rois", "sulci"),
-    labels_visible=("rois",),
-    types=("inflated",),
-    overlay_file=None,
-    curvature_brightness=None,
-    curvature_contrast=None,
-    curvature_smoothness=None,
-    surface_specularity=None,
-    title="Brain",
-    layout=None,
+    data: Union[dataset.Dataset, Dataview],
+    autoclose: Optional[bool]=None,
+    open_browser: Optional[bool]=None,
+    port: Optional[int]=None,
+    pickerfun: Optional[Callable[[int, int], None]]=None,
+    recache: bool=False,
+    template: str="mixer.html",
+    overlays_available: Optional[tuple[str]]=None,
+    overlays_visible: Optional[tuple[str, ...]]=("rois", "sulci"),
+    labels_visible: Optional[tuple[str, ...]]=("rois",),
+    types: Optional[tuple[str, ...]]=("inflated",),
+    overlay_file: Optional[str]=None,
+    curvature_brightness: Optional[float]=None,
+    curvature_contrast: Optional[float]=None,
+    curvature_smoothness: Optional[float]=None,
+    surface_specularity: Optional[float]=None,
+    title: str="Brain",
+    layout: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -418,10 +420,10 @@ def show(
         smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
     )
 
-    post_name = Queue()
+    post_name: Queue[str] = Queue()
 
     # Put together all view options
-    my_viewopts = dict(options.config.items('webgl_viewopts'))
+    my_viewopts: dict[str, Any] = dict(options.config.items('webgl_viewopts'))
     my_viewopts['overlays_visible'] = overlays_visible
     my_viewopts['labels_visible'] = labels_visible
     my_viewopts["brightness"] = (
@@ -675,7 +677,7 @@ def show(
             images.update(new_ims)
             return Proxy(metadata)
 
-        def getImage(self, filename, size=(1920, 1080)):
+        def getImage(self, filename: str, size: tuple[int, int]=(1920, 1080)):
             """Saves currently displayed view to a .png image file
 
             Parameters

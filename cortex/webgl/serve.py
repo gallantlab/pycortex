@@ -4,9 +4,10 @@ import time
 import json
 import stat
 import email
-try:  # python 2
+import sys
+if sys.version_info < (3,):
     from Queue import Queue
-except ImportError:  # python 3
+else:
     from queue import Queue
 import struct
 import socket
@@ -256,8 +257,8 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent.response.put(message)
 
 class WebApp(threading.Thread):
-    daemon = True
-    disconnect_on_close = True
+    daemon: bool = True
+    disconnect_on_close: bool = True
 
     def __init__(self, handlers, port):
         super(WebApp, self).__init__()

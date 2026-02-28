@@ -1,15 +1,15 @@
 """Makes an interactive viewer for viewing data in a browser
 """
+from typing import TYPE_CHECKING
+
 from ..utils import DocLoader
 
-show = DocLoader("show", ".view", "cortex.webgl")
+if TYPE_CHECKING:
+    from cortex.webgl.view import show as _show
+    from cortex.webgl.view import make_static as _static
+else:
+    _show = None
+    _static = None
 
-#def show(*args, **kwargs):
-#    from . import view
-#    return view.show(*args, **kwargs)
-
-make_static = DocLoader("make_static", ".view", "cortex.webgl")
-
-#def make_static(*args, **kwargs):
-#    from . import view
-#    return view.make_static(*args, **kwargs)
+show = DocLoader("show", ".view", "cortex.webgl", actual_func=_show)
+make_static = DocLoader("make_static", ".view", "cortex.webgl", actual_func=_static)
