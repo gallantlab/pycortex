@@ -13,7 +13,7 @@ class Transform(object):
         self.xfm = xfm
         self.reference = None
 
-        if isstr(reference):
+        if isinstance(reference, str):
             import nibabel
             try:
                 self.reference = nibabel.load(reference)
