@@ -11,7 +11,7 @@ class Transform(object):
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
     '''
-    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple, npt.NDArray]):
+    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple[int, int, int], npt.NDArray]):
         self.xfm = xfm
         self.reference = None
 
