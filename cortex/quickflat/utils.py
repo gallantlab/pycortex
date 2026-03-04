@@ -4,22 +4,25 @@ import os
 import string
 import warnings
 from functools import reduce
+from typing import Optional, Union, cast
 
 import numpy as np
+import numpy.typing as npt
+from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
 from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **kwargs):
+def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs):
     """Generate flatmap image from volumetric brain data
 
     This 
 
     Parameters
     ----------
-    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
+    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}
         Object containing containing data to be plotted, subject (surface identifier), 
         and transform.
     height : scalar 
@@ -117,7 +120,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
 
         return img, extents
 
-def get_flatmask(subject, height=1024, recache=False):
+def get_flatmask(subject: str, height: int=1024, recache: bool=False) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
     """
     Parameters
     ----------
@@ -141,8 +144,8 @@ def get_flatmask(subject, height=1024, recache=False):
 
     return mask, extents
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
-                  recache=False, height=1024, depth=0.5):
+def get_flatcache(subject: str, xfmname: Optional[str], pixelwise: bool=True, thick: int=32, sampler: str='nearest',
+                  recache: bool=False, height: int=1024, depth: float=0.5):
     """
     
     Parameters
@@ -189,7 +192,7 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
     if not pixelwise and xfmname is not None:
         from scipy import sparse
         mapper = utils.get_mapper(subject, xfmname, sampler)
-        pixmap = pixmap * sparse.vstack(mapper.masks)
+        pixmap = cast(sparse.csr_matrix, pixmap * sparse.vstack(mapper.masks))
 
     return pixmap
 
@@ -353,7 +356,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
 
     return hatchim
 
-def _make_flatmask(subject, height=1024):
+def _make_flatmask(subject: str, height: int=1024) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
     from PIL import Image, ImageDraw
 
     from .. import polyutils
@@ -368,11 +371,11 @@ def _make_flatmask(subject, height=1024):
     draw = ImageDraw.Draw(im)
     draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
+    extents: npt.NDArray[np.floating] = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
 
     return np.array(im).T > 0, extents
 
-def _make_vertex_cache(subject, height=1024):
+def _make_vertex_cache(subject: str, height: int=1024):
     from scipy import sparse
     from scipy.spatial import cKDTree
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
@@ -391,7 +394,7 @@ def _make_vertex_cache(subject, height=1024):
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
+def _make_pixel_cache(subject: str, xfmname: str, height: int=1024, thick: int=32, depth: float=0.5, sampler: str='nearest') -> sparse.csr_matrix:
     from scipy import sparse
     from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
@@ -441,7 +444,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
 
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
-        mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        mapper: sparse.csr_matrix = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
         if thick == 1:
             i, j, data = sampclass(piacoords[valid]*depth + wmcoords[valid]*(1-depth), xfm.shape)
             mapper = mapper + sparse.csr_matrix((data / float(thick), (vidx[i], j)),
