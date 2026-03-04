@@ -12,9 +12,11 @@ import tempfile
 import warnings
 from builtins import input
 from tempfile import NamedTemporaryFile
+from typing import Optional, Literal, cast
 
 import nibabel
 import numpy as np
+import numpy.typing as npt
 from nibabel import gifti
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
@@ -22,7 +24,7 @@ from scipy.spatial import KDTree
 from . import anat, database
 
 
-def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
+def get_paths(fs_subject: str, hemi: str, type: Literal['patch','surf','curv','slim']="patch", freesurfer_subject_dir: Optional[str]=None) -> str:
     """Retrieve paths for all surfaces for a subject processed by freesurfer
 
     Parameters
@@ -31,7 +33,7 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
         Subject ID for freesurfer subject
     hemi : string ['lh'|'rh']
         Left ('lh') or right ('rh') hemisphere
-    type : string ['patch'|'surf'|'curv']
+    type : string ['patch'|'surf'|'curv'|'slim']
         Which type of files to return
     freesurfer_subject_dir : string | None
         Directory of freesurfer subjects. Defaults to the value for
@@ -49,6 +51,8 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
     elif type == "slim":
         return os.path.join(base, "surf", hemi+".{name}_slim.obj")
+    else:
+        raise ValueError(f"Unsupported file type {type} for get_paths()")
 
 
 def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
@@ -343,7 +347,7 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
     # Regenerate it? 
 
 
-def _remove_disconnected_polys(polys):
+def _remove_disconnected_polys(polys: npt.NDArray[np.integer]) -> npt.NDArray[np.integer]:
     """Remove polygons that are not in the main connected component.
     
     This function creates a sparse graph based on edges in the input.
@@ -382,7 +386,7 @@ def _remove_disconnected_polys(polys):
     return polys[~disconnected_polys_mask]
 
 
-def _move_disconnect_points_to_zero(pts, polys):
+def _move_disconnect_points_to_zero(pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer]) -> npt.NDArray[np.float32]:
     """Change coordinates of points not in polygons to zero.
     
     This cleaning step is useful after _remove_disconnected_polys, to
@@ -415,8 +419,8 @@ def parse_surf(filename):
         fp.readline()
         print(comment)
         verts, faces = struct.unpack('>2I', fp.read(8))
-        pts = np.frombuffer(fp.read(4*3*verts), dtype='f4').byteswap()
-        polys = np.frombuffer(fp.read(4*3*faces), dtype='i4').byteswap()
+        pts = cast(npt.NDArray[np.float32], np.frombuffer(fp.read(4*3*verts), dtype='f4').byteswap())
+        polys = cast(npt.NDArray[np.int32], np.frombuffer(fp.read(4*3*faces), dtype='i4').byteswap())
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
@@ -464,12 +468,12 @@ def write_patch(filename, pts, edges=None):
                 fp.write(struct.pack('>i3f', i+1, *pt))
 
 
-def parse_curv(filename):
+def parse_curv(filename: str) -> npt.NDArray[np.float32]:
     """
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
-        return np.frombuffer(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('='))
+        return cast(npt.NDArray[np.float32], np.frombuffer(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('=')))
 
 
 def parse_patch(filename):
@@ -484,7 +488,7 @@ def parse_patch(filename):
         return data
 
 
-def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subject_dir=None):
+def get_surf(subject: str, hemi: Literal['lh', 'rh'], type: str, patch: Optional[npt.NDArray]=None, flatten_step: Optional[int]=None, freesurfer_subject_dir: Optional[str]=None) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.int32], npt.NDArray[np.float32]]:
     """Read freesurfer surface file
     """
     if type == "patch":
@@ -870,7 +874,7 @@ def get_mri_surf2surf_matrix(source_subj, hemi, surface_type=None,
     return _surf2surf_nnfr_matrix(src_sphere, trg_sphere)
 
 
-def get_curv(fs_subject, hemi, type='wm', freesurfer_subject_dir=None):
+def get_curv(fs_subject: str, hemi: Literal['lh', 'rh'], type: str='wm', freesurfer_subject_dir: Optional[str]=None):
     """Load freesurfer curv file for a freesurfer subject
 
     Parameters
