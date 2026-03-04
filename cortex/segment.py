@@ -12,10 +12,12 @@ from . import formats
 from . import blender
 from . import freesurfer
 from . import options
+from . import dataset
 from .database import db
 
 from .freesurfer import autorecon as run_freesurfer_recon
 from .freesurfer import import_subj as import_freesurfer_subject
+from typing import Optional, Literal, Union
 
 default_blender_path = options.config.get("dependency_paths", "blender")
 default_slim_path = options.config.get("dependency_paths", "slim")
@@ -130,18 +132,18 @@ def edit_segmentation(
 
 
 def cut_surface(
-    cx_subject,
-    hemi,
-    name="flatten",
-    fs_subject=None,
-    data=None,
-    freesurfer_subject_dir=None,
-    flatten_with="freesurfer",
-    method=None,
-    do_import_subject=True,
-    blender_path=default_blender_path,
-    recache=True,
-    auto_overwrite=False,
+    cx_subject: str,
+    hemi: Literal['lh', 'rh'],
+    name: str="flatten",
+    fs_subject: Optional[str]=None,
+    data: Optional[Union[dataset.Dataview, list[dataset.Dataview]]]=None,
+    freesurfer_subject_dir: Optional[str]=None,
+    flatten_with: Literal['freesurfer', 'SLIM', 'blender']="freesurfer",
+    method: Optional[Literal['CONFORMAL', 'ANGLE_BASED', 'MINIMUM_STRETCH']]=None,
+    do_import_subject: bool=True,
+    blender_path: str=default_blender_path,
+    recache: bool=True,
+    auto_overwrite: bool=False,
     **kwargs,
 ):
     """Initializes an interface to cut the segmented surface for flatmapping.
@@ -291,7 +293,7 @@ def cut_surface(
             freesurfer_subject_dir=freesurfer_subject_dir,
             **kwargs,
         )
-        path_type, flat_type = "slip", "slim"
+        path_type, flat_type = "slip", "slim" # TODO: possible typo. "slip" vs "slim"
     else:
         raise ValueError(f"Invalid flatten_with: {flatten_with}")
 
