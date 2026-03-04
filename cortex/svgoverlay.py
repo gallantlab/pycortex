@@ -13,7 +13,7 @@ import subprocess as sp
 from matplotlib.path import Path
 from scipy.spatial import cKDTree
 from builtins import zip, str
-from typing import overload, Literal, Optional
+from typing import Any, Iterator, Union, overload, Literal, Optional
 
 from looseversion import LooseVersion
 
@@ -22,6 +22,7 @@ from lxml.builder import E
 
 from .options import config
 from .testing_utils import INKSCAPE_VERSION
+from lxml.etree import _Element, _ElementTree
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -48,14 +49,14 @@ class SVGOverlay(object):
         list of layers of svg file to extract. If None, extracts all overlay layers 
         (i.e. all layers that do not contain images)
     """
-    def __init__(self, svgfile, coords=None, overlays_available=None):
+    def __init__(self, svgfile: str, coords: Optional[npt.NDArray]=None, overlays_available: None=None) -> None:
         self.svgfile = svgfile
         self.overlays_available = overlays_available
         self.reload()
         if coords is not None:
             self.set_coords(coords)
 
-    def reload(self):
+    def reload(self) -> None:
         """Initial load of data from svgfile
 
         Strips out `data` layer of svg file, saves only layers consisting of vector paths.
@@ -66,13 +67,13 @@ class SVGOverlay(object):
         self.svgshape = w, h
 
         # Grab relevant layers
-        self.layers = dict()
+        self.layers: dict[str, Overlay] = dict()
         
         for layer in self.svg.getroot().findall("{%s}g"%svgns):
             layer = Overlay(self, layer)
             self.layers[layer.name] = layer
 
-    def set_coords(self, coords):
+    def set_coords(self, coords: npt.NDArray) -> None:
         """Unclear what this does. James??"""
         # Normalize coordinates 0-1
         if np.any(coords.max(0) > 1) or np.any(coords.min(0) < 0):
@@ -100,7 +101,7 @@ class SVGOverlay(object):
                         idx = 0
                     element.attrib['data-ptidx'] = str(idx)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> "Overlay":
         return self.layers[attr]
 
     def __dir__(self):
@@ -112,7 +113,7 @@ class SVGOverlay(object):
     def __iter__(self):
         return iter(self.layers.values())
 
-    def add_layer(self, name):
+    def add_layer(self, name: str):
         """Add a layer to the svgfile on which this object is based
 
         Adds a new layer named `name` to the svgfile by the SVGOverlay object, and
@@ -132,7 +133,7 @@ class SVGOverlay(object):
             #    fp.write(etree.tostring(svg, encoding=str, pretty_print=True)) # python3.X
         self.reload()
 
-    def toxml(self, pretty=True):
+    def toxml(self, pretty: bool=True) -> bytes:
         """Return a string xml version of the SVGOverlay object"""
         return etree.tostring(self.svg, pretty_print=pretty)
 
@@ -191,8 +192,8 @@ class SVGOverlay(object):
             outfile.write(etree.tostring(outsvg))
         print('Saved SVG to: %s'%filename)
 
-    def get_texture(self, layer_name, height, name=None, background=None, labels=True,
-        shape_list=None, **kwargs):
+    def get_texture(self, layer_name: str, height: int, name: Optional[str]=None, background: Optional[str]=None, labels: bool=True,
+        shape_list: Optional[list]=None, **kwargs) -> npt.NDArray:
         """Renders a specific layer of this svgobject as a png
 
         Parameters
@@ -319,7 +320,7 @@ class SVGOverlay(object):
 class Overlay(object):
     """Class to represent a single layer of an SVG file
     """
-    def __init__(self, svgobject, layer):
+    def __init__(self, svgobject: SVGOverlay, layer: _Element) -> None:
         self.svgobject = svgobject
         self.svg = svgobject.svg
         self.layer = layer
@@ -351,11 +352,11 @@ class Overlay(object):
             return 'none' not in self.layer.attrib['style']
 
     @visible.setter
-    def visible(self, value):
+    def visible(self, value: bool):
         style = "display:inline;" if value else "display:none;"
         self.layer.attrib['style'] = style
 
-    def set(self, **kwargs):
+    def set(self, **kwargs) -> None:
         for shape in list(self.shapes.values()):
             shape.set(**kwargs)
 
@@ -390,7 +391,7 @@ class Overlay(object):
             #    xml.write(etree.tostring(svg, encoding=str, pretty_print=True)) # python3.X
 
 class Labels(object):
-    def __init__(self, overlay):
+    def __init__(self, overlay: Overlay) -> None:
         self.overlay = overlay
         self.layer = _find_layer(self.overlay.layer, "labels")
         # This should be layer-specific,and read from different fields in the options.cfg file
@@ -436,7 +437,7 @@ class Labels(object):
                     self.elements[name][i] = text
                     self.override.append(text)
 
-    def set(self, override=False, **kwargs):
+    def set(self, override: bool=False, **kwargs) -> None:
         self.text_style.update(kwargs)
         text_style = self.text_style.items()
         text_style = ';'.join(['%s:%s'%(k,v) for k, v in text_style if v != 'None'])
@@ -449,11 +450,11 @@ class Labels(object):
             element.attrib['style'] = text_style
 
     @property
-    def visible(self):
+    def visible(self) -> bool:
         return self.text_style['display'] != "none"
 
     @visible.setter
-    def visible(self, value):
+    def visible(self, value: bool):
         if value:
             self.text_style['display'] = 'inline'
         else:
@@ -461,7 +462,7 @@ class Labels(object):
         self.set()
 
 class Shape(object):
-    def __init__(self, layer, height, override_style=True):
+    def __init__(self, layer: _Element, height: float, override_style: bool=True) -> None:
         self.layer = layer
         self.height = height
         self.name = layer.attrib['{%s}label'%inkns]
@@ -484,13 +485,13 @@ class Shape(object):
                 self.style.update(style)
                 break
 
-    def set(self, **kwargs):
+    def set(self, **kwargs) -> None:
         self.style.update(**kwargs)
         style = ';'.join(['%s:%s'%(k,v) for k, v in self.style.items() if v != "None"])
         for path in self.paths:
             path.attrib['style'] = style
 
-    def get_labelpos(self):
+    def get_labelpos(self) -> list[Union[npt.NDArray, Any]]:
         labels = []
         for path in self.paths:
             pos = _parse_svg_pts(path.attrib['d'])
@@ -537,7 +538,7 @@ def _find_layer_names(svg):
     layer_names = [l.get("{%s}label"%inkns) for l in layers]
     return layer_names
 
-def _find_layer(svg, label):
+def _find_layer(svg: Union[_ElementTree, _Element], label: str) -> _Element:
     layers = [l for l in svg.findall("{%s}g[@{%s}label]"%(svgns, inkns)) if l.get("{%s}label"%inkns) == label]
     if len(layers) < 1:
         raise ValueError("Cannot find layer %s"%label)
@@ -554,11 +555,11 @@ def _make_layer(parent, name):
 try:
     from shapely.geometry import Polygon
 
-    def _center_pts(pts):
+    def _center_pts(pts: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         '''Fancy label position generator, using erosion to get label coordinate'''
-        min = pts.min(0)
+        min: npt.NDArray[np.floating] = pts.min(0)
         pts -= min
-        max = pts.max(0)
+        max: npt.NDArray[np.floating] = pts.max(0)
         max[max == 0] = 1        
         pts /= max
 
@@ -589,7 +590,7 @@ except (ImportError, OSError):
     import warnings
     warnings.warn("Cannot find shapely, using simple label placement.")
 
-    def _center_pts(pts):
+    def _center_pts(pts: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
         return np.nanmean(pts, 0)
 
 
@@ -624,7 +625,7 @@ def _split_multipath(pathstr):
         # Need further parsing of multi-path strings? perhaps no.
         yield (header + subpath).strip()
 
-def scrub(svgfile, overlays_available=None):
+def scrub(svgfile: str, overlays_available: None=None) -> _ElementTree:
     """Remove data layers from an svg object prior to rendering
 
     Returns etree-parsed svg object
@@ -677,15 +678,15 @@ def make_svg(pts, polys):
     return svg
 
 @overload
-def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: Literal[False]=False, 
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[False]=False, 
                 overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
 
 @overload
-def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: Literal[True], 
-                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, object]: ...
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[True], 
+                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, npt.NDArray[np.integer]]: ...
 
-def get_overlay(subject: str, svgfile: str, pts: npt.NDArray, polys: npt.NDArray, remove_medial: bool=False, 
-                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs):
+def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: bool=False, 
+                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> Union[SVGOverlay, tuple[SVGOverlay, npt.NDArray[np.integer]]]:
     """Return a python represent of the overlays present in `svgfile`.
 
     Parameters
@@ -796,20 +797,20 @@ UPPERCASE = set('MZLHVCSQTA')
 COMMAND_RE = re.compile("([MmZzLlHhVvCcSsQqTtAa])")
 FLOAT_RE = re.compile("[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
 
-def _tokenize_path(pathdef):
+def _tokenize_path(pathdef: str) -> Iterator[str]:
     for x in COMMAND_RE.split(pathdef):
         if x in COMMANDS:
             yield x
         for token in FLOAT_RE.findall(x):
             yield token
 
-def _parse_svg_pts(datastr):
+def _parse_svg_pts(datastr: str) -> npt.NDArray[np.floating]:
     data = list(_tokenize_path(datastr))
     #data = data.replace(",", " ").split()
     if data.pop(0).lower() != "m":
         raise ValueError("Unknown path format")
     #offset = np.array([float(x) for x in data[1].split(',')])
-    offset = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
+    offset: npt.NDArray[np.floating] = np.array([float(x) for x in [data.pop(0), data.pop(0)]])
     mode = "l"
     pts = [[offset[0], offset[1]]]
 
@@ -860,7 +861,7 @@ def _parse_svg_pts(datastr):
 
     return np.array(pts)
 
-def import_roi(roifile, outfile):
+def import_roi(roifile: str, outfile: str) -> None:
     """Convert rois.svg file (from previous versions of pycortex) to overlays.svg"""
     import warnings
     warnings.warn("Converting rois.svg to overlays.svg")
