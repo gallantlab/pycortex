@@ -483,19 +483,19 @@ class Database(object):
         return Transform(xfmdict[xfmtype], reference)
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both'], merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both'], merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
         ...
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> Tuple[Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         ...
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> Tuple[npt.NDArray, npt.NDArray]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
         ...
 
     @_memo
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray, npt.NDArray], Tuple[npt.NDArray, npt.NDArray]], Tuple[npt.NDArray, npt.NDArray]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
