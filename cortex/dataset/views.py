@@ -3,9 +3,10 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import Any, Optional, Union, cast, overload, Literal
+from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
 
 import h5py
+from matplotlib.colors import Colormap, ListedColormap
 import numpy as np
 import numpy.typing as npt
 
@@ -154,6 +155,12 @@ def _from_hdf_view(
         raise ValueError("Invalid Dataview specification")
 
 
+class ColormapDict(TypedDict):
+    cmap: Colormap | ListedColormap # TODO: is ListedColormap necessary here?
+    vmin: Optional[float]
+    vmax: Optional[float]
+
+
 class Dataview:
     def __init__(
         self,
@@ -287,7 +294,7 @@ class Dataview:
         view[7] = json.dumps(xfmname)
         return view
 
-    def get_cmapdict(self):
+    def get_cmapdict(self) -> ColormapDict:
         """Returns a dictionary with cmap information."""
 
         from matplotlib import colors
@@ -313,7 +320,7 @@ class Dataview:
             register_cmap(cmap)
 
         # TODO: create namedtuple
-        return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
+        return ColormapDict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
     def raw(self):
