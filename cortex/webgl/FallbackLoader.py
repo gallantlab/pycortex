@@ -1,15 +1,16 @@
 import os
 from tornado import template
+from typing import Optional
 
 class FallbackLoader(template.BaseLoader):
     """Loads templates from one of multiple potential directories, falling back 
     to next if the template is not found in the first directory.
     """
-    def __init__(self, root_directories, **kwargs):
+    def __init__(self, root_directories: list[str], **kwargs):
         super(FallbackLoader, self).__init__(**kwargs)
         self.roots = [os.path.abspath(d) for d in root_directories]
     
-    def resolve_path(self, name, parent_path=None):
+    def resolve_path(self, name: str, parent_path: Optional[str]=None) -> str:
         if parent_path and parent_path[0] not in ["<", "/"] and not name.startswith("/"):
             for root in self.roots:
                 current_path = os.path.join(root, parent_path)
@@ -23,7 +24,7 @@ class FallbackLoader(template.BaseLoader):
                 raise Exception("Couldn't find template.")
         return name
 
-    def _create_template(self, name):
+    def _create_template(self, name: str) -> template.Template:
         for root in self.roots:
             path = os.path.join(root, name)
             if os.path.exists(path):
