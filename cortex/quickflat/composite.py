@@ -1,6 +1,11 @@
 import copy
-from typing import Union
+from typing import List, Optional, Tuple, Union
+
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
 import numpy as np
+import numpy.typing as npt
 
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
@@ -122,8 +127,8 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
                       zorder=0)
     return cvimg
 
-def add_data(fig, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height=1024, thick=32, depth=0.5, pixelwise=True,
-             sampler='nearest', recache=False, nanmean=False):
+def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, thick: int=32, depth: float=0.5, pixelwise: bool=True,
+             sampler: str='nearest', recache: bool=False, nanmean: bool=False) -> Tuple[AxesImage, npt.NDArray]:
     """Add data to quickflat plot
 
     Parameters
@@ -176,7 +181,7 @@ def add_data(fig, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Datav
                     **cmapdict)
     return img, extents
 
-def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, overlay_file=None, **kwargs):
+def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -194,7 +199,8 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         Height of image. None defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels on ROIs
-    roi_list : 
+    roi_list : list of str, optional
+        List of ROIs to include
 
     kwargs : 
 
@@ -222,7 +228,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     return img
 
 
-def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_list=None, overlay_file=None, **kwargs):
+def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: None=None, overlay_file: None=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -325,8 +331,8 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     return img
 
 
-def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0.2, 0.04), 
-                 orientation='horizontal'):
+def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: None=None, colorbar_location: Tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
+                 orientation: str='horizontal') -> Axes:
     """Add a colorbar to a flatmap plot
 
     Parameters
@@ -350,8 +356,8 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0
     return cbar
 
 
-def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
-                    colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
+def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: npt.ArrayLike,
+                    colorbar_location: Tuple[float, float, float, float]=(0.425, 0.02, 0.15, 0.15), fontsize: int=12) -> AxesImage:
     """Add a 2D colorbar to a flatmap plot
 
     Parameters
@@ -367,6 +373,7 @@ def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
         [left, top, width, height] (?)
     orientation : string
         'vertical' or 'horizontal'
+        TODO: unused
     """
     # a bit sketchy - lazy imports
     import matplotlib.pyplot as plt
