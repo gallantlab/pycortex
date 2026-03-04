@@ -6,6 +6,7 @@ from mda_xdrlib import xdrlib
 import tempfile
 import subprocess as sp
 import site
+from typing import Optional, Union
 
 import numpy as np
 
@@ -32,7 +33,7 @@ from bpy import data as D
 ])
 
 
-def _wrap_code(code, filename):
+def _wrap_code(code: str, filename: str) -> str:
     """
     Wrap code for running in blender
 
@@ -51,7 +52,7 @@ def _wrap_code(code, filename):
     return wrapped_code
 
 
-def _call_blender(filename, code=None, background=True, blender_path=default_blender):
+def _call_blender(filename: str, code: Optional[str]=None, background: bool=True, blender_path: str=default_blender):
     """
     Call blender, while running the given code. If the filename doesn't exist, save a new file in that location.
     New files will be initially cleared by deleting all objects.
@@ -90,7 +91,7 @@ def _call_blender(filename, code=None, background=True, blender_path=default_ble
         sp.check_call([w.encode() for w in shlex.split(cmd)],)
 
 
-def _check_executable_blender_version(blender_path=default_blender):
+def _check_executable_blender_version(blender_path: str=default_blender) -> tuple[int, ...]:
     """Get blender version number"""
     blender_version = sp.check_output([blender_path, '--version']).decode()
     blender_version = blender_version.split('\n')[0]
@@ -102,7 +103,7 @@ def _check_executable_blender_version(blender_path=default_blender):
     return blender_major_version_number
 
 
-def _check_file_blender_version(fpath):
+def _check_file_blender_version(fpath: str) -> tuple[int, int]:
     """Check which version of blender saved a particular file"""
     import struct
     with open(fpath, mode='rb') as fid:
@@ -111,7 +112,7 @@ def _check_file_blender_version(fpath):
     return (int(major), int(minor))
 
 
-def _legacy_blender_backup(fname, blender_path=default_blender):
+def _legacy_blender_backup(fname: str, blender_path: str=default_blender) -> None:
     """Create a copy of a .blend file, because if a blender 2.7x file is 
     opened with blender 2.8+, it usually can't be opened with 2.7x again.
     
@@ -144,7 +145,7 @@ def _legacy_blender_backup(fname, blender_path=default_blender):
                 shutil.copy(fname, fname_bkup)
 
 
-def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh="hemi", blender_path=None):
+def add_cutdata(fname: str, braindata: Union[dataset.Dataset, dataset.Dataview], name: str="retinotopy", projection: str="nearest", mesh: str="hemi", blender_path: Optional[str]=None):
     """Add data as vertex colors to blender mesh
     
     Useful to add localizer data for help in placing flatmap cuts
