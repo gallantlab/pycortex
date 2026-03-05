@@ -73,7 +73,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if default_smoothing.lower()=='none':
         default_smoothing = None
     else:
-        default_smoothing = np.float_(default_smoothing)
+        default_smoothing = np.float64(default_smoothing)
     if smooth is None:
         # (Might still be None!)
         smooth = default_smoothing
