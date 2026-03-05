@@ -145,7 +145,7 @@ def _legacy_blender_backup(fname: str, blender_path: str=default_blender) -> Non
                 shutil.copy(fname, fname_bkup)
 
 
-def add_cutdata(fname: str, braindata: Union[dataset.Dataset, dataset.Dataview], name: str="retinotopy", projection: str="nearest", mesh: str="hemi", blender_path: Optional[str]=None):
+def add_cutdata(fname: str, braindata: Union[dataset.Dataset, dataset.Dataview], name: str="retinotopy", projection: str="nearest", mesh: str="hemi", blender_path: Optional[str]=None) -> None:
     """Add data as vertex colors to blender mesh
     
     Useful to add localizer data for help in placing flatmap cuts
