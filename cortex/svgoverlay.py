@@ -192,8 +192,8 @@ class SVGOverlay(object):
             outfile.write(etree.tostring(outsvg))
         print('Saved SVG to: %s'%filename)
 
-    def get_texture(self, layer_name: str, height: int, name: Optional[str]=None, background: Optional[str]=None, labels: bool=True,
-        shape_list: Optional[list]=None, **kwargs) -> npt.NDArray:
+    def get_texture(self, layer_name: str, height: Optional[Union[int, float]], name: Optional[str]=None, background: Optional[str]=None, labels: bool=True,
+        shape_list: Optional[list[str]]=None, **kwargs) -> npt.NDArray:
         """Renders a specific layer of this svgobject as a png
 
         Parameters
@@ -208,7 +208,7 @@ class SVGOverlay(object):
             An image? Unclear.
         labels : boolean
             Whether to render labels for paths in the svg file
-        shape_list : list
+        shape_list : list[str]
             list of string names for path/shape elements in this layer to be rendered
             (any elements not on this list will be set to invisible, if this list is
             provided)
@@ -329,7 +329,7 @@ class Overlay(object):
 
         # Check to see if the layer is locked, to see if we need to override the style
         locked = '{%s}insensitive'%sodins
-        self.shapes = dict()
+        self.shapes: dict[str, Shape] = dict()
         for layer_ in _find_layer(layer, "shapes").findall("{%s}g"%svgns):
             override = locked not in layer_.attrib or layer_.attrib[locked] == "false"
             shape = Shape(layer_, self.svgobject.svgshape[1], override_style=override)
