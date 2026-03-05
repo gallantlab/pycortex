@@ -3,7 +3,12 @@ from __future__ import annotations
 import glob
 import json
 import os
+import sys
 from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
+if sys.version_info < (3, 10):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
 
 import h5py
 from matplotlib.colors import Colormap, ListedColormap
@@ -23,6 +28,9 @@ try:
         return cm.register(cmap)
 except ImportError:
     from matplotlib.cm import register_cmap
+
+
+JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
 
 
 @overload
@@ -161,6 +169,19 @@ class ColormapDict(TypedDict):
     vmax: Optional[float]
 
 
+class DataviewJSON(TypedDict):
+    state: Any
+    attrs: dict[str, Any]
+    desc: str
+    cmap: Optional[list[str]]
+    vmin: Optional[list[float]]
+    vmax: Optional[list[float]]
+    name: NotRequired[str]
+    raw: NotRequired[bool]
+    mosaic: NotRequired[tuple[int, int]]
+    subject: NotRequired[str] # is this actually from BrainData?
+
+
 class Dataview(object):
     def __init__(
         self,
@@ -203,12 +224,13 @@ class Dataview(object):
     def priority(self, value):
         self.attrs["priority"] = value
 
-    def to_json(self, simple=False):
+    #def to_json(self, simple: bool=False) -> dict[str, JSON]:
+    def to_json(self, simple: bool=False) -> DataviewJSON:
         if simple:
             return dict()
 
         desc = self.description
-        if hasattr(desc, "decode"):
+        if isinstance(desc, bytes):
             desc = desc.decode()
         sdict = dict(state=self.state, attrs=self.attrs.copy(), desc=desc)
         try:
