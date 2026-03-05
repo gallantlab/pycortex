@@ -1,3 +1,5 @@
+from __future__ import annotations # needed for `type`?
+
 import os
 
 import numpy as np
