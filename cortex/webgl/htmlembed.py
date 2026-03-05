@@ -5,10 +5,11 @@ import binascii
 import mimetypes
 
 import html5lib
+from xml.dom.minidom import Document, Element
 
 from . import serve
 
-def _resolve_path(filename, roots):
+def _resolve_path(filename: str, roots: list[str]) -> str:
     for root in roots:
         p = os.path.join(root, filename)
         if os.path.exists(p):
@@ -16,7 +17,7 @@ def _resolve_path(filename, roots):
     else:
         raise IOError("Path '%s' doesn't exist under any root dir (%s)" % (filename, roots))
 
-def _embed_css(cssfile, rootdirs):
+def _embed_css(cssfile: str, rootdirs: list[str]) -> str:
     csspath, fname = os.path.split(cssfile)
     with codecs.open(cssfile, encoding='utf-8') as fp:
         css = fp.read()
@@ -32,7 +33,7 @@ def _embed_css(cssfile, rootdirs):
             cssout.append(u"%s {\n%s\n}"%(selector, content))
         return '\n'.join(cssout)
 
-def _embed_js(dom, script, rootdirs):
+def _embed_js(dom: Document, script: Element, rootdirs: list[str]) -> None:
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
     aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*['\"](.*?)['\"]\)")
     with codecs.open(_resolve_path(script.getAttribute("src"), rootdirs), encoding='utf-8') as jsfile:
@@ -56,7 +57,7 @@ def _embed_js(dom, script, rootdirs):
         script.removeAttribute("src")
         script.appendChild(dom.createTextNode(jssrc))
 
-def _embed_worker(worker):
+def _embed_worker(worker: str) -> str:
     wparse = re.compile(r"importScripts\((.*)\)")
     wpath = os.path.split(worker)[0]
     with codecs.open(worker, encoding='utf-8') as wfile:
@@ -70,14 +71,14 @@ def _embed_worker(worker):
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
 
-def _embed_images(dom, rootdirs):
+def _embed_images(dom: Document, rootdirs: list[str]) -> None:
     for img in dom.getElementsByTagName("img"):
         src = img.getAttribute("src")
         if not src.strip("\"'").startswith("data:") and len(src) > 0:
             imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
             img.setAttribute(u"src", serve.make_base64(imgfile).replace('\n', ''))
 
-def embed(rawhtml, outfile, rootdirs=(serve.cwd,)):
+def embed(rawhtml: bytes, outfile: str, rootdirs: list[str]=(serve.cwd,)) -> None:
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
     head = dom.getElementsByTagName("head")[0]
