@@ -1,13 +1,15 @@
 """Contains functions for working with volume data
 """
 import os
+from typing import Optional, Union
 import numpy as np
+import numpy.typing as npt
 
 from . import dataset
 from .database import db
 from .xfm import Transform
 
-def unmask(mask, data):
+def unmask(mask: npt.NDArray, data: npt.NDArray) -> Union[np.ma.MaskedArray, npt.NDArray]:
     """unmask(mask, data)
 
     Unmask the data, assuming it's been masked. Creates a volume
@@ -54,15 +56,15 @@ def unmask(mask, data):
 
     return output.squeeze()
 
-def detrend_median(data, kernel=15):
+def detrend_median(data: npt.NDArray, kernel: int=15) -> npt.NDArray:
     from scipy.signal import medfilt
     lowfreq = medfilt(data, [1, kernel, kernel])
     return data - lowfreq
 
-def detrend_gradient(data, diff=3):
+def detrend_gradient(data: npt.ArrayLike, diff: int=3) -> npt.NDArray:
     return (np.array(np.gradient(data, 1, diff, diff))**2).sum(0)
 
-def detrend_poly(data, polyorder = 10, mask=None):
+def detrend_poly(data: npt.NDArray, polyorder: int = 10, mask: Optional[npt.NDArray] = None) -> npt.NDArray:
     from scipy.special import legendre
     polys = [legendre(i) for i in range(polyorder)]
     s = data.shape
@@ -84,7 +86,7 @@ def detrend_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def mosaic(data, dim=0, show=True, **kwargs):
+def mosaic(data: npt.NDArray, dim: int=0, show: bool=True, **kwargs) -> tuple[npt.NDArray, tuple[int, int]]:
     """
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
     with radiological convention (left side of figure is right side of subject).
