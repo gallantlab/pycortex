@@ -1,5 +1,5 @@
 import copy
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -128,7 +128,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     return cvimg
 
 def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, thick: int=32, depth: float=0.5, pixelwise: bool=True,
-             sampler: str='nearest', recache: bool=False, nanmean: bool=False) -> Tuple[AxesImage, npt.NDArray]:
+             sampler: str='nearest', recache: bool=False, nanmean: bool=False) -> tuple[AxesImage, npt.NDArray]:
     """Add data to quickflat plot
 
     Parameters
@@ -228,7 +228,7 @@ def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datase
     return img
 
 
-def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: None=None, overlay_file: None=None, **kwargs) -> AxesImage:
+def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -331,7 +331,8 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     return img
 
 
-def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: None=None, colorbar_location: Tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
+# TODO: colorbar_ticks
+def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: None=None, colorbar_location: tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
                  orientation: str='horizontal') -> Axes:
     """Add a colorbar to a flatmap plot
 
@@ -357,7 +358,7 @@ def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: None=None, colorb
 
 
 def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: npt.ArrayLike,
-                    colorbar_location: Tuple[float, float, float, float]=(0.425, 0.02, 0.15, 0.15), fontsize: int=12) -> AxesImage:
+                    colorbar_location: tuple[float, float, float, float]=(0.425, 0.02, 0.15, 0.15), fontsize: int=12) -> AxesImage:
     """Add a 2D colorbar to a flatmap plot
 
     Parameters
