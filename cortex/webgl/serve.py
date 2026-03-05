@@ -30,6 +30,8 @@ import tornado.httpserver
 from tornado import websocket
 from tornado.web import HTTPError
 
+from .. import dataset
+
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
@@ -423,6 +425,7 @@ class JSProxy(Generic[P]):
 
     def __setattr__(self, attr: str, value: Any):
         if hasattr(self, "attrs") and self.attrs is None:
+            # TODO: does this ever happen??
             return super(JSProxy, self).__setattr__(attr, value)
         if not hasattr(self, "attrs") or attr not in self.attrs:
             return super(JSProxy, self).__setattr__(attr, value)
