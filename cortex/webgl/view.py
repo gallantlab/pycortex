@@ -167,7 +167,7 @@ def make_static(
     db.auxfile = None
 
     ## Rename files to anonymize
-    submap = dict()
+    submap: dict[str, str] = dict()
     for i, (subj, ctmfile) in enumerate(ctms.items()):
         oldpath, fname = os.path.split(ctmfile)
         fname, ext = os.path.splitext(fname)
