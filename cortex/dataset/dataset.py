@@ -1,6 +1,7 @@
 import tempfile
-from typing import Any, Iterator, Optional, Set, Tuple, Union, overload
+from typing import Iterator, Optional, Union, overload
 import numpy as np
+import numpy.typing as npt
 import h5py
 
 from ..database import db
@@ -9,6 +10,7 @@ from ..xfm import Transform
 from .braindata import _hdf_write
 from .views import normalize as _vnorm
 from .views import Dataview, Vertex, Volume, _from_hdf_data
+from h5py._hl.files import File
 
 class Dataset:
     """
@@ -19,7 +21,7 @@ class Dataset:
     # TODO: should be BrainData & Dataview, or just Dataview
     All kwargs should be `BrainData` or `Dataset` objects.
     """
-    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]):
+    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> None:
         self.h5 = None
         self.views: dict[str, Dataview] = {}
 
@@ -41,7 +43,7 @@ class Dataset:
 
         return self
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str):
         if attr in self.__dict__:
             return self.__dict__[attr]
         elif attr in self.views:
@@ -49,10 +51,10 @@ class Dataset:
 
         raise AttributeError
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Dataview:
         return self.views[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, Dataview]]:
         for name, dv in sorted(self.views.items(), key=lambda x: x[1].priority):
             yield name, dv
 
@@ -67,7 +69,7 @@ class Dataset:
         return list(self.__dict__.keys()) + list(self.views.keys())
 
     @classmethod
-    def from_file(cls, filename, subject=None):
+    def from_file(cls, filename: str, subject: Optional[str]=None) -> "Dataset":
         """Load a pycortex Dataset (cortex.Dataset class) from a file
 
         Parameters
@@ -114,7 +116,7 @@ class Dataset:
 
         return ds
         
-    def uniques(self, collapse=False):
+    def uniques(self, collapse: bool=False) -> set[Dataview]:
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
@@ -124,7 +126,7 @@ class Dataset:
 
         return uniques
 
-    def save(self, filename=None, pack=False):
+    def save(self, filename: Optional[str]=None, pack: bool=False) -> None:
         if filename is not None:
             self.h5 = h5py.File(filename, 'a')
         elif self.h5 is None:
@@ -154,7 +156,7 @@ class Dataset:
 
         self.h5.flush()
 
-    def get_surf(self, subject, type, hemi='both', merge=False, nudge=False):
+    def get_surf(self, subject: str, type: str, hemi: str='both', merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray, npt.NDArray]:
         if hemi == 'both':
             left = self.get_surf(subject, type, "lh", nudge=nudge)
             right = self.get_surf(subject, type, "rh", nudge=nudge)
@@ -181,21 +183,21 @@ class Dataset:
         except (KeyError, TypeError):
             raise IOError('Subject not found in package')
 
-    def get_xfm(self, subject, xfmname):
+    def get_xfm(self, subject: str, xfmname: str) -> Transform:
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
-    def get_mask(self, subject, xfmname, maskname):
+    def get_mask(self, subject: str, xfmname: str, maskname: str):
         try:
             group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
         except (KeyError, TypeError):
             raise IOError('Mask not found in package')
 
-    def get_overlay(self, subject, type='rois', **kwargs):
+    def get_overlay(self, subject: str, type: str='rois', **kwargs) -> tempfile._TemporaryFileWrapper:
         try:
             group = self.h5['subjects'][subject]
             if type == "rois":
@@ -239,7 +241,7 @@ def normalize(data: Union[Dataset, Dataview, dict, str, tuple]) -> Union[Dataset
 
     raise TypeError('Unknown input type')
 
-def _pack_subjs(h5, subjects):
+def _pack_subjs(h5: File, subjects: set[str]) -> None:
     for subject in subjects:
         rois = db.get_overlay(subject, modify_svg_file=False)
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
@@ -254,14 +256,14 @@ def _pack_subjs(h5, subjects):
                 _hdf_write(h5, pts, "pts", group)
                 _hdf_write(h5, polys, "polys", group)
 
-def _pack_xfms(h5, xfms):
+def _pack_xfms(h5: File, xfms: set[tuple[str, str]]) -> None:
     for subj, xfmname in xfms:
         xfm = db.get_xfm(subj, xfmname, 'coord')
         group = "/subjects/%s/transforms/%s"%(subj, xfmname)
         node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
         node.attrs['shape'] = xfm.shape
 
-def _pack_masks(h5, masks):
+def _pack_masks(h5: File, masks: set[tuple[str, str, str]]) -> None:
     for subj, xfm, maskname in masks:
         mask = db.get_mask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
