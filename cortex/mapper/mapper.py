@@ -6,12 +6,20 @@ from scipy import sparse
 
 from .. import dataset
 
+import sys
+if sys.version_info < (3, 11):
+    from typing_extensions import Self
+else:
+    from typing import Self
+
 import warnings
+from scipy.sparse._csr import csr_matrix
+
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
 class Mapper(object):
     '''Maps data from epi volume onto surface using various projections'''
-    def __init__(self, left, right, shape, subject, xfmname):
+    def __init__(self, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str) -> None:
         self.idxmap = None
         self.masks = [left, right]
         self.nverts = left.shape[0] + right.shape[0]
@@ -20,7 +28,7 @@ class Mapper(object):
         self.xfmname = xfmname
 
     @classmethod
-    def from_cache(cls, cachefile, subject, xfmname):
+    def from_cache(cls, cachefile: str, subject: str, xfmname: str) -> Self:
         npz = np.load(cachefile)
         left = (npz['left_data'], npz['left_indices'], npz['left_indptr'])
         right = (npz['right_data'], npz['right_indices'], npz['right_indptr'])
@@ -29,12 +37,12 @@ class Mapper(object):
         return cls(lsparse, rsparse, npz['shape'], subject, xfmname)
 
     @property
-    def mask(self):
+    def mask(self) -> npt.NDArray[np.bool_]:
         mask = np.array(self.masks[0].sum(0) + self.masks[1].sum(0))
         return (mask.squeeze() != 0).reshape(self.shape)
 
     @property
-    def hemimasks(self):
+    def hemimasks(self) -> list[npt.NDArray[np.bool_]]:
         func = lambda m: (np.array(m.sum(0)).squeeze() != 0).reshape(self.shape)
         return [func(x) for x in self.masks]
 
@@ -74,7 +82,7 @@ class Mapper(object):
 
         return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
 
-    def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]):
+    def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]) -> Union[dataset.Volume, npt.NDArray]:
         '''Projects vertex data back into volume space.
 
         Parameters
@@ -115,7 +123,7 @@ class Mapper(object):
         return self._backmapper
 
     @classmethod
-    def _cache(cls, filename, subject, xfmname, **kwargs):
+    def _cache(cls, filename: str, subject: str, xfmname: str, **kwargs) -> Self:
         print('Caching mapper...')
         from ..database import db
         masks = []
@@ -133,7 +141,7 @@ class Mapper(object):
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape, subject, xfmname)
 
-def _savecache(filename, left, right, shape):
+def _savecache(filename: str, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer]) -> None:
     np.savez(filename,
              left_data=left.data,
              left_indices=left.indices,
