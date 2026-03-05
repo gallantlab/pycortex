@@ -1,5 +1,6 @@
 """Contain utility functions
 """
+from __future__ import annotations # maybe needed for 3.9
 import binascii
 import copy
 from importlib import import_module
@@ -42,7 +43,7 @@ P = ParamSpec('P')
 T = TypeVar('T')
 
 class DocLoader(Generic[P, T]):
-    def __init__(self, func, mod, package, actual_func: Optional[Callable[P, T]] = None):
+    def __init__(self, func: str, mod: str, package: str, actual_func: Optional[Callable[P, T]] = None):
         self._load: Callable[[], Callable[P, T]] = lambda: getattr(import_module(mod, package), func)
         self._actual_func = actual_func # stored only to resolve generic types during type checking
 
@@ -1080,7 +1081,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
             return tuple(out)
 
 
-def load_sparse_array(fname, varname):
+def load_sparse_array(fname: str, varname: str):
     """Load a numpy sparse array from an hdf file
 
     Parameters
