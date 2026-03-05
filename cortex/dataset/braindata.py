@@ -41,7 +41,7 @@ class BrainData:
         super().__init__(**kwargs)
 
     @property
-    def data(self):
+    def data(self) -> npt.NDArray:
         if isinstance(self._data, h5py.Dataset):
             return self._data[()]
         return self._data
@@ -51,7 +51,7 @@ class BrainData:
         self._data = data
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Name of this BrainData, computed from hash of data.
         TODO:WHAT IS THIS USEFUL FOR
         """
@@ -530,7 +530,7 @@ class VertexData(BrainData):
         return verts
 
     @property
-    def left(self):
+    def left(self) -> npt.NDArray:
         """Data for only the left hemisphere vertices.
         """
         if self.movie:
@@ -539,7 +539,7 @@ class VertexData(BrainData):
             return self.data[:self.llen]
 
     @property
-    def right(self):
+    def right(self) -> npt.NDArray:
         """Data for only the right hemisphere vertices.
         """
         if self.movie:
@@ -547,8 +547,8 @@ class VertexData(BrainData):
         else:
             return self.data[self.llen:]
 
-    def blend_curvature(self, alpha, threshold=0, brightness=0.5,
-                        contrast=0.25, smooth=20):
+    def blend_curvature(self, alpha: npt.NDArray, threshold: float=0, brightness: float=0.5,
+                        contrast: float=0.25, smooth: float=20):
         """Blend the data with a curvature map depending on a transparency map.
 
         .. deprecated::
@@ -671,7 +671,7 @@ class _masker(Generic[T_masker]):
         mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
         return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
-def _hash(array):
+def _hash(array: npt.ArrayLike) -> str:
     '''A simple numpy hash function'''
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
