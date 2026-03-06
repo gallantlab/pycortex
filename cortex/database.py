@@ -572,7 +572,7 @@ class Database(object):
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 
-    def get_mask(self, subject: str, xfmname: str, type: str='thick') -> npt.NDArray:
+    def get_mask(self, subject: str, xfmname: str, type: str='thick') -> npt.NDArray[np.bool]:
         if hasattr(type, 'decode'):
             type = type.decode('utf8')        
 
