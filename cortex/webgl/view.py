@@ -43,26 +43,26 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 def make_static(
-    outpath,
-    data,
-    recache=False,
-    template="static.html",
-    anonymize=False,
-    overlays_available=None,
-    overlays_visible=("rois", "sulci"),
-    labels_visible=("rois",),
-    types=("inflated",),
-    html_embed=True,
-    copy_ctmfiles=True,
-    title="Brain",
-    layout=None,
-    overlay_file=None,
-    curvature_brightness=None,
-    curvature_contrast=None,
-    curvature_smoothness=None,
-    surface_specularity=None,
+    outpath: str,
+    data: Union[dataset.Dataset, Dataview],
+    recache: bool=False,
+    template: str="static.html",
+    anonymize: bool=False,
+    overlays_available: Optional[tuple[str, ...]]=None, # TODO
+    overlays_visible: tuple[str, ...]=("rois", "sulci"),
+    labels_visible: tuple[str, ...]=("rois",),
+    types: tuple[str, ...]=("inflated",),
+    html_embed: bool=True,
+    copy_ctmfiles: bool=True,
+    title: str="Brain",
+    layout: Optional[list[tuple[int, int]]]=None, # TODO
+    overlay_file: Optional[str]=None,
+    curvature_brightness: Optional[float]=None,
+    curvature_contrast: Optional[float]=None,
+    curvature_smoothness: Optional[float]=None,
+    surface_specularity: Optional[float]=None,
     **kwargs,
-):
+) -> None:
     """
     Creates a static webGL MRI viewer in your filesystem so that it can easily
     be posted publicly for sharing or just saved for later viewing.
@@ -235,7 +235,7 @@ def make_static(
     tpl = loader.load(templatefile)
 
     # Put together all view options
-    my_viewopts = dict(options.config.items("webgl_viewopts"))
+    my_viewopts: dict[str, Any] = dict(options.config.items("webgl_viewopts"))
     my_viewopts["overlays_visible"] = overlays_visible
     my_viewopts["labels_visible"] = labels_visible
     my_viewopts["brightness"] = (
