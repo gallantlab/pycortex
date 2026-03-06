@@ -22,6 +22,7 @@ else:
 import h5py
 from looseversion import LooseVersion
 import numpy as np
+import numpy.typing as npt
 
 from . import formats
 from .database import db
@@ -72,9 +73,9 @@ def get_roipack(*args, **kwargs):
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, external_svg=None,
-                overlays_available=None):
+def get_ctmpack(subject: str, types: tuple[str, ...]=("inflated",), method: str="raw", level: int=0, recache: bool=False,
+                decimate: bool=False, external_svg: Optional[str]=None,
+                overlays_available: Optional[tuple[str, ...]]=None) -> str:
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -85,7 +86,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     ----------
     subject : str
         Name of subject in pycortex stored
-    types : tuple
+    types : tuple[str, ...]
         Surfaces between which to interpolate.
     method : str
         string specifying method of how inverse transforms for
@@ -101,7 +102,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
         file string for .svg file containing alternative overlays
         for brain viewer. If None, the `overlays.svg` file for this
         subject (in the pycortex_store folder for the subejct) is used.
-    overlays_available: tuple or None
+    overlays_available: tuple[str, ...] or None
         Which overlays in the svg file to include in the viewer. If
         None, all layers in the relevant svg file are included.
 
@@ -133,7 +134,7 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     return ctmfile
 
 
-def get_ctmmap(subject, **kwargs):
+def get_ctmmap(subject: str, **kwargs):
     """Return a mapping from the vertices in the CTM surface to the vertices
     in the freesurfer surface. 
     The mapping is a numpy array, such that `ctm2fs_left[i] = j` means that the
@@ -254,7 +255,7 @@ def get_ctm2webgl_map(subject, **kwargs):
     return ctm2webgl_left, ctm2webgl_right
 
 
-def get_fs2webgl_map(subject, **kwargs):
+def get_fs2webgl_map(subject: str, **kwargs):
     """Return a mapping from the vertices in the freesurfer surface to the vertices
     visualized on the WebGL viewer.
 
@@ -291,7 +292,7 @@ def get_fs2webgl_map(subject, **kwargs):
     return fs2webgl_left, fs2webgl_right
 
 
-def get_cortical_mask(subject, xfmname, type='nearest'):
+def get_cortical_mask(subject: str, xfmname: str, type: str='nearest') -> npt.NDArray[np.bool_]:
     """Gets the cortical mask for a particular transform
 
     Parameters
@@ -341,7 +342,7 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
         return get_mapper(subject, xfmname, type=type).mask
 
 
-def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
+def get_vox_dist(subject: str, xfmname: str, surface: str="fiducial", max_dist: float=np.inf) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.intp]]:
     """Get the distance (in mm) from each functional voxel to the closest
     point on the surface.
 
