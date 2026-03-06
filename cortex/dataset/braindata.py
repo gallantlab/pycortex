@@ -1,6 +1,7 @@
 import hashlib
 import warnings
 from copy import deepcopy
+import os
 import sys
 from typing import Generic, Optional, TypeVar, Union, cast
 if sys.version_info < (3, 11):
@@ -70,7 +71,7 @@ class BrainData(object):
     def __hash__(self):
         return hash(_hash(self.data))
 
-    def _write_hdf(self, h5, name=None):
+    def _write_hdf(self, h5: Union[h5py.File, h5py.Group], name: Optional[str]=None) -> h5py.Dataset:
         if name is None:
             name = self.name
         dgrp = h5.require_group("/data")
@@ -250,7 +251,7 @@ class VolumeData(BrainData):
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
-    def map(self, projection="nearest"):
+    def map(self, projection: str="nearest") -> Self:
         """Convert this VolumeData into VertexData using the given projection 
         method.
 
@@ -287,7 +288,7 @@ class VolumeData(BrainData):
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
-    def copy(self, data):
+    def copy(self, data: npt.NDArray) -> Self:
         return super(VolumeData, self).copy(data, self.subject, self.xfmname, mask=self._mask)
 
     @property
@@ -306,10 +307,9 @@ class VolumeData(BrainData):
 
         return data
 
-    def save(self, filename, name=None):
+    def save(self, filename: Union[str, h5py.Group], name: Optional[str]=None) -> None:
         """Save the dataset into the hdf file `filename` with the provided name.
         """
-        import os
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5",".hf5"):
@@ -321,7 +321,7 @@ class VolumeData(BrainData):
         elif isinstance(filename, h5py.Group):
             self._write_hdf(filename, name=name)
 
-    def _write_hdf(self, h5, name=None):
+    def _write_hdf(self, h5: Union[h5py.File, h5py.Group], name: Optional[str]=None) -> h5py.Dataset:
         node = super(VolumeData, self)._write_hdf(h5, name=name)
         
         #write the mask into the file, as necessary
@@ -338,7 +338,7 @@ class VolumeData(BrainData):
 
         return node
 
-    def save_nii(self, filename):
+    def save_nii(self, filename: os.PathLike) -> None:
         """Save as a nifti file at the given filename. Nifti headers are
         copied from the reference image for this VolumeData's transform.
         """
@@ -471,7 +471,7 @@ class VertexData(BrainData):
         """
         return super(VertexData, self).copy(data, self.subject)
 
-    def volume(self, xfmname, projection='nearest', **kwargs):
+    def volume(self, xfmname: str, projection: str='nearest', **kwargs) -> VolumeData:
         """
         Map this VertexData back to volume space, creating a VolumeData object.
         This uses the `mapper.backwards` function, which is not particularly
@@ -514,8 +514,9 @@ class VertexData(BrainData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
-
-    def to_json(self, simple: bool = False):
+    
+    # TODO: simple
+    def to_json(self, simple: bool = False) -> dict[str, list[str]]:
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super(VertexData, self).to_json(simple=simple))
@@ -642,9 +643,8 @@ class VertexData(BrainData):
         return blended
 
 
-def _find_mask(nvox: int, subject: str, xfmname: str):
+def _find_mask(nvox: int, subject: str, xfmname: str) -> tuple[str, npt.NDArray[np.bool_]]:
     import glob
-    import os
     import re
 
     import nibabel
@@ -655,6 +655,7 @@ def _find_mask(nvox: int, subject: str, xfmname: str):
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_(.+).nii.gz').search(fname)
+            assert name is not None, f"Mask filename {fname} does not match expected format"
             return name.group(1), mask
 
     raise ValueError('Cannot find a valid mask')
@@ -679,7 +680,7 @@ def _hash(array: npt.ArrayLike) -> str:
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
 
-def _hdf_write(h5, data, name="data", group="/data"):
+def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.ArrayLike, name: str="data", group: str="/data") -> h5py.Dataset:
     try:
         node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
     except TypeError:
