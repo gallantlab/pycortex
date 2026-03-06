@@ -1,7 +1,7 @@
 """Affine transformation class
 """
 import os
-from typing import Union
+from typing import Union, Any
 import numpy as np
 import numpy.typing as npt
 import subprocess
@@ -28,11 +28,11 @@ class Transform:
             self.reference = reference
             self.shape = self.reference.shape[:3][::-1]
 
-    def __call__(self, pts):
+    def __call__(self, pts: npt.NDArray) -> npt.NDArray:
         return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
 
     @property
-    def inv(self):
+    def inv(self) -> "Transform":
         ref = self.reference
         if ref is None:
             ref = self.shape
@@ -342,7 +342,7 @@ class Transform:
 
         return fs_anat2func
 
-def isstr(obj):
+def isstr(obj: Any) -> bool:
     """Check for stringy-ness in python 2.7 or 3"""
     try:
         return isinstance(obj, basestring)
