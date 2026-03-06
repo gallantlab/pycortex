@@ -257,7 +257,7 @@ def _convert_svg_kwargs(kwargs):
                for k,v in kwargs.items() if v is not None)
     return out
 
-def _parse_defaults(section):
+def _parse_defaults(section: str) -> dict[str, Union[float, list[float], None, str]]:
     defaults = dict(config.items(section))
     for k in defaults.keys():
         # Convert numbers to floating point numbers
@@ -375,7 +375,7 @@ def _make_flatmask(subject: str, height: int=1024) -> tuple[npt.NDArray[np.bool_
 
     return np.array(im).T > 0, extents
 
-def _make_vertex_cache(subject: str, height: int=1024):
+def _make_vertex_cache(subject: str, height: int=1024) -> sparse.csr_matrix:
     from scipy import sparse
     from scipy.spatial import cKDTree
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
