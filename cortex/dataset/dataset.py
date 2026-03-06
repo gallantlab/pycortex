@@ -1,5 +1,5 @@
 import tempfile
-from typing import Iterator, Optional, Union, overload
+from typing import Iterator, Optional, Union, overload, Literal
 import numpy as np
 import numpy.typing as npt
 import h5py
@@ -22,7 +22,7 @@ class Dataset:
     All kwargs should be `BrainData` or `Dataset` objects.
     """
     def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> None:
-        self.h5 = None
+        self.h5: Optional[h5py.File] = None
         self.views: dict[str, Dataview] = {}
 
         self.append(**kwargs)
@@ -156,7 +156,19 @@ class Dataset:
 
         self.h5.flush()
 
-    def get_surf(self, subject: str, type: str, hemi: str='both', merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray, npt.NDArray]:
+    # TODO: forcing '*' WILL cause issues. Look for all instances of merge=True !
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', *, merge: Literal[True], nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+        pts: npt.NDArray[np.floating]
+        polys: npt.NDArray[np.integer]
         if hemi == 'both':
             left = self.get_surf(subject, type, "lh", nudge=nudge)
             right = self.get_surf(subject, type, "rh", nudge=nudge)
@@ -185,21 +197,21 @@ class Dataset:
 
     def get_xfm(self, subject: str, xfmname: str) -> Transform:
         try:
-            group = self.h5['subjects'][subject]['transforms'][xfmname]
+            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
     def get_mask(self, subject: str, xfmname: str, maskname: str):
         try:
-            group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
+            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
         except (KeyError, TypeError):
             raise IOError('Mask not found in package')
 
     def get_overlay(self, subject: str, type: str='rois', **kwargs) -> tempfile._TemporaryFileWrapper:
         try:
-            group = self.h5['subjects'][subject]
+            group: h5py.Group = self.h5['subjects'][subject]
             if type == "rois":
                 tf = tempfile.NamedTemporaryFile()
                 tf.write(group['rois'][0])
