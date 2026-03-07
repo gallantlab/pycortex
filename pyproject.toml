@@ -23,12 +23,8 @@ allow_redefinition = true
 disable_error_code = "import-untyped"
 
 [dependency-groups]
-# TODO: remove before PR
 dev = [
-    "ipython",
-    "mypy>1.14.1",
-    "pyright[nodejs]>=1.1.405",
+    "mypy",
+    "pytest",
     "pytest-cov",
-    "pytest-monkeytype",
-    "stubgen-pyx",
 ]
