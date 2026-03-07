@@ -16,4 +16,4 @@ networkx>=2.1
 imageio
 looseversion
 mda_xdrlib
-typing_extensions ; python_version < '3.10'
+typing_extensions ; python_version < '3.11'
