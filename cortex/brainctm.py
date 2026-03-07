@@ -18,15 +18,17 @@ import sys
 import json
 import tempfile
 import numpy as np
+import numpy.typing as npt
 from scipy.spatial import cKDTree
 
 from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from .openctm import CTMfile
+from typing import Literal, Optional, cast, Sequence
 
 class BrainCTM(object):
-    def __init__(self, subject, decimate=False):
+    def __init__(self, subject: str, decimate: bool=False) -> None:
         self.subject = subject
         self.types = []
 
@@ -96,14 +98,14 @@ class BrainCTM(object):
         else:
             self.flatlims = None
 
-    def addSurf(self, typename, addtype=True, **kwargs):
+    def addSurf(self, typename: str, addtype: bool=True, **kwargs) -> None:
         left, right = db.get_surf(self.subject, typename, nudge=False, merge=False)
         self.left.addSurf(left[0], typename, **kwargs)
         self.right.addSurf(right[0], typename, **kwargs)
         if addtype:
             self.types.append(typename)
 
-    def addCurvature(self, **kwargs):
+    def addCurvature(self, **kwargs) -> None:
         npz = db.get_surfinfo(self.subject, type='curvature', **kwargs)
         try:
             self.left.aux[:,1] = npz.left[self.left.mask]
@@ -112,8 +114,8 @@ class BrainCTM(object):
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
 
-    def save(self, path, method='mg2', external_svg=None, 
-             overlays_available=None, **kwargs):
+    def save(self, path: str, method: Literal['mg2', 'raw']='mg2', external_svg: Optional[str]=None, 
+             overlays_available: Optional[list[str]]=None, **kwargs) -> list[npt.NDArray[np.integer]]:
         """Save CTM file for static html display. 
 
         Parameters
@@ -124,7 +126,7 @@ class BrainCTM(object):
             string specifying method of how inverse transforms for
             labels are computed (determines how labels are displayed
             on 3D viewer) one of ['mg2','raw']
-        overlays_available : str
+        overlays_available : list[str], optional
             Which overlays in the svg file to include in the viewer. If
             None, all layers in the relevant svg file are included.
 
@@ -157,13 +159,17 @@ class BrainCTM(object):
 
         # Compute and save the index map
         if method != 'raw':
-            ptmap, inverse = [], []
+            ptmap: list[npt.NDArray[np.integer]] = []
+            inverse: list[npt.NDArray[np.integer]] = []
             for hemi, pts in zip([self.left, self.right], [lpts, rpts]):
+                diff: npt.NDArray[np.floating]
+                idx: npt.NDArray[np.integer] # TODO: is this an array or a scalar?
                 kdt = cKDTree(hemi.pts)
                 diff, idx = kdt.query(pts)
                 ptmap.append(idx)
                 inverse.append(idx.argsort())
         else:
+            # TODO: use indexable type for ptmap and inverse
             ptmap = inverse = np.arange(len(self.left.ctm)), np.arange(len(self.right.ctm))
 
         np.savez(mapname, 
@@ -172,6 +178,7 @@ class BrainCTM(object):
 
         # Save the SVG with remapped indices (map 2D flatmap locations to vertices)
         if self.left.flat is not None:
+            assert self.right.flat is not None
             flatpts = np.vstack([self.left.flat, self.right.flat])
             if external_svg is None:
                 svg = db.get_overlay(self.subject, pts=flatpts, 
@@ -197,10 +204,10 @@ class BrainCTM(object):
         return ptmap
 
 class Hemi(object):
-    def __init__(self, pts, polys, norms=None):
+    def __init__(self, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], norms: Optional[npt.NDArray[np.floating]]=None):
         self.tf = tempfile.NamedTemporaryFile()
         self.tf.name = bytes(self.tf.name, 'ascii')
-        self.ctm = CTMfile(self.tf.name, "w")
+        self.ctm = CTMfile(cast(bytes, self.tf.name), "w")
 
         self.ctm.setMesh(pts.astype(np.float32),
                          polys.astype(np.uint32),
@@ -212,7 +219,7 @@ class Hemi(object):
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
-    def addSurf(self, pts, name, renorm=True):
+    def addSurf(self, pts: npt.NDArray[np.floating], name: str, renorm: bool=True) -> None:
         '''Scales the in-between surfaces to be same scale as fiducial'''
         if renorm:
             norm = (pts - pts.min(0)) / (pts.max(0) - pts.min(0))
@@ -225,14 +232,14 @@ class Hemi(object):
         self.ctm.addAttrib(attrib, name)
         print(name)
 
-    def setFlat(self, pts):
+    def setFlat(self, pts: npt.NDArray[np.floating]) -> None:
         self.ctm.addUV(pts[:,:2].astype(float), 'uv')
         self.flat = pts[:,:2]
 
-    def save(self, **kwargs):
+    def save(self, **kwargs) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer], None], bytes]:
         self.ctm.addAttrib(self.aux, 'auxdat')
         self.ctm.save(**kwargs)
-        ctm = CTMfile(self.tf.name)
+        ctm = CTMfile(cast(bytes, self.tf.name))
         return ctm.getMesh(), self.tf.read()
 
 class DecimatedHemi(Hemi):
@@ -266,12 +273,12 @@ class DecimatedHemi(Hemi):
     def setFlat(self, pts):
         super(DecimatedHemi, self).setFlat(pts[self.mask])
 
-    def addSurf(self, pts, **kwargs):
-        super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
+    def addSurf(self, pts, *args, **kwargs):
+        super(DecimatedHemi, self).addSurf(pts[self.mask], *args, **kwargs)
 
-def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
-              decimate=False, disp_layers=['rois'], 
-              external_svg=None, overlays_available=None,):
+def make_pack(outfile: str, subj: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']='raw', level: int=0,
+              decimate: bool=False, disp_layers: list[str]=['rois'], 
+              external_svg: Optional[str]=None, overlays_available: Optional[list[str]]=None,) -> list[npt.NDArray[np.integer]]:
     """Generates a cached CTM file
 
     Parameters
@@ -309,7 +316,7 @@ def read_pack(ctmfile):
             tf = tempfile.NamedTemporaryFile()
             tf.write(ctmfp.read(end-start))
             tf.seek(0)
-            ctm = CTMfile(tf.name, "r")
+            ctm = CTMfile(cast(bytes, tf.name), "r")
             pts, polys, norms = ctm.getMesh()
             meshes.append((pts, polys))
 
