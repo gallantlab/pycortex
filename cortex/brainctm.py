@@ -270,10 +270,10 @@ class DecimatedHemi(Hemi):
         self.mask = mask
         self.idxmap = idxmap
 
-    def setFlat(self, pts):
+    def setFlat(self, pts: npt.NDArray[np.floating]) -> None:
         super(DecimatedHemi, self).setFlat(pts[self.mask])
 
-    def addSurf(self, pts, *args, **kwargs):
+    def addSurf(self, pts: npt.NDArray[np.floating], *args, **kwargs) -> None:
         super(DecimatedHemi, self).addSurf(pts[self.mask], *args, **kwargs)
 
 def make_pack(outfile: str, subj: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']='raw', level: int=0,
