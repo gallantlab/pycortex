@@ -13,7 +13,7 @@ import tempfile
 import warnings
 from builtins import input
 from hashlib import sha1
-from typing import Literal, Tuple, Union, Optional, TypedDict, TYPE_CHECKING, overload, cast
+from typing import Literal, Union, Optional, TypedDict, TYPE_CHECKING, overload, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -53,7 +53,7 @@ def _memo(fn):
     return memofn
 
 class SubjectDB(object):
-    def __init__(self, subj, filestore=default_filestore):
+    def __init__(self, subj: str, filestore: str = default_filestore):
         self.subject = subj
         self._warning = None
         self._transforms = None
@@ -81,7 +81,7 @@ class SubjectDB(object):
         return self._surfaces
 
 class SurfaceDB(object):
-    def __init__(self, subj, filestore=default_filestore):
+    def __init__(self, subj: str, filestore: str = default_filestore):
         self.subject = subj
         self.types = {}
         db = Database(filestore)
@@ -94,31 +94,31 @@ class SurfaceDB(object):
     def __dir__(self):
         return list(self.types.keys())
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str):
         if attr in self.types:
             return self.types[attr]
         raise AttributeError(attr)
 
 class Surf(object):
-    def __init__(self, subject, surftype, filestore=default_filestore):
+    def __init__(self, subject: str, surftype: str, filestore: str = default_filestore):
         self.subject, self.surftype = subject, surftype
         self.db = Database(filestore)
 
-    def get(self, hemisphere="both"):
+    def get(self, hemisphere: Literal['lh', 'rh', 'both'] = "both"):
         return self.db.get_surf(self.subject, self.surftype, hemisphere)
     
-    def show(self, hemisphere="both"):
+    def show(self, hemisphere: Literal['lh', 'rh', 'both'] = "both"):
         from mayavi import mlab
         pts, polys = self.db.get_surf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
         return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
 class XfmDB(object):
-    def __init__(self, subj, filestore=default_filestore):
+    def __init__(self, subj: str, filestore: str = default_filestore):
         self.subject = subj
         self.filestore = filestore
-        self.xfms = Database(self.filestore).get_paths(subj)['xfms']
+        self.xfms: list[str] = Database(self.filestore).get_paths(subj)['xfms']
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> 'XfmSet':
         if name in self.xfms:
             return XfmSet(self.subject, name, filestore=self.filestore)
         raise AttributeError
@@ -128,7 +128,7 @@ class XfmDB(object):
         return f"Available transforms for {self.subject}:\n{xfms}"
 
 class XfmSet(object):
-    def __init__(self, subj, name, filestore=default_filestore):
+    def __init__(self, subj: str, name: str, filestore: str = default_filestore):
         self.subject = subj
         self.name = name
         jspath = os.path.join(filestore, subj, 'transforms', name, 'matrices.xfm')
@@ -137,7 +137,7 @@ class XfmSet(object):
         self.masks = MaskSet(subj, name, filestore=filestore)
         self.db = Database(filestore)
     
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Transform:
         if attr in self._jsdat:
             return self.db.get_xfm(self.subject, self.name, attr)
         raise AttributeError
@@ -146,14 +146,14 @@ class XfmSet(object):
         return "Types: {types}".format(types=", ".join(self._jsdat.keys()))
 
 class MaskSet(object):
-    def __init__(self, subj, name, filestore=default_filestore):
+    def __init__(self, subj: str, name: str, filestore: str = default_filestore):
         self.subject = subj
         self.xfmname = name
         maskform = Database(filestore).get_paths(subj)['masks']
         maskpath = maskform.format(xfmname=name, type='*')
-        self._masks = dict((os.path.split(path)[1][5:-7], path) for path in glob.glob(maskpath))
+        self._masks: dict[str, str] = dict((os.path.split(path)[1][5:-7], path) for path in glob.glob(maskpath))
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> npt.NDArray:
         import nibabel
         return nibabel.load(self._masks[item]).get_fdata().T
 
@@ -484,19 +484,24 @@ class Database(object):
 
     # TODO: forcing '*' WILL cause issues. Look for all instances of merge=True !
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', *, merge: Literal[True], nudge: bool=False) -> Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', *, merge: Literal[True], nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
         ...
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> Tuple[Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         ...
 
     @overload
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]:
+        ...
+
+    # Fallthrough case for the recursive call
+    @overload
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         ...
 
     @_memo
-    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[Tuple[Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], Tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+    def get_surf(self, subject: str, type: str, hemisphere: Literal['lh', 'rh', 'both']="both", merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         '''Return the surface pair for the given subject, surface type, and hemisphere.
 
         Parameters
