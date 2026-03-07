@@ -49,7 +49,7 @@ class SVGOverlay(object):
         list of layers of svg file to extract. If None, extracts all overlay layers 
         (i.e. all layers that do not contain images)
     """
-    def __init__(self, svgfile: str, coords: Optional[npt.NDArray]=None, overlays_available: None=None) -> None:
+    def __init__(self, svgfile: str, coords: Optional[npt.NDArray]=None, overlays_available: Optional[list[str]]=None):
         self.svgfile = svgfile
         self.overlays_available = overlays_available
         self.reload()
@@ -110,10 +110,10 @@ class SVGOverlay(object):
     def __repr__(self):
         return "<SVGOverlay with layers [%s]>"%(','.join(self.layers.keys()))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Overlay]:
         return iter(self.layers.values())
 
-    def add_layer(self, name: str):
+    def add_layer(self, name: str) -> None:
         """Add a layer to the svgfile on which this object is based
 
         Adds a new layer named `name` to the svgfile by the SVGOverlay object, and
@@ -137,8 +137,9 @@ class SVGOverlay(object):
         """Return a string xml version of the SVGOverlay object"""
         return etree.tostring(self.svg, pretty_print=pretty)
 
-    def get_svg(self, filename=None, layers=['rois'], labels=True, with_ims=None):
-        """Returns a new SVG file with images embedded
+    # TODO: with_ims?
+    def get_svg(self, filename: Optional[str]=None, layers: list[str]=['rois'], labels: bool=True, with_ims=None) -> None:
+        """Saves a new SVG file with images embedded
 
         Parameters
         ----------
@@ -320,7 +321,7 @@ class SVGOverlay(object):
 class Overlay(object):
     """Class to represent a single layer of an SVG file
     """
-    def __init__(self, svgobject: SVGOverlay, layer: _Element) -> None:
+    def __init__(self, svgobject: SVGOverlay, layer: _Element):
         self.svgobject = svgobject
         self.svg = svgobject.svg
         self.layer = layer
@@ -344,7 +345,7 @@ class Overlay(object):
         return self.shapes[name]
 
     @property
-    def visible(self):
+    def visible(self) -> bool:
         # assume visible if "style" property is not set
         if 'style' not in self.layer.attrib:
             return True
@@ -360,7 +361,7 @@ class Overlay(object):
         for shape in list(self.shapes.values()):
             shape.set(**kwargs)
 
-    def get_mask(self, name):
+    def get_mask(self, name: str) -> npt.NDArray[np.integer]:
         return self.shapes[name].get_mask(self.svgobject.coords)
 
     def add_shape(self, name, pngdata=None, add_path=True):
@@ -499,7 +500,7 @@ class Shape(object):
 
         return labels
 
-    def get_mask(self, vts):
+    def get_mask(self, vts: npt.NDArray[np.floating]) -> npt.NDArray[np.integer]:
         """get list of vertices inside this roi"""
         if len(self.splines)==0:
             # No splines defined for this (ROI). Wut.
@@ -511,10 +512,10 @@ class Shape(object):
         verts_upside_down[:, 1] = self.height - verts_upside_down[:, 1]
         verts_in_any_path = [p.contains_points(verts_upside_down) for p in self.splines]
         vert_idx_list = np.hstack([np.nonzero(v)[0] for v in verts_in_any_path])
-        return  vert_idx_list
+        return vert_idx_list
 
     @property
-    def splines(self):
+    def splines(self) -> list[Union[Path, Any]]:
         return [gen_path(p) for p in self.paths]
 
     @property
@@ -533,7 +534,7 @@ class Shape(object):
 ###################################################################################
 # SVG Helper functions
 ###################################################################################
-def _find_layer_names(svg):
+def _find_layer_names(svg) -> list[str]:
     layers = svg.findall("{%s}g[@{%s}label]"%(svgns, inkns))
     layer_names = [l.get("{%s}label"%inkns) for l in layers]
     return layer_names
@@ -625,7 +626,7 @@ def _split_multipath(pathstr):
         # Need further parsing of multi-path strings? perhaps no.
         yield (header + subpath).strip()
 
-def scrub(svgfile: str, overlays_available: None=None) -> _ElementTree:
+def scrub(svgfile: str, overlays_available: Optional[list[str]]=None) -> _ElementTree:
     """Remove data layers from an svg object prior to rendering
 
     Returns etree-parsed svg object
@@ -679,14 +680,14 @@ def make_svg(pts, polys):
 
 @overload
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[False]=False, 
-                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
+                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
 
 @overload
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[True], 
-                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, npt.NDArray[np.integer]]: ...
+                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, npt.NDArray[np.integer]]: ...
 
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: bool=False, 
-                overlays_available: Optional[tuple]=None, modify_svg_file: bool=True, **kwargs) -> Union[SVGOverlay, tuple[SVGOverlay, npt.NDArray[np.integer]]]:
+                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> Union[SVGOverlay, tuple[SVGOverlay, npt.NDArray[np.integer]]]:
     """Return a python represent of the overlays present in `svgfile`.
 
     Parameters
@@ -905,7 +906,7 @@ def import_roi(roifile: str, outfile: str) -> None:
         if new_layer not in svgo.layers:
             svgo.add_layer(new_layer)
 
-def gen_path(path):
+def gen_path(path: _Element) -> Path:
     mdict = dict(m=Path.MOVETO, l=Path.LINETO, h=Path.LINETO, v=Path.LINETO)
     verts, codes = [], []
     mode, pen = None, np.array([0.,0.])
