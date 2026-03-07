@@ -30,7 +30,6 @@ PanelView = TypedDict(
     {
         "angle": Union[str, tuple[str, ViewParams]],
         "surface": Union[str, ViewParams],
-        # TODO: optionals?
         "hemisphere": NotRequired[str],
         "zoom": NotRequired[tuple[float, float, float, float]],
     }

@@ -1,7 +1,7 @@
 import hashlib
 from copy import deepcopy
 import sys
-from typing import Optional, Union, cast
+from typing import Generic, Optional, TypeVar, Union, cast
 if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
@@ -620,15 +620,17 @@ def _find_mask(nvox: int, subject: str, xfmname: str):
     raise ValueError('Cannot find a valid mask')
 
 
-class _masker(object):
-    def __init__(self, dv: VolumeData): # TODO: should be braindata + dataview
+# Generic allows us to return Volume instead of VolumeData
+T_masker = TypeVar('T_masker', bound=VolumeData)
+class _masker(Generic[T_masker]):
+    def __init__(self, dv: T_masker): # should be braindata + dataview
         self.dv = dv
 
         self.data = None
         if dv.linear:
             self.data = dv.data
 
-    def __getitem__(self, masktype):
+    def __getitem__(self, masktype: str) -> T_masker:
         try:
             mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
             return self.dv.copy(self.dv.volume[:,mask].squeeze())

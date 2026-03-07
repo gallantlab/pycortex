@@ -118,6 +118,7 @@ class Dataset(object):
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
+            # .uniques() is provided by BrainData
             for sv in view.uniques(collapse=collapse):
                 uniques.add(sv)
 
@@ -137,6 +138,7 @@ class Dataset(object):
             xfms = set()
             masks = set()
             for view in self.views.values():
+                # .uniques() is provided by BrainData
                 for data in view.uniques():
                     subjs.add(data.subject)
                     if isinstance(data, Volume):
