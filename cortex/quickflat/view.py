@@ -11,9 +11,9 @@ from . import composite
 
 
 default_colorbar_locations = {
-    'left': (.0, .07, .2, .04),
-    'center': (.4, .07, .2, .04),
-    'right': (.7, .07, .2, .04)
+    "left": (0.0, 0.07, 0.2, 0.04),
+    "center": (0.4, 0.07, 0.2, 0.04),
+    "right": (0.7, 0.07, 0.2, 0.04),
 }
 
 
@@ -22,22 +22,52 @@ def _check_colorbar_location(colorbar_location):
         return colorbar_location
 
     if colorbar_location not in default_colorbar_locations:
-        raise ValueError("colorbar_location must be one of {}".format(
-            list(default_colorbar_locations.keys())))
+        raise ValueError(
+            "colorbar_location must be one of {}".format(
+                list(default_colorbar_locations.keys())
+            )
+        )
 
     return default_colorbar_locations[colorbar_location]
 
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
-                height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
-                with_labels=True, with_colorbar=True, with_borders=False,
-                with_dropout=False, with_curvature=False, extra_disp=None,
-                with_connected_vertices=False, overlay_file=None,
-                linewidth=None, linecolor=None, roifill=None, shadow=None,
-                labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
-                curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location='center', roi_list=None, sulci_list=None,
-                nanmean=False):
+def make_figure(
+    braindata,
+    recache=False,
+    pixelwise=True,
+    thick=32,
+    sampler="nearest",
+    height=1024,
+    dpi=100,
+    depth=0.5,
+    with_rois=True,
+    with_sulci=False,
+    with_labels=True,
+    with_colorbar=True,
+    with_borders=False,
+    with_dropout=False,
+    with_curvature=False,
+    extra_disp=None,
+    with_connected_vertices=False,
+    overlay_file=None,
+    linewidth=None,
+    linecolor=None,
+    roifill=None,
+    shadow=None,
+    labelsize=None,
+    labelcolor=None,
+    cutout=None,
+    curvature_brightness=None,
+    curvature_contrast=None,
+    curvature_threshold=None,
+    fig=None,
+    extra_hatch=None,
+    colorbar_ticks=None,
+    colorbar_location="right",
+    roi_list=None,
+    sulci_list=None,
+    nanmean=False,
+):
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Parameters
@@ -123,7 +153,9 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     dataview = dataset.normalize(braindata)
     if not isinstance(dataview, dataset.Dataview):
-        raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
+        raise TypeError(
+            "Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset"
+        )
     if fig is None:
         fig_resize = True
         fig = plt.figure()
@@ -138,20 +170,33 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
         fig = ax.figure
 
     # Add data
-    data_im, extents = composite.add_data(ax, dataview, pixelwise=pixelwise, thick=thick, sampler=sampler,
-                                          height=height, depth=depth, recache=recache, nanmean=nanmean)
+    data_im, extents = composite.add_data(
+        ax,
+        dataview,
+        pixelwise=pixelwise,
+        thick=thick,
+        sampler=sampler,
+        height=height,
+        depth=depth,
+        recache=recache,
+        nanmean=nanmean,
+    )
 
     layers = dict(data=data_im)
     # Add curvature
     if with_curvature:
-        curv_im = composite.add_curvature(ax, dataview, extents,
-                                          brightness=curvature_brightness,
-                                          contrast=curvature_contrast,
-                                          threshold=curvature_threshold,
-                                          curvature_lims=0.5,
-                                          legacy_mode=False,
-                                          recache=recache)
-        layers['curvature'] = curv_im
+        curv_im = composite.add_curvature(
+            ax,
+            dataview,
+            extents,
+            brightness=curvature_brightness,
+            contrast=curvature_contrast,
+            threshold=curvature_threshold,
+            curvature_lims=0.5,
+            legacy_mode=False,
+            recache=recache,
+        )
+        layers["curvature"] = curv_im
 
     # Add dropout
     if with_dropout is not False:
@@ -162,43 +207,89 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
             hatch_data = None
             dropout_power = 20 if with_dropout is True else with_dropout
         if hatch_data is None:
-            hatch_data = utils.get_dropout(dataview.subject, dataview.xfmname,
-                                           power=dropout_power)
+            hatch_data = utils.get_dropout(
+                dataview.subject, dataview.xfmname, power=dropout_power
+            )
 
-        drop_im = composite.add_hatch(ax, hatch_data, extents=extents, height=height,
-                                      sampler=sampler, recache=recache)
-        layers['dropout'] = drop_im
+        drop_im = composite.add_hatch(
+            ax,
+            hatch_data,
+            extents=extents,
+            height=height,
+            sampler=sampler,
+            recache=recache,
+        )
+        layers["dropout"] = drop_im
     # Add extra hatching
     if extra_hatch is not None:
         hatch_data2, hatch_color = extra_hatch
-        hatch_im = composite.add_hatch(ax, hatch_data2, extents=extents, height=height,
-                                       sampler=sampler, recache=recache)
-        layers['hatch'] = hatch_im
+        hatch_im = composite.add_hatch(
+            ax,
+            hatch_data2,
+            extents=extents,
+            height=height,
+            sampler=sampler,
+            recache=recache,
+        )
+        layers["hatch"] = hatch_im
     # Add rois
     if with_rois:
-        roi_im = composite.add_rois(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-                                    roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
-                                    with_labels=with_labels, overlay_file=overlay_file,
-                                    roi_list=roi_list)
-        layers['rois'] = roi_im
+        roi_im = composite.add_rois(
+            ax,
+            dataview,
+            extents=extents,
+            height=height,
+            linewidth=linewidth,
+            linecolor=linecolor,
+            roifill=roifill,
+            shadow=shadow,
+            labelsize=labelsize,
+            labelcolor=labelcolor,
+            with_labels=with_labels,
+            overlay_file=overlay_file,
+            roi_list=roi_list,
+        )
+        layers["rois"] = roi_im
     # Add sulci
     if with_sulci:
-        sulc_im = composite.add_sulci(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-                                      shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels,
-                                      overlay_file=overlay_file, sulci_list=sulci_list)
-        layers['sulci'] = sulc_im
+        sulc_im = composite.add_sulci(
+            ax,
+            dataview,
+            extents=extents,
+            height=height,
+            linewidth=linewidth,
+            linecolor=linecolor,
+            shadow=shadow,
+            labelsize=labelsize,
+            labelcolor=labelcolor,
+            with_labels=with_labels,
+            overlay_file=overlay_file,
+            sulci_list=sulci_list,
+        )
+        layers["sulci"] = sulc_im
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
-        custom_im = composite.add_custom(ax, dataview, svgfile, layer, height=height, extents=extents,
-                                         linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize,
-                                         labelcolor=labelcolor, with_labels=with_labels)
-        layers['custom'] = custom_im
+        custom_im = composite.add_custom(
+            ax,
+            dataview,
+            svgfile,
+            layer,
+            height=height,
+            extents=extents,
+            linewidth=linewidth,
+            linecolor=linecolor,
+            shadow=shadow,
+            labelsize=labelsize,
+            labelcolor=labelcolor,
+            with_labels=with_labels,
+        )
+        layers["custom"] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
         vertex_lines = composite.add_connected_vertices(ax, dataview, recache=recache)
 
-    ax.axis('off')
+    ax.axis("off")
     ax.set_xlim(extents[0], extents[1])
     ax.set_ylim(extents[2], extents[3])
 
@@ -208,32 +299,44 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     # Add (apply) cutout of flatmap
     if cutout is not None:
-        extents = composite.add_cutout(ax, cutout, dataview, layers, overlay_file=overlay_file)
+        extents = composite.add_cutout(
+            ax, cutout, dataview, layers, overlay_file=overlay_file
+        )
 
     if with_colorbar:
         colorbar_location = _check_colorbar_location(colorbar_location)
         # Allow 2D colorbars:
         if isinstance(dataview, dataset.view2D.Dataview2D):
-            colorbar_ticks = np.round([
-                    dataview.vmin, dataview.vmax,
-                    dataview.vmin2, dataview.vmax2
-                ], 2)
+            colorbar_ticks = np.round(
+                [dataview.vmin, dataview.vmax, dataview.vmin2, dataview.vmax2], 2
+            )
             colorbar = composite.add_colorbar_2d(
-                ax, dataview.cmap, colorbar_ticks,
-                colorbar_location=colorbar_location)
+                ax, dataview.cmap, colorbar_ticks, colorbar_location=colorbar_location
+            )
         else:
             colorbar = composite.add_colorbar(
-                ax, data_im,
+                ax,
+                data_im,
                 colorbar_location=colorbar_location,
-                colorbar_ticks=colorbar_ticks
+                colorbar_ticks=colorbar_ticks,
             )
         # Reset axis to main figure axis
         plt.sca(ax)
 
     return fig
 
-def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
-             bgcolor=None, dpi=100, **kwargs):
+
+def make_png(
+    fname,
+    braindata,
+    recache=False,
+    pixelwise=True,
+    sampler="nearest",
+    height=1024,
+    bgcolor=None,
+    dpi=100,
+    **kwargs,
+):
     """Create a PNG of the VertexData or VolumeData on a flatmap.
 
     Parameters
@@ -284,12 +387,15 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
         (R, G, B, A) specification for the label color
     """
     from matplotlib import pyplot as plt
-    fig = make_figure(braindata,
-                      recache=recache,
-                      pixelwise=pixelwise,
-                      sampler=sampler,
-                      height=height,
-                      **kwargs)
+
+    fig = make_figure(
+        braindata,
+        recache=recache,
+        pixelwise=pixelwise,
+        sampler=sampler,
+        height=height,
+        **kwargs,
+    )
 
     imsize = fig.get_axes()[0].get_images()[0].get_size()
     fig.set_size_inches(np.array(imsize)[::-1] / float(dpi))
@@ -300,8 +406,18 @@ def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest',
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
-             height=1024, overlay_file=None, with_dropout=False, **kwargs):
+
+def make_svg(
+    fname,
+    braindata,
+    with_labels=False,
+    with_curvature=True,
+    layers=["rois"],
+    height=1024,
+    overlay_file=None,
+    with_dropout=False,
+    **kwargs,
+):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -339,9 +455,9 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     arr, extents = make_flatmap_image(braindata, height=height, **kwargs)
     # Set nans to alpha = 0. to enable transparency when saving as PNG
     mask_nans = np.isnan(arr[..., 3])
-    arr[mask_nans, 3] = 0.
+    arr[mask_nans, 3] = 0.0
 
-    if hasattr(braindata, 'cmap'):
+    if hasattr(braindata, "cmap"):
         imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
     else:
         imsave(fp, arr)
@@ -352,6 +468,7 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     if with_curvature:
         # no options. learn to love it.
         from cortex import db
+
         fpc = io.BytesIO()
         curv_vertices = db.get_surfinfo(braindata.subject)
         curv_arr, _ = make_flatmap_image(curv_vertices, height=height)
@@ -359,7 +476,7 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         curv_arr = np.where(curv_arr > 0, 0.5, 0.25)
         curv_arr[mask] = np.nan
 
-        imsave(fpc, curv_arr, cmap='Greys_r', vmin=0, vmax=1)
+        imsave(fpc, curv_arr, cmap="Greys_r", vmin=0, vmax=1)
         fpc.seek(0)
         image_data = [binascii.b2a_base64(fpc.read()), pngdata]
 
@@ -420,16 +537,16 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
         fig = plt.figure(figsize=(12, 6), dpi=100)
         _ = make_figure(volumes[name], fig=fig, **figure_kwargs)
         _ = fig.suptitle(name)
-        path = os.path.join(tmpdir.name, str(i) + '.png')
+        path = os.path.join(tmpdir.name, str(i) + ".png")
         fig.savefig(path)
         images.append(imageio.imread(path))
         _ = plt.close(fig)
 
     tmpdir.cleanup()
 
-    imageio.mimsave(output_destination, images, format='gif', duration=frame_duration)
+    imageio.mimsave(output_destination, images, format="gif", duration=frame_duration)
 
-    if hasattr(output_destination, 'seek'):
+    if hasattr(output_destination, "seek"):
         output_destination.seek(0)
 
 
@@ -437,22 +554,38 @@ def show(*args, **kwargs):
     """Wrapper for make_figure()"""
     return make_figure(*args, **kwargs)
 
-def make_movie(name, data, subject, xfmname, recache=False, height=1024,
-               sampler='nearest', dpi=100, tr=2, interp='linear', fps=30,
-               vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
+
+def make_movie(
+    name,
+    data,
+    subject,
+    xfmname,
+    recache=False,
+    height=1024,
+    sampler="nearest",
+    dpi=100,
+    tr=2,
+    interp="linear",
+    fps=30,
+    vcodec="libtheora",
+    bitrate="8000k",
+    vmin=None,
+    vmax=None,
+    **kwargs,
+):
     """Create a movie of an 4D data set"""
     raise NotImplementedError
-    import sys
     import shlex
     import shutil
     import tempfile
     import subprocess as sp
-    import multiprocessing as mp
 
     from scipy.interpolate import interp1d
 
     # Make the flatmaps
-    ims, extents = make_flatmap_image(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
+    ims, extents = make_flatmap_image(
+        data, subject, xfmname, recache=recache, height=height, sampler=sampler
+    )
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:
@@ -464,9 +597,9 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
     img = fig.axes[0].images[0]
 
     # Set up interpolation
-    times = np.arange(0, len(ims)*tr, tr)
+    times = np.arange(0, len(ims) * tr, tr)
     interp = interp1d(times, ims, kind=interp, axis=0, copy=False)
-    frames = np.linspace(0, times[-1], (len(times)-1)*tr*fps+1)
+    frames = np.linspace(0, times[-1], (len(times) - 1) * tr * fps + 1)
 
     try:
         path = tempfile.mkdtemp()
@@ -476,7 +609,9 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
             fig.savefig(impath.format(frame), transparent=True, dpi=dpi)
         # avconv might not be relevant function for all operating systems.
         # Introduce operating system check here?
-        cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
+        cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(
+            path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name
+        )
         sp.call(shlex.split(cmd))
     finally:
         shutil.rmtree(path)
