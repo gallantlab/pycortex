@@ -291,7 +291,7 @@ def show(
     pickerfun: Optional[Callable[[int, int], None]]=None,
     recache: bool=False,
     template: str="mixer.html",
-    overlays_available: Optional[tuple[str]]=None,
+    overlays_available: Optional[tuple[str, ...]]=None,
     overlays_visible: Optional[tuple[str, ...]]=("rois", "sulci"),
     labels_visible: Optional[tuple[str, ...]]=("rois",),
     types: Optional[tuple[str, ...]]=("inflated",),

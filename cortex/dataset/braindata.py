@@ -611,7 +611,7 @@ def _find_mask(nvox: int, subject: str, xfmname: str):
     files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
-        mask = cast(npt.NDArray[np.integer], nib.get_fdata().T != 0)
+        mask = cast(npt.NDArray[np.bool_], nib.get_fdata().T != 0)
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_(.+).nii.gz').search(fname)
