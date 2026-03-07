@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from collections import OrderedDict
+from typing import Iterator, Optional, Union, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -19,7 +20,7 @@ except ImportError:
 from . import exact_geodesic
 from . import subsurface
 from .misc import _memo
-from typing import Iterator, Optional, Union, overload
+
 
 class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     """Represents a single cortical hemisphere surface. Can be the white matter surface,
