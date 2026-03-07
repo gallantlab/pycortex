@@ -14,6 +14,10 @@ import urllib.request
 import warnings
 
 from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal
+import sys
+from cortex.mapper.point import PointNN
+from numpy import ndarray, uint32
+
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
 else:
@@ -44,7 +48,7 @@ P = ParamSpec('P')
 T = TypeVar('T')
 
 class DocLoader(Generic[P, T]):
-    def __init__(self, func: str, mod: str, package: str, actual_func: Optional[Callable[P, T]] = None):
+    def __init__(self, func: str, mod: str, package: str, actual_func: Optional[Callable[P, T]] = None) -> None:
         self._load: Callable[[], Callable[P, T]] = lambda: getattr(import_module(mod, package), func)
         self._actual_func = actual_func # stored only to resolve generic types during type checking
 
@@ -73,7 +77,7 @@ def get_roipack(*args, **kwargs):
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
-def get_ctmpack(subject: str, types: tuple[str, ...]=("inflated",), method: str="raw", level: int=0, recache: bool=False,
+def get_ctmpack(subject: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']="raw", level: int=0, recache: bool=False,
                 decimate: bool=False, external_svg: Optional[str]=None,
                 overlays_available: Optional[tuple[str, ...]]=None) -> str:
     """Creates ctm file for the specified input arguments.
@@ -183,7 +187,7 @@ def get_ctmmap(subject: str, **kwargs):
     return ctm2fs_left, ctm2fs_right
 
 
-def get_ctm2webgl_map(subject, **kwargs):
+def get_ctm2webgl_map(subject: str, **kwargs):
     """Return a mapping from the vertices in the CTM surface to the vertices visualized
     on the WebGL viewer.
     The mapping is a numpy array such that `ctm2webgl_left[i] = j` means that the i-th
@@ -455,7 +459,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
         return sp.call(cmd)
 
 
-def _get_neighbors_dict(polys):
+def _get_neighbors_dict(polys: npt.NDArray[np.integer]) -> dict[np.uint32, set[np.uint32]]:
     """Return a dictionary of {vertex : set(neighbor vertices)} for the given polys"""
     neighbors_dict = {}
     for poly in polys:
@@ -465,7 +469,7 @@ def _get_neighbors_dict(polys):
     return neighbors_dict
 
 
-def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
+def get_roi_verts(subject: str, roi: Optional[Union[str, list[str]]]=None, mask: bool=False, overlay_file: None=None) -> dict[str, npt.NDArray]:
     """Return vertices for the given ROIs, or all ROIs if none are given.
 
     Parameters
@@ -669,9 +673,9 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
     return mask
 
 
-def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_lr=False,
-                  allow_overlap=False, fail_for_missing_rois=True, exclude_empty_rois=False,
-                  threshold=None, return_dict=True, overlay_file=None):
+def get_roi_masks(subject: str, xfmname: str, roi_list: None=None, gm_sampler: str='cortical', split_lr: bool=False,
+                  allow_overlap: bool=False, fail_for_missing_rois: bool=True, exclude_empty_rois: bool=False,
+                  threshold: Optional[float]=None, return_dict: bool=True, overlay_file: None=None) -> tuple[ndarray, dict[str, int]]:
     """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI,
