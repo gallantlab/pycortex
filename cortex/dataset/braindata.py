@@ -2,7 +2,7 @@ import hashlib
 from copy import deepcopy
 import sys
 from typing import Optional, Union, cast
-if sys.version_info < (3, 10):
+if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
     from typing import Self
