@@ -356,9 +356,8 @@ class VolumeRGB(DataviewRGB):
     shared_vmax : float, optional
         Predetermined shared vmax. Does nothing if shared_range == False. If not given,
         will be the 99th percentile of all values across all three channels
-    **kwargs
-        All additional arguments in kwargs are passed to the VolumeData and
-        Dataview.
+    priority : int, optional
+        Priority for display ordering. Default is 1.
 
     """
 
