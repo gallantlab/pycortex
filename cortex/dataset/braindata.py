@@ -169,7 +169,7 @@ class VolumeData(BrainData):
         return sdict
 
     @classmethod
-    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs):
+    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs) -> Self:
         """
         Create a constant-valued VolumeData for the given subject and xfmname.
         Often useful for testing purposes.
@@ -196,7 +196,7 @@ class VolumeData(BrainData):
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, xfmname: str, **kwargs):
+    def random(cls, subject: str, xfmname: str, **kwargs) -> Self:
         """
         Create a random-valued VolumeData for the given subject and xfmname.
         Random values are from gaussian distribution with mean 0, s.d. 1.
