@@ -409,7 +409,7 @@ def make_fiducial(fs_subject, freesurfer_subject_dir=None):
         write_surf(fname, (spts + ppts) / 2, polys)
 
 
-def parse_surf(filename):
+def parse_surf(filename: str) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.int32]]:
     """
     """
     with open(filename, 'rb') as fp:
@@ -475,8 +475,7 @@ def parse_curv(filename: str) -> npt.NDArray[np.float32]:
         fp.seek(15)
         return cast(npt.NDArray[np.float32], np.frombuffer(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('=')))
 
-
-def parse_patch(filename):
+def parse_patch(filename: str) -> npt.NDArray[np.void]:
     """
     """
     with open(filename, 'rb') as fp:
@@ -874,7 +873,7 @@ def get_mri_surf2surf_matrix(source_subj, hemi, surface_type=None,
     return _surf2surf_nnfr_matrix(src_sphere, trg_sphere)
 
 
-def get_curv(fs_subject: str, hemi: Literal['lh', 'rh'], type: str='wm', freesurfer_subject_dir: Optional[str]=None):
+def get_curv(fs_subject: str, hemi: Literal['lh', 'rh'], type: str='wm', freesurfer_subject_dir: Optional[str]=None) -> npt.NDArray[np.float32]:
     """Load freesurfer curv file for a freesurfer subject
 
     Parameters
