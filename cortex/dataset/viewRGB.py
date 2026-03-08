@@ -323,7 +323,7 @@ class VolumeRGB(DataviewRGB):
     either be supplied explicitly as Volume objects or implicitly as numpy
     arrays). The vmin for each Volume will be mapped to the minimum value for
     that data channel, and the vmax will be mapped to the maximum value.
-    If `shared_range` is True, the vim and vmax will instead computed by
+    If `shared_range` is True, the vmin and vmax will instead be computed by
     combining all three data channels.
 
     Parameters
@@ -418,7 +418,7 @@ class VolumeRGB(DataviewRGB):
                 or channel1.subject != channel3.subject
             ):
                 raise TypeError(
-                    "Data channel 2 is not a VolumeData object or is from a different subject"
+                    "Data channel 3 is not a VolumeData object or is from a different subject"
                 )
             if (subject is not None) and (channel1.subject != subject):
                 raise ValueError(
@@ -656,6 +656,8 @@ class VertexRGB(DataviewRGB):
     shared_vmax : float, optional
         Predetermined shared vmax. Does nothing if shared_range == False. If not given,
         will be the 99th percentile of all values across all three channels
+    priority : int, optional
+        Priority for display ordering. Default is 1.
 
     """
 
