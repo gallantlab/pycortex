@@ -305,7 +305,7 @@ class Dataview(object):
             colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
             colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
             if self.cmap not in colormaps:
-                raise ValueError("Unkown color map %s" % self.cmap)
+                raise ValueError("Unknown color map %s" % self.cmap)
             I = plt.imread(colormaps[self.cmap])
             name = self.cmap if isinstance(self.cmap, str) else self.cmap.name
             cmap = colors.ListedColormap(np.squeeze(I), name=name)
