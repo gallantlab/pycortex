@@ -183,7 +183,7 @@ class Volume2D(Dataview2D):
         return viewnode
 
     @property
-    def raw(self):
+    def raw(self) -> VolumeRGB:
         """VolumeRGB object containing the colormapped data from this object.
         """
         if self.dim1.xfmname != self.dim2.xfmname:
@@ -275,7 +275,7 @@ class Vertex2D(Dataview2D):
         return "<2D vertex data for (%s)>"%self.dim1.subject
 
     @property
-    def raw(self):
+    def raw(self) -> VertexRGB:
         """VertexRGB object containing the colormapped data from this object.
         """
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
