@@ -30,8 +30,6 @@ import tornado.httpserver
 from tornado import websocket
 from tornado.web import HTTPError
 
-from .. import dataset
-
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
