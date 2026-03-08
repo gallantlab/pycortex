@@ -15,8 +15,6 @@ import warnings
 
 from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal
 import sys
-from cortex.mapper.point import PointNN
-from numpy import ndarray, uint32
 
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
@@ -673,9 +671,9 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
     return mask
 
 
-def get_roi_masks(subject: str, xfmname: str, roi_list: None=None, gm_sampler: str='cortical', split_lr: bool=False,
+def get_roi_masks(subject: str, xfmname: str, roi_list: Optional[list[str]]=None, gm_sampler: str='cortical', split_lr: bool=False,
                   allow_overlap: bool=False, fail_for_missing_rois: bool=True, exclude_empty_rois: bool=False,
-                  threshold: Optional[float]=None, return_dict: bool=True, overlay_file: None=None) -> tuple[ndarray, dict[str, int]]:
+                  threshold: Optional[float]=None, return_dict: bool=True, overlay_file: Optional[str]=None) -> tuple[npt.NDArray[np.integer], dict[str, int]]:
     """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI,
@@ -884,7 +882,7 @@ def get_roi_masks(subject: str, xfmname: str, roi_list: None=None, gm_sampler: s
         return output
     else:
         idx_vol = np.zeros(vox_idx.shape, dtype=np.int64)
-        idx_labels = {}
+        idx_labels: dict[str, int] = {}
         for iroi, roi in enumerate(roi_list, 1):
             idx_vol[roi_voxels[roi]] = iroi
             idx_labels[roi] = iroi
@@ -1001,7 +999,7 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
         nx.set_edge_attributes(graph, edge_distances, name='distance')
 
 
-def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):
+def get_shared_voxels(subject: str, xfmname: str, hemi: Literal['lh', 'rh', 'both']="both", merge: bool=True, use_astar: bool=True):
     '''Return voxels that are shared by multiple vertices, and for each such voxel,
        also returns the mutually farthest pair of vertices mapping to the voxel
     Parameters
@@ -1029,7 +1027,7 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     from scipy.sparse import find as sparse_find
     Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere
     if hemi == 'both':
-        hemispheres = ['lh', 'rh']
+        hemispheres: list[Literal['lh', 'rh']] = ['lh', 'rh']
     else:
         hemispheres = [hemi]
     out = []
@@ -1108,7 +1106,7 @@ def load_sparse_array(fname: str, varname: str):
     return sparsemat
 
 
-def save_sparse_array(fname, data, varname, mode='a'):
+def save_sparse_array(fname: str, data, varname: str, mode: str='a'):
     """Save a numpy sparse array to an hdf file
 
     Results in relatively smaller file size than numpy.savez
@@ -1125,7 +1123,7 @@ def save_sparse_array(fname, data, varname, mode='a'):
         write / append mode set, one of ['w','a'] (passed to h5py.File())
     """
     import scipy.sparse
-    if not isinstance(data, scipy.sparse.csr.csr_matrix):
+    if not isinstance(data, scipy.sparse.csr_matrix):
         data_ = scipy.sparse.csr_matrix(data)
     else:
         data_ = data
@@ -1205,8 +1203,8 @@ def add_cmap(cmap, name, cmapdir=None):
     plt.imsave(os.path.join(cmapdir, name), cmap_im, format="png")
 
 
-def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
-                     download_again=False):
+def download_subject(subject_id: str='fsaverage', url: Optional[str]=None, pycortex_store: Optional[str]=None,
+                     download_again: bool=False) -> None:
     """Download subjects to pycortex store
 
     Parameters
@@ -1263,7 +1261,7 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
     db.reload_subjects()
 
 
-def rotate_flatmap(surf_id, theta, plot=False):
+def rotate_flatmap(surf_id: str, theta: float, plot: bool=False):
     """Rotate flatmap to be less V-shaped
     
     Parameters
