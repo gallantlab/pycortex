@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import colorsys
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 import warnings
 
 import numpy as np
@@ -14,22 +15,22 @@ from .. import options
 default_cmap = options.config.get("basic", "default_cmap")
 
 
-Color = tuple[int, float, float]  # RGB color
-class Colors(object):
+ColorDtype = TypeVar("ColorDtype", int, float)
+Color = tuple[ColorDtype, ColorDtype, ColorDtype] # RGB color
+class Colors:
     """
     Set of known colors
     """
-    # TODO: there's probably a cleaner way to annotate these
-    RoseRed: Color = (237, 35, 96)
-    LimeGreen: Color = (141, 198, 63)
-    SkyBlue: Color = (0, 176, 218)
-    DodgerBlue: Color = (30, 144, 255)
-    Red: Color = (255, 000, 000)
-    Green: Color = (000, 255, 000)
-    Blue: Color = (000, 000, 255)
+    RoseRed: Color[int] = (237, 35, 96)
+    LimeGreen: Color[int] = (141, 198, 63)
+    SkyBlue: Color[int] = (0, 176, 218)
+    DodgerBlue: Color[int] = (30, 144, 255)
+    Red: Color[int] = (255, 000, 000)
+    Green: Color[int] = (000, 255, 000)
+    Blue: Color[int] = (000, 000, 255)
 
 
-def RGB2HSV(color: Color | npt.NDArray) -> Color:
+def RGB2HSV(color: Color | npt.NDArray) -> Color[float]:
     """
     Converts RGB to HS
     Parameters
@@ -48,7 +49,7 @@ def RGB2HSV(color: Color | npt.NDArray) -> Color:
     return (int(hue), saturation, value)
 
 
-def HSV2RGB(color: Color | npt.NDArray) -> Color:
+def HSV2RGB(color: Color[float] | npt.NDArray) -> Color[int]:
     """
     Converts HSV to RGB
 
@@ -474,7 +475,7 @@ class VolumeRGB(DataviewRGB):
                     saturation = 1.0
                 if value > 1:
                     value = 1.0
-                this_color = HSV2RGB([hue, saturation, value])
+                this_color = HSV2RGB((hue, saturation, value))
             red.flat[i] = this_color[0]
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
