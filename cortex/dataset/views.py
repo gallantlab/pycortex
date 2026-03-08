@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import glob
 import json
 import os
+from typing import Any, Optional, Union, cast, overload, Literal
 
 import h5py
 import numpy as np
+import numpy.typing as npt
 
 from .. import options
-from .braindata import BrainData, VertexData, VolumeData
+from .braindata import VertexData, VolumeData
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -18,8 +22,16 @@ try:
 except ImportError:
     from matplotlib.cm import register_cmap
 
+@overload
+def normalize(data: tuple[Any, Any, Any]) -> Volume: ...
 
-def normalize(data):
+@overload
+def normalize(data: tuple[Any, Any]) -> Vertex: ...
+
+@overload
+def normalize(data: Dataview) -> Dataview: ...
+
+def normalize(data: Union[Dataview, tuple]) -> Union[Volume, Vertex, Dataview]:
     if isinstance(data, tuple):
         if len(data) == 3:
             if data[0].dtype == np.uint8:
@@ -97,7 +109,7 @@ def _from_hdf_view(h5, data, xfmname=None, vmin=None, vmax=None,  subject=None, 
         raise ValueError("Invalid Dataview specification")
 
 class Dataview(object):
-    def __init__(self, cmap=None, vmin=None, vmax=None, description="", state=None, **kwargs):
+    def __init__(self, cmap: Optional[str]=None, vmin: Optional[float]=None, vmax: Optional[float]=None, description: str="", state=None, **kwargs):
         if self.__class__ == Dataview:
             raise TypeError('Cannot directly instantiate Dataview objects')
 
@@ -224,6 +236,7 @@ class Dataview(object):
             # Register colormap to matplotlib to avoid loading it again
             register_cmap(cmap)
 
+        # TODO: create namedtuple
         return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
@@ -234,6 +247,7 @@ class Dataview(object):
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax) 
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        # TODO: self.data relies on BrainData. Would need common inheritance for this to work.
         color_data = cmapper.to_rgba(self.data.flatten()).reshape(self.data.shape+(4,))
         # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
         color_data = (np.clip(color_data, 0, 1) * 255).astype(np.uint8)
@@ -289,16 +303,16 @@ class Volume(VolumeData, Dataview):
         All additional arguments in kwargs are passed to the VolumeData and Dataview
 
     """
-    def __init__(self, data, subject, xfmname, mask=None, 
-                 cmap=None, vmin=None, vmax=None, description="", **kwargs):
+    def __init__(self, data: npt.NDArray, subject: str, xfmname: str, mask: Optional[npt.NDArray]=None,
+                 cmap: Optional[str]=None, vmin: Optional[float]=None, vmax: Optional[float]=None, description: str="", **kwargs):
         super(Volume, self).__init__(data, subject, xfmname, mask=mask, 
                                      cmap=cmap, vmin=vmin, vmax=vmax,
                                      description=description, **kwargs)
         # set vmin and vmax
-        self.vmin = self.vmin if self.vmin is not None else \
-            np.percentile(np.nan_to_num(self.data), 1)
-        self.vmax = self.vmax if self.vmax is not None else \
-            np.percentile(np.nan_to_num(self.data), 99)
+        self.vmin: float = self.vmin if self.vmin is not None else \
+            cast(float, np.percentile(np.nan_to_num(self.data), 1)) # NOTE: should have been fixed in https://github.com/numpy/numpy/pull/27334
+        self.vmax: float = self.vmax if self.vmax is not None else \
+            cast(float, np.percentile(np.nan_to_num(self.data), 99))
 
     def _write_hdf(self, h5, name="data"):
         datanode = VolumeData._write_hdf(self, h5)
@@ -343,14 +357,14 @@ class Vertex(VertexData, Dataview):
         All additional arguments in kwargs are passed to the VolumeData and Dataview
 
     """
-    def __init__(self, data, subject, cmap=None, vmin=None, vmax=None, description="", **kwargs):
+    def __init__(self, data: npt.NDArray, subject: str, cmap: Optional[str]=None, vmin: Optional[float]=None, vmax: Optional[float]=None, description: str="", **kwargs):
         super(Vertex, self).__init__(data, subject, cmap=cmap, vmin=vmin, vmax=vmax, 
                                      description=description, **kwargs)
         # set vmin and vmax
         self.vmin = self.vmin if self.vmin is not None else \
-            np.percentile(np.nan_to_num(self.data), 1)
+            cast(float, np.percentile(np.nan_to_num(self.data), 1))
         self.vmax = self.vmax if self.vmax is not None else \
-            np.percentile(np.nan_to_num(self.data), 99)
+            cast(float, np.percentile(np.nan_to_num(self.data), 99))
 
     def _write_hdf(self, h5, name="data"):
         datanode = VertexData._write_hdf(self, h5)
@@ -364,8 +378,8 @@ class Vertex(VertexData, Dataview):
                          description=self.description, state=self.state,
                          **self.attrs)
 
-    def map(self, target_subj, surface_type='fiducial', 
-            hemi='both', fs_subj=None, **kwargs):
+    def map(self, target_subj: str, surface_type: str='fiducial',
+            hemi: Literal['lh', 'rh', 'both']='both', fs_subj: Optional[str]=None, **kwargs) -> Vertex:
         """Map this data from this surface to another surface
         
         Calls `cortex.freesurfer.vertex_to_vertex()`  with this 
@@ -410,4 +424,4 @@ def u(s, encoding='utf8'):
 
 
 from .viewRGB import Colors, VertexRGB, VolumeRGB
-from .view2D import Vertex2D, Volume2D
+from .view2D import Vertex2D, Volume2D, Dataview2D

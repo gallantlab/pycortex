@@ -1,19 +1,26 @@
 import os
 import json
+from typing import Optional, Union
 import warnings
 
 import numpy as np
+import numpy.typing as npt
 
 from .. import options
 from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB
-from .braindata import VolumeData, VertexData
+from .braindata import BrainData, VolumeData, VertexData
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
 
 class Dataview2D(Dataview):
     """Abstract base class for 2-dimensional data views.
     """
-    def __init__(self, description="", cmap=None, vmin=None, vmax=None, vmin2=None, vmax2=None, state=None, **kwargs):
+    dim1: Dataview
+    dim2: Dataview
+
+    def __init__(self, description: str="", cmap: Optional[str]=None,
+                 vmin: Optional[float]=None, vmax: Optional[float]=None,
+                 vmin2: Optional[float]=None, vmax2: Optional[float]=None, state=None, **kwargs):
         self.cmap = cmap or default_cmap2D
         self.vmin = vmin
         self.vmax = vmax
@@ -139,9 +146,11 @@ class Volume2D(Dataview2D):
 
     """
     _cls = VolumeData
+    dim1: Volume
+    dim2: Volume
 
-    def __init__(self, dim1, dim2, subject=None, xfmname=None, description="", cmap=None,
-                 vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+    def __init__(self, dim1: Union[npt.NDArray, Volume], dim2: Union[npt.NDArray, Volume], subject: Optional[str]=None, xfmname: Optional[str]=None, description: str="", cmap: Optional[str]=None,
+                 vmin: Optional[float]=None, vmax: Optional[float]=None, vmin2: Optional[float]=None, vmax2: Optional[float]=None, **kwargs):
         if isinstance(dim1, self._cls):
             if subject is not None or xfmname is not None:
                 raise TypeError("Subject and xfmname cannot be specified with Volumes")
@@ -150,6 +159,10 @@ class Volume2D(Dataview2D):
             self.dim1 = dim1
             self.dim2 = dim2
         else:
+            if isinstance(dim2, self._cls):
+                raise TypeError("If dim2 is a Volume, dim1 must be a Volume as well")
+            if subject is None or xfmname is None:
+                raise TypeError("Subject and xfmname must be specified with raw data")
             self.dim1 = Volume(dim1, subject, xfmname, vmin=vmin, vmax=vmax)
             self.dim2 = Volume(dim2, subject, xfmname, vmin=vmin2, vmax=vmax2)
 
@@ -229,17 +242,23 @@ class Vertex2D(Dataview2D):
     """
     _cls = VertexData
     blend_curvature = _cls.blend_curvature  # hacky inheritance
+    dim1: Vertex
+    dim2: Vertex
 
-    def __init__(self, dim1, dim2, subject=None, description="", cmap=None,
-                 vmin=None, vmax=None, vmin2=None, vmax2=None, **kwargs):
+    def __init__(self, dim1: Union[npt.NDArray, Vertex], dim2: Union[npt.NDArray, Vertex], subject: Optional[str]=None, description: str="", cmap: Optional[str]=None,
+                 vmin: Optional[float]=None, vmax: Optional[float]=None, vmin2: Optional[float]=None, vmax2: Optional[float]=None, **kwargs):
         if isinstance(dim1, VertexData):
             if subject is not None:
-                raise TypeError("Subject cannot be specified with Volumes")
+                raise TypeError("Subject cannot be specified with Vertex")
             if not isinstance(dim2, VertexData) or dim2.subject != dim1.subject:
                 raise TypeError("Invalid data for second dimension")
             self.dim1 = dim1
             self.dim2 = dim2
         else:
+            if isinstance(dim2, self._cls):
+                raise TypeError("If dim2 is a Vertex, dim1 must be a Vertex as well")
+            if subject is None:
+                raise TypeError("Subject must be specified with raw data")
             self.dim1 = Vertex(dim1, subject, vmin=vmin, vmax=vmax)
             self.dim2 = Vertex(dim2, subject, vmin=vmin2, vmax=vmax2)
 

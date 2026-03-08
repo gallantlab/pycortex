@@ -4,6 +4,10 @@
 requires = ["setuptools>=64", "setuptools-scm>=8", "build", "numpy", "cython", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "pycortex"
+dynamic = ["authors", "license", "readme", "version", "classifiers", "dependencies"]
+
 [tool.setuptools_scm]
 version_file = "cortex/_version.py"
 local_scheme = "no-local-version"
@@ -13,3 +17,14 @@ skip = '.git,*.pdf,*.svg,*.css,*.min.*,*.gii,resources,OpenCTM-1.0.3,filestore,b
 check-hidden = true
 # ignore-regex = ''
 ignore-words-list = 'nd,acount,anormal,fpt,coo,transpart,FO,lins'
+
+[tool.mypy]
+allow_redefinition = true
+disable_error_code = "import-untyped"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pytest",
+    "pytest-cov",
+]

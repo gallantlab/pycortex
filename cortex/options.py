@@ -1,8 +1,5 @@
 import os
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 from . import appdirs
 
 cwd = os.path.split(os.path.abspath(__file__))[0]

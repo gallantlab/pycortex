@@ -2,17 +2,24 @@
 """
 import binascii
 import copy
+from importlib import import_module
 import io
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
 import urllib.request
 import warnings
-from looseversion import LooseVersion
-from importlib import import_module
+
+from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+else:
+    from typing import ParamSpec
 
 import h5py
+from looseversion import LooseVersion
 import numpy as np
 
 from . import formats
@@ -31,26 +38,38 @@ try:
 except ImportError:
     from matplotlib.cm import register_cmap
 
+P = ParamSpec('P')
+T = TypeVar('T')
 
-class DocLoader(object):
-    def __init__(self, func, mod, package):
-        self._load = lambda: getattr(import_module(mod, package), func)
+class DocLoader(Generic[P, T]):
+    def __init__(self, func, mod, package, actual_func: Optional[Callable[P, T]] = None):
+        self._load: Callable[[], Callable[P, T]] = lambda: getattr(import_module(mod, package), func)
+        self._actual_func = actual_func # stored only to resolve generic types during type checking
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         return self._load()(*args, **kwargs)
 
-    def __getattribute__(self, name):
+    @overload
+    def __getattribute__(self, name: Literal['_load']) -> Callable[P, T]: ...
+
+    @overload
+    def __getattribute__(self, name: str) -> Any: ...
+
+    def __getattribute__(self, name: Union[Literal['_load'], str]) -> Any | Callable[P, T]:
         if name != "_load":
             return getattr(self._load(), name)
         else:
-            return object.__getattribute__(self, name)
+            return cast(Callable[P, T], object.__getattribute__(self, name))
 
+if TYPE_CHECKING:
+    from cortex.mapper import get_mapper as _get_mapper
+else:
+    _get_mapper = None
+get_mapper = DocLoader("get_mapper", ".mapper", "cortex", actual_func=_get_mapper)
 
 def get_roipack(*args, **kwargs):
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
-
-get_mapper = DocLoader("get_mapper", ".mapper", "cortex")
 
 def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
                 decimate=False, external_svg=None,
@@ -866,7 +885,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         idx_vol[left_mask] *= -1
         return idx_vol, idx_labels
 
-def get_dropout(subject, xfmname, power=20):
+def get_dropout(subject: str, xfmname: str, power: float = 20):
     """Create a dropout Volume showing where EPI signal
     is very low.
 

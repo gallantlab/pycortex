@@ -3,11 +3,14 @@ import os
 import tempfile
 import binascii
 import numpy as np
+from typing import Optional, Union, IO
 
-from .. import utils
-from .. import dataset
-from .utils import make_flatmap_image
+from matplotlib.figure import Figure
+from matplotlib.typing import ColorType
+
 from . import composite
+from .. import dataset, utils
+from .utils import make_flatmap_image
 
 
 default_colorbar_locations = {
@@ -17,7 +20,7 @@ default_colorbar_locations = {
 }
 
 
-def _check_colorbar_location(colorbar_location):
+def _check_colorbar_location(colorbar_location: Union[tuple[float, float, float, float], str]) -> tuple[float, float, float, float]:
     if isinstance(colorbar_location, (tuple, list)):
         return colorbar_location
 
@@ -28,16 +31,16 @@ def _check_colorbar_location(colorbar_location):
     return default_colorbar_locations[colorbar_location]
 
 
-def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nearest',
-                height=1024, dpi=100, depth=0.5, with_rois=True, with_sulci=False,
-                with_labels=True, with_colorbar=True, with_borders=False,
-                with_dropout=False, with_curvature=False, extra_disp=None,
-                with_connected_vertices=False, overlay_file=None,
-                linewidth=None, linecolor=None, roifill=None, shadow=None,
-                labelsize=None, labelcolor=None, cutout=None, curvature_brightness=None,
-                curvature_contrast=None, curvature_threshold=None, fig=None, extra_hatch=None,
-                colorbar_ticks=None, colorbar_location='center', roi_list=None, sulci_list=None,
-                nanmean=False):
+def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: bool=True, thick: int=32, sampler: str='nearest',
+                height: int=1024, dpi: int=100, depth: float=0.5, with_rois: bool=True, with_sulci: bool=False,
+                with_labels: bool=True, with_colorbar: bool=True, with_borders: bool=False,
+                with_dropout: Union[bool, float]=False, with_curvature: bool=False, extra_disp: Optional[tuple[str, str]]=None,
+                with_connected_vertices: bool=False, overlay_file: Optional[str]=None,
+                linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
+                labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
+                curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Figure]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
+                colorbar_ticks: None=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
+                nanmean: bool=False) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Parameters
@@ -213,7 +216,7 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
     if with_colorbar:
         colorbar_location = _check_colorbar_location(colorbar_location)
         # Allow 2D colorbars:
-        if isinstance(dataview, dataset.view2D.Dataview2D):
+        if isinstance(dataview, dataset.Dataview2D):
             colorbar_ticks = np.round([
                     dataview.vmin, dataview.vmax,
                     dataview.vmin2, dataview.vmax2
@@ -232,8 +235,8 @@ def make_figure(braindata, recache=False, pixelwise=True, thick=32, sampler='nea
 
     return fig
 
-def make_png(fname, braindata, recache=False, pixelwise=True, sampler='nearest', height=1024,
-             bgcolor=None, dpi=100, **kwargs):
+def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, recache: bool=False, pixelwise: bool=True, sampler: str='nearest', height: int=1024,
+             bgcolor: Optional[ColorType]=None, dpi: int=100, **kwargs) -> None:
     """Create a PNG of the VertexData or VolumeData on a flatmap.
 
     Parameters

@@ -515,8 +515,8 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     valid_vert_mask = np.array(pixmap.sum(0) > 0).flatten()
     valid_verts = np.arange(n_verts)[valid_vert_mask] # mapper.nverts
     # Assure both vertices in each pair are not in the medial wall
-    vtx1valid = np.in1d(shared_voxels[:, 1], valid_verts)
-    vtx2valid = np.in1d(shared_voxels[:, 2], valid_verts)
+    vtx1valid = np.isin(shared_voxels[:, 1], valid_verts)
+    vtx2valid = np.isin(shared_voxels[:, 2], valid_verts)
     va, vb = shared_voxels[vtx1valid & vtx2valid, 1:].T
     # Get X, Y coordinates per vertex, scale to 0-1 range
     [lpt, lpoly], [rpt, rpoly] = db.get_surf(subject, "flat", nudge=True)
