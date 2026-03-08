@@ -20,7 +20,7 @@ default_colorbar_locations = {
 }
 
 
-def _check_colorbar_location(colorbar_location: Union[tuple[int, float, float, float], str]) -> Union[tuple[float, float, float, float], tuple[int, float, float, float]]:
+def _check_colorbar_location(colorbar_location: Union[tuple[float, float, float, float], str]) -> tuple[float, float, float, float]:
     if isinstance(colorbar_location, (tuple, list)):
         return colorbar_location
 
@@ -31,16 +31,15 @@ def _check_colorbar_location(colorbar_location: Union[tuple[int, float, float, f
     return default_colorbar_locations[colorbar_location]
 
 
-# TODO: check args
 def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: bool=True, thick: int=32, sampler: str='nearest',
                 height: int=1024, dpi: int=100, depth: float=0.5, with_rois: bool=True, with_sulci: bool=False,
                 with_labels: bool=True, with_colorbar: bool=True, with_borders: bool=False,
-                with_dropout: bool=False, with_curvature: bool=False, extra_disp: Optional[tuple[str, str]]=None,
+                with_dropout: Union[bool, float]=False, with_curvature: bool=False, extra_disp: Optional[tuple[str, str]]=None,
                 with_connected_vertices: bool=False, overlay_file: Optional[str]=None,
                 linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Figure]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
-                colorbar_ticks: None=None, colorbar_location: Union[tuple[int, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
+                colorbar_ticks: None=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
                 nanmean: bool=False) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
