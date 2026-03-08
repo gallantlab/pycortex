@@ -83,6 +83,12 @@ def _from_hdf_data(h5, name, xfmname=None, subject=None, **kwargs):
         if dnode.shape[-1] == 4:
             alpha = dnode[..., 3]
 
+        # RGB classes don't accept arbitrary kwargs (e.g. cmap, vmin, vmax),
+        # so filter to only the parameters they support.
+        rgb_kwargs = {
+            k: v for k, v in kwargs.items() if k in ("description", "state", "priority")
+        }
+
         if xfmname is None:
             return VertexRGB(
                 dnode[..., 0],
@@ -90,7 +96,7 @@ def _from_hdf_data(h5, name, xfmname=None, subject=None, **kwargs):
                 dnode[..., 2],
                 subject,
                 alpha=alpha,
-                **kwargs,
+                **rgb_kwargs,
             )
 
         return VolumeRGB(
@@ -100,8 +106,7 @@ def _from_hdf_data(h5, name, xfmname=None, subject=None, **kwargs):
             subject,
             xfmname,
             alpha=alpha,
-            mask=mask,
-            **kwargs,
+            **rgb_kwargs,
         )
 
     if xfmname is None:
