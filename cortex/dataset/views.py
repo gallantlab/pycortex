@@ -130,10 +130,9 @@ def _from_hdf_view(
             alpha = _from_hdf_data(h5, data[3], xfmname=xfmname, subject=subject)
 
         cls = VertexRGB if isinstance(red, Vertex) else VolumeRGB
-        rgb_kwargs = {}
-        for k in ("description", "state", "priority"):
-            if k in kwargs:
-                rgb_kwargs[k] = kwargs[k]
+        rgb_kwargs = {
+            k: v for k, v in kwargs.items() if k in ("description", "state", "priority")
+        }
         return cls(red, green, blue, alpha=alpha, subject=subject, **rgb_kwargs)
     else:
         raise ValueError("Invalid Dataview specification")
