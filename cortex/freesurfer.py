@@ -12,7 +12,7 @@ import tempfile
 import warnings
 from builtins import input
 from tempfile import NamedTemporaryFile
-from typing import Optional, Literal, cast
+from typing import Optional, Literal, Union, cast
 
 import nibabel
 import numpy as np
@@ -487,7 +487,8 @@ def parse_patch(filename: str) -> npt.NDArray[np.void]:
         return data
 
 
-def get_surf(subject: str, hemi: Literal['lh', 'rh'], type: str, patch: Optional[npt.NDArray]=None, flatten_step: Optional[int]=None, freesurfer_subject_dir: Optional[str]=None) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.int32], npt.NDArray[np.float32]]:
+# TODO: `patch` annotation is messy
+def get_surf(subject: str, hemi: Literal['lh', 'rh'], type: str, patch: Optional[Union[str, npt.NDArray]]=None, flatten_step: Optional[int]=None, freesurfer_subject_dir: Optional[str]=None) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.int32], npt.NDArray[np.float32]]:
     """Read freesurfer surface file
     """
     if type == "patch":

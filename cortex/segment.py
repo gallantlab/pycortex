@@ -321,14 +321,14 @@ def cut_surface(
 
 
 def flatten_slim(
-    subject,
-    hemi,
-    patch,
-    n_iterations=20,
-    freesurfer_subject_dir=None,
-    slim_path=default_slim_path,
-    do_flatten=None,
-):
+    subject: str,
+    hemi: Literal['lh', 'rh'],
+    patch: str,
+    n_iterations: int = 20,
+    freesurfer_subject_dir: Optional[str] = None,
+    slim_path: str = default_slim_path,
+    do_flatten: Optional[bool] = None,
+) -> None:
     """Flatten brain w/ slim object flattening
 
     Parameters
