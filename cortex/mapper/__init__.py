@@ -9,7 +9,7 @@ from .mapper import Mapper, _savecache
 from .utils import nanproject, vol2surf
 
 
-def get_mapper(subject: str, xfmname: str, type: str='nearest', recache: bool=False, **kwargs):
+def get_mapper(subject: str, xfmname: str, type: str='nearest', recache: bool=False, **kwargs) -> Mapper:
     from ..database import db
     from . import point, patch, line
 
