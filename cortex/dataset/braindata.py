@@ -631,12 +631,8 @@ class _masker(Generic[T_masker]):
             self.data = dv.data
 
     def __getitem__(self, masktype: str) -> T_masker:
-        try:
-            mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
-            return self.dv.copy(self.dv.volume[:,mask].squeeze())
-        except:
-            # TODO: should be return?
-            return self.dv.copy(self.dv.volume[:, mask].squeeze())
+        mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
+        return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
 def _hash(array):
     '''A simple numpy hash function'''
