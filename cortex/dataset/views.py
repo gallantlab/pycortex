@@ -11,7 +11,7 @@ else:
     from typing import NotRequired
 
 import h5py
-from matplotlib.colors import Colormap, ListedColormap
+from matplotlib.colors import Colormap
 import numpy as np
 import numpy.typing as npt
 
@@ -458,7 +458,7 @@ class Volume(VolumeData, Dataview):
         return viewnode
 
     @property
-    def raw(self):
+    def raw(self) -> VolumeRGB:
         (r, g, b, a), nan_mask = super(Volume, self).raw
         result = VolumeRGB(
             r,
@@ -542,7 +542,7 @@ class Vertex(VertexData, Dataview):
         return viewnode
 
     @property
-    def raw(self):
+    def raw(self) -> VertexRGB:
         (r, g, b, a), nan_mask = super(Vertex, self).raw
         result = VertexRGB(
             r,
