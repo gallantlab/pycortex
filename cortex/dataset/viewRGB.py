@@ -7,6 +7,7 @@ from .braindata import VolumeData, VertexData, _hash
 from ..database import db
 
 from .. import options
+
 default_cmap = options.config.get("basic", "default_cmap")
 
 
@@ -14,6 +15,7 @@ class Colors(object):
     """
     Set of known colors
     """
+
     RoseRed = (237, 35, 96)
     LimeGreen = (141, 198, 63)
     SkyBlue = (0, 176, 218)
@@ -37,7 +39,9 @@ def RGB2HSV(color):
         HSV values. Hue in degrees, saturation and value on [0, 1]
 
     """
-    hue, saturation, value = colorsys.rgb_to_hsv(color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
+    hue, saturation, value = colorsys.rgb_to_hsv(
+        color[0] / 255.0, color[1] / 255.0, color[2] / 255.0
+    )
     hue *= 360
     return (int(hue), saturation, value)
 
@@ -61,8 +65,8 @@ def HSV2RGB(color):
 
 
 class DataviewRGB(Dataview):
-    """Abstract base class for RGB data views.
-    """
+    """Abstract base class for RGB data views."""
+
     def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
         self.alpha = alpha
         self.subject = self.red.subject
@@ -70,13 +74,19 @@ class DataviewRGB(Dataview):
         self.description = description
         self.state = state
         self.attrs = kwargs
-        if 'priority' not in self.attrs:
-            self.attrs['priority'] = 1
+        if "priority" not in self.attrs:
+            self.attrs["priority"] = 1
 
         # If movie, make sure each channel has the same number of time points
         if self.red.movie:
-            if not self.red.data.shape[0] == self.green.data.shape[0] == self.blue.data.shape[0]:
-                raise ValueError("For movie data, all three channels have to be the same length")
+            if (
+                not self.red.data.shape[0]
+                == self.green.data.shape[0]
+                == self.blue.data.shape[0]
+            ):
+                raise ValueError(
+                    "For movie data, all three channels have to be the same length"
+                )
 
     def uniques(self, collapse=False):
         if collapse:
@@ -99,8 +109,9 @@ class DataviewRGB(Dataview):
             alpha = self.alpha.name
 
         data = [self.red.name, self.green.name, self.blue.name, alpha]
-        viewnode = Dataview._write_hdf(self, h5, name=name,
-                                       data=[data], xfmname=xfmname)
+        viewnode = Dataview._write_hdf(
+            self, h5, name=name, data=[data], xfmname=xfmname
+        )
 
         return viewnode
 
@@ -108,19 +119,181 @@ class DataviewRGB(Dataview):
         sdict = super(DataviewRGB, self).to_json(simple=simple)
 
         if simple:
-            sdict['name'] = self.name
-            sdict['subject'] = self.subject
-            sdict['min'] = 0
-            sdict['max'] = 255
+            sdict["name"] = self.name
+            sdict["subject"] = self.subject
+            sdict["min"] = 0
+            sdict["max"] = 255
         else:
-            sdict['data'] = [self.name]
-            sdict['cmap'] = [default_cmap]
-            sdict['vmin'] = [0]
-            sdict['vmax'] = [255]
+            sdict["data"] = [self.name]
+            sdict["cmap"] = [default_cmap]
+            sdict["vmin"] = [0]
+            sdict["vmax"] = [255]
         return sdict
 
     def get_cmapdict(self):
         return dict()
+
+    @staticmethod
+    def color_voxels(
+        channel1,
+        channel2,
+        channel3,
+        channel1color,
+        channel2color,
+        channel3Color,
+        value_max,
+        saturation_max,
+        common_range,
+        common_min,
+        common_max,
+        alpha=None,
+    ):
+        """
+        Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
+        Parameters
+        ----------
+        channel1 : ndarray or Volume or Vertex
+            voxel values for first channel
+        channel2 : ndarray or Volume or Vertex
+            voxel values for second channel
+        channel3 : ndarray or Volume or Vertex
+            voxel values for third channel
+        channel1color : tuple<uint8, uint8, uint8>
+            color in RGB for first channel
+        channel2color : tuple<uint8, uint8, uint8>
+            color in RGB for second channel
+        channel3Color : tuple<uint8, uint8, uint8>
+            color in RGB for third channel
+        value_max : float, optional
+            Maximum HSV value for voxel colors. If not given, will be the value of
+            the average of the three channel colors.
+        saturation_max : float [0, 1]
+            Maximum HSV saturation for voxel colors.
+        common_range : bool
+            Use the same vmin and vmax for all three color channels?
+        common_min : float, optional
+            Predetermined shared vmin. Does nothing if shared_range == False. If not given,
+            will be the 1st percentile of all values across all three channels.
+        common_max : float, optional
+            Predetermined shared vmax. Does nothing if shared_range == False. If not given,
+            will be the 99th percentile of all values across all three channels
+        alpha : ndarray or Volume or Vertex, optional
+            Alpha values for each voxel. If None, alpha is set to 1 for all voxels.
+
+        Returns
+        -------
+        red : ndarray of channel1.shape
+            uint8 array of red values
+        green : ndarray of channel1.shape
+            uint8 array of green values
+        blue : ndarray of channel1.shape
+            uint8 array of blue values
+        alpha : ndarray
+            If alpha=None, uint8 array of alpha values with alpha=1 for every voxel.
+            Otherwise, the same alpha values that were passed in. Additionally,
+            voxels with NaNs will have an alpha value of 0.
+        """
+        # normalize each channel to [0, 1]
+        data1 = (
+            channel1.data
+            if isinstance(channel1, (VolumeData, VertexData))
+            else channel1
+        )
+        data1 = data1.astype(float)
+        data2 = (
+            channel2.data
+            if isinstance(channel2, (VolumeData, VertexData))
+            else channel2
+        )
+        data2 = data2.astype(float)
+        data3 = (
+            channel3.data
+            if isinstance(channel3, (VolumeData, VertexData))
+            else channel3
+        )
+        data3 = data3.astype(float)
+
+        if (data1.shape != data2.shape) or (data2.shape != data3.shape):
+            raise ValueError("Volumes are of different shapes")
+
+        # Create an alpha mask now, before casting nans to 0
+        # Voxels with at least one channel equal to NaN will be masked out.
+        mask = np.isnan(np.array([data1, data2, data3])).any(axis=0)
+        # Now convert to NaNs to num for all channels
+        data1 = np.nan_to_num(data1)
+        data2 = np.nan_to_num(data2)
+        data3 = np.nan_to_num(data3)
+
+        if common_range:
+            if common_min is None:
+                if common_max is None:
+                    common_min = np.percentile(np.hstack((data1, data2, data3)), 1)
+                else:
+                    common_min = 0
+            if common_max is None:
+                common_max = np.percentile(np.hstack((data1, data2, data3)), 99)
+            data1 -= common_min
+            data2 -= common_min
+            data3 -= common_min
+            data1 /= common_max - common_min
+            data2 /= common_max - common_min
+            data3 /= common_max - common_min
+        else:
+            channelMin = np.percentile(data1, 1)
+            channelMax = np.percentile(data1, 99)
+            data1 -= channelMin
+            data1 /= channelMax - channelMin
+            channelMin = np.percentile(data2, 1)
+            channelMax = np.percentile(data2, 99)
+            data2 -= channelMin
+            data2 /= channelMax - channelMin
+            channelMin = np.percentile(data3, 1)
+            channelMax = np.percentile(data3, 99)
+            data3 -= channelMin
+            data3 /= channelMax - channelMin
+        data1 = np.clip(data1, 0, 1)
+        data2 = np.clip(data2, 0, 1)
+        data3 = np.clip(data3, 0, 1)
+
+        channel1color = np.array(channel1color)
+        channel2color = np.array(channel2color)
+        channel3Color = np.array(channel3Color)
+
+        averageColor = (channel1color + channel2color + channel3Color) / 3
+
+        if value_max is None:
+            _, _, value = RGB2HSV(averageColor)
+            value_max = value
+
+        red = np.zeros_like(data1, np.uint8)
+        green = np.zeros_like(data1, np.uint8)
+        blue = np.zeros_like(data1, np.uint8)
+        for i in range(data1.size):
+            this_color = (
+                data1.flat[i] * channel1color
+                + data2.flat[i] * channel2color
+                + data3.flat[i] * channel3Color
+            )
+            this_color /= 3.0
+            if (value_max != 1.0) or (saturation_max != 1.0):
+                hue, saturation, value = RGB2HSV(this_color)
+                saturation /= saturation_max
+                value /= value_max
+                if saturation > 1:
+                    saturation = 1.0
+                if value > 1:
+                    value = 1.0
+                this_color = HSV2RGB([hue, saturation, value])
+            red.flat[i] = this_color[0]
+            green.flat[i] = this_color[1]
+            blue.flat[i] = this_color[2]
+
+        # Now make an alpha volume
+        if alpha is None:
+            alpha = np.ones_like(red, np.uint8) * 255
+        alpha[mask] = 0
+
+        return red, green, blue, alpha
 
 
 class VolumeRGB(DataviewRGB):
@@ -188,37 +361,77 @@ class VolumeRGB(DataviewRGB):
         Dataview.
 
     """
+
     _cls = VolumeData
 
-    def __init__(self, channel1, channel2, channel3, subject=None, xfmname=None, alpha=None, description="",
-                 state=None, channel1color=Colors.Red, channel2color=Colors.Green, channel3color=Colors.Blue,
-                 max_color_value=None, max_color_saturation=1.0, shared_range=False, shared_vmin=None,
-                 shared_vmax=None, **kwargs):
-
+    def __init__(
+        self,
+        channel1,
+        channel2,
+        channel3,
+        subject=None,
+        xfmname=None,
+        alpha=None,
+        description="",
+        state=None,
+        channel1color=Colors.Red,
+        channel2color=Colors.Green,
+        channel3color=Colors.Blue,
+        max_color_value=None,
+        max_color_saturation=1.0,
+        shared_range=False,
+        shared_vmin=None,
+        shared_vmax=None,
+        **kwargs,
+    ):
         channel1color = tuple(channel1color)
         channel2color = tuple(channel2color)
         channel3color = tuple(channel3color)
 
         if isinstance(channel1, VolumeData):
-            if not isinstance(channel2, VolumeData) or channel1.subject != channel2.subject:
-                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
-            if not isinstance(channel3, VolumeData) or channel1.subject != channel3.subject:
-                raise TypeError("Data channel 2 is not a VolumeData object or is from a different subject")
+            if (
+                not isinstance(channel2, VolumeData)
+                or channel1.subject != channel2.subject
+            ):
+                raise TypeError(
+                    "Data channel 2 is not a VolumeData object or is from a different subject"
+                )
+            if (
+                not isinstance(channel3, VolumeData)
+                or channel1.subject != channel3.subject
+            ):
+                raise TypeError(
+                    "Data channel 2 is not a VolumeData object or is from a different subject"
+                )
             if (subject is not None) and (channel1.subject != subject):
-                raise ValueError('Subject in VolumeData objects is different than specified subject')
-            if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue) \
-                    and shared_range is False:
+                raise ValueError(
+                    "Subject in VolumeData objects is different than specified subject"
+                )
+            if (
+                (channel1color == Colors.Red)
+                and (channel2color == Colors.Green)
+                and (channel3color == Colors.Blue)
+                and shared_range is False
+            ):
                 # R/G/B basis can be directly passed through
                 self.red = channel1
                 self.green = channel2
                 self.blue = channel3
                 self.alpha = alpha
             else:  # need to remap colors
-                red, green, blue, alpha = VolumeRGB.color_voxels(
-                    channel1, channel2, channel3,
-                    channel1color, channel2color, channel3color,
-                    max_color_value, max_color_saturation,
-                    shared_range, shared_vmin, shared_vmax, alpha=alpha
+                red, green, blue, alpha = DataviewRGB.color_voxels(
+                    channel1,
+                    channel2,
+                    channel3,
+                    channel1color,
+                    channel2color,
+                    channel3color,
+                    max_color_value,
+                    max_color_saturation,
+                    shared_range,
+                    shared_vmin,
+                    shared_vmax,
+                    alpha=alpha,
                 )
                 self.red = Volume(red, channel1.subject, channel1.xfmname)
                 self.green = Volume(green, channel1.subject, channel1.xfmname)
@@ -227,31 +440,50 @@ class VolumeRGB(DataviewRGB):
         else:
             if subject is None or xfmname is None:
                 raise TypeError("Subject and xfmname are required")
-            if (channel1color == Colors.Red) and (channel2color == Colors.Green) and (channel3color == Colors.Blue)\
-                    and shared_range is False:
+            if (
+                (channel1color == Colors.Red)
+                and (channel2color == Colors.Green)
+                and (channel3color == Colors.Blue)
+                and shared_range is False
+            ):
                 # R/G/B basis can be directly passed through
                 self.red = Volume(channel1, subject, xfmname)
                 self.green = Volume(channel2, subject, xfmname)
                 self.blue = Volume(channel3, subject, xfmname)
                 self.alpha = alpha
             else:  # need to remap colors
-                red, green, blue, alpha = VolumeRGB.color_voxels(
-                    channel1, channel2, channel3,
-                    channel1color, channel2color, channel3color,
-                    max_color_value, max_color_saturation,
-                    shared_range, shared_vmin, shared_vmax, alpha=alpha
+                red, green, blue, alpha = DataviewRGB.color_voxels(
+                    channel1,
+                    channel2,
+                    channel3,
+                    channel1color,
+                    channel2color,
+                    channel3color,
+                    max_color_value,
+                    max_color_saturation,
+                    shared_range,
+                    shared_vmin,
+                    shared_vmax,
+                    alpha=alpha,
                 )
                 self.red = Volume(red, subject, xfmname)
                 self.green = Volume(green, subject, xfmname)
                 self.blue = Volume(blue, subject, xfmname)
                 self.alpha = alpha
 
-        if self.red.xfmname == self.green.xfmname == self.blue.xfmname == self.alpha.xfmname:
+        if (
+            self.red.xfmname
+            == self.green.xfmname
+            == self.blue.xfmname
+            == self.alpha.xfmname
+        ):
             self.xfmname = self.red.xfmname
         else:
-            raise ValueError('Cannot handle different transforms per volume')
+            raise ValueError("Cannot handle different transforms per volume")
 
-        super(VolumeRGB, self).__init__(subject, alpha, description=description, state=state, **kwargs)
+        super(VolumeRGB, self).__init__(
+            subject, alpha, description=description, state=state, **kwargs
+        )
 
     @property
     def alpha(self):
@@ -266,7 +498,7 @@ class VolumeRGB(DataviewRGB):
                     "Some alpha values are outside the range of [0, 1]. "
                     "Consider passing a Volume object as alpha with explicit vmin, vmax "
                     "keyword arguments.",
-                    Warning
+                    Warning,
                 )
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
 
@@ -282,9 +514,15 @@ class VolumeRGB(DataviewRGB):
     def to_json(self, simple=False):
         sdict = super(VolumeRGB, self).to_json(simple=simple)
         if simple:
-            sdict['shape'] = self.red.shape
+            sdict["shape"] = self.red.shape
         else:
-            sdict['xfm'] = [list(np.array(db.get_xfm(self.subject, self.xfmname, 'coord').xfm).ravel())]
+            sdict["xfm"] = [
+                list(
+                    np.array(
+                        db.get_xfm(self.subject, self.xfmname, "coord").xfm
+                    ).ravel()
+                )
+            ]
 
         return sdict
 
@@ -317,14 +555,17 @@ class VolumeRGB(DataviewRGB):
         return np.array(volume).transpose([1, 2, 3, 4, 0])
 
     def __repr__(self):
-        return "<RGB volumetric data for (%s, %s)>"%(self.red.subject, self.red.xfmname)
+        return "<RGB volumetric data for (%s, %s)>" % (
+            self.red.subject,
+            self.red.xfmname,
+        )
 
     def __hash__(self):
         return hash(_hash(self.volume))
 
     @property
     def name(self):
-        return "__%s"%_hash(self.volume)[:16]
+        return "__%s" % _hash(self.volume)[:16]
 
     def _write_hdf(self, h5, name="data"):
         return super(VolumeRGB, self)._write_hdf(h5, name=name, xfmname=[self.xfmname])
@@ -332,141 +573,6 @@ class VolumeRGB(DataviewRGB):
     @property
     def raw(self):
         return self
-
-    @staticmethod
-    def color_voxels(channel1, channel2, channel3, channel1color, channel2color,
-                     channel3Color, value_max, saturation_max, common_range,
-                     common_min, common_max, alpha=None):
-        """
-        Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
-        Parameters
-        ----------
-        channel1 : ndarray or Volume
-            voxel values for first channel
-        channel2 : ndarray or Volume
-            voxel values for second channel
-        channel3 : ndarray or Volume
-            voxel values for third channel
-        channel1color : tuple<uint8, uint8, uint8>
-            color in RGB for first channel
-        channel2color : tuple<uint8, uint8, uint8>
-            color in RGB for second channel
-        channel3Color : tuple<uint8, uint8, uint8>
-            color in RGB for third channel
-        value_max : float, optional
-            Maximum HSV value for voxel colors. If not given, will be the value of
-            the average of the three channel colors.
-        saturation_max : float [0, 1]
-            Maximum HSV saturation for voxel colors.
-        common_range : bool
-            Use the same vmin and vmax for all three color channels?
-        common_min : float, optional
-            Predetermined shared vmin. Does nothing if shared_range == False. If not given,
-            will be the 1st percentile of all values across all three channels.
-        common_max : float, optional
-            Predetermined shared vmax. Does nothing if shared_range == False. If not given,
-            will be the 99th percentile of all values across all three channels
-        alpha : ndarray or Volume, optional
-            Alpha values for each voxel. If None, alpha is set to 1 for all voxels. 
-
-        Returns
-        -------
-        red : ndarray of channel1.shape
-            uint8 array of red values
-        green : ndarray of channel1.shape
-            uint8 array of green values
-        blue : ndarray of channel1.shape
-            uint8 array of blue values
-        alpha : ndarray
-            If alpha=None, uint8 array of alpha values with alpha=1 for every voxel. 
-            Otherwise, the same alpha values that were passed in. Additionally, 
-            voxels with NaNs will have an alpha value of 0.
-        """
-        # normalize each channel to [0, 1]
-        data1 = channel1.data if isinstance(channel1, VolumeData) else channel1
-        data1 = data1.astype(float)
-        data2 = channel2.data if isinstance(channel2, VolumeData) else channel2
-        data2 = data2.astype(float)
-        data3 = channel3.data if isinstance(channel3, VolumeData) else channel3
-        data3 = data3.astype(float)
-
-        if (data1.shape != data2.shape) or (data2.shape != data3.shape):
-            raise ValueError('Volumes are of different shapes')
-
-        # Create an alpha mask now, before casting nans to 0
-        # Voxels with at least one channel equal to NaN will be masked out.
-        mask = np.isnan(np.array([data1, data2, data3])).any(axis=0)
-        # Now convert to NaNs to num for all channels
-        data1 = np.nan_to_num(data1)
-        data2 = np.nan_to_num(data2)
-        data3 = np.nan_to_num(data3)
-
-        if common_range:
-            if common_min is None:
-                if common_max is None:
-                    common_min = np.percentile(np.hstack((data1, data2, data3)), 1)
-                else:
-                    common_min = 0
-            if common_max is None:
-                common_max = np.percentile(np.hstack((data1, data2, data3)), 99)
-            data1 -= common_min
-            data2 -= common_min
-            data3 -= common_min
-            data1 /= (common_max - common_min)
-            data2 /= (common_max - common_min)
-            data3 /= (common_max - common_min)
-        else:
-            channelMin = np.percentile(data1, 1)
-            channelMax = np.percentile(data1, 99)
-            data1 -= channelMin
-            data1 /= (channelMax - channelMin)
-            channelMin = np.percentile(data2, 1)
-            channelMax = np.percentile(data2, 99)
-            data2 -= channelMin
-            data2 /= (channelMax - channelMin)
-            channelMin = np.percentile(data3, 1)
-            channelMax = np.percentile(data3, 99)
-            data3 -= channelMin
-            data3 /= (channelMax - channelMin)
-        data1 = np.clip(data1, 0, 1)
-        data2 = np.clip(data2, 0, 1)
-        data3 = np.clip(data3, 0, 1)
-
-        channel1color = np.array(channel1color)
-        channel2color = np.array(channel2color)
-        channel3Color = np.array(channel3Color)
-
-        averageColor = (channel1color + channel2color + channel3Color) / 3
-
-        if value_max is None:
-            _, _, value = RGB2HSV(averageColor)
-            value_max = value
-
-        red = np.zeros_like(data1, np.uint8)
-        green = np.zeros_like(data1, np.uint8)
-        blue = np.zeros_like(data1, np.uint8)
-        for i in range(data1.size):
-            this_color = data1.flat[i] * channel1color + data2.flat[i] * channel2color + data3.flat[i] * channel3Color
-            this_color /= 3.0
-            if (value_max != 1.0) or (saturation_max != 1.0):
-                hue, saturation, value = RGB2HSV(this_color)
-                saturation /= saturation_max
-                value /= value_max
-                if saturation > 1:
-                    saturation = 1.0
-                if value > 1:
-                    value = 1.0
-                this_color = HSV2RGB([hue, saturation, value])
-            red.flat[i] = this_color[0]
-            green.flat[i] = this_color[1]
-            blue.flat[i] = this_color[2]
-
-        # Now make an alpha volume
-        if alpha is None:
-            alpha = np.ones_like(red, np.uint8) * 255
-        alpha[mask] = 0
-
-        return red, green, blue, alpha
 
 
 class VertexRGB(DataviewRGB):
@@ -506,12 +612,21 @@ class VertexRGB(DataviewRGB):
         Dataview.
 
     """
+
     _cls = VertexData
     blend_curvature = _cls.blend_curvature  # hacky inheritance
 
-    def __init__(self, red, green, blue, subject=None, alpha=None, description="",
-                 state=None, **kwargs):
-
+    def __init__(
+        self,
+        red,
+        green,
+        blue,
+        subject=None,
+        alpha=None,
+        description="",
+        state=None,
+        **kwargs,
+    ):
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
@@ -529,8 +644,9 @@ class VertexRGB(DataviewRGB):
 
         self.alpha = alpha
 
-        super(VertexRGB, self).__init__(subject, alpha, description=description,
-                                        state=state, **kwargs)
+        super(VertexRGB, self).__init__(
+            subject, alpha, description=description, state=state, **kwargs
+        )
 
     @property
     def alpha(self):
@@ -545,7 +661,7 @@ class VertexRGB(DataviewRGB):
                     "Some alpha values are outside the range of [0, 1]. "
                     "Consider passing a Vertex object as alpha with explicit vmin, vmax "
                     "keyword arguments.",
-                    Warning
+                    Warning,
                 )
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
 
@@ -595,21 +711,21 @@ class VertexRGB(DataviewRGB):
 
     @property
     def left(self):
-        return self.vertices[:,:self.red.llen]
+        return self.vertices[:, : self.red.llen]
 
     @property
     def right(self):
-        return self.vertices[:,self.red.llen:]
+        return self.vertices[:, self.red.llen :]
 
     def __repr__(self):
-        return "<RGB vertex data for (%s)>"%(self.subject)
+        return "<RGB vertex data for (%s)>" % (self.subject)
 
     def __hash__(self):
         return hash(_hash(self.vertices))
 
     @property
     def name(self):
-        return "__%s"%_hash(self.vertices)[:16]
+        return "__%s" % _hash(self.vertices)[:16]
 
     @property
     def raw(self):
