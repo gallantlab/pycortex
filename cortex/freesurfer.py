@@ -12,7 +12,7 @@ import tempfile
 import warnings
 from builtins import input
 from tempfile import NamedTemporaryFile
-from typing import Optional, Literal, Union, cast
+from typing import Optional, Literal, Sequence, Union, cast
 
 import nibabel
 import numpy as np
@@ -55,7 +55,7 @@ def get_paths(fs_subject: str, hemi: str, type: Literal['patch','surf','curv','s
         raise ValueError(f"Unsupported file type {type} for get_paths()")
 
 
-def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
+def autorecon(fs_subject: str, type: Literal['all', '1', '2', '3', 'cp', 'wm', 'pia']="all", parallel: bool=True, n_cores: Optional[int]=None) -> None:
     """Run Freesurfer's autorecon-all command for a given freesurfer subject
 
     Parameters
@@ -97,7 +97,7 @@ def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
     sp.check_call(shlex.split(cmd))
 
 
-def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=None):
+def flatten(fs_subject: str, hemi: Literal['lh', 'rh'], patch: str, freesurfer_subject_dir: Optional[str]=None, save_every: Optional[int]=None) -> bool:
     """Perform flattening of a brain using freesurfer
 
     Parameters
@@ -146,11 +146,11 @@ def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=Non
 
 
 def import_subj(
-    freesurfer_subject,
-    pycortex_subject=None,
-    freesurfer_subject_dir=None,
-    whitematter_surf="smoothwm",
-):
+    freesurfer_subject: str,
+    pycortex_subject: Optional[str]=None,
+    freesurfer_subject_dir: Optional[str]=None,
+    whitematter_surf: str="smoothwm",
+) -> None:
     """Imports a subject from freesurfer
 
     This will overwrite (after giving a warning and an option to continue) the 
@@ -267,9 +267,9 @@ def import_subj(
     database.db = database.Database()
 
 
-def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
-                flat_type='freesurfer', auto_overwrite=False,
-                freesurfer_subject_dir=None, clean=True):
+def import_flat(fs_subject: str, patch: str, hemis=['lh', 'rh'], cx_subject: Optional[str]=None,
+                flat_type: Literal['freesurfer', 'slim', 'blender']='freesurfer', auto_overwrite=False,
+                freesurfer_subject_dir: Optional[str]=None, clean: bool=True) -> None:
     """Imports a flat brain from freesurfer
 
     NOTE: This will delete the overlays.svg file for this subject, since THE
@@ -399,10 +399,11 @@ def _move_disconnect_points_to_zero(pts: npt.NDArray[np.floating], polys: npt.ND
     return pts
 
 
-def make_fiducial(fs_subject, freesurfer_subject_dir=None):
+def make_fiducial(fs_subject: str, freesurfer_subject_dir: Optional[str]=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
     """
-    for hemi in ['lh', 'rh']:
+    hemi: Literal['lh', 'rh']
+    for hemi in ['lh', 'rh']: # TODO: why is this a type error?
         spts, polys, _ = get_surf(fs_subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
         ppts, _, _ = get_surf(fs_subject, hemi, "pial", freesurfer_subject_dir=freesurfer_subject_dir)
         fname = get_paths(fs_subject, hemi, "surf", freesurfer_subject_dir=freesurfer_subject_dir).format(name="fiducial")
@@ -425,7 +426,7 @@ def parse_surf(filename: str) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.i
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
 
-def write_surf(filename, pts, polys, comment=''):
+def write_surf(filename: str, pts: npt.NDArray[np.float32], polys: npt.NDArray[np.int32], comment: str='') -> None:
     """Write freesurfer surface file
     """
     with open(filename, 'wb') as fp:
@@ -525,7 +526,7 @@ def get_surf(subject: str, hemi: Literal['lh', 'rh'], type: str, patch: Optional
     return pts, polys, get_curv(subject, hemi, freesurfer_subject_dir=freesurfer_subject_dir)
 
 
-def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subject='fsaverage'):
+def _move_labels(subject: str, label: str, hemisphere: Sequence[Literal['lh', 'rh']]=('lh','rh'), fs_dir: Optional[str]=None, src_subject: str='fsaverage') -> None:
     """subject is a freesurfer subject"""
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
@@ -557,7 +558,7 @@ def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subjec
     print("Labels transferred")
 
 
-def _parse_labels(label_files, cx_subject):
+def _parse_labels(label_files: Union[str, list[str]], cx_subject: str) -> tuple[npt.NDArray, npt.NDArray]:
     """Extract values from freesurfer label file(s) and map to vertices
 
     Parameters
@@ -571,7 +572,7 @@ def _parse_labels(label_files, cx_subject):
         label_files = [label_files]
     verts = []
     values = []
-    lh_surf, _ = database.db.get_surf(cx_subject, 'fiducial', 'left')
+    lh_surf, _ = database.db.get_surf(cx_subject, 'fiducial', 'left') # TODO: change to 'lh'
     for fname in label_files:
         with open(fname) as fid:
             lines = fid.readlines()
@@ -586,7 +587,7 @@ def _parse_labels(label_files, cx_subject):
     values = np.hstack(values)
     return verts, values
 
-def get_label(cx_subject, label, fs_subject=None, fs_dir=None, src_subject='fsaverage', hemisphere=('lh', 'rh'), **kwargs):
+def get_label(cx_subject: str, label: str, fs_subject: Optional[str]=None, fs_dir: Optional[str]=None, src_subject: str='fsaverage', hemisphere: Sequence[Literal['lh', 'rh']]=('lh', 'rh'), **kwargs) -> tuple[npt.NDArray[np.integer], npt.NDArray]:
     """Get data from a label file for fsaverage subject
 
     Parameters
@@ -636,7 +637,7 @@ def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
     return cmd
 
 
-def _check_datatype(data):
+def _check_datatype(data: npt.NDArray) -> np.dtype:
     dtype = data.dtype
     if dtype == np.int64:
         return np.int32
@@ -646,7 +647,7 @@ def _check_datatype(data):
         return dtype
 
 
-def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
+def mri_surf2surf(data: npt.NDArray, source_subj: str, target_subj: str, hemi: Literal['lh', 'rh'], subjects_dir: Optional[str]=None):
     """Uses freesurfer mri_surf2surf to transfer vertex data between
         two freesurfer subjects
     
@@ -808,9 +809,9 @@ _SURF2SURF_LEGACY_KWARGS = frozenset(
      'renormalize'))
 
 
-def get_mri_surf2surf_matrix(source_subj, hemi, surface_type=None,
-                             target_subj='fsaverage', subjects_dir=None,
-                             **kwargs):
+def get_mri_surf2surf_matrix(source_subj: str, hemi: Literal['lh', 'rh'], surface_type: Optional[str]=None,
+                             target_subj: str='fsaverage', subjects_dir: Optional[str]=None,
+                             **kwargs) -> coo_matrix:
     """Create a sparse matrix implementing freesurfer's ``mri_surf2surf``.
 
     A surface-to-surface resampling is a linear, highly localized transform
@@ -897,7 +898,7 @@ def get_curv(fs_subject: str, hemi: Literal['lh', 'rh'], type: str='wm', freesur
     return parse_curv(curv_file)
 
 
-def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir=None):
+def show_surf(subject: str, hemi: Literal['lh', 'rh'], type: str, patch: Optional[str]=None, curv: bool=True, freesurfer_subject_dir: Optional[str]=None):
     """Show a surface from a Freesurfer subject directory
 
     Parameters
@@ -955,7 +956,7 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     mlab.show()
     return fig, surf
 
-def write_dot(fname, pts, polys, name="test"):
+def write_dot(fname: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], name: str="test"):
     """
     """
     import networkx as nx
@@ -978,7 +979,7 @@ def write_dot(fname, pts, polys, name="test"):
         fp.write("}")
 
 
-def read_dot(fname, pts):
+def read_dot(fname: str, pts: npt.NDArray[np.floating]) -> npt.NDArray[np.floating]:
     """
     """
     import re
@@ -997,7 +998,7 @@ def read_dot(fname, pts):
     return data
 
 
-def write_decimated(path, pts, polys):
+def write_decimated(path: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer]):
     """
     """
     from .polyutils import boundary_edges, decimate
@@ -1019,7 +1020,7 @@ def write_decimated(path, pts, polys):
 class SpringLayout(object):
     """
     """
-    def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
+    def __init__(self, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], dpts: Optional[npt.NDArray]=None, pins: Optional[Union[list, set, npt.NDArray]]=None, stepsize: float=1, neighborhood: int=0):
         self.pts = pts
         self.polys = polys
         self.stepsize = stepsize
@@ -1105,7 +1106,7 @@ class SpringLayout(object):
         self.step()
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
-def stretch_mwall(pts, polys, mwall):
+def stretch_mwall(pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], mwall: npt.NDArray) -> SpringLayout:
     """
     """
     inflated = pts.copy()
@@ -1119,7 +1120,7 @@ def stretch_mwall(pts, polys, mwall):
 
 
 def upsample_to_fsaverage(
-        data, data_space="fsaverage6", freesurfer_subjects_dir=None
+        data: npt.NDArray[np.floating], data_space: str="fsaverage6", freesurfer_subjects_dir: Optional[str]=None
 ):
     """Project data from fsaverage6 (or other fsaverage surface) to fsaverage to
     visualize it in pycortex.
