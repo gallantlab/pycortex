@@ -164,7 +164,7 @@ def _from_hdf_view(
 
 
 class ColormapDict(TypedDict):
-    cmap: Colormap | ListedColormap # TODO: is ListedColormap necessary here?
+    cmap: Colormap
     vmin: Optional[float]
     vmax: Optional[float]
 
@@ -341,7 +341,6 @@ class Dataview(object):
             # Register colormap to matplotlib to avoid loading it again
             register_cmap(cmap)
 
-        # TODO: create namedtuple
         return ColormapDict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property

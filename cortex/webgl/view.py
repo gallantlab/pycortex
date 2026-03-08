@@ -48,14 +48,14 @@ def make_static(
     recache: bool=False,
     template: str="static.html",
     anonymize: bool=False,
-    overlays_available: Optional[tuple[str, ...]]=None, # TODO
+    overlays_available: Optional[tuple[str, ...]]=None,
     overlays_visible: tuple[str, ...]=("rois", "sulci"),
     labels_visible: tuple[str, ...]=("rois",),
     types: tuple[str, ...]=("inflated",),
     html_embed: bool=True,
     copy_ctmfiles: bool=True,
     title: str="Brain",
-    layout: Optional[list[tuple[int, int]]]=None, # TODO
+    layout: Optional[list[tuple[int, int]]]=None,
     overlay_file: Optional[str]=None,
     curvature_brightness: Optional[float]=None,
     curvature_contrast: Optional[float]=None,

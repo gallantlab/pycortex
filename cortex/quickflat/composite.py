@@ -332,7 +332,7 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
 
 
 # TODO: colorbar_ticks
-def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: None=None, colorbar_location: tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
+def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
                  orientation: str='horizontal') -> Axes:
     """Add a colorbar to a flatmap plot
 
