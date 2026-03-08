@@ -44,7 +44,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
 
 def make_static(
     outpath: str,
-    data: Union[dataset.Dataset, Dataview],
+    data: Union[dataset.DatasetLike, dataset.Dataview],
     recache: bool=False,
     template: str="static.html",
     anonymize: bool=False,

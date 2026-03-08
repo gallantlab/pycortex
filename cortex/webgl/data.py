@@ -16,7 +16,7 @@ import numpy.typing as npt
 
 from .. import dataset
 from .. import volume
-from typing import Any, Optional, TypedDict, Union, cast
+from typing import Optional, TypedDict
 
 class PackageMetadata(TypedDict):
     views: list[dataset.DataviewJSON]
@@ -84,7 +84,6 @@ class Package(object):
                 self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
 
     @property
-    #def views(self) -> list[dataset.JSON]:
     def views(self) -> list[dataset.DataviewJSON]:
         metadata = []
         for name, view in self.dataset:

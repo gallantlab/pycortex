@@ -19,7 +19,7 @@ warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
 class Mapper(object):
     '''Maps data from epi volume onto surface using various projections'''
-    def __init__(self, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str) -> None:
+    def __init__(self, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str):
         self.idxmap = None
         self.masks = [left, right]
         self.nverts = left.shape[0] + right.shape[0]
