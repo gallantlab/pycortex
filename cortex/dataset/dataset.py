@@ -136,9 +136,9 @@ class Dataset(object):
             view._write_hdf(self.h5, name=name)
             
         if pack:
-            subjs = set()
-            xfms = set()
-            masks = set()
+            subjs: set[str] = set()
+            xfms: set[tuple[str, str]] = set()
+            masks: set[tuple[str, str, str]] = set()
             for view in self.views.values():
                 # .uniques() is provided by BrainData
                 for data in view.uniques():
