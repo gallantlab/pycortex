@@ -287,11 +287,14 @@ class SVGOverlay(object):
         proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         stdout, stderr = proc.communicate(etree.tostring(self.svg))
         
-        # print stderr, except the warning "Format autodetect failed."
+        suppressed_warnings = [
+            'Format autodetect failed.',
+            "Failed to wrap object of type 'GtkRecentManager'.",
+        ]
         if hasattr(stderr, 'decode'):
             stderr = stderr.decode()
         for line in stderr.split('\n'):
-            if line != '' and 'Format autodetect failed.' not in line:
+            if line != '' and not any(warning in line for warning in suppressed_warnings):
                 print(line)
 
         if background is not None:
