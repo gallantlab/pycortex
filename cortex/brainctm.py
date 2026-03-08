@@ -13,6 +13,7 @@ uv
   Actually stores the raw flatmap coordinates, unnormalized. Normalization is handled
   in javascript, in the load function
 '''
+from collections.abc import Container
 import os
 import sys
 import json
@@ -115,7 +116,7 @@ class BrainCTM(object):
             self.right.aux[:,1] = npz.right
 
     def save(self, path: str, method: Literal['mg2', 'raw']='mg2', external_svg: Optional[str]=None, 
-             overlays_available: Optional[list[str]]=None, **kwargs) -> list[npt.NDArray[np.integer]]:
+             overlays_available: Optional[Container[str]]=None, **kwargs) -> list[npt.NDArray[np.integer]]:
         """Save CTM file for static html display. 
 
         Parameters

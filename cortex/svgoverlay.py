@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from collections.abc import Container
 import re
 import copy
 import shlex
@@ -626,7 +627,7 @@ def _split_multipath(pathstr):
         # Need further parsing of multi-path strings? perhaps no.
         yield (header + subpath).strip()
 
-def scrub(svgfile: str, overlays_available: Optional[list[str]]=None) -> _ElementTree:
+def scrub(svgfile: str, overlays_available: Optional[Container[str]]=None) -> _ElementTree:
     """Remove data layers from an svg object prior to rendering
 
     Returns etree-parsed svg object
@@ -680,14 +681,14 @@ def make_svg(pts, polys):
 
 @overload
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[False]=False, 
-                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
+                overlays_available: Optional[Container[str]]=None, modify_svg_file: bool=True, **kwargs) -> SVGOverlay: ...
 
 @overload
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: Literal[True], 
-                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, npt.NDArray[np.integer]]: ...
+                overlays_available: Optional[Container[str]]=None, modify_svg_file: bool=True, **kwargs) -> tuple[SVGOverlay, npt.NDArray[np.integer]]: ...
 
 def get_overlay(subject: str, svgfile: str, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], remove_medial: bool=False, 
-                overlays_available: Optional[list[str]]=None, modify_svg_file: bool=True, **kwargs) -> Union[SVGOverlay, tuple[SVGOverlay, npt.NDArray[np.integer]]]:
+                overlays_available: Optional[Container[str]]=None, modify_svg_file: bool=True, **kwargs) -> Union[SVGOverlay, tuple[SVGOverlay, npt.NDArray[np.integer]]]:
     """Return a python represent of the overlays present in `svgfile`.
 
     Parameters
