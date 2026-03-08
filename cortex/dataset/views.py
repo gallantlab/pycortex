@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
-if sys.version_info < (3, 10):
+if sys.version_info < (3, 11):
     from typing_extensions import NotRequired
 else:
     from typing import NotRequired
