@@ -82,6 +82,12 @@ class Mapper(object):
 
         return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
 
+    @overload
+    def backwards(self, vertexdata: dataset.Vertex) -> dataset.Volume: ...
+
+    @overload
+    def backwards(self, vertexdata: npt.NDArray) -> npt.NDArray: ...
+
     def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]) -> Union[dataset.Volume, npt.NDArray]:
         '''Projects vertex data back into volume space.
 
