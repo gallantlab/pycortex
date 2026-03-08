@@ -248,6 +248,10 @@ PickPosition.prototype = {
             this.callback(vec, hemi, ptidx);
     },
 
+    callback: function(vec, hemi, ptidx) {
+        $.get("/picker?voxel=" + vec.x + "," + vec.y + "," + vec.z + "&vertex=" + ptidx + "&hemi=" + hemi);
+    },
+
     process_nonpick: function() {
         for (var i = 0; i < this.axes.length; i++) {
             this.markers[this.axes[i].hemi].remove(this.axes[i].group);

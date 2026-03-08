@@ -325,10 +325,11 @@ def show(
         The port that will be used by the server. If None, a random port will be
         selected from the range 1024-65536. Default None
     pickerfun : function or None, optional
-        Should be a function that takes two arguments, a voxel index and a vertex
-        index. Is called whenever a location on the surface is clicked in the
-        viewer. This can be used to print information about individual voxels or
-        vertices, plot receptive fields, or many other uses. Default None
+        Should be a function that takes three arguments, a 3-D voxel vector, a
+        vertex index, and the hemisphere ("left" or "right"). Is called whenever
+        a location on the surface is clicked in the viewer. This can be used to
+        print information about individual voxels or vertices, plot receptive
+        fields, or many other uses. Default None
     recache : bool, optional
         Force recreation of CTM and SVG files for surfaces. Default False
     template : string, optional
@@ -452,7 +453,7 @@ def show(
             my_viewopts[sec] = dict(options.config.items(sec))
 
     if pickerfun is None:
-        pickerfun = lambda a, b: None
+        pickerfun = lambda *a: None
 
     class CTMHandler(web.RequestHandler):
         def get(self, path):
@@ -888,7 +889,10 @@ def show(
 
     class PickerHandler(web.RequestHandler):
         def get(self):
-            pickerfun(int(self.get_argument("voxel")), int(self.get_argument("vertex")))
+            voxel: tuple[int, int, int] = tuple(int(i) for i in self.get_argument("voxel").split(","))
+            vertex: int = int(self.get_argument("vertex"))
+            hemi: str = self.get_argument("hemi")
+            pickerfun(voxel, vertex, hemi)
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
