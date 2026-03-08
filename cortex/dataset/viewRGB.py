@@ -67,15 +67,15 @@ def HSV2RGB(color):
 class DataviewRGB(Dataview):
     """Abstract base class for RGB data views."""
 
-    def __init__(self, subject=None, alpha=None, description="", state=None, **kwargs):
+    def __init__(
+        self, subject=None, alpha=None, description="", state=None, priority=1
+    ):
         self.alpha = alpha
         self.subject = self.red.subject
         self.movie = self.red.movie
         self.description = description
         self.state = state
-        self.attrs = kwargs
-        if "priority" not in self.attrs:
-            self.attrs["priority"] = 1
+        self.attrs = dict(priority=priority)
 
         # If movie, make sure each channel has the same number of time points
         if self.red.movie:
@@ -382,7 +382,7 @@ class VolumeRGB(DataviewRGB):
         shared_range=False,
         shared_vmin=None,
         shared_vmax=None,
-        **kwargs,
+        priority=1,
     ):
         channel1color = tuple(channel1color)
         channel2color = tuple(channel2color)
@@ -482,7 +482,7 @@ class VolumeRGB(DataviewRGB):
             raise ValueError("Cannot handle different transforms per volume")
 
         super(VolumeRGB, self).__init__(
-            subject, alpha, description=description, state=state, **kwargs
+            subject, alpha, description=description, state=state, priority=priority
         )
 
     @property
@@ -580,36 +580,58 @@ class VertexRGB(DataviewRGB):
     Contains RGB (or RGBA) colors for each vertex in a surface dataset.
     Includes information about the subject.
 
+    Three data channels are mapped into a 3D color set. By default the data
+    channels are mapped on to red, green, and blue. They can also be mapped to
+    be different colors as specified, and then linearly combined.
+
     Each color channel is represented as a separate Vertex object (these can
     either be supplied explicitly as Vertex objects or implicitly as np
     arrays). The vmin for each Vertex will be mapped to the minimum value for
     that color channel, and the vmax will be mapped to the maximum value.
+    If `shared_range` is True, the vmin and vmax will instead be computed by
+    combining all three data channels.
 
     Parameters
     ----------
     red : ndarray or Vertex
-        Array or Vertex that represents the red component of the color for each
-        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+        Array or Vertex that represents the first data channel for each
+        vertex. Can be a 1D array (see Vertex for details), or a Vertex.
     green : ndarray or Vertex
-        Array or Vertex that represents the green component of the color for each
-        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+        Array or Vertex that represents the second data channel for each
+        vertex. Can be a 1D array (see Vertex for details), or a Vertex.
     blue : ndarray or Vertex
-        Array or Vertex that represents the blue component of the color for each
-        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.
+        Array or Vertex that represents the third data channel for each
+        vertex. Can be a 1D array (see Vertex for details), or a Vertex.
     subject : str, optional
         Subject identifier. Must exist in the pycortex database. If not given,
         red must be a Vertex from which the subject can be extracted.
     alpha : ndarray or Vertex, optional
         Array or Vertex that represents the alpha component of the color for each
-        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If
+        vertex. Can be a 1D array (see Vertex for details), or a Vertex. If
         None, all vertices will be assumed to have alpha=1.0.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     state : optional
         TODO: describe what this is
-    **kwargs
-        All additional arguments in kwargs are passed to the VertexData and
-        Dataview.
+    channel1color : tuple<uint8, uint8, uint8>
+        RGB color to use for the first data channel
+    channel2color : tuple<uint8, uint8, uint8>
+        RGB color to use for the second data channel
+    channel3color : tuple<uint8, uint8, uint8>
+        RGB color to use for the third data channel
+    max_color_value : float [0, 1], optional
+        Maximum HSV value for voxel colors. If not given, will be the value of
+        the average of the three channel colors.
+    max_color_saturation: float [0, 1]
+        Maximum HSV saturation for voxel colors.
+    shared_range : bool
+        Use the same vmin and vmax for all three color channels?
+    shared_vmin : float, optional
+        Predetermined shared vmin. Does nothing if shared_range == False. If not given,
+        will be the 1st percentile of all values across all three channels.
+    shared_vmax : float, optional
+        Predetermined shared vmax. Does nothing if shared_range == False. If not given,
+        will be the 99th percentile of all values across all three channels
 
     """
 
@@ -625,27 +647,95 @@ class VertexRGB(DataviewRGB):
         alpha=None,
         description="",
         state=None,
-        **kwargs,
+        channel1color=Colors.Red,
+        channel2color=Colors.Green,
+        channel3color=Colors.Blue,
+        max_color_value=None,
+        max_color_saturation=1.0,
+        shared_range=False,
+        shared_vmin=None,
+        shared_vmax=None,
+        priority=1,
     ):
+        channel1color = tuple(channel1color)
+        channel2color = tuple(channel2color)
+        channel3color = tuple(channel3color)
+
         if isinstance(red, VertexData):
             if not isinstance(green, VertexData) or red.subject != green.subject:
                 raise TypeError("Invalid data for green channel")
             if not isinstance(blue, VertexData) or red.subject != blue.subject:
                 raise TypeError("Invalid data for blue channel")
-            self.red = red
-            self.green = green
-            self.blue = blue
+            if (subject is not None) and (red.subject != subject):
+                raise ValueError(
+                    "Subject in VertexData objects is different than specified subject"
+                )
+            if (
+                (channel1color == Colors.Red)
+                and (channel2color == Colors.Green)
+                and (channel3color == Colors.Blue)
+                and shared_range is False
+            ):
+                # R/G/B basis can be directly passed through
+                self.red = red
+                self.green = green
+                self.blue = blue
+                self.alpha = alpha
+            else:  # need to remap colors
+                r, g, b, alpha = DataviewRGB.color_voxels(
+                    red,
+                    green,
+                    blue,
+                    channel1color,
+                    channel2color,
+                    channel3color,
+                    max_color_value,
+                    max_color_saturation,
+                    shared_range,
+                    shared_vmin,
+                    shared_vmax,
+                    alpha=alpha,
+                )
+                self.red = Vertex(r, red.subject)
+                self.green = Vertex(g, red.subject)
+                self.blue = Vertex(b, red.subject)
+                self.alpha = alpha
         else:
             if subject is None:
                 raise TypeError("Subject name is required")
-            self.red = Vertex(red, subject)
-            self.green = Vertex(green, subject)
-            self.blue = Vertex(blue, subject)
-
-        self.alpha = alpha
+            if (
+                (channel1color == Colors.Red)
+                and (channel2color == Colors.Green)
+                and (channel3color == Colors.Blue)
+                and shared_range is False
+            ):
+                # R/G/B basis can be directly passed through
+                self.red = Vertex(red, subject)
+                self.green = Vertex(green, subject)
+                self.blue = Vertex(blue, subject)
+                self.alpha = alpha
+            else:  # need to remap colors
+                r, g, b, alpha = DataviewRGB.color_voxels(
+                    red,
+                    green,
+                    blue,
+                    channel1color,
+                    channel2color,
+                    channel3color,
+                    max_color_value,
+                    max_color_saturation,
+                    shared_range,
+                    shared_vmin,
+                    shared_vmax,
+                    alpha=alpha,
+                )
+                self.red = Vertex(r, subject)
+                self.green = Vertex(g, subject)
+                self.blue = Vertex(b, subject)
+                self.alpha = alpha
 
         super(VertexRGB, self).__init__(
-            subject, alpha, description=description, state=state, **kwargs
+            subject, alpha, description=description, state=state, priority=priority
         )
 
     @property
