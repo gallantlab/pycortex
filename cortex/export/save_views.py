@@ -27,6 +27,7 @@ def save_3d_views(
     size: tuple[int, int]=(1024 * 4, 768 * 4),
     trim: bool=True,
     sleep: float=10,
+    headless: bool=False,
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
@@ -74,7 +75,17 @@ def save_3d_views(
         Whether to trim the white borders of the image.
 
     sleep: float > 0
-        Time in seconds, to let the viewer open.
+        Time in seconds, to let the viewer open. Ignored when ``headless=True``
+        because the Playwright browser connects synchronously.
+
+    headless: bool
+        If True, render using a headless Chromium browser via Playwright instead
+        of requiring the user to manually open a browser window.  This allows
+        the function to run fully autonomously without any user interaction.
+        Requires ``playwright`` to be installed (``pip install playwright``) and
+        Chromium to be available (``playwright install chromium``).
+        Software WebGL (SwiftShader) is used, so no GPU or display server is
+        needed.  (Default: False)
 
     Returns
     -------
@@ -85,8 +96,15 @@ def save_3d_views(
     assert len(list_angles) == len(list_surfaces), msg
 
     # Create viewer
-    handle = cortex.webshow(volume, **viewer_params)
-    # Wait for the viewer to be loaded
+    if headless:
+        from cortex.export.headless import headless_viewer as _headless_viewer
+        _headless_ctx = _headless_viewer(volume, viewer_params)
+        handle = _headless_ctx.__enter__()
+    else:
+        _headless_ctx = None
+        handle = cortex.webshow(volume, **viewer_params)
+        # Wait for the viewer to be loaded
+
     time.sleep(sleep)
 
     # Add interpolation and layers params only if we have a volume
@@ -133,14 +151,18 @@ def save_3d_views(
         handle._set_view(**this_view_params)
 
         # wait for the view to have changed
+        # TODO: what is going on here?
         for _ in range(100):
+            all_ready = True
             for k, v in this_view_params.items():
-                k = k.format(subject=volume.subject) if "{subject}" in k else k
-                if handle.ui.get(k)[0] != v:
-                    print("waiting for", k, handle.ui.get(k)[0], "->", v)
-                    time.sleep(0.1)
-                    continue
-            break
+                k_resolved = k.format(subject=volume.subject) if "{subject}" in k else k
+                current = handle.ui.get(k_resolved)[0]
+                if current != v:
+                    print("waiting for", k_resolved, current, "->", v)
+                    all_ready = False
+            if all_ready:
+                break
+            time.sleep(0.1)
         time.sleep(0.1)
 
         # Save image, store file_name
@@ -149,8 +171,16 @@ def save_3d_views(
         handle.getImage(file_name, size)
 
         # Wait for browser to dump file, before applying new view parameters
-        while not os.path.exists(file_name):
-            pass
+        for _wait in range(200):
+            if os.path.exists(file_name):
+                break
+            time.sleep(0.1)
+        else:
+            raise RuntimeError(
+                # TODO: what is this f-string syntax?
+                f"Image {file_name!r} was not written within 20 seconds. "
+                "The browser may have failed to POST the screenshot."
+            )
         time.sleep(1)
 
         # Trim white edges
@@ -158,18 +188,27 @@ def save_3d_views(
             try:
                 import subprocess
 
-                subprocess.call(["convert", "-trim", file_name, file_name])
+                subprocess.call(["convert", "-trim", file_name, file_name]) # TODO: check return code
             except Exception as e:
                 print(str(e))
                 pass
 
     # Try to close the window
-    try:
-        handle.close()
-        handle.server.stop()
-    except Exception as e:
-        print(str(e))
-        print("Could not close viewer.")
+    if _headless_ctx is not None:
+        # headless mode: delegate teardown to the context manager
+        try:
+            _headless_ctx.__exit__(None, None, None)
+        except Exception as e:
+            # TODO: proper exception handling
+            print(str(e))
+            print("Could not close headless viewer.")
+    else:
+        try:
+            handle.close()
+            handle.server.stop()
+        except Exception as e:
+            print(str(e))
+            print("Could not close viewer.")
 
     return file_names
 

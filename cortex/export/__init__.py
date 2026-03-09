@@ -1,4 +1,5 @@
 from .save_views import save_3d_views
+from .headless import headless_viewer
 from .panels import plot_panels
 from ._default_params import (
     params_inflatedless_lateral_medial_ventral,
@@ -10,6 +11,7 @@ from ._default_params import (
 
 __all__ = [
     "save_3d_views",
+    "headless_viewer",
     "plot_panels",
     "params_flatmap_lateral_medial",
     "params_occipital_triple_view",
