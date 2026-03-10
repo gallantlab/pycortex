@@ -53,6 +53,7 @@ def plot_panels(
     interpolation: str="nearest",
     layers: int=1,
     headless: bool=False,
+    dedupe: bool=True,
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
 
@@ -126,7 +127,8 @@ def plot_panels(
         (panel["view"]["angle"], panel["view"]["surface"]) for panel in panels
     ]
     # remove redundant couples, e.g. left and right
-    angles_and_surfaces = list(set(angles_and_surfaces))
+    if dedupe:
+        angles_and_surfaces = list(set(angles_and_surfaces))
     list_angles: list[Union[str, tuple[str, ViewParams]]]
     list_surfaces: list[Union[str, ViewParams]]
     list_angles, list_surfaces = list(zip(*angles_and_surfaces))
