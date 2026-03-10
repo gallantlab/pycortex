@@ -120,3 +120,12 @@ def test_make_flatmap_image_vertexrgb_alpha_unchanged():
         "VertexRGB.vertices appears to be premultiplied -- the matplotlib "
         "path will double-attenuate. The fix should live in webgl/data.py."
     )
+
+@pytest.mark.skipif(no_inkscape, reason='Inkscape required')
+def test_quickflat_curvature():
+    mask = cortex.db.get_mask("S1", "fullhead", type="thick")
+    data = np.ones(mask.sum())
+    # set 50% of the values in the dataset to NaN
+    data[np.random.rand(*data.shape) > 0.5] = np.nan
+    vol = cortex.Volume(data, "S1", "fullhead", vmin=0, vmax=1)
+    cortex.quickflat.make_figure(vol, with_curvature=True)
