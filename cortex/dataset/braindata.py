@@ -108,7 +108,7 @@ class BrainData(object):
                  "__div__", "__pow__", "__neg__", "__abs__"]
 
         def make_opfun(op): # function nesting creates closure containing op
-            def opfun(self, *args):
+            def opfun(self: Self, *args):
                 return self.copy(getattr(self.data, op)(*args))
             return opfun
 
