@@ -551,7 +551,7 @@ class VertexData(BrainData):
         else:
             return self.data[self.llen:]
 
-    def blend_curvature(self, alpha: npt.NDArray, threshold: float=0, brightness: float=0.5,
+    def blend_curvature(self, alpha: npt.NDArray[np.floating], threshold: float=0, brightness: float=0.5,
                         contrast: float=0.25, smooth: float=20):
         """Blend the data with a curvature map depending on a transparency map.
 
