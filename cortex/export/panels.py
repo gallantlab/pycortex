@@ -52,6 +52,7 @@ def plot_panels(
     viewer_params: dict[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
     interpolation: str="nearest",
     layers: int=1,
+    headless: bool=False,
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
 
@@ -100,6 +101,15 @@ def plot_panels(
         Number of layers between the white and pial surfaces to average prior to
         plotting the data. (Default: 1).
 
+    headless: bool
+        If True, render using a headless Chromium browser via Playwright instead
+        of requiring the user to manually open a browser window. This allows
+        the function to run fully autonomously without any user interaction.
+        Requires ``playwright`` to be installed (``pip install playwright``) and
+        Chromium to be available (``playwright install chromium``).
+        Software WebGL (SwiftShader) is used, so no GPU or display server is
+        needed. (Default: False)
+
     Returns
     -------
     fig : matplotlib.Figure
@@ -135,6 +145,7 @@ def plot_panels(
         viewer_params=viewer_params,
         interpolation=interpolation,
         layers=layers,
+        headless=headless,
     )
 
     fig = plt.figure(figsize=figsize)
