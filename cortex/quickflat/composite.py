@@ -2,6 +2,7 @@ import copy
 from typing import Optional, Union
 
 from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
 from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 import numpy as np
@@ -17,9 +18,9 @@ from ..options import config
 """ --- Individual compositing functions --- """
 
 
-def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
-                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5,
-                  legacy_mode=False):
+def add_curvature(fig: Axes, dataview: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, threshold: Optional[bool]=True, contrast: Optional[float]=None,
+                  brightness: Optional[float]=None, smooth: Optional[float]=None, cmap: str='gray', recache: bool=False, curvature_lims: float=0.5,
+                  legacy_mode: bool=False) -> AxesImage:
     """Add curvature layer to figure
 
     Parameters
@@ -28,11 +29,12 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
         figure into which to plot image of curvature
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
-    extents : array-like
+    extents : array-like TODO: fix
         4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
         extents of images already present in figure.
     height : scalar
         Height of image. None defaults to height of images already present in figure. 
+        TODO: what units?
     threshold : boolean
         Whether to apply a threshold to the curvature values to create a binary curvature image
         (one shade for positive curvature, one shade for negative). `None` defaults to value 
@@ -135,7 +137,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
     ----------
     fig : figure or ax
         Figure into which to plot image of curvature
-    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
+    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}
         Object containing containing data to be plotted, subject (surface identifier),
         and transform.
     height : scalar
@@ -181,7 +183,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
                     **cmapdict)
     return img, extents
 
-def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -228,7 +230,7 @@ def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datase
     return img
 
 
-def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[npt.ArrayLike]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -244,7 +246,7 @@ def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datas
         Height of image. None defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels for sulci
-    sulci_list : list
+    sulci_list : list[str]
         List of sulci to include
 
     Other Parameters
@@ -275,8 +277,8 @@ def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datas
     return img
 
 
-def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
-              hatch_color=(0, 0, 0), sampler='nearest', recache=False):
+def add_hatch(fig: Axes, hatch_data: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, hatch_space: int=4,
+              hatch_color: tuple[int, int, int]=(0, 0, 0), sampler: str='nearest', recache: bool=False) -> AxesImage:
     """Add hatching to figure at locations specified in hatch_data
 
     Parameters
@@ -331,7 +333,6 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     return img
 
 
-# TODO: colorbar_ticks
 def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
                  orientation: str='horizontal') -> Axes:
     """Add a colorbar to a flatmap plot
@@ -357,7 +358,7 @@ def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: Optional[npt.Arra
     return cbar
 
 
-def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: npt.ArrayLike,
+def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, float, float, float],
                     colorbar_location: tuple[float, float, float, float]=(0.425, 0.02, 0.15, 0.15), fontsize: int=12) -> AxesImage:
     """Add a 2D colorbar to a flatmap plot
 
@@ -367,8 +368,8 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: npt.ArrayLike,
     cimg : matplotlib.image.AxesImage object
         Image for which to create colorbar. For reference, matplotlib.image.AxesImage 
         is the output of imshow()
-    colorbar_ticks : array-like
-        values for colorbar ticks
+    colorbar_ticks : tuple[float, float, float, float]
+        Values for colorbar *extents*, in order [xmin, xmax, ymin, ymax]. The colorbar will be plotted with these values as the limits of the colorbar axes, and the ticks will be placed at the values specified in the first two and last two entries of this tuple.
     colorbar_location : array-like
         Four-long list, tuple, or array that specifies location for colorbar axes 
         [left, top, width, height] (?)
@@ -391,8 +392,8 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: npt.ArrayLike,
 
     return cbar
 
-def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
-               shape_list=None, **kwargs):
+def add_custom(fig: Figure, dataview: dataset.Volume, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
+               shape_list: Optional[list[str]]=None, **kwargs):
     """Add a custom data layer
 
     Parameters
@@ -413,7 +414,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
         Height of image. if None, defaults to height of images already present in figure. 
     with_labels : bool
         Whether to display text labels on ROIs
-    shape_list : list
+    shape_list : list of str, optional
         list of paths/shapes within svg layer to render, if only a subset of
         the paths/shapes within the layer are desired.
 
@@ -455,10 +456,10 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                     zorder=6)
     return img
 
-def add_connected_vertices(fig, dataview, exclude_border_width=None,
-                           height=None, extents=None, recache=False,
-                           color=(1.0, 0.5, 0.1, 0.6), linewidth=0.75,
-                           alpha=1.0, **kwargs):
+def add_connected_vertices(fig: Axes, dataview: dataset.Volume, exclude_border_width: Optional[int]=None,
+                           height: Optional[int]=None, extents: Optional[tuple[float, float, float, float]]=None, recache: bool=False,
+                           color: tuple[float, float, float, float]=(1.0, 0.5, 0.1, 0.6), linewidth: float=0.75,
+                           alpha: float=1.0, **kwargs) -> LineCollection:
     """Plot lines btw distant vertices that are within the same voxel
 
     Parameters
@@ -472,10 +473,10 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     exclude_border_width : scalar or None
         if not None, width from edge of flatmap for which crossover lines are
         not computed.
-    height : scalar
+    height : scalar or None
         Height of image. if None, defaults to height of images already present
         in figure.
-    extents : array-like
+    extents : array-like or None
         4 values for [Left, Right, Bottom, Top] extents of image plotted. If
         None, defaults to extents of images already present in figure.
     color : rgba tuple

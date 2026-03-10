@@ -195,7 +195,7 @@ class SVGOverlay(object):
         print('Saved SVG to: %s'%filename)
 
     def get_texture(self, layer_name: str, height: Optional[Union[int, float]], name: Optional[str]=None, background: Optional[str]=None, labels: bool=True,
-        shape_list: Optional[list[str]]=None, **kwargs) -> npt.NDArray:
+        shape_list: Optional[list[str]]=None, **kwargs: str) -> npt.NDArray:
         """Renders a specific layer of this svgobject as a png
 
         Parameters
@@ -283,6 +283,8 @@ class SVGOverlay(object):
         if name is None:
             png = tempfile.NamedTemporaryFile(suffix=".png")
             pngfile = png.name
+        else:
+            png = None
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
@@ -308,6 +310,7 @@ class SVGOverlay(object):
             self.svg.getroot().remove(img)
 
         if name is None:
+            assert (png is not None) and (pngfile is not None)
             png.seek(0)
             try:
                 im = plt.imread(png)

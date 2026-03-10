@@ -15,7 +15,7 @@ from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs):
+def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -37,9 +37,10 @@ def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.
 
     Returns
     -------
-    image : 
-
-    extents :
+    image : numpy.ndarray[np.uint8]
+        The generated flatmap image.
+    extents : numpy.ndarray[np.floating]
+        The extents of the generated flatmap image.
 
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
