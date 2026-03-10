@@ -26,18 +26,18 @@ from .database import db
 from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from .openctm import CTMfile
-from typing import Literal, Optional, cast, Sequence
+from typing import Any, Literal, Optional, cast, Sequence
 
 class BrainCTM(object):
     def __init__(self, subject: str, decimate: bool=False) -> None:
         self.subject = subject
-        self.types = []
+        self.types: list[str] = []
 
         left, right = db.get_surf(subject, "fiducial")
         try:
             fleft, fright = db.get_surf(subject, "flat", nudge=True, merge=False)
         except IOError:
-            fleft = None
+            fleft, fright = None, None
 
         if decimate:
             try:
@@ -60,6 +60,7 @@ class BrainCTM(object):
                 self.right = Hemi(right[0], right[1])
 
             if fleft is not None:
+                assert fright is not None
                 #set medial wall
                 for hemi, ptpoly in ([self.left, fleft], [self.right, fright]):
                     # fidpolys = set(tuple(f) for f in polyutils.sort_polys(hemi.polys))
@@ -90,6 +91,7 @@ class BrainCTM(object):
 
         #Find the flatmap limits
         if fleft is not None:
+            assert fright is not None
             flatmerge = np.vstack([fleft[0][:,:2], fright[0][:,:2]])
             fmin, fmax = flatmerge.min(0), flatmerge.max(0)
             self.flatlims = [float(x) for x in -fmin], [float(x) for x in fmax-fmin]
@@ -109,6 +111,7 @@ class BrainCTM(object):
     def addCurvature(self, **kwargs) -> None:
         npz = db.get_surfinfo(self.subject, type='curvature', **kwargs)
         try:
+            # TODO: test for DecimatedHemi instead of try/except
             self.left.aux[:,1] = npz.left[self.left.mask]
             self.right.aux[:,1] = npz.right[self.right.mask]
         except AttributeError:
@@ -148,7 +151,7 @@ class BrainCTM(object):
             fp.write(rbin)
 
         # Save the JSON descriptor | Need to add to this for extra_disp?
-        jsdict = dict(rois=os.path.split(svgname)[1],
+        jsdict: dict[str, Any] = dict(rois=os.path.split(svgname)[1],
                       data=os.path.split(ctmname)[1],
                       names=self.types, 
                       materials=[],
@@ -207,6 +210,7 @@ class BrainCTM(object):
 class Hemi(object):
     def __init__(self, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], norms: Optional[npt.NDArray[np.floating]]=None):
         self.tf = tempfile.NamedTemporaryFile()
+        # TODO: save bytes filename in another var
         self.tf.name = bytes(self.tf.name, 'ascii')
         self.ctm = CTMfile(cast(bytes, self.tf.name), "w")
 
