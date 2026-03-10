@@ -207,7 +207,7 @@ class Database:
         self._subjects = None
         self.subjects
 
-    def get_anat(self, subject, type='raw', xfmname=None, recache=False, order=1, **kwargs):
+    def get_anat(self, subject: str, type: Literal['raw', 'brainmask', 'whitematter', 'voxelize'] ='raw', xfmname: Optional[str]=None, recache: bool=False, order: int=1, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -233,6 +233,7 @@ class Database:
         anatfile = anatform.format(type=type, opts=opts, ext="nii.gz")
 
         if not os.path.exists(anatfile) or recache:
+            # TODO: does `raw` enter this block?
             print("Generating %s anatomical..."%type)
             from . import anat
             getattr(anat, type)(anatfile, subject, **kwargs)
@@ -350,6 +351,7 @@ class Database:
         if not os.path.exists(fdir):
             print("Creating surf2surf directory for subject %s"%(subject))
             os.makedirs(fdir)
+        hemis: list[Literal['lh', 'rh']]
         if hemi == 'both':
             hemis = ['lh', 'rh']
         else:
@@ -697,13 +699,14 @@ class Database:
                 shutil.rmtree(default_cachedir)
                 os.makedirs(default_cachedir)
 
-    def get_paths(self, subject: str):
+    def get_paths(self, subject: str) -> PathsType:
         """Get a dictionary with a list of all candidate filenames for associated data, such as roi overlays, flatmap caches, and ctm caches.
         """
         surfpath = os.path.join(self.filestore, subject, "surfaces")
 
-        if self.subjects[subject]._warning is not None:
-            warnings.warn(self.subjects[subject]._warning)
+        _warn = self.subjects[subject]._warning
+        if _warn is not None:
+            warnings.warn(_warn)
 
         surfs: dict[str, dict[str, str]] = dict()
         for surf in os.listdir(surfpath):
@@ -735,7 +738,7 @@ class Database:
 
         return filenames
 
-    def make_subj(self, subject):
+    def make_subj(self, subject: str):
         if os.path.exists(os.path.join(self.filestore, subject)):
             if input("Are you sure you want to overwrite this existing subject?\n"
                      "This will delete all files for this subject in the filestore, "
