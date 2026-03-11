@@ -1,4 +1,4 @@
-"""headless.py – context manager that runs the pycortex WebGL viewer inside a
+"""headless.py - context manager that runs the pycortex WebGL viewer inside a
 headless Chromium browser via Playwright, allowing ``save_3d_views`` to
 produce screenshots without any manual browser interaction.
 
@@ -11,10 +11,26 @@ The approach:
    WebSocket to ``/wsconnect/`` and immediately sends the ``"connect"``
    message, setting the ``threading.Event`` inside ``server.get_client()``.
 3. Call ``server.get_client()`` (which blocks on that event) to obtain the
-   ``JSMixer`` handle – the same object that ``cortex.webshow()`` normally
+   ``JSMixer`` handle - the same object that ``cortex.webshow()`` normally
    returns after the user navigates a real browser.
 4. Yield the handle; the caller drives it exactly as in the normal flow.
 5. On exit, tear down the viewer, server, and Playwright in reverse order.
+
+Jupyter / asyncio compatibility
+-------------------------------
+Playwright's *sync* API internally starts an asyncio event loop via a
+greenlet.  When called from inside an already-running loop (e.g. a Jupyter
+notebook), ``sync_playwright()`` raises::
+
+    Error: It looks like you are using Playwright Sync API inside the
+    asyncio loop. Please use the Async API instead.
+
+To avoid this, **all** Playwright sync API calls are executed in a dedicated
+daemon thread (``_PlaywrightThread``) that has no running asyncio loop.  The
+main thread never touches Playwright objects directly; it only communicates
+with the worker thread through ``concurrent.futures.Future`` and
+``threading.Event``.  This makes the context manager work identically in
+plain Python scripts and in Jupyter notebooks.
 
 Requirements
 ------------
@@ -24,10 +40,145 @@ Requirements
 
 import concurrent.futures
 import contextlib
-from typing import Any, Mapping, Union
+import threading
+from typing import Any, Mapping, Optional, Union
 
 import cortex
 
+
+# --------------------------------------------------------------------------- #
+# Helper: run Playwright in a dedicated thread to avoid asyncio conflicts     #
+# --------------------------------------------------------------------------- #
+
+class _PlaywrightThread:
+    """Manages the Playwright lifecycle on a private daemon thread.
+
+    Playwright's sync API requires that no asyncio event loop is running on
+    the calling thread.  Jupyter (and similar environments) always have a
+    running loop, so we isolate all Playwright calls on a background thread
+    that is guaranteed to be loop-free.
+
+    Usage::
+
+        pw_thread = _PlaywrightThread()
+        pw_thread.start(url, timeout=60)   # blocks until page is loaded
+        # ... use the pycortex handle (which talks via Tornado, not Playwright) ...
+        pw_thread.shutdown()               # tears down browser + playwright
+    """
+
+    def __init__(self) -> None:
+        self._ready_future: concurrent.futures.Future[None] = concurrent.futures.Future()
+        self._shutdown_event = threading.Event()
+        self._error: Optional[BaseException] = None
+        self._thread: Optional[threading.Thread] = None
+        # Set during worker startup; only touched by the worker thread.
+        self._playwright: Any = None
+        self._browser: Any = None
+        self._page: Any = None
+
+    # -- public API -------------------------------------------------------- #
+
+    def start(self, url: str, *, timeout: float = 60.0) -> None:
+        """Launch the worker thread, open Chromium, and navigate to *url*.
+
+        Blocks until the page has finished loading (or raises on failure).
+
+        Raises
+        ------
+        RuntimeError
+            If the browser fails to start or navigate within *timeout* seconds.
+        ImportError
+            If ``playwright`` is not installed.
+        """
+        self._url = url
+        self._nav_timeout = timeout
+        self._thread = threading.Thread(
+            target=self._worker, name="PlaywrightThread", daemon=True
+        )
+        self._thread.start()
+
+        # Block until the worker signals that the page is loaded, or raises.
+        try:
+            self._ready_future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise RuntimeError(
+                f"Playwright worker did not finish navigating to {url} "
+                f"within {timeout:.0f} s."
+            ) from None
+        # Re-raise any exception that happened inside the worker thread.
+        if self._error is not None:
+            raise self._error
+
+    def shutdown(self) -> None:
+        """Signal the worker to tear down Playwright and wait for it to finish."""
+        self._shutdown_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=30)
+
+    # -- private worker ---------------------------------------------------- #
+
+    def _worker(self) -> None:
+        """Entry point for the daemon thread - runs the full Playwright lifecycle."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError as exc:
+            self._error = ImportError(
+                "playwright is required for headless rendering. Install it with:\n"
+                "    pip install playwright && playwright install chromium"
+            )
+            self._error.__cause__ = exc
+            self._ready_future.set_result(None)  # unblock caller
+            return
+
+        try:
+            self._playwright = sync_playwright().start()
+            self._browser = self._playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--enable-webgl",
+                    "--use-gl=swiftshader",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                ],
+            )
+            self._page = self._browser.new_page()
+            self._page.goto(
+                self._url,
+                timeout=self._nav_timeout * 1000,
+                wait_until="load",
+            )
+            # Navigation succeeded - signal the main thread.
+            self._ready_future.set_result(None)
+        except BaseException as exc:
+            self._error = exc
+            # Unblock the main thread so it can see the error.
+            if not self._ready_future.done():
+                self._ready_future.set_result(None)
+            self._cleanup()
+            return
+
+        # Keep the thread (and therefore Playwright) alive until shutdown.
+        self._shutdown_event.wait()
+        self._cleanup()
+
+    def _cleanup(self) -> None:
+        """Tear down Playwright objects in reverse order.  Each step is
+        individually guarded so a failure in one does not prevent the rest."""
+        for obj, method in [
+            (self._page, "close"),
+            (self._browser, "close"),
+            (self._playwright, "stop"),
+        ]:
+            if obj is not None:
+                try:
+                    getattr(obj, method)()
+                except Exception:
+                    pass
+
+
+# --------------------------------------------------------------------------- #
+# Public context manager                                                      #
+# --------------------------------------------------------------------------- #
 
 @contextlib.contextmanager
 def headless_viewer(
@@ -54,8 +205,6 @@ def headless_viewer(
     handle : JSMixer
         The viewer handle, ready for ``_set_view`` / ``getImage`` calls.
         ``handle.server`` is the underlying ``WebApp`` instance.
-        ``handle._playwright_page`` is the Playwright ``Page`` object so
-        callers can run additional ``page.evaluate(...)`` calls if needed.
 
     Raises
     ------
@@ -64,13 +213,6 @@ def headless_viewer(
     RuntimeError
         If the browser fails to connect within ``timeout`` seconds.
     """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError as exc:
-        raise ImportError(
-            "playwright is required for headless rendering. Install it with:\n"
-            "    pip install playwright && playwright install chromium"
-        ) from exc
 
     # ------------------------------------------------------------------
     # 1. Start the Tornado server without opening a real browser window.
@@ -81,22 +223,14 @@ def headless_viewer(
     url = f"http://localhost:{server.port}/mixer.html"
 
     # ------------------------------------------------------------------
-    # 2. Launch headless Chromium with software WebGL (SwiftShader).
-    #    --use-gl=swiftshader provides a full WebGL implementation that does
-    #    not require a GPU or display server, making it usable in CI / Docker.
-    #    On GPU-equipped machines swap to --use-gl=egl for hardware rendering.
+    # 2. Launch headless Chromium with software WebGL (SwiftShader) in a
+    #    dedicated thread.  This avoids the "Playwright Sync API inside
+    #    the asyncio loop" error that occurs in Jupyter notebooks.
+    #    --use-gl=swiftshader provides a full WebGL implementation that
+    #    does not require a GPU or display server, making it usable in
+    #    CI / Docker / notebooks.
     # ------------------------------------------------------------------
-    playwright = sync_playwright().start()
-    browser = playwright.chromium.launch(
-        headless=True,
-        args=[
-            "--enable-webgl",
-            "--use-gl=swiftshader",       # software WebGL; no GPU / display needed
-            "--no-sandbox",               # required in most container environments
-            "--disable-dev-shm-usage",    # avoids /dev/shm exhaustion in containers
-        ],
-    )
-    page = browser.new_page()
+    pw_thread = _PlaywrightThread()
 
     handle = None
     try:
@@ -108,13 +242,13 @@ def headless_viewer(
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             fut = pool.submit(server.get_client)
 
-            # Navigate the browser.  python_interface.js runs on load and
-            # immediately sends "connect" over WebSocket, which unblocks
-            # server.get_client() (it waits on a threading.Event).
-            page.goto(url, timeout=timeout * 1000, wait_until="load")
+            # Launch the browser and navigate.  python_interface.js runs on
+            # load and sends "connect" over WebSocket, which unblocks
+            # server.get_client().
+            pw_thread.start(url, timeout=timeout)
 
             # Retrieve the handle; it should already be ready by this point,
-            # but the timeout guard ensures we surface hung state clearly.
+            # but the timeout guard surfaces hung state clearly.
             try:
                 handle = fut.result(timeout=timeout)
             except concurrent.futures.TimeoutError:
@@ -124,10 +258,8 @@ def headless_viewer(
                     "Check that WebGL initialised successfully in Chromium."
                 )
 
-        assert not isinstance(handle, list) # type narrowing to JSMixer, without having to import it
+        assert not isinstance(handle, list)  # type narrowing to JSMixer
         handle.server = server
-        # Expose the Playwright page for optional JS evaluation by callers.
-        handle._playwright_page = page
 
         yield handle
 
@@ -135,39 +267,27 @@ def headless_viewer(
         # ------------------------------------------------------------------
         # 4. Tear-down in reverse connection order:
         #    a) Close the JS viewer (sends a WS RPC to the browser).
-        #    b) Close the Playwright page — this disconnects the WebSocket
-        #       from Chromium to the Tornado server cleanly, before the
-        #       server is told to stop.  Closing the page *after* stopping
-        #       the server is what causes browser.close() to hang: Chromium
-        #       refuses to exit while it still has an open socket.
-        #    c) Stop the Tornado server + IOLoop (no active connections now).
-        #    d) Close the browser process, then stop Playwright.
+        #    b) Shut down the Playwright thread (closes page → browser →
+        #       playwright, all on the worker thread).  This disconnects
+        #       the WebSocket from Chromium cleanly *before* stopping the
+        #       Tornado server, preventing browser.close() hangs.
+        #    c) Stop the Tornado server + IOLoop.
         #    Each step is individually guarded so a failure in one does not
         #    prevent the others from running.
         # ------------------------------------------------------------------
         if handle is not None:
             try:
-                assert not isinstance(handle, list) # type narrowing to JSMixer, without having to import it
+                assert not isinstance(handle, list)  # type narrowing
                 handle.close()
             except Exception:
                 pass
 
         try:
-            page.close()
+            pw_thread.shutdown()
         except Exception:
             pass
 
         try:
             server.stop()
-        except Exception:
-            pass
-
-        try:
-            browser.close()
-        except Exception:
-            pass
-
-        try:
-            playwright.stop()
         except Exception:
             pass
