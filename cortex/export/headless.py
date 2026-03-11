@@ -75,6 +75,11 @@ class _PlaywrightThread:
         self._playwright: Any = None
         self._browser: Any = None
         self._page: Any = None
+        # Browser-side errors collected by Playwright event listeners.
+        # Written by the worker thread, read by the main thread via
+        # the ``browser_errors`` property.
+        self._browser_errors: list[str] = []
+        self._errors_lock = threading.Lock()
 
     # -- public API -------------------------------------------------------- #
 
@@ -109,6 +114,16 @@ class _PlaywrightThread:
         if self._error is not None:
             raise self._error
 
+    @property
+    def browser_errors(self) -> list[str]:
+        """Return a snapshot of browser-side errors collected so far.
+
+        Includes uncaught JS exceptions (``pageerror``) and ``console.error``
+        / ``console.warning`` messages.  Thread-safe.
+        """
+        with self._errors_lock:
+            return list(self._browser_errors)
+
     def shutdown(self) -> None:
         """Signal the worker to tear down Playwright and wait for it to finish."""
         self._shutdown_event.set()
@@ -142,6 +157,12 @@ class _PlaywrightThread:
                 ],
             )
             self._page = self._browser.new_page()
+
+            # Register listeners *before* navigation so we capture
+            # errors that fire during page load (e.g. WebGL failures).
+            self._page.on("pageerror", self._on_pageerror)
+            self._page.on("console", self._on_console)
+
             self._page.goto(
                 self._url,
                 timeout=self._nav_timeout * 1000,
@@ -160,6 +181,19 @@ class _PlaywrightThread:
         # Keep the thread (and therefore Playwright) alive until shutdown.
         self._shutdown_event.wait()
         self._cleanup()
+
+    # -- Playwright event handlers (called on the worker thread) ---------- #
+
+    def _on_pageerror(self, error: Any) -> None:
+        """Listener for uncaught JS exceptions in the browser page."""
+        with self._errors_lock:
+            self._browser_errors.append(f"[pageerror] {error}")
+
+    def _on_console(self, msg: Any) -> None:
+        """Listener for console.error / console.warning messages."""
+        if msg.type in ("error", "warning"):
+            with self._errors_lock:
+                self._browser_errors.append(f"[console.{msg.type}] {msg.text}")
 
     def _cleanup(self) -> None:
         """Tear down Playwright objects in reverse order.  Each step is
@@ -252,14 +286,24 @@ def headless_viewer(
             try:
                 handle = fut.result(timeout=timeout)
             except concurrent.futures.TimeoutError:
+                browser_errors = pw_thread.browser_errors
+                detail = (
+                    "\nBrowser errors:\n" + "\n".join(browser_errors)
+                    if browser_errors
+                    else "\nNo browser errors were captured."
+                )
                 raise RuntimeError(
                     f"Headless browser connected to {url} but the WebSocket "
                     f'"connect" message was not received within {timeout:.0f} s. '
-                    "Check that WebGL initialised successfully in Chromium."
+                    f"Check that WebGL initialised successfully in Chromium."
+                    f"{detail}"
                 )
 
         assert not isinstance(handle, list)  # type narrowing to JSMixer
         handle.server = server
+        # Expose a live reference so callers can query browser errors at
+        # any point during the session (each call returns a fresh snapshot).
+        handle._pw_thread = pw_thread
 
         yield handle
 

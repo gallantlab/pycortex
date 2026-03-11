@@ -15,6 +15,7 @@ import pytest
 
 import cortex
 import cortex.export
+from cortex.export.headless import _PlaywrightThread
 
 subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
 
@@ -72,3 +73,59 @@ def test_save_3d_views_headless():
         assert len(file_names) == 1
         assert os.path.isfile(file_names[0])
         assert os.path.getsize(file_names[0]) > 0
+
+
+def test_browser_errors_collected():
+    """_PlaywrightThread should capture console.error and pageerror from the
+    browser and make them available via browser_errors."""
+    pw = _PlaywrightThread()
+    # Start a trivial HTTP server that serves a page triggering JS errors.
+    import http.server
+    import threading as _threading
+
+    class _Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            # Emit a console.error and an uncaught exception.
+            self.wfile.write(b"""<html><body><script>
+                console.error("test-console-error-message");
+                throw new Error("test-uncaught-exception");
+            </script></body></html>""")
+
+        def log_message(self, *args, **kwargs):
+            pass  # suppress request logging
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), _Handler)
+    port = server.server_address[1]
+    t = _threading.Thread(target=server.serve_forever, daemon=True)
+    t.start()
+
+    try:
+        pw.start(f"http://127.0.0.1:{port}/", timeout=15)
+        # Give Playwright listeners a moment to fire.
+        import time
+        time.sleep(1)
+        errors = pw.browser_errors
+        assert any("test-console-error-message" in e for e in errors), (
+            f"Expected console.error to be captured, got: {errors}"
+        )
+        assert any("test-uncaught-exception" in e for e in errors), (
+            f"Expected pageerror to be captured, got: {errors}"
+        )
+    finally:
+        pw.shutdown()
+        server.shutdown()
+
+
+def test_browser_errors_on_handle():
+    """The headless_viewer handle should expose browser errors via
+    handle._pw_thread.browser_errors."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        assert hasattr(handle, "_pw_thread")
+        # browser_errors should return a list (possibly empty if no errors).
+        errors = handle._pw_thread.browser_errors
+        assert isinstance(errors, list)
