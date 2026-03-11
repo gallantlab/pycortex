@@ -316,6 +316,8 @@ class WebApp(threading.Thread):
         return JSProxy(self.send)
 
 class JSProxy(object):
+    server: WebApp
+
     def __init__(self, sendfunc, name="window"):
         super(JSProxy, self).__setattr__('send', sendfunc)
         super(JSProxy, self).__setattr__('name', name)
