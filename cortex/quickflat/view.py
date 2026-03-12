@@ -3,8 +3,10 @@ import os
 import tempfile
 import binascii
 import numpy as np
+import numpy.typing as npt
 from typing import Optional, Union, IO
 
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.typing import ColorType
 
@@ -38,8 +40,8 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 with_connected_vertices: bool=False, overlay_file: Optional[str]=None,
                 linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
-                curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Figure]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
-                colorbar_ticks: None=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
+                curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
+                colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
                 nanmean: bool=False) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
@@ -131,11 +133,11 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         fig_resize = True
         fig = plt.figure()
         ax = fig.add_axes((0, 0, 1, 1))
-    elif isinstance(fig, plt.Figure):
+    elif isinstance(fig, Figure):
         fig_resize = False
         fig = plt.figure(fig.number)
         ax = fig.add_axes((0, 0, 1, 1))
-    elif isinstance(fig, plt.Axes):
+    elif isinstance(fig, Axes):
         fig_resize = False
         ax = fig
         fig = ax.figure
