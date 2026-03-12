@@ -90,7 +90,11 @@ LICENSE = '2-clause BSD license'
 URL = 'http://gallantlab.github.io/pycortex'
 DOWNLOAD_URL = URL
 with open('requirements.txt') as f:
-    INSTALL_REQUIRES = f.read().split()
+    INSTALL_REQUIRES = [
+        line.strip()
+        for line in f
+        if line.strip() and not line.lstrip().startswith('#')
+    ]
 
 
 setup(name=DISTNAME,

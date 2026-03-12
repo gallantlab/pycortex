@@ -41,7 +41,7 @@ class dep(object):
 surfs = dep()
 
 import sys
-if sys.version_info.major == 2:
+if sys.version_info < (3,):
     stdout = sys.stdout
     reload(sys)
     sys.setdefaultencoding('utf8')

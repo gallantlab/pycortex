@@ -19,7 +19,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: 3.9
+        python-version: 3.12
 
     - uses: actions/cache@v5
       with:
@@ -31,9 +31,11 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y inkscape
+        sudo apt-get install -y inkscape --no-install-recommends
         pip install --upgrade pip
-        pip install wheel numpy cython
+        pip install wheel setuptools numpy cython
+        # force using latest nibabel
+        pip install -U nibabel
         pip install -q ipython Sphinx sphinx-gallery numpydoc
         pip install -e . --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
       max-parallel: 5
 
     steps:
@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y inkscape
+        sudo apt-get install -y inkscape --no-install-recommends
         pip install --upgrade pip
         pip install wheel setuptools numpy cython
         # force using latest nibabel
