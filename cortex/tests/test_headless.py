@@ -129,3 +129,68 @@ def test_browser_errors_on_handle():
         # browser_errors should return a list (possibly empty if no errors).
         errors = handle._pw_thread.browser_errors
         assert isinstance(errors, list)
+
+
+def test_headless_viewer_with_running_asyncio_loop():
+    """headless_viewer must work when an asyncio event loop is already running,
+    as is the case inside Jupyter notebooks.
+
+    Before the _PlaywrightThread fix, sync_playwright() would raise:
+        Error: It looks like you are using Playwright Sync API inside the
+        asyncio loop.  Please use the Async API instead.
+    """
+    import asyncio
+
+    async def _inner():
+        # Inside this coroutine the event loop is running — same as Jupyter.
+        vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+            assert hasattr(handle, "server")
+            assert handle.server.port > 0
+
+    asyncio.run(_inner())
+
+
+def test_headless_viewer_in_notebook():
+    """Execute headless_viewer inside a real Jupyter kernel via nbclient.
+
+    This is the most faithful reproduction of the original bug: an IPython
+    kernel has a running asyncio event loop, and all the Jupyter-specific
+    machinery (display hooks, IOPub, etc.) is active.
+
+    Skipped when ``nbclient`` or ``nbformat`` are not installed.
+    """
+    nbformat = pytest.importorskip("nbformat")
+    nbclient = pytest.importorskip("nbclient")
+
+    nb = nbformat.v4.new_notebook()
+    nb.cells = [
+        nbformat.v4.new_code_cell(
+            "import numpy as np\n"
+            "import cortex\n"
+            "import cortex.export\n"
+            f"subj, xfmname, volshape = {subj!r}, {xfmname!r}, {volshape!r}\n"
+        ),
+        nbformat.v4.new_code_cell(
+            "vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)\n"
+            "with cortex.export.headless_viewer(vol, viewer_params={}) as handle:\n"
+            "    assert hasattr(handle, 'server')\n"
+            "    assert handle.server.port > 0\n"
+            "print('headless_viewer OK')\n"
+        ),
+    ]
+
+    client = nbclient.NotebookClient(
+        nb,
+        timeout=120,
+        kernel_name="python3",
+    )
+    client.execute()
+
+    # Verify the last cell ran without error and printed "OK".
+    last_outputs = nb.cells[-1].outputs
+    assert any(
+        "headless_viewer OK" in out.get("text", "")
+        for out in last_outputs
+        if out["output_type"] == "stream"
+    ), f"Notebook cell did not produce expected output. Outputs: {last_outputs}"
