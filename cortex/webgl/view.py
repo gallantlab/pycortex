@@ -889,8 +889,23 @@ def show(
 
     class PickerHandler(web.RequestHandler):
         def get(self):
-            voxel: tuple[int, int, int] = tuple(int(i) for i in self.get_argument("voxel").split(","))
-            vertex: int = int(self.get_argument("vertex"))
+            voxel_arg = self.get_argument("voxel", None)
+            if voxel_arg is None:
+                self.set_status(400)
+                self.finish("Missing 'voxel' query parameter")
+                return
+            parts = voxel_arg.split(",")
+            if len(parts) != 3:
+                self.set_status(400)
+                self.finish("Invalid 'voxel' query parameter: expected 3 comma-separated integers")
+                return
+            try:
+                voxel: tuple[int, int, int] = tuple(int(i) for i in parts)
+                vertex: int = int(self.get_argument("vertex"))
+            except (TypeError, ValueError):
+                self.set_status(400)
+                self.finish("Invalid 'voxel' or 'vertex' query parameter")
+                return
             hemi: str = self.get_argument("hemi")
             pickerfun(voxel, vertex, hemi)
 
