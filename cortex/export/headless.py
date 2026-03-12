@@ -256,6 +256,15 @@ def headless_viewer(
     server = cortex.webshow(volume, open_browser=False, **viewer_params)
     url = f"http://localhost:{server.port}/mixer.html"
 
+    # Prevent the server from auto-stopping when the last WebSocket client
+    # disconnects (ClientSocket.on_close calls server.stop() when
+    # disconnect_on_close is True).  The headless context manager owns the
+    # full lifecycle and will call server.stop() explicitly during teardown.
+    # Without this, server.stop() is called twice: once by the auto-close
+    # mechanism when Playwright's page closes the WebSocket, and once by
+    # our finally block — producing a duplicate "Stopping server" message.
+    server.disconnect_on_close = False
+
     # ------------------------------------------------------------------
     # 2. Launch headless Chromium with software WebGL (SwiftShader) in a
     #    dedicated thread.  This avoids the "Playwright Sync API inside
