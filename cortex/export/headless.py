@@ -40,6 +40,7 @@ Requirements
 
 import concurrent.futures
 import contextlib
+from logging import warning
 import threading
 from typing import Any, Mapping, Optional, Union
 
@@ -253,7 +254,13 @@ def headless_viewer(
     #    open_browser=False suppresses webbrowser.open() and returns the
     #    raw WebApp server object instead of a JSMixer handle.
     # ------------------------------------------------------------------
-    server = cortex.webshow(volume, open_browser=False, **viewer_params)
+    if 'port' in viewer_params and viewer_params['port'] is not None:
+        # This is not recommended or necessary, since port tunneling is not needed!
+        UserWarning(
+            "Warning: headless_viewer ignores the 'port' argument in viewer_params. "
+            "The Tornado server will listen on a random free port to avoid conflicts."
+        )
+    server = cortex.webshow(volume, open_browser=False, **{k: v for k, v in viewer_params.items() if k not in ["port"]})
     url = f"http://localhost:{server.port}/mixer.html"
 
     # Prevent the server from auto-stopping when the last WebSocket client
