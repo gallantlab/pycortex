@@ -139,7 +139,7 @@ setup(name=DISTNAME,
             },
       setup_requires=['Cython', 'numpy'],
       install_requires=INSTALL_REQUIRES,
-      optionally_requires={
+      extras_require={
           'headless': ['playwright']
       },
       cmdclass=dict(install=my_install),
