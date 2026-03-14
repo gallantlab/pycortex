@@ -28,7 +28,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
     if len(kwds) > 0:
         ptype += '_'+kwds
 
-    fname = "{xfmname}_{projection}.npz".format(xfmname=xfmname, projection=ptype)
+    fname = f"{xfmname}_{ptype}.npz"
 
     xfmfile = db.get_paths(subject)['xfmdir'].format(xfmname=xfmname)
     cachefile = os.path.join(db.get_cache(subject), fname)

@@ -782,7 +782,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             else:
                 roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper, overlay_file=overlay_file)
                 missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
-                roi_verts = dict((roi, verts) for roi, verts in roi_verts.items() if roi in roi_list)
+                roi_verts = {roi: verts for roi, verts in roi_verts.items() if roi in roi_list}
                 roi_list = list(set(roi_list)-set(missing))
                 print('Requested ROI(s) {} not found in overlays.svg!'.format(missing))
     # Get (a) indices for nearest vertex to each voxel
@@ -1153,7 +1153,7 @@ def get_cmap(name):
     cmapdir = config.get('webgl', 'colormaps')
     colormaps = os.listdir(cmapdir)
     colormaps = sorted([c for c in colormaps if '.png' in c])
-    colormaps = dict((c[:-4], os.path.join(cmapdir, c)) for c in colormaps)
+    colormaps = {c[:-4]: os.path.join(cmapdir, c) for c in colormaps}
     if name in colormaps:
         I = plt.imread(colormaps[name])
         cmap = colors.ListedColormap(np.squeeze(I), name=name)

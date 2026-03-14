@@ -10,7 +10,6 @@ import re
 import shutil
 import tempfile
 import warnings
-from builtins import input
 from hashlib import sha1
 
 import numpy as np
@@ -33,7 +32,7 @@ def _memo(fn):
 
     return memofn
 
-class SubjectDB(object):
+class SubjectDB:
     def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self._warning = None
@@ -61,7 +60,7 @@ class SubjectDB(object):
         self._surfaces = SurfaceDB(self.subject, filestore=self.filestore)
         return self._surfaces
 
-class SurfaceDB(object):
+class SurfaceDB:
     def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self.types = {}
@@ -80,7 +79,7 @@ class SurfaceDB(object):
             return self.types[attr]
         raise AttributeError(attr)
 
-class Surf(object):
+class Surf:
     def __init__(self, subject, surftype, filestore=default_filestore):
         self.subject, self.surftype = subject, surftype
         self.db = Database(filestore)
@@ -93,7 +92,7 @@ class Surf(object):
         pts, polys = self.db.get_surf(self.subject, self.surftype, hemisphere, merge=True, nudge=True)
         return mlab.triangular_mesh(pts[:,0], pts[:,1], pts[:,2], polys)
 
-class XfmDB(object):
+class XfmDB:
     def __init__(self, subj, filestore=default_filestore):
         self.subject = subj
         self.filestore = filestore
@@ -108,7 +107,7 @@ class XfmDB(object):
         xfms = "\n".join(sorted(self.xfms))
         return f"Available transforms for {self.subject}:\n{xfms}"
 
-class XfmSet(object):
+class XfmSet:
     def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.name = name
@@ -126,13 +125,13 @@ class XfmSet(object):
     def __repr__(self):
         return "Types: {types}".format(types=", ".join(self._jsdat.keys()))
 
-class MaskSet(object):
+class MaskSet:
     def __init__(self, subj, name, filestore=default_filestore):
         self.subject = subj
         self.xfmname = name
         maskform = Database(filestore).get_paths(subj)['masks']
         maskpath = maskform.format(xfmname=name, type='*')
-        self._masks = dict((os.path.split(path)[1][5:-7], path) for path in glob.glob(maskpath))
+        self._masks = {os.path.split(path)[1][5:-7]: path for path in glob.glob(maskpath)}
 
     def __getitem__(self, item):
         import nibabel
@@ -141,7 +140,7 @@ class MaskSet(object):
     def __repr__(self):
         return "Masks: [{types}]".format(types=', '.join(self._masks.keys()))
 
-class Database(object):
+class Database:
     """
     Database()
 
@@ -180,7 +179,7 @@ class Database(object):
         subjs = os.listdir(os.path.join(self.filestore))
         subjs = [s for s in subjs if os.path.isdir(os.path.join(self.filestore, s))]
         subjs = sorted(subjs)
-        self._subjects = dict([(sname, SubjectDB(sname, filestore=self.filestore)) for sname in subjs])
+        self._subjects = {sname: SubjectDB(sname, filestore=self.filestore) for sname in subjs}
         return self._subjects
 
     def reload_subjects(self):

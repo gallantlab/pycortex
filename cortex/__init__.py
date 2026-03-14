@@ -30,7 +30,7 @@ except ImportError:
     pass
 
 # Create deprecated interface for database
-class dep(object):
+class dep:
     def __getattr__(self, name):
         warnings.warn("cortex.surfs is deprecated, use cortex.db instead", Warning)
         return getattr(db, name)
@@ -41,8 +41,3 @@ class dep(object):
 surfs = dep()
 
 import sys
-if sys.version_info < (3,):
-    stdout = sys.stdout
-    reload(sys)
-    sys.setdefaultencoding('utf8')
-    sys.stdout = stdout

@@ -1,6 +1,5 @@
 """Contains functions for interfacing with freesurfer
 """
-from __future__ import print_function
 
 import copy
 import os
@@ -10,7 +9,6 @@ import struct
 import subprocess as sp
 import tempfile
 import warnings
-from builtins import input
 from tempfile import NamedTemporaryFile
 
 import nibabel
@@ -1012,7 +1010,7 @@ def write_decimated(path, pts, polys):
         fp.write(data.tobytes())
 
 
-class SpringLayout(object):
+class SpringLayout:
     """
     """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
