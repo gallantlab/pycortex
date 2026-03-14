@@ -3,13 +3,14 @@ import re
 import codecs
 import binascii
 import mimetypes
+from typing import Sequence
 
 import html5lib
 from xml.dom.minidom import Document, Element
 
 from . import serve
 
-def _resolve_path(filename: str, roots: list[str]) -> str:
+def _resolve_path(filename: str, roots: Sequence[str]) -> str:
     for root in roots:
         p = os.path.join(root, filename)
         if os.path.exists(p):
@@ -17,7 +18,7 @@ def _resolve_path(filename: str, roots: list[str]) -> str:
     else:
         raise IOError("Path '%s' doesn't exist under any root dir (%s)" % (filename, roots))
 
-def _embed_css(cssfile: str, rootdirs: list[str]) -> str:
+def _embed_css(cssfile: str, rootdirs: Sequence[str]) -> str:
     csspath, fname = os.path.split(cssfile)
     with codecs.open(cssfile, encoding='utf-8') as fp:
         css = fp.read()
@@ -33,7 +34,7 @@ def _embed_css(cssfile: str, rootdirs: list[str]) -> str:
             cssout.append(u"%s {\n%s\n}"%(selector, content))
         return '\n'.join(cssout)
 
-def _embed_js(dom: Document, script: Element, rootdirs: list[str]) -> None:
+def _embed_js(dom: Document, script: Element, rootdirs: Sequence[str]) -> None:
     wparse = re.compile(r"new Worker\(\s*(['\"].*?['\"])\s*\)", re.S)
     aparse = re.compile(r"attr\(\s*['\"]src['\"]\s*,\s*['\"](.*?)['\"]\)")
     with codecs.open(_resolve_path(script.getAttribute("src"), rootdirs), encoding='utf-8') as jsfile:
@@ -71,14 +72,14 @@ def _embed_worker(worker: str) -> str:
             wdata = wdata.replace("importScripts(%s)"%simport, '\n'.join(imports))
         return wdata
 
-def _embed_images(dom: Document, rootdirs: list[str]) -> None:
+def _embed_images(dom: Document, rootdirs: Sequence[str]) -> None:
     for img in dom.getElementsByTagName("img"):
         src = img.getAttribute("src")
         if not src.strip("\"'").startswith("data:") and len(src) > 0:
             imgfile = _resolve_path(img.getAttribute("src"), rootdirs)
             img.setAttribute(u"src", serve.make_base64(imgfile).replace('\n', ''))
 
-def embed(rawhtml: bytes, outfile: str, rootdirs: list[str]=(serve.cwd,)) -> None:
+def embed(rawhtml: bytes, outfile: str, rootdirs: Sequence[str]=(serve.cwd,)) -> None:
     parser = html5lib.HTMLParser(tree=html5lib.treebuilders.getTreeBuilder("dom"))
     dom = parser.parse(rawhtml)
     head = dom.getElementsByTagName("head")[0]
