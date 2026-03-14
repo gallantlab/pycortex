@@ -1,7 +1,7 @@
 """Affine transformation class
 """
 import os
-from typing import Optional, Union, Any
+from typing import Optional, Union, cast
 import numpy as np
 import numpy.typing as npt
 import subprocess
@@ -20,8 +20,8 @@ class Transform:
         if isinstance(reference, str):
             import nibabel
             try:
-                self.reference = nibabel.load(reference)
-                self.shape = self.reference.shape[:3][::-1]
+                self.reference = cast(nibabel.Nifti1Image, nibabel.load(reference))
+                self.shape = self.reference.shape[:3][::-1] # type: ignore
             except IOError:
                 self.reference = reference
         elif isinstance(reference, tuple):
@@ -176,6 +176,7 @@ class Transform:
         # transforms. Thus the anatomical file is the "infile" in FSL-speak.
         infile = anat_nii
 
+        inIm: nibabel.Nifti1Image
         try:
             inIm = nibabel.load(infile)
         except AttributeError:
