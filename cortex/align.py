@@ -5,7 +5,7 @@ import shutil
 import subprocess as sp
 import tempfile
 import warnings
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -357,15 +357,15 @@ def automatic_fsl(
 
 
 def automatic(
-    subject,
-    xfmname,
-    reference,
-    init="coreg",
-    epi_mask=False,
-    intermediate=None,
-    reference_contrast="t2",
-    noclean=False,
-):
+    subject: str,
+    xfmname: str,
+    reference: str,
+    init: str = "coreg",
+    epi_mask: bool = False,
+    intermediate: Optional[str] = None,
+    reference_contrast: Literal['t1', 't2'] = "t2",
+    noclean: bool = False,
+) -> Optional[str]:
     """Perform automatic alignment using Freesurfer's boundary-based registration.
     The `reference` image and resulting transform called `xfmname` will be automatically
     stored in the database.
