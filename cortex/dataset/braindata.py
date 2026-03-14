@@ -34,10 +34,7 @@ class BrainData(object):
             nib = nibabel.load(data)
             data = cast(npt.NDArray, nib.get_fdata().T)
         self._data = data
-        try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         super(BrainData, self).__init__(**kwargs)
 
@@ -146,10 +143,7 @@ class VolumeData(BrainData):
         if self.__class__ == VolumeData:
             raise TypeError('Cannot directly instantiate VolumeData objects')
         super(VolumeData, self).__init__(data, subject, **kwargs)
-        try:
-            basestring
-        except NameError:
-            xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
+        xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.xfmname = xfmname
 
         self._check_size(mask)
