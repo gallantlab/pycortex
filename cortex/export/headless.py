@@ -260,7 +260,7 @@ def headless_viewer(
             "Warning: headless_viewer ignores the 'port' argument in viewer_params. "
             "The Tornado server will listen on a random free port to avoid conflicts."
         )
-    server = cortex.webshow(volume, open_browser=False, **{k: v for k, v in viewer_params.items() if k not in ["port"]})
+    server = cortex.webshow(volume, open_browser=False, display_url=False, **{k: v for k, v in viewer_params.items() if k not in ["port", "display_url"]})
     url = f"http://localhost:{server.port}/mixer.html"
 
     # Prevent the server from auto-stopping when the last WebSocket client

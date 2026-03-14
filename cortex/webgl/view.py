@@ -302,6 +302,7 @@ def show(
     surface_specularity: Optional[float]=None,
     title: str="Brain",
     layout: Optional[str]=None,
+    display_url: bool=True,
     **kwargs,
 ):
     """
@@ -374,6 +375,11 @@ def show(
         The layout of the viewer subwindows for showing multiple subjects, passed to
         the template generator.
         Default None, corresponding to no subwindows.
+    display_url : bool, optional
+        If True and ``open_browser=False``, display an IPython widget with a URL
+        link to access the viewer. Set to False to suppress this display message,
+        which can be useful in contexts like Marimo notebooks or programmatic
+        headless viewers. Default True
     **kwargs
         All additional keyword arguments are passed to the template renderer.
     """
@@ -920,10 +926,11 @@ def show(
         client = server.get_client()
         client.server = server
         return client
-    else:
+    elif display_url:
         try:
             from IPython.display import HTML, display
             display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
         except:
             pass
+
     return server
