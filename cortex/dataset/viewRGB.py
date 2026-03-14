@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import colorsys
-from typing import Optional, TypeVar, Union
+from typing import Optional, TypeVar, Union, cast
 import warnings
 
 import numpy as np
@@ -340,7 +340,7 @@ class DataviewRGB(Dataview):
                     saturation = 1.0
                 if value > 1:
                     value = 1.0
-                this_color = HSV2RGB([hue, saturation, value])
+                this_color = HSV2RGB((hue, saturation, value))
             red.flat[i] = this_color[0]
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
@@ -348,7 +348,7 @@ class DataviewRGB(Dataview):
         # Now make an alpha volume
         if alpha is None:
             alpha = np.ones_like(red, np.uint8) * 255
-        alpha[mask] = 0
+        alpha[mask] = 0 # TODO: this seems like an actual issue
 
         return red, green, blue, alpha
 
@@ -440,9 +440,9 @@ class VolumeRGB(DataviewRGB):
         alpha: Optional[Union[npt.NDArray, Volume]] = None,
         description: str = "",
         state=None,
-        channel1color: Color = Colors.Red,
-        channel2color: Color = Colors.Green,
-        channel3color: Color = Colors.Blue,
+        channel1color: Color[int] = Colors.Red,
+        channel2color: Color[int] = Colors.Green,
+        channel3color: Color[int] = Colors.Blue,
         max_color_value: Optional[float] = None,
         max_color_saturation: float = 1.0,
         vmin: Optional[Union[float, tuple]] = None,
