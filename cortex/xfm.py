@@ -1,7 +1,7 @@
 """Affine transformation class
 """
 import os
-from typing import Union, Any
+from typing import Optional, Union, Any
 import numpy as np
 import numpy.typing as npt
 import subprocess
@@ -287,7 +287,7 @@ class Transform(object):
         return cls(coord, refIm)
 
 
-    def to_freesurfer(self, fs_register, subject, freesurfer_subject_dir=None):
+    def to_freesurfer(self, fs_register: str, subject: str, freesurfer_subject_dir: Optional[str]=None):
         """Converts a pycortex transform to a FreeSurfer transform.
 
         Converts a transform stored in pycortex xfm object to the FreeSurfer format

@@ -6,6 +6,7 @@ import subprocess as sp
 import tempfile
 import warnings
 from builtins import input
+from typing import Optional
 
 import numpy as np
 
@@ -108,8 +109,17 @@ def fs_manual(subject, xfmname, **kwargs):
     return manual(subject, xfmname, **kwargs)
 
 
-def manual(subject, xfmname, output_name="register.lta", wm_color="yellow", 
-    pial_color="blue", wm_surface='white', noclean=False, reference=None, inspect_only=False):
+def manual(
+    subject: str,
+    xfmname: str,
+    output_name: str = "register.lta",
+    wm_color: str = "yellow",
+    pial_color: str = "blue",
+    wm_surface: str = "white",
+    noclean: bool = False,
+    reference: Optional[str] = None,
+    inspect_only: bool = False,
+) -> Optional[str]:
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
