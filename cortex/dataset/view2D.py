@@ -171,14 +171,14 @@ class Volume2D(Dataview2D):
         vmax = self.dim1.vmax if vmax is None else vmax
         vmax2 = self.dim2.vmax if vmax2 is None else vmax2
 
-        super(Volume2D, self).__init__(description=description, cmap=cmap, vmin=vmin,
+        super().__init__(description=description, cmap=cmap, vmin=vmin,
                                        vmax=vmax, vmin2=vmin2, vmax2=vmax2, **kwargs)
 
     def __repr__(self):
         return "<2D volumetric data for (%s, %s)>"%(self.dim1.subject, self.dim1.xfmname)
 
     def _write_hdf(self, h5, name="data"):
-        viewnode = super(Volume2D, self)._write_hdf(h5, name)
+        viewnode = super()._write_hdf(h5, name)
         viewnode[7] = json.dumps([[self.dim1.xfmname, self.dim2.xfmname]])
         return viewnode
 
@@ -267,7 +267,7 @@ class Vertex2D(Dataview2D):
         vmax = self.dim1.vmax if vmax is None else vmax
         vmax2 = self.dim2.vmax if vmax2 is None else vmax2
 
-        super(Vertex2D, self).__init__(description=description, cmap=cmap,
+        super().__init__(description=description, cmap=cmap,
                                        vmin=vmin, vmax=vmax, vmin2=vmin2,
                                        vmax2=vmax2, **kwargs)
 

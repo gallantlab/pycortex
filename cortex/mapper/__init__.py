@@ -30,7 +30,7 @@ def get_mapper(subject: str, xfmname: str, type: str='nearest', recache: bool=Fa
     if len(kwds) > 0:
         ptype += '_'+kwds
 
-    fname = "{xfmname}_{projection}.npz".format(xfmname=xfmname, projection=ptype)
+    fname = f"{xfmname}_{ptype}.npz"
 
     xfmfile = db.get_paths(subject)['xfmdir'].format(xfmname=xfmname)
     cachefile = os.path.join(db.get_cache(subject), fname)

@@ -17,7 +17,7 @@ from scipy.sparse._csr import csr_matrix
 
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-class Mapper(object):
+class Mapper:
     '''Maps data from epi volume onto surface using various projections'''
     def __init__(self, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str):
         self.idxmap = None

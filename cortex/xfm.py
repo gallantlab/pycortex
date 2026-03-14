@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import subprocess
 
-class Transform(object):
+class Transform:
     '''
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.

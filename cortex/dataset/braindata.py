@@ -16,7 +16,7 @@ import numpy.typing as npt
 from ..database import db
 
 
-class BrainData(object):
+class BrainData:
     """
     Abstract base class for brain data.
 
@@ -36,7 +36,7 @@ class BrainData(object):
         self._data = data
         subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
-        super(BrainData, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     @property
     def data(self) -> npt.NDArray:
@@ -84,7 +84,7 @@ class BrainData(object):
     def to_json(self, simple=False):
         """Creates JSON description of this brain data.
         """
-        sdict = super(BrainData, self).to_json(simple=simple)
+        sdict = super().to_json(simple=simple)
         if simple:
             sdict.update(dict(name=self.name,
                 subject=self.subject,
@@ -142,7 +142,7 @@ class VolumeData(BrainData):
     def __init__(self, data: npt.NDArray, subject: str, xfmname: str, mask: Optional[npt.NDArray]=None, **kwargs):
         if self.__class__ == VolumeData:
             raise TypeError('Cannot directly instantiate VolumeData objects')
-        super(VolumeData, self).__init__(data, subject, **kwargs)
+        super().__init__(data, subject, **kwargs)
         xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.xfmname = xfmname
 
@@ -153,13 +153,13 @@ class VolumeData(BrainData):
         """Creates JSON description of this brain data.
         """
         if simple:
-            sdict = super(VolumeData, self).to_json(simple=simple)
+            sdict = super().to_json(simple=simple)
             sdict["shape"] = self.shape
             return sdict
         
         xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
         sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
-        sdict.update(super(VolumeData, self).to_json())
+        sdict.update(super().to_json())
         return sdict
 
     @classmethod
@@ -283,7 +283,7 @@ class VolumeData(BrainData):
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
     def copy(self, data: npt.NDArray) -> Self:
-        return super(VolumeData, self).copy(data, self.subject, self.xfmname, mask=self._mask)
+        return super().copy(data, self.subject, self.xfmname, mask=self._mask)
 
     @property
     def volume(self):
@@ -316,7 +316,7 @@ class VolumeData(BrainData):
             self._write_hdf(filename, name=name)
 
     def _write_hdf(self, h5: Union[h5py.File, h5py.Group], name: Optional[str]=None) -> h5py.Dataset:
-        node = super(VolumeData, self)._write_hdf(h5, name=name)
+        node = super()._write_hdf(h5, name=name)
         
         #write the mask into the file, as necessary
         if self._mask is not None:
@@ -361,7 +361,7 @@ class VertexData(BrainData):
     def __init__(self, data: npt.NDArray, subject: str, **kwargs):
         if self.__class__ == VertexData:
             raise TypeError('Cannot directly instantiate VertexData objects')
-        super(VertexData, self).__init__(data, subject, **kwargs)
+        super().__init__(data, subject, **kwargs)
         try:
             left, right = db.get_surf(self.subject, "wm")
         except IOError:
@@ -463,7 +463,7 @@ class VertexData(BrainData):
         it doesn't require reloading the surfaces from the database to check 
         numbers of vertices, etc.
         """
-        return super(VertexData, self).copy(data, self.subject)
+        return super().copy(data, self.subject)
 
     def volume(self, xfmname: str, projection: str='nearest', **kwargs) -> VolumeData:
         """
@@ -513,11 +513,11 @@ class VertexData(BrainData):
     def to_json(self, simple: bool = False) -> dict[str, list[str]]:
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
-            sdict.update(super(VertexData, self).to_json(simple=simple))
+            sdict.update(super().to_json(simple=simple))
             return sdict
             
         sdict = dict(data=[self.name])
-        sdict.update(super(VertexData, self).to_json())
+        sdict.update(super().to_json())
         return sdict
 
     @property

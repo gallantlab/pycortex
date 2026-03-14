@@ -28,7 +28,7 @@ from . import polyutils
 from .openctm import CTMfile
 from typing import Any, Literal, Optional, cast, Sequence
 
-class BrainCTM(object):
+class BrainCTM:
     def __init__(self, subject: str, decimate: bool=False) -> None:
         self.subject = subject
         self.types: list[str] = []
@@ -207,7 +207,7 @@ class BrainCTM(object):
                 fp.write(svg.toxml())
         return ptmap
 
-class Hemi(object):
+class Hemi:
     def __init__(self, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], norms: Optional[npt.NDArray[np.floating]]=None):
         self.tf = tempfile.NamedTemporaryFile()
         # TODO: save bytes filename in another var
@@ -270,16 +270,16 @@ class DecimatedHemi(Hemi):
         idxmap[mask] = np.arange(mask.sum()).astype(np.uint32)
         #norms = polyutils.Surface(pts, polys).normals[mask]
         basepts = pts[mask] if pia is None else pia[mask]
-        super(DecimatedHemi, self).__init__(basepts, idxmap[allpolys])
+        super().__init__(basepts, idxmap[allpolys])
         self.aux[idxmap[mwidx], 0] = 1
         self.mask = mask
         self.idxmap = idxmap
 
     def setFlat(self, pts: npt.NDArray[np.floating]) -> None:
-        super(DecimatedHemi, self).setFlat(pts[self.mask])
+        super().setFlat(pts[self.mask])
 
     def addSurf(self, pts: npt.NDArray[np.floating], *args, **kwargs) -> None:
-        super(DecimatedHemi, self).addSurf(pts[self.mask], *args, **kwargs)
+        super().addSurf(pts[self.mask], *args, **kwargs)
 
 def make_pack(outfile: str, subj: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']='raw', level: int=0,
               decimate: bool=False, disp_layers: list[str]=['rois'], 

@@ -182,7 +182,7 @@ class DataviewJSON(TypedDict):
     subject: NotRequired[str] # is this actually from BrainData?
 
 
-class Dataview(object):
+class Dataview:
     def __init__(
         self,
         cmap: Optional[str] = None,
@@ -331,7 +331,7 @@ class Dataview(object):
             # unknown colormap, test whether it's in pycortex colormaps
             cmapdir = options.config.get("webgl", "colormaps")
             colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-            colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
+            colormaps = {os.path.split(c)[1][:-4]: c for c in colormaps}
             if self.cmap not in colormaps:
                 raise ValueError("Unknown color map %s" % self.cmap)
             I = plt.imread(colormaps[self.cmap])
@@ -425,7 +425,7 @@ class Volume(VolumeData, Dataview):
         description: str = "",
         **kwargs,
     ):
-        super(Volume, self).__init__(
+        super().__init__(
             data,
             subject,
             xfmname,
@@ -459,7 +459,7 @@ class Volume(VolumeData, Dataview):
 
     @property
     def raw(self) -> VolumeRGB:
-        (r, g, b, a), nan_mask = super(Volume, self).raw
+        (r, g, b, a), nan_mask = super().raw
         result = VolumeRGB(
             r,
             g,
@@ -515,7 +515,7 @@ class Vertex(VertexData, Dataview):
         description: str = "",
         **kwargs,
     ):
-        super(Vertex, self).__init__(
+        super().__init__(
             data,
             subject,
             cmap=cmap,
@@ -543,7 +543,7 @@ class Vertex(VertexData, Dataview):
 
     @property
     def raw(self) -> VertexRGB:
-        (r, g, b, a), nan_mask = super(Vertex, self).raw
+        (r, g, b, a), nan_mask = super().raw
         result = VertexRGB(
             r,
             g,
@@ -564,7 +564,7 @@ class Vertex(VertexData, Dataview):
         hemi: Literal["lh", "rh", "both"] = "both",
         fs_subj: Optional[str] = None,
         **kwargs,
-    ) -> "Vertex":
+    ) -> Vertex:
         """Map this data from this surface to another surface
 
         Calls `cortex.freesurfer.vertex_to_vertex()`  with this

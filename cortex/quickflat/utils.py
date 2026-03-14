@@ -133,7 +133,7 @@ def get_flatmask(subject: str, height: int=1024, recache: bool=False) -> tuple[n
         Recache the intermediate files? Can resolve some issues but is slower.
     """
     cachedir = db.get_cache(subject)
-    cachefile = os.path.join(cachedir, "flatmask_{h}.npz".format(h=height))
+    cachefile = os.path.join(cachedir, f"flatmask_{height}.npz")
 
     if not os.path.exists(cachefile) or recache:
         mask, extents = _make_flatmask(subject, height=height)
@@ -254,8 +254,8 @@ def _convert_svg_kwargs(kwargs):
         #dash_capstyle # ADD ME?
         #dash_joinstyle # ADD ME?
         )
-    out = dict((svg_style_key_mapping[k], svg_style_value_mapping[k](v)) 
-               for k,v in kwargs.items() if v is not None)
+    out = {svg_style_key_mapping[k]: svg_style_value_mapping[k](v) 
+               for k,v in kwargs.items() if v is not None}
     return out
 
 def _parse_defaults(section: str) -> dict[str, Union[float, list[float], None, str]]:
@@ -294,7 +294,7 @@ def _get_images(fig):
     """Get all images in a given matplotlib axis"""
     from matplotlib.image import AxesImage
     _, ax = _get_fig_and_ax(fig)
-    images = dict((x.get_label(), x) for x in ax.get_children() if isinstance(x, AxesImage))
+    images = {x.get_label(): x for x in ax.get_children() if isinstance(x, AxesImage)}
     return images
 
 def _get_extents(fig):

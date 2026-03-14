@@ -12,7 +12,7 @@ from .views import normalize as _vnorm
 from .views import Dataview, Vertex, Volume, _from_hdf_data
 from h5py._hl.files import File
 
-class Dataset(object):
+class Dataset:
     """
     Wrapper for multiple data objects. This often does not need to be used 
     explicitly--for example, if a dictionary of data objects is passed to 

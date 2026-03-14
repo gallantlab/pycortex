@@ -13,7 +13,6 @@ import numpy.typing as npt
 import subprocess as sp
 from matplotlib.path import Path
 from scipy.spatial import cKDTree
-from builtins import zip, str
 from typing import Any, Iterator, Union, overload, Literal, Optional
 
 from looseversion import LooseVersion
@@ -33,7 +32,7 @@ parser = etree.XMLParser(remove_blank_text=True, huge_tree=True)
 
 cwd = os.path.abspath(os.path.split(__file__)[0])
 
-class SVGOverlay(object):
+class SVGOverlay:
     """Object to represent all vector graphic overlays (rois, sulci, etc) stored in an svg file
 
     This object facilitates interaction with the information in the overlays.svg files
@@ -102,7 +101,7 @@ class SVGOverlay(object):
                         idx = 0
                     element.attrib['data-ptidx'] = str(idx)
 
-    def __getattr__(self, attr: str) -> "Overlay":
+    def __getattr__(self, attr: str) -> Overlay:
         return self.layers[attr]
 
     def __dir__(self):
@@ -322,7 +321,7 @@ class SVGOverlay(object):
                                    f" (stderr: {stderr})")
             return im
 
-class Overlay(object):
+class Overlay:
     """Class to represent a single layer of an SVG file
     """
     def __init__(self, svgobject: SVGOverlay, layer: _Element):
@@ -395,7 +394,7 @@ class Overlay(object):
             #except:
             #    xml.write(etree.tostring(svg, encoding=str, pretty_print=True)) # python3.X
 
-class Labels(object):
+class Labels:
     def __init__(self, overlay: Overlay) -> None:
         self.overlay = overlay
         self.layer = _find_layer(self.overlay.layer, "labels")
@@ -466,7 +465,7 @@ class Labels(object):
             self.text_style['display'] = 'none'
         self.set()
 
-class Shape(object):
+class Shape:
     def __init__(self, layer: _Element, height: float, override_style: bool=True) -> None:
         self.layer = layer
         self.height = height
