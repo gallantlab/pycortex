@@ -25,7 +25,7 @@ from .utils import get_cortical_mask, get_mapper, get_dropout
 from . import polyutils
 from .openctm import CTMfile
 
-class BrainCTM(object):
+class BrainCTM:
     def __init__(self, subject, decimate=False):
         self.subject = subject
         self.types = []
@@ -196,7 +196,7 @@ class BrainCTM(object):
                 fp.write(svg.toxml())
         return ptmap
 
-class Hemi(object):
+class Hemi:
     def __init__(self, pts, polys, norms=None):
         self.tf = tempfile.NamedTemporaryFile()
         self.tf.name = bytes(self.tf.name, 'ascii')
@@ -258,16 +258,16 @@ class DecimatedHemi(Hemi):
         idxmap[mask] = np.arange(mask.sum()).astype(np.uint32)
         #norms = polyutils.Surface(pts, polys).normals[mask]
         basepts = pts[mask] if pia is None else pia[mask]
-        super(DecimatedHemi, self).__init__(basepts, idxmap[allpolys])
+        super().__init__(basepts, idxmap[allpolys])
         self.aux[idxmap[mwidx], 0] = 1
         self.mask = mask
         self.idxmap = idxmap
 
     def setFlat(self, pts):
-        super(DecimatedHemi, self).setFlat(pts[self.mask])
+        super().setFlat(pts[self.mask])
 
     def addSurf(self, pts, **kwargs):
-        super(DecimatedHemi, self).addSurf(pts[self.mask], **kwargs)
+        super().addSurf(pts[self.mask], **kwargs)
 
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
               decimate=False, disp_layers=['rois'], 
