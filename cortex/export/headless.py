@@ -45,6 +45,7 @@ import threading
 from typing import Any, Mapping, Optional, Union
 
 import cortex
+from .. import dataset
 
 
 # --------------------------------------------------------------------------- #
@@ -217,7 +218,7 @@ class _PlaywrightThread:
 
 @contextlib.contextmanager
 def headless_viewer(
-    volume: Union[cortex.Volume, cortex.Vertex],
+    volume: dataset.Dataview,
     viewer_params: Mapping[str, Any],
     *,
     timeout: float = 60.0,

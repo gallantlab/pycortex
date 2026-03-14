@@ -4,6 +4,8 @@ from typing import Any, TypedDict, Union
 
 import cortex
 
+from ..dataset import Dataview
+
 file_pattern = "{base}_{view}_{surface}.png"
 
 ViewParams = TypedDict('ViewParams', {
@@ -17,7 +19,7 @@ ViewParams = TypedDict('ViewParams', {
 }, total=False)
 
 def save_3d_views(
-    volume: Union[cortex.Volume, cortex.Vertex],
+    volume: Dataview,
     base_name: str="fig",
     list_angles: list[Union[str, tuple[str, ViewParams]]]=["lateral_pivot"],
     list_surfaces: list[Union[str, ViewParams]]=["inflated"],

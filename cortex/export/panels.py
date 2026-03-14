@@ -15,7 +15,7 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from ..dataset import Volume, Vertex
+from ..dataset import Dataview
 from .save_views import save_3d_views, ViewParams
 from ._default_params import (
     params_inflatedless_lateral_medial_ventral,
@@ -43,7 +43,7 @@ PanelParams = TypedDict(
 )
 
 def plot_panels(
-    volume: Union[Volume, Vertex],
+    volume: Dataview,
     panels: list[PanelParams],
     figsize: npt.ArrayLike=(16, 9),
     windowsize: tuple[int, int]=(1600 * 4, 900 * 4),
