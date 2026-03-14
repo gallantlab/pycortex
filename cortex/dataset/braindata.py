@@ -674,7 +674,7 @@ def _hash(array: npt.ArrayLike) -> str:
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
 
-def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.ArrayLike, name: str="data", group: str="/data") -> h5py.Dataset:
+def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="data", group: str="/data") -> h5py.Dataset:
     try:
         node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
     except TypeError:
