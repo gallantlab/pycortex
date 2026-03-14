@@ -44,6 +44,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install -q pytest pytest-cov
+        pip install -q playwright # until we get optional deps working
         playwright install --with-deps --only-shell chromium
         pytest --cov=./
 
