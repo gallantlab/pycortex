@@ -241,7 +241,7 @@ def epi2anatspace(volumedata, order=1):
                             offset=transpart, output_shape=anat.shape[::-1],
                             cval=np.nan, order=order).T
 
-def anat2epispace(anatdata, subject, xfmname, order=1):
+def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: int=1) -> npt.NDArray:
     """Resamples data from anatomical space into epi space
     
     Parameters
