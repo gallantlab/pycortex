@@ -13,6 +13,12 @@
         figure = new jsplot.W2Figure();
         viewer = figure.add(mriview.Viewer, "main", true);
 
+        {% if python_interface %}
+        PickPosition.prototype.callback = function(vec, hemi, ptidx) {
+            $.get("/picker?voxel=" + vec.x + "," + vec.y + "," + vec.z + "&vertex=" + ptidx + "&hemi=" + hemi);
+        };
+        {% end %}
+
         dataviews = dataset.fromJSON({{data}});
         viewer.addData(dataviews);
 
