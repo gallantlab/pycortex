@@ -264,18 +264,23 @@ class DataviewRGB(Dataview):
         needsAutoMin = any(v is None for v in vminPerChannel)
         needsAutoMax = any(v is None for v in vmaxPerChannel)
 
-        if (needsAutoMin or needsAutoMax) and autorange == 'shared':
-            allData = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
-            sharedAutoMin = np.percentile(allData, 1)
-            sharedAutoMax = np.percentile(allData, 99)
-            vminPerChannel = [sharedAutoMin if v is None else v for v in vminPerChannel]
-            vmaxPerChannel = [sharedAutoMax if v is None else v for v in vmaxPerChannel]
-        elif needsAutoMin or needsAutoMax:  # autorange == 'individual'
-            for i, channelData in enumerate([data1, data2, data3]):
-                if vminPerChannel[i] is None:
-                    vminPerChannel[i] = np.percentile(channelData.ravel(), 1)
-                if vmaxPerChannel[i] is None:
-                    vmaxPerChannel[i] = np.percentile(channelData.ravel(), 99)
+        if needsAutoMin or needsAutoMax:
+            if autorange == 'shared':
+                allData = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
+                sharedAutoMin = np.percentile(allData, 1)
+                sharedAutoMax = np.percentile(allData, 99)
+                vminPerChannel = [sharedAutoMin if v is None else v for v in vminPerChannel]
+                vmaxPerChannel = [sharedAutoMax if v is None else v for v in vmaxPerChannel]
+            elif autorange == 'individual':
+                for i, channelData in enumerate([data1, data2, data3]):
+                    if vminPerChannel[i] is None:
+                        vminPerChannel[i] = np.percentile(channelData.ravel(), 1)
+                    if vmaxPerChannel[i] is None:
+                        vmaxPerChannel[i] = np.percentile(channelData.ravel(), 99)
+            else:
+                raise ValueError(
+                    f"Invalid autorange value {autorange!r}. Expected 'shared' or 'individual'."
+                )
 
         data1 = (data1 - vminPerChannel[0]) / (vmaxPerChannel[0] - vminPerChannel[0])
         data2 = (data2 - vminPerChannel[1]) / (vmaxPerChannel[1] - vminPerChannel[1])
