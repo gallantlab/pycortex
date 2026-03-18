@@ -157,9 +157,9 @@ class DataviewRGB(Dataview):
         channel3Color,
         value_max,
         saturation_max,
-        common_range,
-        common_min,
-        common_max,
+        vmin,
+        vmax,
+        autorange,
         alpha=None,
     ):
         """
@@ -183,14 +183,21 @@ class DataviewRGB(Dataview):
             the average of the three channel colors.
         saturation_max : float [0, 1]
             Maximum HSV saturation for voxel colors.
-        common_range : bool
-            Use the same vmin and vmax for all three color channels?
-        common_min : float, optional
-            Predetermined shared vmin. Does nothing if shared_range == False. If not given,
-            will be the 1st percentile of all values across all three channels.
-        common_max : float, optional
-            Predetermined shared vmax. Does nothing if shared_range == False. If not given,
-            will be the 99th percentile of all values across all three channels
+        vmin : float or tuple of float, optional
+            Lower bound(s) for normalization. If a single float, the same lower bound
+            is used for all three channels. If a tuple of three floats, each channel
+            uses its respective value. If None, the lower bound is auto-determined
+            based on ``autorange``.
+        vmax : float or tuple of float, optional
+            Upper bound(s) for normalization. If a single float, the same upper bound
+            is used for all three channels. If a tuple of three floats, each channel
+            uses its respective value. If None, the upper bound is auto-determined
+            based on ``autorange``.
+        autorange : 'shared' or 'individual'
+            How to auto-determine bounds when vmin or vmax is None. 'shared' computes
+            the 1st and 99th percentile across all three channels combined. 'individual'
+            computes per-channel 1st and 99th percentiles. Overridden when vmin and
+            vmax are both provided.
         alpha : ndarray or Volume or Vertex, optional
             Alpha values for each voxel. If None, alpha is set to 1 for all voxels.
 
@@ -238,33 +245,41 @@ class DataviewRGB(Dataview):
         data2 = np.nan_to_num(data2)
         data3 = np.nan_to_num(data3)
 
-        if common_range:
-            if common_min is None:
-                if common_max is None:
-                    common_min = np.percentile(np.hstack((data1, data2, data3)), 1)
-                else:
-                    common_min = 0
-            if common_max is None:
-                common_max = np.percentile(np.hstack((data1, data2, data3)), 99)
-            data1 -= common_min
-            data2 -= common_min
-            data3 -= common_min
-            data1 /= common_max - common_min
-            data2 /= common_max - common_min
-            data3 /= common_max - common_min
+        # Expand vmin/vmax to per-channel lists
+        if isinstance(vmin, (int, float)):
+            vminPerChannel = [float(vmin), float(vmin), float(vmin)]
+        elif vmin is not None:
+            vminPerChannel = [float(v) for v in vmin]
         else:
-            channelMin = np.percentile(data1, 1)
-            channelMax = np.percentile(data1, 99)
-            data1 -= channelMin
-            data1 /= channelMax - channelMin
-            channelMin = np.percentile(data2, 1)
-            channelMax = np.percentile(data2, 99)
-            data2 -= channelMin
-            data2 /= channelMax - channelMin
-            channelMin = np.percentile(data3, 1)
-            channelMax = np.percentile(data3, 99)
-            data3 -= channelMin
-            data3 /= channelMax - channelMin
+            vminPerChannel = [None, None, None]
+
+        if isinstance(vmax, (int, float)):
+            vmaxPerChannel = [float(vmax), float(vmax), float(vmax)]
+        elif vmax is not None:
+            vmaxPerChannel = [float(v) for v in vmax]
+        else:
+            vmaxPerChannel = [None, None, None]
+
+        # Auto-determine any None bounds
+        needsAutoMin = any(v is None for v in vminPerChannel)
+        needsAutoMax = any(v is None for v in vmaxPerChannel)
+
+        if (needsAutoMin or needsAutoMax) and autorange == 'shared':
+            allData = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
+            sharedAutoMin = np.percentile(allData, 1)
+            sharedAutoMax = np.percentile(allData, 99)
+            vminPerChannel = [sharedAutoMin if v is None else v for v in vminPerChannel]
+            vmaxPerChannel = [sharedAutoMax if v is None else v for v in vmaxPerChannel]
+        elif needsAutoMin or needsAutoMax:  # autorange == 'individual'
+            for i, channelData in enumerate([data1, data2, data3]):
+                if vminPerChannel[i] is None:
+                    vminPerChannel[i] = np.percentile(channelData.ravel(), 1)
+                if vmaxPerChannel[i] is None:
+                    vmaxPerChannel[i] = np.percentile(channelData.ravel(), 99)
+
+        data1 = (data1 - vminPerChannel[0]) / (vmaxPerChannel[0] - vminPerChannel[0])
+        data2 = (data2 - vminPerChannel[1]) / (vmaxPerChannel[1] - vminPerChannel[1])
+        data3 = (data3 - vminPerChannel[2]) / (vmaxPerChannel[2] - vminPerChannel[2])
         data1 = np.clip(data1, 0, 1)
         data2 = np.clip(data2, 0, 1)
         data3 = np.clip(data3, 0, 1)
@@ -321,10 +336,9 @@ class VolumeRGB(DataviewRGB):
 
     Each data channel is represented as a separate Volume object (these can
     either be supplied explicitly as Volume objects or implicitly as numpy
-    arrays). The vmin for each Volume will be mapped to the minimum value for
-    that data channel, and the vmax will be mapped to the maximum value.
-    If `shared_range` is True, the vmin and vmax will instead be computed by
-    combining all three data channels.
+    arrays). By default, each channel's range is determined independently from
+    the data. Use ``vmin``/``vmax`` to specify explicit bounds, or ``autorange``
+    to control how bounds are auto-determined.
 
     Parameters
     ----------
@@ -362,14 +376,21 @@ class VolumeRGB(DataviewRGB):
         the average of the three channel colors.
     max_color_saturation: float [0, 1]
         Maximum HSV saturation for voxel colors.
-    shared_range : bool
-        Use the same vmin and vmax for all three color channels?
-    shared_vmin : float, optional
-        Predetermined shared vmin. Does nothing if shared_range == False. If not given,
-        will be the 1st percentile of all values across all three channels.
-    shared_vmax : float, optional
-        Predetermined shared vmax. Does nothing if shared_range == False. If not given,
-        will be the 99th percentile of all values across all three channels
+    vmin : float or tuple of float, optional
+        Lower bound(s) for normalization. If a single float, the same lower bound
+        is used for all three channels. If a tuple of three floats, each channel
+        uses its respective value. If None, the lower bound is auto-determined
+        based on ``autorange``.
+    vmax : float or tuple of float, optional
+        Upper bound(s) for normalization. If a single float, the same upper bound
+        is used for all three channels. If a tuple of three floats, each channel
+        uses its respective value. If None, the upper bound is auto-determined
+        based on ``autorange``.
+    autorange : 'shared' or 'individual'
+        How to auto-determine bounds when vmin or vmax is None. 'shared' computes
+        the 1st and 99th percentile across all three channels combined. 'individual'
+        computes per-channel 1st and 99th percentiles. Overridden when vmin and
+        vmax are both provided. Default is 'individual'.
     priority : int, optional
         Priority for display ordering. Default is 1.
 
@@ -396,9 +417,9 @@ class VolumeRGB(DataviewRGB):
         channel3color: Color = Colors.Blue,
         max_color_value: Optional[float] = None,
         max_color_saturation: float = 1.0,
-        shared_range: bool = False,
-        shared_vmin: Optional[float] = None,
-        shared_vmax: Optional[float] = None,
+        vmin: Optional[Union[float, tuple]] = None,
+        vmax: Optional[Union[float, tuple]] = None,
+        autorange: str = 'individual',
         priority: int = 1,
     ):
         channel1color = tuple(channel1color)
@@ -428,7 +449,9 @@ class VolumeRGB(DataviewRGB):
                 (channel1color == Colors.Red)
                 and (channel2color == Colors.Green)
                 and (channel3color == Colors.Blue)
-                and shared_range is False
+                and vmin is None
+                and vmax is None
+                and autorange == 'individual'
             ):
                 # R/G/B basis can be directly passed through
                 self.red = channel1
@@ -445,9 +468,9 @@ class VolumeRGB(DataviewRGB):
                     channel3color,
                     max_color_value,
                     max_color_saturation,
-                    shared_range,
-                    shared_vmin,
-                    shared_vmax,
+                    vmin,
+                    vmax,
+                    autorange,
                     alpha=alpha,
                 )
                 self.red = Volume(red, channel1.subject, channel1.xfmname)
@@ -468,7 +491,9 @@ class VolumeRGB(DataviewRGB):
                 (channel1color == Colors.Red)
                 and (channel2color == Colors.Green)
                 and (channel3color == Colors.Blue)
-                and shared_range is False
+                and vmin is None
+                and vmax is None
+                and autorange == 'individual'
             ):
                 # R/G/B basis can be directly passed through
                 self.red = Volume(channel1, subject, xfmname)
@@ -485,9 +510,9 @@ class VolumeRGB(DataviewRGB):
                     channel3color,
                     max_color_value,
                     max_color_saturation,
-                    shared_range,
-                    shared_vmin,
-                    shared_vmax,
+                    vmin,
+                    vmax,
+                    autorange,
                     alpha=alpha,
                 )
                 self.red = Volume(red, subject, xfmname)
@@ -610,10 +635,9 @@ class VertexRGB(DataviewRGB):
 
     Each color channel is represented as a separate Vertex object (these can
     either be supplied explicitly as Vertex objects or implicitly as np
-    arrays). The vmin for each Vertex will be mapped to the minimum value for
-    that color channel, and the vmax will be mapped to the maximum value.
-    If `shared_range` is True, the vmin and vmax will instead be computed by
-    combining all three data channels.
+    arrays). By default, each channel's range is determined independently from
+    the data. Use ``vmin``/``vmax`` to specify explicit bounds, or ``autorange``
+    to control how bounds are auto-determined.
 
     Parameters
     ----------
@@ -648,14 +672,21 @@ class VertexRGB(DataviewRGB):
         the average of the three channel colors.
     max_color_saturation: float [0, 1]
         Maximum HSV saturation for voxel colors.
-    shared_range : bool
-        Use the same vmin and vmax for all three color channels?
-    shared_vmin : float, optional
-        Predetermined shared vmin. Does nothing if shared_range == False. If not given,
-        will be the 1st percentile of all values across all three channels.
-    shared_vmax : float, optional
-        Predetermined shared vmax. Does nothing if shared_range == False. If not given,
-        will be the 99th percentile of all values across all three channels
+    vmin : float or tuple of float, optional
+        Lower bound(s) for normalization. If a single float, the same lower bound
+        is used for all three channels. If a tuple of three floats, each channel
+        uses its respective value. If None, the lower bound is auto-determined
+        based on ``autorange``.
+    vmax : float or tuple of float, optional
+        Upper bound(s) for normalization. If a single float, the same upper bound
+        is used for all three channels. If a tuple of three floats, each channel
+        uses its respective value. If None, the upper bound is auto-determined
+        based on ``autorange``.
+    autorange : 'shared' or 'individual'
+        How to auto-determine bounds when vmin or vmax is None. 'shared' computes
+        the 1st and 99th percentile across all three channels combined. 'individual'
+        computes per-channel 1st and 99th percentiles. Overridden when vmin and
+        vmax are both provided. Default is 'individual'.
     priority : int, optional
         Priority for display ordering. Default is 1.
 
@@ -682,9 +713,9 @@ class VertexRGB(DataviewRGB):
         channel3color=Colors.Blue,
         max_color_value=None,
         max_color_saturation=1.0,
-        shared_range=False,
-        shared_vmin=None,
-        shared_vmax=None,
+        vmin=None,
+        vmax=None,
+        autorange='individual',
         priority=1,
     ):
         channel1color = tuple(channel1color)
@@ -704,7 +735,9 @@ class VertexRGB(DataviewRGB):
                 (channel1color == Colors.Red)
                 and (channel2color == Colors.Green)
                 and (channel3color == Colors.Blue)
-                and shared_range is False
+                and vmin is None
+                and vmax is None
+                and autorange == 'individual'
             ):
                 # R/G/B basis can be directly passed through
                 self.red = red
@@ -721,9 +754,9 @@ class VertexRGB(DataviewRGB):
                     channel3color,
                     max_color_value,
                     max_color_saturation,
-                    shared_range,
-                    shared_vmin,
-                    shared_vmax,
+                    vmin,
+                    vmax,
+                    autorange,
                     alpha=alpha,
                 )
                 self.red = Vertex(r, red.subject)
@@ -742,7 +775,9 @@ class VertexRGB(DataviewRGB):
                 (channel1color == Colors.Red)
                 and (channel2color == Colors.Green)
                 and (channel3color == Colors.Blue)
-                and shared_range is False
+                and vmin is None
+                and vmax is None
+                and autorange == 'individual'
             ):
                 # R/G/B basis can be directly passed through
                 self.red = Vertex(red, subject)
@@ -759,9 +794,9 @@ class VertexRGB(DataviewRGB):
                     channel3color,
                     max_color_value,
                     max_color_saturation,
-                    shared_range,
-                    shared_vmin,
-                    shared_vmax,
+                    vmin,
+                    vmax,
+                    autorange,
                     alpha=alpha,
                 )
                 self.red = Vertex(r, subject)
