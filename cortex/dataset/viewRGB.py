@@ -271,15 +271,25 @@ class DataviewRGB(Dataview):
             vminPerChannel = [sharedAutoMin if v is None else v for v in vminPerChannel]
             vmaxPerChannel = [sharedAutoMax if v is None else v for v in vmaxPerChannel]
         elif needsAutoMin or needsAutoMax:  # autorange == 'individual'
-            for i, channelData in enumerate([data1, data2, data3]):
+            for i, data in enumerate([data1, data2, data3]):
                 if vminPerChannel[i] is None:
-                    vminPerChannel[i] = np.percentile(channelData.ravel(), 1)
+                    vminPerChannel[i] = np.percentile(data.ravel(), 1)
                 if vmaxPerChannel[i] is None:
-                    vmaxPerChannel[i] = np.percentile(channelData.ravel(), 99)
+                    vmaxPerChannel[i] = np.percentile(data.ravel(), 99)
 
-        data1 = (data1 - vminPerChannel[0]) / (vmaxPerChannel[0] - vminPerChannel[0])
-        data2 = (data2 - vminPerChannel[1]) / (vmaxPerChannel[1] - vminPerChannel[1])
-        data3 = (data3 - vminPerChannel[2]) / (vmaxPerChannel[2] - vminPerChannel[2])
+        normalized = []
+        for channel, (data, channel_min, channel_max) in enumerate(
+            zip([data1, data2, data3], vminPerChannel, vmaxPerChannel), start=1
+        ):
+            l_range = channel_max - channel_min
+            if l_range == 0:
+                warnings.warn(
+                    "Channel {} has no dynamic range (vmin == vmax) and will be zeroed out".format(channel)
+                )
+                normalized.append(np.zeros_like(data))
+            else:
+                normalized.append((data - channel_min) / l_range)
+        data1, data2, data3 = normalized
         data1 = np.clip(data1, 0, 1)
         data2 = np.clip(data2, 0, 1)
         data3 = np.clip(data3, 0, 1)
