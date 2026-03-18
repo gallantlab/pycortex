@@ -264,31 +264,34 @@ class DataviewRGB(Dataview):
         needs_auto_min = any(v is None for v in channel_vmins)
         needs_auto_max = any(v is None for v in channel_vmaxs)
 
-        if (needs_auto_min or needs_auto_max) and autorange == 'shared':
-            all_data = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
-            shared_min = np.percentile(all_data, 1)
-            shared_max = np.percentile(all_data, 99)
-            channel_vmins = [shared_min if v is None else v for v in channel_vmins]
-            channel_vmaxs = [shared_max if v is None else v for v in channel_vmaxs]
-        elif needs_auto_min or needs_auto_max:  # autorange == 'individual'
-            for i, data in enumerate([data1, data2, data3]):
-                if channel_vmins[i] is None:
-                    channel_vmins[i] = np.percentile(data.ravel(), 1)
-                if channel_vmaxs[i] is None:
-                    channel_vmaxs[i] = np.percentile(data.ravel(), 99)
+        if (needs_auto_min or needs_auto_max):
+            if autorange == 'shared':
+                all_data = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
+                shared_min = np.percentile(all_data, 1)
+                shared_max = np.percentile(all_data, 99)
+                channel_vmins = [shared_min if v is None else v for v in channel_vmins]
+                channel_vmaxs = [shared_max if v is None else v for v in channel_vmaxs]
+            elif autorange == 'individual':
+                for i, data in enumerate([data1, data2, data3]):
+                    if channel_vmins[i] is None:
+                        channel_vmins[i] = np.percentile(data.ravel(), 1)
+                    if channel_vmaxs[i] is None:
+                        channel_vmaxs[i] = np.percentile(data.ravel(), 99)
+            else:
+                raise ValueError('autorange must be \'shared\' or \'individual\'')
 
         normalized = []
         for channel, (data, channel_min, channel_max) in enumerate(
             zip([data1, data2, data3], channel_vmins, channel_vmaxs), start=1
         ):
-            l_range = channel_max - channel_min
-            if l_range == 0:
+            channel_range = channel_max - channel_min
+            if channel_range == 0:
                 warnings.warn(
                     "Channel {} has no dynamic range (vmin == vmax) and will be zeroed out".format(channel)
                 )
                 normalized.append(np.zeros_like(data))
             else:
-                normalized.append((data - channel_min) / l_range)
+                normalized.append((data - channel_min) / channel_range)
         data1, data2, data3 = normalized
         data1 = np.clip(data1, 0, 1)
         data2 = np.clip(data2, 0, 1)
