@@ -247,39 +247,39 @@ class DataviewRGB(Dataview):
 
         # Expand vmin/vmax to per-channel lists
         if isinstance(vmin, (int, float)):
-            vminPerChannel = [float(vmin), float(vmin), float(vmin)]
+            channel_vmins = [float(vmin), float(vmin), float(vmin)]
         elif vmin is not None:
-            vminPerChannel = [float(v) for v in vmin]
+            channel_vmins = [float(v) for v in vmin]
         else:
-            vminPerChannel = [None, None, None]
+            channel_vmins = [None, None, None]
 
         if isinstance(vmax, (int, float)):
-            vmaxPerChannel = [float(vmax), float(vmax), float(vmax)]
+            channel_vmaxs = [float(vmax), float(vmax), float(vmax)]
         elif vmax is not None:
-            vmaxPerChannel = [float(v) for v in vmax]
+            channel_vmaxs = [float(v) for v in vmax]
         else:
-            vmaxPerChannel = [None, None, None]
+            channel_vmaxs = [None, None, None]
 
         # Auto-determine any None bounds
-        needsAutoMin = any(v is None for v in vminPerChannel)
-        needsAutoMax = any(v is None for v in vmaxPerChannel)
+        needs_auto_min = any(v is None for v in channel_vmins)
+        needs_auto_max = any(v is None for v in channel_vmaxs)
 
-        if (needsAutoMin or needsAutoMax) and autorange == 'shared':
-            allData = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
-            sharedAutoMin = np.percentile(allData, 1)
-            sharedAutoMax = np.percentile(allData, 99)
-            vminPerChannel = [sharedAutoMin if v is None else v for v in vminPerChannel]
-            vmaxPerChannel = [sharedAutoMax if v is None else v for v in vmaxPerChannel]
-        elif needsAutoMin or needsAutoMax:  # autorange == 'individual'
+        if (needs_auto_min or needs_auto_max) and autorange == 'shared':
+            all_data = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
+            shared_min = np.percentile(all_data, 1)
+            shared_max = np.percentile(all_data, 99)
+            channel_vmins = [shared_min if v is None else v for v in channel_vmins]
+            channel_vmaxs = [shared_max if v is None else v for v in channel_vmaxs]
+        elif needs_auto_min or needs_auto_max:  # autorange == 'individual'
             for i, data in enumerate([data1, data2, data3]):
-                if vminPerChannel[i] is None:
-                    vminPerChannel[i] = np.percentile(data.ravel(), 1)
-                if vmaxPerChannel[i] is None:
-                    vmaxPerChannel[i] = np.percentile(data.ravel(), 99)
+                if channel_vmins[i] is None:
+                    channel_vmins[i] = np.percentile(data.ravel(), 1)
+                if channel_vmaxs[i] is None:
+                    channel_vmaxs[i] = np.percentile(data.ravel(), 99)
 
         normalized = []
         for channel, (data, channel_min, channel_max) in enumerate(
-            zip([data1, data2, data3], vminPerChannel, vmaxPerChannel), start=1
+            zip([data1, data2, data3], channel_vmins, channel_vmaxs), start=1
         ):
             l_range = channel_max - channel_min
             if l_range == 0:
