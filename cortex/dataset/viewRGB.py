@@ -184,12 +184,12 @@ class DataviewRGB(Dataview):
         saturation_max : float [0, 1]
             Maximum HSV saturation for voxel colors.
         vmin : float or tuple of float, optional
-            Lower bound(s) for normalization. If a single float, the same lower bound
+            Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound
             is used for all three channels. If a tuple of three floats, each channel
             uses its respective value. If None, the lower bound is auto-determined
             based on ``autorange``.
         vmax : float or tuple of float, optional
-            Upper bound(s) for normalization. If a single float, the same upper bound
+            Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound
             is used for all three channels. If a tuple of three floats, each channel
             uses its respective value. If None, the upper bound is auto-determined
             based on ``autorange``.
@@ -377,12 +377,12 @@ class VolumeRGB(DataviewRGB):
     max_color_saturation: float [0, 1]
         Maximum HSV saturation for voxel colors.
     vmin : float or tuple of float, optional
-        Lower bound(s) for normalization. If a single float, the same lower bound
+        Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound
         is used for all three channels. If a tuple of three floats, each channel
         uses its respective value. If None, the lower bound is auto-determined
         based on ``autorange``.
     vmax : float or tuple of float, optional
-        Upper bound(s) for normalization. If a single float, the same upper bound
+        Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound
         is used for all three channels. If a tuple of three floats, each channel
         uses its respective value. If None, the upper bound is auto-determined
         based on ``autorange``.
@@ -673,12 +673,12 @@ class VertexRGB(DataviewRGB):
     max_color_saturation: float [0, 1]
         Maximum HSV saturation for voxel colors.
     vmin : float or tuple of float, optional
-        Lower bound(s) for normalization. If a single float, the same lower bound
+        Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound
         is used for all three channels. If a tuple of three floats, each channel
         uses its respective value. If None, the lower bound is auto-determined
         based on ``autorange``.
     vmax : float or tuple of float, optional
-        Upper bound(s) for normalization. If a single float, the same upper bound
+        Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound
         is used for all three channels. If a tuple of three floats, each channel
         uses its respective value. If None, the upper bound is auto-determined
         based on ``autorange``.
