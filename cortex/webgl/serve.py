@@ -5,10 +5,7 @@ import json
 import stat
 import email
 import sys
-if sys.version_info < (3,):
-    from Queue import Queue
-else:
-    from queue import Queue
+from queue import Queue
 import struct
 import socket
 import logging
@@ -18,6 +15,12 @@ import datetime
 import mimetypes
 import functools
 import threading
+
+from typing import Callable, Literal, cast, Generic, Union, Any
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+else:
+    from typing import ParamSpec
 
 import numpy as np
 import tornado.web
@@ -29,7 +32,7 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
-def make_base64(imgfile):
+def make_base64(imgfile: str) -> str:
     with open(imgfile, 'rb') as img:
         mtype = mimetypes.guess_type(imgfile)[0]
         imbytes = base64.encodebytes(img.read())
@@ -239,7 +242,7 @@ class StaticFileHandler(tornado.web.RequestHandler):
 
 
 class ClientSocket(websocket.WebSocketHandler):
-    def initialize(self, parent):
+    def initialize(self, parent: 'WebApp'):
         self.parent = parent
 
     def open(self):
@@ -256,28 +259,31 @@ class ClientSocket(websocket.WebSocketHandler):
         else:
             self.parent.response.put(message)
 
+JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
+
 class WebApp(threading.Thread):
     daemon: bool = True
     disconnect_on_close: bool = True
+    server: tornado.httpserver.HTTPServer # explicit annotation needed because of Configurable
 
-    def __init__(self, handlers, port):
+    def __init__(self, handlers: list[Union[tuple[str, type[tornado.web.RequestHandler]], tuple[str, type[tornado.web.RequestHandler], dict]]], port: int):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
             (r"/wsconnect/", ClientSocket, dict(parent=self)),
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
         self.port = port
-        self.response = Queue()
+        self.response: Queue[Union[str, bytes]] = Queue()
         self.connect = threading.Event()
-        self.sockets = []
+        self.sockets: list[websocket.WebSocketHandler] = []
 
     @property
-    def n_clients(self):
+    def n_clients(self) -> int:
         num = len(self.sockets)
         return num
 
     def run(self):
-        ioloop = tornado.ioloop.IOLoop()
+        ioloop: tornado.ioloop.IOLoop = tornado.ioloop.IOLoop()  # why is annotation necessary?
         ioloop.clear_current()
         ioloop.make_current()
         self.ioloop = ioloop
@@ -295,15 +301,14 @@ class WebApp(threading.Thread):
         self.server.stop()
         self.ioloop.stop()
 
-    def send(self, **msg):
-        if not isinstance(msg, str):
-            msg = json.dumps(msg, cls=NPEncode, ensure_ascii=False)
+    def send(self, **kwargs: Any) -> Union[list[JSON], list[None]]:
+        msg = json.dumps(kwargs, cls=NPEncode, ensure_ascii=False)
 
-        async def _send(sockets, msg):
+        async def _send(sockets: list[websocket.WebSocketHandler], msg: str):
             for sock in sockets:
                 await sock.write_message(msg)
 
-        self.ioloop.add_callback(_send, self.sockets, msg)
+        self.ioloop.add_callback(_send, self.sockets, cast(str, msg))
 
         try:
             return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
@@ -315,18 +320,28 @@ class WebApp(threading.Thread):
         self.connect.clear()
         return JSProxy(self.send)
 
-class JSProxy(object):
+# ParamSpec lets us define the type of the `send` method in JSProxy, even though the function is supplied by WebApp at runtime. Maybe there's a cleaner way to do this?
+P = ParamSpec('P')
+
+class JSProxy(Generic[P]):
+    name: str
     server: WebApp
 
-    def __init__(self, sendfunc, name="window"):
+    def __init__(self, sendfunc: Callable[P, Union[list[JSON], list[None]]], name: str = "window"):
         super(JSProxy, self).__setattr__('send', sendfunc)
         super(JSProxy, self).__setattr__('name', name)
         
         # self.attrs = self.send(method='query', params=[self.name])[0]
         self.max_time_retry = 10.  # in seconds
 
+    # `method` corresponds to the functions defined in `js/python_interface.js``.
+    def send(self, *, method: Literal['get', 'query', 'set', 'run', 'index'], params: list[Any]) -> Union[list[JSON], list[None]]:
+        raise NotImplementedError("send method should be provided by WebApp and is not meant to be called directly on JSProxy instances.")
+
+    # TODO: would be better described with tuples instead of lists:
+    # `dict[str, Union[tuple[str,], tuple[str, Any]]]`
     @property
-    def attrs(self):
+    def attrs(self) -> dict[str, Union[list[str], list[Union[str, Any]]]]:
         return_value = self.send(method='query', params=[self.name])[0]
         # Sometimes the return value can be None or an int (I assume an error value).
         # This can be caused by the delay in updating the JS viewer.
@@ -334,9 +349,9 @@ class JSProxy(object):
         if return_value is None or not isinstance(return_value, dict):
             time.sleep(0.1)
             return_value = self.send(method='query', params=[self.name])[0]
-        return return_value
+        return cast(dict[str, JSON], return_value)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Union['JSProxy', Any]:
         # if attr == 'attrs':
         #    return self.send(method='query', params=[self.name])[0]
         tstart = time.time()
@@ -351,9 +366,9 @@ class JSProxy(object):
         if attrs[attr][0] in ["object", "function"]:
             return JSProxy(self.send, "%s.%s"%(self.name, attr))
         else:
-            return attrs[attr][1]
+            return cast(Any, attrs[attr][1])
 
-    def __setattr__(self, attr, value):
+    def __setattr__(self, attr: str, value: Any):
         if hasattr(self, "attrs") and self.attrs is None:
             return super(JSProxy, self).__setattr__(attr, value)
         if not hasattr(self, "attrs") or attr not in self.attrs:
@@ -380,7 +395,7 @@ class JSProxy(object):
         else:
             return resp
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: Union[int, str]) -> 'JSProxy':
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
         return JSProxy(self.send, "%s.%d"%(self.name, idx))
 
