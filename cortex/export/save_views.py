@@ -179,7 +179,6 @@ def save_3d_views(
             time.sleep(0.1)
         else:
             raise RuntimeError(
-                # TODO: what is this f-string syntax?
                 f"Image {file_name!r} was not written within 20 seconds. "
                 "The browser may have failed to POST the screenshot."
             )
@@ -190,7 +189,9 @@ def save_3d_views(
             try:
                 import subprocess
 
-                subprocess.call(["convert", "-trim", file_name, file_name]) # TODO: check return code
+                retcode = subprocess.call(["convert", "-trim", file_name, file_name])
+                if retcode != 0:
+                    print(f"ImageMagick convert returned non-zero exit code {retcode} when trimming {file_name}.")
             except Exception as e:
                 print(str(e))
                 pass
