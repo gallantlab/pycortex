@@ -293,7 +293,7 @@ class WebApp(threading.Thread):
     def stop(self):
         print("Stopping server")
         self.server.stop()
-        tornado.ioloop.IOLoop.current().stop()
+        self.ioloop.stop()
 
     def send(self, **msg):
         if not isinstance(msg, str):
