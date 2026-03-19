@@ -230,8 +230,10 @@ def headless_viewer(
     ----------
     volume : cortex.Volume or cortex.Vertex
         Data to display.
-    viewer_params : dict
-        Keyword arguments forwarded verbatim to ``cortex.webshow``.
+    viewer_params : Mapping[str, Any]
+        Keyword arguments forwarded to ``cortex.webshow`` with two enforced
+        overrides: ``port`` is ignored (a random free port is always used),
+        and ``display_url`` is always ``False``.
     timeout : float
         Seconds to wait for the browser to establish the WebSocket connection
         and for ``server.get_client()`` to return (default: 60).
@@ -253,7 +255,9 @@ def headless_viewer(
     # ------------------------------------------------------------------
     # 1. Start the Tornado server without opening a real browser window.
     #    open_browser=False suppresses webbrowser.open() and returns the
-    #    raw WebApp server object instead of a JSMixer handle.
+    #    raw WebApp server object instead of a JSMixer handle. We also force
+    #    display_url=False and ignore viewer_params['port'] to avoid fixed-port
+    #    collisions in headless/CI usage.
     # ------------------------------------------------------------------
     if 'port' in viewer_params and viewer_params['port'] is not None:
         # This is not recommended or necessary, since port tunneling is not needed!
