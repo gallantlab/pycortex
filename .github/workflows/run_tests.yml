@@ -44,8 +44,7 @@ jobs:
     - name: Test with pytest
       timeout-minutes: 10  # in case webviewer tests hang
       run: |
-        pip install -q pytest pytest-cov
-        pip install -q playwright # until we get optional deps working
+        pip install -e --no-build-isolation --group dev
         playwright install --with-deps --only-shell chromium
         pytest --cov=./
 

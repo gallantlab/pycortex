@@ -136,9 +136,7 @@ setup(name=DISTNAME,
             },
       setup_requires=['Cython', 'numpy'],
       install_requires=INSTALL_REQUIRES,
-      extras_require={
-          'headless': ['playwright']
-      },
+      # Don't use `extras_require` here. Put them in pyproject.toml .
       cmdclass=dict(install=my_install),
       include_package_data=True,
       classifiers=[
