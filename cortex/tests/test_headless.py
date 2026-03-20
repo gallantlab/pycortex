@@ -5,36 +5,21 @@ These tests require ``playwright`` and Chromium to be installed::
     pip install playwright
     playwright install chromium
 """
-import os
-import tempfile
-
 import numpy as np
 import pytest
 
 import cortex
-import cortex.export
 from cortex.export.headless import _PlaywrightThread
 
-subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
-
-# Skip the entire module if playwright or Chromium is not available.
-try:
-    from playwright.sync_api import sync_playwright
-
-    _pw = sync_playwright().start()
-    try:
-        _b = _pw.chromium.launch(headless=True, args=["--no-sandbox"])
-        _b.close()
-    finally:
-        _pw.stop()
-    _has_playwright = True
-except Exception:
-    _has_playwright = False
+from .testing_utils import has_playwright
 
 pytestmark = pytest.mark.skipif(
-    not _has_playwright,
+    not has_playwright,
     reason="playwright + Chromium not available",
 )
+
+
+subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
 
 
 def test_headless_viewer_opens_and_closes():

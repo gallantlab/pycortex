@@ -12,24 +12,11 @@ import numpy as np
 import pytest
 
 import cortex
-import cortex.export
 
-# Skip the entire module if playwright or Chromium is not available.
-try:
-    from playwright.sync_api import sync_playwright
-
-    _pw = sync_playwright().start()
-    try:
-        _b = _pw.chromium.launch(headless=True, args=["--no-sandbox"])
-        _b.close()
-    finally:
-        _pw.stop()
-    _has_playwright = True
-except Exception:
-    _has_playwright = False
+from .testing_utils import has_playwright
 
 pytestmark = pytest.mark.skipif(
-    not _has_playwright,
+    not has_playwright,
     reason="playwright + Chromium not available",
 )
 
