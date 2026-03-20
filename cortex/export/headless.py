@@ -40,9 +40,8 @@ Requirements
 
 import concurrent.futures
 import contextlib
-from logging import warning
 import threading
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping, Optional
 
 import cortex
 from .. import dataset
@@ -259,12 +258,6 @@ def headless_viewer(
     #    display_url=False and ignore viewer_params['port'] to avoid fixed-port
     #    collisions in headless/CI usage.
     # ------------------------------------------------------------------
-    if 'port' in viewer_params and viewer_params['port'] is not None:
-        # This is not recommended or necessary, since port tunneling is not needed!
-        UserWarning(
-            "Warning: headless_viewer ignores the 'port' argument in viewer_params. "
-            "The Tornado server will listen on a random free port to avoid conflicts."
-        )
     server = cortex.webshow(volume, open_browser=False, display_url=False, **{k: v for k, v in viewer_params.items() if k not in ["port", "display_url"]})
     url = f"http://localhost:{server.port}/mixer.html"
 

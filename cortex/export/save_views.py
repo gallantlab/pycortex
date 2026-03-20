@@ -77,8 +77,7 @@ def save_3d_views(
         Whether to trim the white borders of the image.
 
     sleep: float > 0
-        Time in seconds, to let the viewer open. Ignored when ``headless=True``
-        because the Playwright browser connects synchronously.
+        Time in seconds, to let the viewer open.
 
     headless: bool
         If True, render using a headless Chromium browser via Playwright instead
@@ -153,7 +152,6 @@ def save_3d_views(
         handle._set_view(**this_view_params)
 
         # wait for the view to have changed
-        # TODO: what is going on here?
         for _ in range(100):
             all_ready = True
             for k, v in this_view_params.items():
