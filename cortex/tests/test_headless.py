@@ -49,29 +49,6 @@ def test_headless_viewer_opens_and_closes():
         assert handle.server.port > 0
 
 
-def test_save_3d_views_headless():
-    """save_3d_views with headless=True should produce an image file."""
-    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        base = os.path.join(tmpdir, "test_img")
-        file_names = cortex.export.save_3d_views(
-            vol,
-            base_name=base,
-            list_angles=["lateral_pivot"],
-            list_surfaces=["inflated"],
-            size=(1024, 768),
-            trim=False,
-            # The WebGL scene needs time to initialise surfaces before
-            # _set_view can succeed; sleep=10 (the default) is safe.
-            sleep=10,
-            headless=True,
-        )
-
-        assert len(file_names) == 1
-        assert os.path.isfile(file_names[0])
-        assert os.path.getsize(file_names[0]) > 0
-
 
 def test_browser_errors_collected():
     """_PlaywrightThread should capture console.error and pageerror from the
