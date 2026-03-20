@@ -10,12 +10,7 @@ import shutil
 import sys
 import threading
 import time
-from typing import Union, cast, Any, Callable, Optional
-
-if sys.version_info < (3, 10):
-    from typing_extensions import ParamSpec
-else:
-    from typing import ParamSpec
+from typing import Union, Any, Callable, Optional, ParamSpec, cast
 import warnings
 import webbrowser
 from configparser import NoOptionError
