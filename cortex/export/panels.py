@@ -104,6 +104,10 @@ def plot_panels(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed. (Default: False)
 
+    dedupe: bool
+        If True, remove redundant angle/surface pairs before rendering. Requires
+        str-valued `angle` and `surface`. (Default: True)
+
     Returns
     -------
     fig : matplotlib.Figure
