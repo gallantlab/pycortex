@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Mapping, TypedDict, Union
+from typing import Any, Mapping, Sequence, TypedDict, Union
 
 import cortex
 
@@ -21,8 +21,8 @@ ViewParams = TypedDict('ViewParams', {
 def save_3d_views(
     volume: Dataview,
     base_name: str="fig",
-    list_angles: list[Union[str, tuple[str, ViewParams]]]=["lateral_pivot"],
-    list_surfaces: list[Union[str, ViewParams]]=["inflated"],
+    list_angles: Sequence[Union[str, tuple[str, ViewParams]]]=["lateral_pivot"],
+    list_surfaces: Sequence[Union[str, ViewParams]]=["inflated"],
     viewer_params: Mapping[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
     interpolation: str="nearest",
     layers: int=1,
