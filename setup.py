@@ -4,10 +4,7 @@ import os
 from glob import glob
 import numpy
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from setuptools import setup, Extension
 from setuptools.command.install import install
