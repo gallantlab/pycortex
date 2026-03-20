@@ -105,8 +105,8 @@ def save_3d_views(
     else:
         _headless_ctx = None
         handle = cortex.webshow(volume, **viewer_params)
-        # Wait for the viewer to be loaded
 
+    # Wait for the viewer to be loaded
     time.sleep(sleep)
 
     # Add interpolation and layers params only if we have a volume

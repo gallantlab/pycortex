@@ -4,8 +4,6 @@ These tests require ``playwright`` and Chromium to be installed::
 
     pip install playwright
     playwright install chromium
-
-They also require an active pycortex filestore with at least the S1 subject.
 """
 import os
 import tempfile
