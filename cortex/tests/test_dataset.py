@@ -78,13 +78,13 @@ def test_rgb():
 def test_vertexrgb_shared_range():
     """VertexRGB should support shared_range like VolumeRGB."""
     red, green, blue = [np.random.randn(nverts) for _ in range(3)]
-    rgb = dataset.VertexRGB(red, green, blue, subj, shared_range=True)
+    rgb = dataset.VertexRGB(red, green, blue, subj, autorange='shared')
     assert rgb.vertices.shape == (1, nverts, 4)
     assert rgb.vertices.dtype == np.uint8
 
     # With explicit shared_vmin/shared_vmax
     rgb = dataset.VertexRGB(
-        red, green, blue, subj, shared_range=True, shared_vmin=0, shared_vmax=1
+        red, green, blue, subj, vmin=0, vmax=1
     )
     assert rgb.vertices.shape == (1, nverts, 4)
     assert rgb.vertices.dtype == np.uint8
@@ -121,7 +121,7 @@ def test_volumergb_shared_range():
     """VolumeRGB with shared_range should still work after refactor."""
     red, green, blue = [np.random.randn(*volshape) for _ in range(3)]
     rgb = dataset.VolumeRGB(
-        red, green, blue, subj, xfmname, shared_range=True, shared_vmin=0, shared_vmax=1
+        red, green, blue, subj, xfmname, vmin=0, vmax=1
     )
     assert rgb.volume.shape == tuple([1] + list(volshape) + [4])
     assert rgb.volume.dtype == np.uint8
