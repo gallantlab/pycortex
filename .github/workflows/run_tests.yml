@@ -42,6 +42,7 @@ jobs:
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Test with pytest
+      timeout-minutes: 10  # in case webviewer tests hang
       run: |
         pip install -q pytest pytest-cov
         pip install -q playwright # until we get optional deps working
