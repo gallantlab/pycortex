@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, TypedDict, Union
+from typing import Any, Mapping, TypedDict, Union
 
 import cortex
 
@@ -23,7 +23,7 @@ def save_3d_views(
     base_name: str="fig",
     list_angles: list[Union[str, tuple[str, ViewParams]]]=["lateral_pivot"],
     list_surfaces: list[Union[str, ViewParams]]=["inflated"],
-    viewer_params: dict[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
+    viewer_params: Mapping[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
     interpolation: str="nearest",
     layers: int=1,
     size: tuple[int, int]=(1024 * 4, 768 * 4),
