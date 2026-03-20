@@ -67,6 +67,24 @@ In [1]: import cortex
 In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 ```
 
+Headless viewer
+---------------
+
+Pycortex supports a headless WebGL viewer for rendering screenshots without a
+display (useful for scripts and notebooks). The headless mode launches a
+headless Chromium browser via Playwright and connects to the pycortex Tornado
+server to render WebGL scenes in software.
+
+Install with the optional headless extras and the Playwright browser binaries::
+
+	pip install 'pycortex[headless]'
+	playwright install --with-deps chromium # may require `sudo` on Linux
+
+A small example demonstrating usage is available at
+[examples/utils/plot_panels_headless.py](examples/utils/plot_panels_headless.py#L1).
+The example calls ``cortex.export.save_3d_views(..., headless=True)`` to save
+3D screenshots programmatically.
+
 Citation
 --------
 If you use pycortex in published work, please cite the [pycortex paper](http://dx.doi.org/10.3389/fninf.2015.00023):
