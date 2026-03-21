@@ -192,21 +192,16 @@ def save_3d_views(
                 pass
 
     # Try to close the window
-    if _headless_ctx is not None:
-        # headless mode: delegate teardown to the context manager
-        try:
+    try:
+        if _headless_ctx is not None:
+            # headless mode: delegate teardown to the context manager
             _headless_ctx.__exit__(None, None, None)
-        except Exception as e:
-            # TODO: proper exception handling
-            print(str(e))
-            print("Could not close headless viewer.")
-    else:
-        try:
+        else:
             handle.close()
             handle.server.stop()
-        except Exception as e:
-            print(str(e))
-            print("Could not close viewer.")
+    except Exception as e:
+        print(str(e))
+        print("Could not close viewer.")
 
     return file_names
 
