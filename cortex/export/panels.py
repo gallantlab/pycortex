@@ -46,7 +46,6 @@ def plot_panels(
     interpolation: str="nearest",
     layers: int=1,
     headless: bool=False,
-    dedupe: bool=True,
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
 
@@ -104,10 +103,6 @@ def plot_panels(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed. (Default: False)
 
-    dedupe: bool
-        If True, remove redundant angle/surface pairs before rendering. Requires
-        str-valued `angle` and `surface`. (Default: True)
-
     Returns
     -------
     fig : matplotlib.Figure
@@ -123,8 +118,8 @@ def plot_panels(
     angles_and_surfaces = [
         (panel["view"]["angle"], panel["view"]["surface"]) for panel in panels
     ]
-    # remove redundant couples, e.g. left and right
-    if dedupe:
+    # remove redundant couples (e.g. left and right) if they are pre-defined views
+    if all(isinstance(angle, str) and isinstance(surface, str) for angle, surface in angles_and_surfaces):
         angles_and_surfaces = list(set(angles_and_surfaces))
     list_angles: list[Union[str, tuple[str, ViewParams]]]
     list_surfaces: list[Union[str, ViewParams]]
