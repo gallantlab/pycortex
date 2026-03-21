@@ -77,11 +77,8 @@ def test_plot_panels_headless():
             headless=True,
         )
 
-        # The function returns a matplotlib Figure and should have written
-        # the file when save_name is provided. If no save_name was given then
-        # at least ensure a Figure object was returned.
+        # The function returns a matplotlib Figure and, when save_name is
+        # provided, should have written the file to disk.
         assert fig is not None
-        # If the file was written, ensure it's non-empty. plot_panels only
-        # writes when `save_name` is provided, so check for it.
-        if os.path.exists(save_name):
-            assert os.path.getsize(save_name) > 0
+        assert os.path.isfile(save_name)
+        assert os.path.getsize(save_name) > 0
