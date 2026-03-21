@@ -71,7 +71,7 @@ fig = cortex.export.plot_panels(
 base_name = os.path.join(tempfile.mkdtemp(), 'fig')
 fnames = cortex.export.save_3d_views(
     volume,
-    base_name="base_name",
+    base_name=base_name,
     list_angles=list_angles,
     list_surfaces=list_surfaces,
     viewer_params=dict(labels_visible=[], overlays_visible=["rois"]),

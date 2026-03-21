@@ -71,6 +71,7 @@ def test_plot_panels_headless():
             panels=panels,
             figsize=(8, 6),
             windowsize=(1024, 768),
+            save_name=save_name,
             sleep=10,
             viewer_params={},
             headless=True,
