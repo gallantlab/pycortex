@@ -153,16 +153,13 @@ def save_3d_views(
 
         # wait for the view to have changed
         for _ in range(100):
-            all_ready = True
             for k, v in this_view_params.items():
-                k_resolved = k.format(subject=volume.subject) if "{subject}" in k else k
-                current = handle.ui.get(k_resolved)[0]
-                if current != v:
-                    print("waiting for", k_resolved, current, "->", v)
-                    all_ready = False
-            if all_ready:
-                break
-            time.sleep(0.1)
+                k = k.format(subject=volume.subject) if "{subject}" in k else k
+                if handle.ui.get(k)[0] != v:
+                    print("waiting for", k, handle.ui.get(k)[0], "->", v)
+                    time.sleep(0.1)
+                    continue
+            break
         time.sleep(0.1)
 
         # Save image, store file_name
