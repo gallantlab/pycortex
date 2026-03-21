@@ -287,9 +287,9 @@ def headless_viewer(
         #    *before* navigating, so we cannot miss it even if the browser
         #    connects before page.goto() returns.
         # ------------------------------------------------------------------
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            fut = pool.submit(server.get_client)
-
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        fut = pool.submit(server.get_client)
+        try:
             # Launch the browser and navigate.  python_interface.js runs on
             # load and sends "connect" over WebSocket, which unblocks
             # server.get_client().
@@ -297,21 +297,22 @@ def headless_viewer(
 
             # Retrieve the handle; it should already be ready by this point,
             # but the timeout guard surfaces hung state clearly.
-            try:
-                handle = fut.result(timeout=timeout)
-            except concurrent.futures.TimeoutError:
-                browser_errors = pw_thread.browser_errors
-                detail = (
-                    "\nBrowser errors:\n" + "\n".join(browser_errors)
-                    if browser_errors
-                    else "\nNo browser errors were captured."
-                )
-                raise RuntimeError(
-                    f"Headless browser connected to {url} but the WebSocket "
-                    f'"connect" message was not received within {timeout:.0f} s. '
-                    f"Check that WebGL initialised successfully in Chromium."
-                    f"{detail}"
-                )
+            handle = fut.result(timeout=timeout)
+        except Exception as e:
+            fut.cancel()
+            browser_errors = pw_thread.browser_errors
+            detail = (
+                "\nBrowser errors:\n" + "\n".join(browser_errors)
+                if browser_errors
+                else "\nNo browser errors were captured."
+            )
+            pool.shutdown(wait=False, cancel_futures=True)
+            raise RuntimeError(
+                f"Failed to establish WebSocket connection with headless browser at {url} "
+                f"within {timeout:.0f} seconds. {detail}"
+            ) from e
+        else:
+            pool.shutdown(wait=False)
 
         assert not isinstance(handle, list)  # type narrowing to JSMixer
         handle.server = server
