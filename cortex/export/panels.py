@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 from typing import Any, Mapping, Optional, TypedDict, Union
+
 if sys.version_info < (3, 11):
     from typing_extensions import NotRequired
 else:
@@ -22,8 +23,9 @@ from ._default_params import (
     params_occipital_triple_view,
     params_flatmap_lateral_medial,
     params_inflated_dorsal_lateral_medial_ventral,
-    params_flatmap_inflated_lateral_medial_ventral
+    params_flatmap_inflated_lateral_medial_ventral,
 )
+
 
 class PanelView(TypedDict):
     angle: Union[str, tuple[str, ViewParams]]
@@ -31,23 +33,28 @@ class PanelView(TypedDict):
     hemisphere: NotRequired[str]
     zoom: NotRequired[tuple[float, float, float, float]]
 
+
 class PanelParams(TypedDict):
     view: PanelView
     extent: tuple[float, float, float, float]
 
+
 def plot_panels(
     volume: Dataview,
     panels: list[PanelParams],
-    figsize: npt.ArrayLike=(16, 9),
-    windowsize: tuple[int, int]=(1600 * 4, 900 * 4),
-    save_name: Optional[str]=None,
-    sleep: float=10,
-    viewer_params: Mapping[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
-    interpolation: str="nearest",
-    layers: int=1,
-    headless: bool=False,
+    figsize: npt.ArrayLike = (16, 9),
+    windowsize: tuple[int, int] = (1600 * 4, 900 * 4),
+    save_name: Optional[str] = None,
+    sleep: float = 10,
+    viewer_params: Mapping[str, Any] = dict(
+        labels_visible=[], overlays_visible=["rois"]
+    ),
+    interpolation: str = "nearest",
+    layers: int = 1,
+    headless: bool = False,
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
+    specifications.
 
     Parameters
     ----------
@@ -73,7 +80,7 @@ def plot_panels(
     windowsize : tuple of float
         Size of the browser window. Larger values provide higher resolution,
         but they might fail if the screen size is not large enough (this is
-        only a working hypothesis). If this function fails, try reducing the 
+        only a working hypothesis). If this function fails, try reducing the
         windowsize.
 
     save_name : str or None
@@ -119,7 +126,10 @@ def plot_panels(
         (panel["view"]["angle"], panel["view"]["surface"]) for panel in panels
     ]
     # remove redundant couples (e.g. left and right) if they are pre-defined views
-    if all(isinstance(angle, str) and isinstance(surface, str) for angle, surface in angles_and_surfaces):
+    if all(
+        isinstance(angle, str) and isinstance(surface, str)
+        for angle, surface in angles_and_surfaces
+    ):
         angles_and_surfaces = list(set(angles_and_surfaces))
     list_angles: list[Union[str, tuple[str, ViewParams]]]
     list_surfaces: list[Union[str, ViewParams]]
@@ -144,7 +154,6 @@ def plot_panels(
 
     fig = plt.figure(figsize=figsize)
     for panel in panels:
-
         # load image
         angle_and_surface = (panel["view"]["angle"], panel["view"]["surface"])
         index = angles_and_surfaces.index(angle_and_surface)

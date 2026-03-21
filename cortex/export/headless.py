@@ -40,16 +40,20 @@ Requirements
 
 import concurrent.futures
 import contextlib
+import logging
 import threading
 from typing import Any, Mapping, Optional
 
 import cortex
 from .. import dataset
 
+logger = logging.getLogger(__name__)
+
 
 # --------------------------------------------------------------------------- #
 # Helper: run Playwright in a dedicated thread to avoid asyncio conflicts     #
 # --------------------------------------------------------------------------- #
+
 
 class _PlaywrightThread:
     """Manages the Playwright lifecycle on a private daemon thread.
@@ -68,7 +72,9 @@ class _PlaywrightThread:
     """
 
     def __init__(self) -> None:
-        self._ready_future: concurrent.futures.Future[None] = concurrent.futures.Future()
+        self._ready_future: concurrent.futures.Future[None] = (
+            concurrent.futures.Future()
+        )
         self._shutdown_event = threading.Event()
         self._error: Optional[BaseException] = None
         self._thread: Optional[threading.Thread] = None
@@ -208,12 +214,18 @@ class _PlaywrightThread:
                 try:
                     getattr(obj, method)()
                 except Exception:
-                    pass
+                    logger.warning(
+                        "Playwright cleanup: %s.%s() failed",
+                        type(obj).__name__,
+                        method,
+                        exc_info=True,
+                    )
 
 
 # --------------------------------------------------------------------------- #
 # Public context manager                                                      #
 # --------------------------------------------------------------------------- #
+
 
 @contextlib.contextmanager
 def headless_viewer(
@@ -258,7 +270,12 @@ def headless_viewer(
     #    display_url=False and ignore viewer_params['port'] to avoid fixed-port
     #    collisions in headless/CI usage.
     # ------------------------------------------------------------------
-    server = cortex.webshow(volume, open_browser=False, display_url=False, **{k: v for k, v in viewer_params.items() if k not in ["port", "display_url"]})
+    server = cortex.webshow(
+        volume,
+        open_browser=False,
+        display_url=False,
+        **{k: v for k, v in viewer_params.items() if k not in ["port", "display_url"]},
+    )
     url = f"http://localhost:{server.port}/mixer.html"
 
     # Prevent the server from auto-stopping when the last WebSocket client
@@ -339,14 +356,14 @@ def headless_viewer(
                 assert not isinstance(handle, list)  # type narrowing
                 handle.close()
             except Exception:
-                pass
+                logger.warning("Failed to close viewer handle", exc_info=True)
 
         try:
             pw_thread.shutdown()
         except Exception:
-            pass
+            logger.warning("Failed to shut down Playwright thread", exc_info=True)
 
         try:
             server.stop()
         except Exception:
-            pass
+            logger.warning("Failed to stop Tornado server", exc_info=True)

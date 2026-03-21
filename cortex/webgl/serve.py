@@ -17,6 +17,7 @@ import functools
 import threading
 
 from typing import Callable, Literal, cast, Generic, Union, Any
+
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
 else:
@@ -32,12 +33,14 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
+
 def make_base64(imgfile: str) -> str:
-    with open(imgfile, 'rb') as img:
+    with open(imgfile, "rb") as img:
         mtype = mimetypes.guess_type(imgfile)[0]
         imbytes = base64.encodebytes(img.read())
-        data = imbytes.decode('utf-8').strip()
-        return u"data:{mtype};base64,{data}".format(mtype=mtype, data=data)
+        data = imbytes.decode("utf-8").strip()
+        return "data:{mtype};base64,{data}".format(mtype=mtype, data=data)
+
 
 class NPEncode(json.JSONEncoder):
     def default(self, obj):
@@ -49,16 +52,29 @@ class NPEncode(json.JSONEncoder):
 
             return dict(
                 __class__="NParray",
-                dtype=obj.dtype.descr[0][1], 
-                shape=obj.shape, 
-                data=binascii.b2a_base64(obj.tobytes()).decode('utf-8'))
-        elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8,
-                              np.uint64, np.uint32, np.uint16, np.uint8)):
+                dtype=obj.dtype.descr[0][1],
+                shape=obj.shape,
+                data=binascii.b2a_base64(obj.tobytes()).decode("utf-8"),
+            )
+        elif isinstance(
+            obj,
+            (
+                np.int64,
+                np.int32,
+                np.int16,
+                np.int8,
+                np.uint64,
+                np.uint32,
+                np.uint16,
+                np.uint8,
+            ),
+        ):
             return int(obj)
         elif isinstance(obj, (np.float64, np.float32)):
             return float(obj)
         else:
             return super(NPEncode, self).default(obj)
+
 
 class StaticFileHandler(tornado.web.RequestHandler):
     """A simple handler that can serve static content from a directory.
@@ -79,7 +95,8 @@ class StaticFileHandler(tornado.web.RequestHandler):
     /static/images/myimage.png?v=xxx. Override ``get_cache_time`` method for
     more fine-grained cache control.
     """
-    CACHE_MAX_AGE = 86400*365*10 #10 years
+
+    CACHE_MAX_AGE = 86400 * 365 * 10  # 10 years
 
     _static_hashes = {}
 
@@ -93,7 +110,7 @@ class StaticFileHandler(tornado.web.RequestHandler):
     def get(self, path, include_body=True):
         self._auto_finish = False
 
-        #logging.info('static request %s, %s' % (self.request.uri,  self.request.headers))
+        # logging.info('static request %s, %s' % (self.request.uri,  self.request.headers))
         if os.path.sep != "/":
             path = path.replace("/", os.path.sep)
         abspath = os.path.abspath(os.path.join(self.root, path))
@@ -116,24 +133,26 @@ class StaticFileHandler(tornado.web.RequestHandler):
         self.set_extra_headers(path)
 
         stat_result = os.stat(abspath)
-        
+
         mime_type, encoding = mimetypes.guess_type(abspath)
         if mime_type:
             self.set_header("Content-Type", mime_type)
 
-        self.set_header('Accept-Ranges','bytes')
+        self.set_header("Accept-Ranges", "bytes")
 
         self.file = open(abspath, "rb")
         self._transforms = []
 
-        if 'Range' not in self.request.headers:
+        if "Range" not in self.request.headers:
             modified = datetime.datetime.fromtimestamp(stat_result[stat.ST_MTIME])
             self.set_header("Last-Modified", modified)
 
             cache_time = self.get_cache_time(path, modified, mime_type)
             if cache_time > 0:
-                self.set_header("Expires", datetime.datetime.utcnow() + \
-                                           datetime.timedelta(seconds=cache_time))
+                self.set_header(
+                    "Expires",
+                    datetime.datetime.utcnow() + datetime.timedelta(seconds=cache_time),
+                )
                 self.set_header("Cache-Control", "max-age=" + str(cache_time))
             else:
                 self.set_header("Cache-Control", "public")
@@ -156,11 +175,11 @@ class StaticFileHandler(tornado.web.RequestHandler):
                 self.finish()
                 return
         else:
-            logging.info('got range string %s' % self.request.headers['Range'])
+            logging.info("got range string %s" % self.request.headers["Range"])
             self.set_status(206)
-            rangestr = self.request.headers['Range'].split('=')[1]
-            start, end = rangestr.split('-')
-            logging.info('seeking to start %s' % start)
+            rangestr = self.request.headers["Range"].split("=")[1]
+            start, end = rangestr.split("-")
+            logging.info("seeking to start %s" % start)
             self.bytes_start = int(start)
             self.file.seek(self.bytes_start)
             if not end:
@@ -168,20 +187,26 @@ class StaticFileHandler(tornado.web.RequestHandler):
             else:
                 self.bytes_end = int(end)
 
-            clenheader = 'bytes %s-%s/%s' % (self.bytes_start, self.bytes_end, stat_result.st_size)
-            self.set_header('Content-Range', clenheader)
-            self.set_header('Content-Length', self.bytes_end-self.bytes_start+1)
-            logging.info('set content range header %s' % clenheader)
+            clenheader = "bytes %s-%s/%s" % (
+                self.bytes_start,
+                self.bytes_end,
+                stat_result.st_size,
+            )
+            self.set_header("Content-Range", clenheader)
+            self.set_header("Content-Length", self.bytes_end - self.bytes_start + 1)
+            logging.info("set content range header %s" % clenheader)
 
-        if 'If-Range' in self.request.headers:
-            logging.debug('staticfilehandler had if-range header %s' % self.request.headers['If-Range'])
-
+        if "If-Range" in self.request.headers:
+            logging.debug(
+                "staticfilehandler had if-range header %s"
+                % self.request.headers["If-Range"]
+            )
 
         self.bytes_remaining = self.bytes_end - self.bytes_start + 1
-        self.set_header('Content-Length', str(self.bytes_remaining))
+        self.set_header("Content-Length", str(self.bytes_remaining))
         self.bufsize = 4096 * 16
-        #logging.info('writing to frontend: %s' % self._generate_headers())
-        self.flush() # flush out the headers
+        # logging.info('writing to frontend: %s' % self._generate_headers())
+        self.flush()  # flush out the headers
         self.stream_one()
 
     def stream_one(self):
@@ -195,8 +220,8 @@ class StaticFileHandler(tornado.web.RequestHandler):
         else:
             data = self.file.read(min(self.bytes_remaining, self.bufsize))
             self.bytes_remaining -= len(data)
-            #logging.info('read from disk %s, remaining %s' % (len(data), self.bytes_remaining))
-            self.request.connection.stream.write( data, self.stream_one )
+            # logging.info('read from disk %s, remaining %s' % (len(data), self.bytes_remaining))
+            self.request.connection.stream.write(data, self.stream_one)
 
     def set_extra_headers(self, path):
         """For subclass to add extra headers to the response"""
@@ -219,7 +244,7 @@ class StaticFileHandler(tornado.web.RequestHandler):
 
         This method may be overridden in subclasses (but note that it is
         a class method rather than an instance method).
-        
+
         ``settings`` is the `Application.settings` dictionary.  ``path``
         is the static path being requested.  The url returned should be
         relative to the current host.
@@ -234,7 +259,7 @@ class StaticFileHandler(tornado.web.RequestHandler):
             except Exception:
                 logging.error("Could not open static file %r", path)
                 hashes[abs_path] = None
-        static_url_prefix = settings.get('static_url_prefix', '/static/')
+        static_url_prefix = settings.get("static_url_prefix", "/static/")
         if hashes.get(abs_path):
             return static_url_prefix + path + "?v=" + hashes[abs_path][:5]
         else:
@@ -242,7 +267,7 @@ class StaticFileHandler(tornado.web.RequestHandler):
 
 
 class ClientSocket(websocket.WebSocketHandler):
-    def initialize(self, parent: 'WebApp'):
+    def initialize(self, parent: "WebApp"):
         self.parent = parent
 
     def open(self):
@@ -254,19 +279,32 @@ class ClientSocket(websocket.WebSocketHandler):
             self.parent.stop()
 
     def on_message(self, message):
-        if (message == "connect"):
+        if message == "connect":
             self.parent.connect.set()
         else:
             self.parent.response.put(message)
 
+
 JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
+
 
 class WebApp(threading.Thread):
     daemon: bool = True
     disconnect_on_close: bool = True
-    server: tornado.httpserver.HTTPServer # explicit annotation needed because of Configurable
+    server: (
+        tornado.httpserver.HTTPServer
+    )  # explicit annotation needed because of Configurable
 
-    def __init__(self, handlers: list[Union[tuple[str, type[tornado.web.RequestHandler]], tuple[str, type[tornado.web.RequestHandler], dict]]], port: int):
+    def __init__(
+        self,
+        handlers: list[
+            Union[
+                tuple[str, type[tornado.web.RequestHandler]],
+                tuple[str, type[tornado.web.RequestHandler], dict],
+            ]
+        ],
+        port: int,
+    ):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
             (r"/wsconnect/", ClientSocket, dict(parent=self)),
@@ -283,7 +321,9 @@ class WebApp(threading.Thread):
         return num
 
     def run(self):
-        ioloop: tornado.ioloop.IOLoop = tornado.ioloop.IOLoop()  # why is annotation necessary?
+        ioloop: tornado.ioloop.IOLoop = (
+            tornado.ioloop.IOLoop()
+        )  # why is annotation necessary?
         ioloop.clear_current()
         ioloop.make_current()
         self.ioloop = ioloop
@@ -311,8 +351,10 @@ class WebApp(threading.Thread):
         self.ioloop.add_callback(_send, self.sockets, cast(str, msg))
 
         try:
-            return [json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)]
-        except:
+            return [
+                json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)
+            ]
+        except Exception:
             return [None for _ in range(self.n_clients)]
 
     def get_client(self):
@@ -320,38 +362,49 @@ class WebApp(threading.Thread):
         self.connect.clear()
         return JSProxy(self.send)
 
+
 # ParamSpec lets us define the type of the `send` method in JSProxy, even though the function is supplied by WebApp at runtime. Maybe there's a cleaner way to do this?
-P = ParamSpec('P')
+P = ParamSpec("P")
+
 
 class JSProxy(Generic[P]):
     name: str
     server: WebApp
 
-    def __init__(self, sendfunc: Callable[P, Union[list[JSON], list[None]]], name: str = "window"):
-        super(JSProxy, self).__setattr__('send', sendfunc)
-        super(JSProxy, self).__setattr__('name', name)
-        
+    def __init__(
+        self, sendfunc: Callable[P, Union[list[JSON], list[None]]], name: str = "window"
+    ):
+        super(JSProxy, self).__setattr__("send", sendfunc)
+        super(JSProxy, self).__setattr__("name", name)
+
         # self.attrs = self.send(method='query', params=[self.name])[0]
-        self.max_time_retry = 10.  # in seconds
+        self.max_time_retry = 10.0  # in seconds
 
     # `method` corresponds to the functions defined in `js/python_interface.js``.
-    def send(self, *, method: Literal['get', 'query', 'set', 'run', 'index'], params: list[Any]) -> Union[list[JSON], list[None]]:
-        raise NotImplementedError("send method should be provided by WebApp and is not meant to be called directly on JSProxy instances.")
+    def send(
+        self,
+        *,
+        method: Literal["get", "query", "set", "run", "index"],
+        params: list[Any],
+    ) -> Union[list[JSON], list[None]]:
+        raise NotImplementedError(
+            "send method should be provided by WebApp and is not meant to be called directly on JSProxy instances."
+        )
 
     # TODO: would be better described with tuples instead of lists:
     # `dict[str, Union[tuple[str,], tuple[str, Any]]]`
     @property
     def attrs(self) -> dict[str, Union[list[str], list[Union[str, Any]]]]:
-        return_value = self.send(method='query', params=[self.name])[0]
+        return_value = self.send(method="query", params=[self.name])[0]
         # Sometimes the return value can be None or an int (I assume an error value).
         # This can be caused by the delay in updating the JS viewer.
         # Waiting for 0.1 s should be enough.
         if return_value is None or not isinstance(return_value, dict):
             time.sleep(0.1)
-            return_value = self.send(method='query', params=[self.name])[0]
+            return_value = self.send(method="query", params=[self.name])[0]
         return cast(dict[str, JSON], return_value)
 
-    def __getattr__(self, attr: str) -> Union['JSProxy', Any]:
+    def __getattr__(self, attr: str) -> Union["JSProxy", Any]:
         # if attr == 'attrs':
         #    return self.send(method='query', params=[self.name])[0]
         tstart = time.time()
@@ -364,7 +417,7 @@ class JSProxy(Generic[P]):
             raise KeyError(f"Attribute '{attr}' not found in {self}")
 
         if attrs[attr][0] in ["object", "function"]:
-            return JSProxy(self.send, "%s.%s"%(self.name, attr))
+            return JSProxy(self.send, "%s.%s" % (self.name, attr))
         else:
             return cast(Any, attrs[attr][1])
 
@@ -375,29 +428,29 @@ class JSProxy(Generic[P]):
             return super(JSProxy, self).__setattr__(attr, value)
 
         assert self.attrs[attr] not in ["object", "function"]
-        resp = self.send(method='set',
-                         params=["%s.%s"%(self.name, attr), value])
+        resp = self.send(method="set", params=["%s.%s" % (self.name, attr), value])
         if isinstance(resp[0], dict) and "error" in resp[0]:
-            raise Exception(resp[0]['error'])
+            raise Exception(resp[0]["error"])
         else:
             return resp
 
     def __repr__(self):
-        return "<JS: %s>"%self.name
+        return "<JS: %s>" % self.name
 
     def __dir__(self):
         return list(self.attrs)
 
     def __call__(self, *args):
-        resp = self.send(method='run', params=[self.name, args])
+        resp = self.send(method="run", params=[self.name, args])
         if isinstance(resp[0], dict) and "error" in resp[0]:
-            raise Exception(resp[0]['error'])
+            raise Exception(resp[0]["error"])
         else:
             return resp
 
-    def __getitem__(self, idx: Union[int, str]) -> 'JSProxy':
+    def __getitem__(self, idx: Union[int, str]) -> "JSProxy":
         assert not isinstance(idx, (slice, list, tuple, np.ndarray))
-        return JSProxy(self.send, "%s.%d"%(self.name, idx))
+        return JSProxy(self.send, "%s.%d" % (self.name, idx))
+
 
 if __name__ == "__main__":
     app = WebApp([], 8888)

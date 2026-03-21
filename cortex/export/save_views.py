@@ -1,3 +1,4 @@
+import contextlib
 import os
 import time
 from typing import Any, Mapping, Sequence, TypedDict, Union
@@ -8,34 +9,41 @@ from ..dataset import Dataview
 
 file_pattern = "{base}_{view}_{surface}.png"
 
-ViewParams = TypedDict('ViewParams', {
-    "camera.azimuth": float,
-    "camera.altitude": float,
-    "camera.target": list[float],
-    "surface.{subject}.unfold": float,
-    "surface.{subject}.pivot": float,
-    "surface.{subject}.shift": float,
-    "surface.{subject}.specularity": float,
-}, total=False)
+ViewParams = TypedDict(
+    "ViewParams",
+    {
+        "camera.azimuth": float,
+        "camera.altitude": float,
+        "camera.target": list[float],
+        "surface.{subject}.unfold": float,
+        "surface.{subject}.pivot": float,
+        "surface.{subject}.shift": float,
+        "surface.{subject}.specularity": float,
+    },
+    total=False,
+)
+
 
 def save_3d_views(
     volume: Dataview,
-    base_name: str="fig",
-    list_angles: Sequence[Union[str, tuple[str, ViewParams]]]=["lateral_pivot"],
-    list_surfaces: Sequence[Union[str, ViewParams]]=["inflated"],
-    viewer_params: Mapping[str, Any]=dict(labels_visible=[], overlays_visible=["rois"]),
-    interpolation: str="nearest",
-    layers: int=1,
-    size: tuple[int, int]=(1024 * 4, 768 * 4),
-    trim: bool=True,
-    sleep: float=10,
-    headless: bool=False,
+    base_name: str = "fig",
+    list_angles: Sequence[Union[str, tuple[str, ViewParams]]] = ["lateral_pivot"],
+    list_surfaces: Sequence[Union[str, ViewParams]] = ["inflated"],
+    viewer_params: Mapping[str, Any] = dict(
+        labels_visible=[], overlays_visible=["rois"]
+    ),
+    interpolation: str = "nearest",
+    layers: int = 1,
+    size: tuple[int, int] = (1024 * 4, 768 * 4),
+    trim: bool = True,
+    sleep: float = 10,
+    headless: bool = False,
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
-    Needs to be run on a system with a display (will launch webgl viewer).
-    The best way to get the expected results is to keep the webgl viewer
-    visible during the process.
+    By default (``headless=False``), a webgl viewer is launched and a display
+    server is required.  With ``headless=True``, a headless Chromium browser
+    is used instead, so no display server or GPU is needed.
 
     Parameters
     ----------
@@ -96,114 +104,119 @@ def save_3d_views(
     msg = "list_angles and list_surfaces should have the same length."
     assert len(list_angles) == len(list_surfaces), msg
 
-    # Create viewer
+    # Create viewer — use a proper context manager so that cleanup always
+    # runs, even if an exception occurs during rendering.
     if headless:
         from cortex.export.headless import headless_viewer as _headless_viewer
-        _headless_ctx = _headless_viewer(volume, viewer_params)
-        handle = _headless_ctx.__enter__()
+
+        cm = _headless_viewer(volume, viewer_params)
     else:
-        _headless_ctx = None
-        handle = cortex.webshow(volume, **viewer_params)
+        cm = contextlib.nullcontext(cortex.webshow(volume, **viewer_params))
 
-    # Wait for the viewer to be loaded
-    time.sleep(sleep)
+    with cm as handle:
+        # Wait for the viewer to be loaded
+        time.sleep(sleep)
 
-    # Add interpolation and layers params only if we have a volume
-    if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
-        interpolation_params = {
-            "surface.{subject}.sampler": interpolation,
-            "surface.{subject}.layers": layers
-        }
-    else:
-        interpolation_params = dict()
-
-    has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
-    file_names: list[str] = []
-    for view, surface in zip(list_angles, list_surfaces):
-        if isinstance(view, str):
-            if view == "flatmap" or surface == "flatmap":
-                # force flatmap correspondence
-                view = surface = "flatmap"
-            view_params = angle_view_params[view]
-            view_name = view
+        # Add interpolation and layers params only if we have a volume
+        if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
+            interpolation_params = {
+                "surface.{subject}.sampler": interpolation,
+                "surface.{subject}.layers": layers,
+            }
         else:
-            view_name, view_params = view
+            interpolation_params = dict()
 
-        if isinstance(surface, str):
-            surface_params = unfold_view_params[surface].copy()
-            # Fix unfold parameters if this subject doesn't have a flatmap
-            # Without a flatmap, the inflated surf corresponds to an unfold value of 1
-            # With a flatmap, the inflated surf corresponds to an unfold value of 0.5
-            if not has_flatmap:
-                surface_params["surface.{subject}.unfold"] = min(
-                    surface_params["surface.{subject}.unfold"] * 2, 1
-                )
-        else:
-            surface_params = surface
+        has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
+        file_names: list[str] = []
+        for view, surface in zip(list_angles, list_surfaces):
+            if isinstance(view, str):
+                if view == "flatmap" or surface == "flatmap":
+                    # force flatmap correspondence
+                    view = surface = "flatmap"
+                view_params = angle_view_params[view]
+                view_name = view
+            else:
+                view_name, view_params = view
 
-        # Combine view parameters
-        this_view_params = default_view_params.copy()
-        this_view_params.update(interpolation_params)
-        this_view_params.update(view_params)
-        this_view_params.update(surface_params)
-        print(this_view_params)
+            if isinstance(surface, str):
+                surface_params = unfold_view_params[surface].copy()
+                # Fix unfold parameters if this subject doesn't have a flatmap
+                # Without a flatmap, the inflated surf corresponds to an unfold value of 1
+                # With a flatmap, the inflated surf corresponds to an unfold value of 0.5
+                if not has_flatmap:
+                    surface_params["surface.{subject}.unfold"] = min(
+                        surface_params["surface.{subject}.unfold"] * 2, 1
+                    )
+            else:
+                surface_params = surface
 
-        # apply params
-        handle._set_view(**this_view_params)
+            # Combine view parameters
+            this_view_params = default_view_params.copy()
+            this_view_params.update(interpolation_params)
+            this_view_params.update(view_params)
+            this_view_params.update(surface_params)
+            print(this_view_params)
 
-        # wait for the view to have changed
-        for _ in range(100):
-            for k, v in this_view_params.items():
-                k = k.format(subject=volume.subject) if "{subject}" in k else k
-                if handle.ui.get(k)[0] != v:
-                    print("waiting for", k, handle.ui.get(k)[0], "->", v)
-                    time.sleep(0.1)
-                    continue
-            break
-        time.sleep(0.1)
+            # apply params
+            handle._set_view(**this_view_params)
 
-        # Save image, store file_name
-        file_name = file_pattern.format(base=base_name, view=view_name, surface=surface)
-        file_names.append(file_name)
-        handle.getImage(file_name, size)
-
-        # Wait for browser to dump file, before applying new view parameters
-        for _wait in range(200):
-            if os.path.exists(file_name):
+            # wait for the view to have changed
+            for _ in range(100):
+                for k, v in this_view_params.items():
+                    k = k.format(subject=volume.subject) if "{subject}" in k else k
+                    if handle.ui.get(k)[0] != v:
+                        print("waiting for", k, handle.ui.get(k)[0], "->", v)
+                        time.sleep(0.1)
+                        continue
                 break
             time.sleep(0.1)
-        else:
-            raise RuntimeError(
-                f"Image {file_name!r} was not written within 20 seconds. "
-                "The browser may have failed to POST the screenshot."
+
+            # Save image, store file_name
+            file_name = file_pattern.format(
+                base=base_name, view=view_name, surface=surface
             )
-        time.sleep(1)
+            file_names.append(file_name)
+            handle.getImage(file_name, size)
 
-        # Trim white edges
-        if trim:
+            # Wait for browser to dump file, before applying new view parameters
+            for _wait in range(200):
+                if os.path.exists(file_name):
+                    break
+                time.sleep(0.1)
+            else:
+                raise RuntimeError(
+                    f"Image {file_name!r} was not written within 20 seconds. "
+                    "The browser may have failed to POST the screenshot."
+                )
+            time.sleep(1)
+
+            # Trim white edges
+            if trim:
+                try:
+                    import subprocess
+
+                    retcode = subprocess.call(
+                        ["convert", "-trim", file_name, file_name]
+                    )
+                    if retcode != 0:
+                        print(
+                            f"ImageMagick convert returned non-zero exit code {retcode} when trimming {file_name}."
+                        )
+                except Exception as e:
+                    print(str(e))
+
+        # For non-headless mode, close the viewer handle explicitly
+        # (the headless context manager handles its own teardown)
+        if not headless:
             try:
-                import subprocess
-
-                retcode = subprocess.call(["convert", "-trim", file_name, file_name])
-                if retcode != 0:
-                    print(f"ImageMagick convert returned non-zero exit code {retcode} when trimming {file_name}.")
+                handle.close()
+                handle.server.stop()
             except Exception as e:
                 print(str(e))
-                pass
-
-    # Try to close the window
-    try:
-        if _headless_ctx is not None:
-            # headless mode: delegate teardown to the context manager
-            _headless_ctx.__exit__(None, None, None)
-        else:
-            handle.close()
-            handle.server.stop()
-    except Exception as e:
-        print(str(e))
-        print("Could not close viewer.")
+                print("Could not close viewer.")
 
     return file_names
+
 
 default_view_params: ViewParams = {
     "camera.azimuth": 45,
@@ -216,14 +229,38 @@ default_view_params: ViewParams = {
 }
 
 angle_view_params: dict[str, ViewParams] = {
-    "left": {"camera.azimuth": 90, "camera.altitude": 90,},
-    "right": {"camera.azimuth": 270, "camera.altitude": 90,},
-    "left_atl": {"camera.azimuth": 65, "camera.altitude": 100,},
-    "right_atl": {"camera.azimuth": 300, "camera.altitude": 100,},
-    "front": {"camera.azimuth": 0, "camera.altitude": 90,},
-    "back": {"camera.azimuth": 180, "camera.altitude": 90,},
-    "top": {"camera.azimuth": 180, "camera.altitude": 0,},
-    "bottom": {"camera.azimuth": 0, "camera.altitude": 180,},
+    "left": {
+        "camera.azimuth": 90,
+        "camera.altitude": 90,
+    },
+    "right": {
+        "camera.azimuth": 270,
+        "camera.altitude": 90,
+    },
+    "left_atl": {
+        "camera.azimuth": 65,
+        "camera.altitude": 100,
+    },
+    "right_atl": {
+        "camera.azimuth": 300,
+        "camera.altitude": 100,
+    },
+    "front": {
+        "camera.azimuth": 0,
+        "camera.altitude": 90,
+    },
+    "back": {
+        "camera.azimuth": 180,
+        "camera.altitude": 90,
+    },
+    "top": {
+        "camera.azimuth": 180,
+        "camera.altitude": 0,
+    },
+    "bottom": {
+        "camera.azimuth": 0,
+        "camera.altitude": 180,
+    },
     "flatmap": {
         "camera.azimuth": 180,
         "camera.altitude": 0,
@@ -259,9 +296,19 @@ angle_view_params: dict[str, ViewParams] = {
 }
 
 unfold_view_params: dict[str, ViewParams] = {
-    "fiducial": {"surface.{subject}.unfold": 0,},
-    "inflated_less": {"surface.{subject}.unfold": 0.25,},
-    "inflated": {"surface.{subject}.unfold": 0.5,},
-    "inflated_cut": {"surface.{subject}.unfold": 0.501,},
-    "flatmap": {"surface.{subject}.unfold": 1,},
+    "fiducial": {
+        "surface.{subject}.unfold": 0,
+    },
+    "inflated_less": {
+        "surface.{subject}.unfold": 0.25,
+    },
+    "inflated": {
+        "surface.{subject}.unfold": 0.5,
+    },
+    "inflated_cut": {
+        "surface.{subject}.unfold": 0.501,
+    },
+    "flatmap": {
+        "surface.{subject}.unfold": 1,
+    },
 }
