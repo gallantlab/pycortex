@@ -4,10 +4,7 @@ import os
 from glob import glob
 import numpy
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from setuptools import setup, Extension
 from setuptools.command.install import install
@@ -139,6 +136,7 @@ setup(name=DISTNAME,
             },
       setup_requires=['Cython', 'numpy'],
       install_requires=INSTALL_REQUIRES,
+      # Don't use `extras_require` here. Put them in pyproject.toml .
       cmdclass=dict(install=my_install),
       include_package_data=True,
       classifiers=[

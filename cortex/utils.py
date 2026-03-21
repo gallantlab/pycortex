@@ -55,7 +55,7 @@ class DocLoader(Generic[P, T]):
     @overload
     def __getattribute__(self, name: str) -> Any: ...
 
-    def __getattribute__(self, name: Union[Literal['_load'], str]) -> Any | Callable[P, T]:
+    def __getattribute__(self, name: Union[Literal['_load'], str]) -> Union[Any, Callable[P, T]]:
         if name != "_load":
             return getattr(self._load(), name)
         else:

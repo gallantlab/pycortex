@@ -22,6 +22,8 @@ To install the stable release version of pycortex, do the following:
 pip install -U setuptools wheel numpy cython
 # Install the latest release of pycortex from pip
 pip install -U pycortex
+# or, with headless rendering support:
+pip install -U 'pycortex[headless]'
 ```
 
 If you wish to install the development version of pycortex, you can install it directly from Github.

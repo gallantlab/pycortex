@@ -38,12 +38,14 @@ jobs:
         pip install wheel setuptools numpy cython
         # force using latest nibabel
         pip install -U nibabel
-        pip install -e . --no-build-isolation
+        pip install -e '.[headless]' --no-build-isolation
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Test with pytest
+      timeout-minutes: 10  # in case webviewer tests hang
       run: |
-        pip install -q pytest pytest-cov
+        pip install -e . --no-build-isolation --group dev
+        playwright install --with-deps --only-shell chromium
         pytest --cov=./
 
     - name: Upload coverage to Codecov

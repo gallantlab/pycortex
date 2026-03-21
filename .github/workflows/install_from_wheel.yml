@@ -42,7 +42,7 @@ jobs:
 
     - name: Install from the wheel
       run: |
-        pip install $(ls dist/*.whl) --no-build-isolation
+        pip install "$(ls dist/*.whl)[headless]" --no-build-isolation
 
     - name: Test installation of the filestore
       run: |

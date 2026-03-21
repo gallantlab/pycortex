@@ -8,6 +8,25 @@ build-backend = "setuptools.build_meta"
 name = "pycortex"
 dynamic = ["authors", "license", "readme", "version", "classifiers", "dependencies"]
 
+[dependency-groups]
+dev = [
+    {include-group = "test"},
+    "mypy",
+]
+test = [
+    "pycortex[headless]",
+    "ipykernel>=6.31.0",
+    "nbclient>=0.10.2",
+    "nbformat>=5.10.4",
+    "pytest",
+    "pytest-cov",
+]
+
+[project.optional-dependencies]
+headless = [
+    "playwright>=1.58.0"
+]
+
 [tool.setuptools_scm]
 version_file = "cortex/_version.py"
 local_scheme = "no-local-version"
@@ -21,10 +40,3 @@ ignore-words-list = 'nd,acount,anormal,fpt,coo,transpart,FO,lins'
 [tool.mypy]
 allow_redefinition = true
 disable_error_code = "import-untyped"
-
-[dependency-groups]
-dev = [
-    "mypy",
-    "pytest",
-    "pytest-cov",
-]
