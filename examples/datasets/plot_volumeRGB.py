@@ -84,6 +84,19 @@ vol_data = cortex.VolumeRGB(red, green, blue, subject,
 							channel1color=cortex.Colors.RoseRed,
 							channel2color=cortex.Colors.LimeGreen,
 							channel3color=cortex.Colors.DodgerBlue,
-							shared_range=True, shared_vmin=10, shared_vmax=100)
+							vmin=10, vmax=100)
+cortex.quickshow(vol_data, with_colorbar=False)
+plt.show()
+
+# This creates an RGB Volume from the three different color channels for
+# this subject using custom colors, and separate user-defined ranges for
+# each channel.
+# Note that you do not need to specify the transform when creating this as it
+# is already specified in the red, green, and blue channels
+vol_data = cortex.VolumeRGB(red, green, blue, subject,
+							channel1color=cortex.Colors.RoseRed,
+							channel2color=cortex.Colors.LimeGreen,
+							channel3color=cortex.Colors.DodgerBlue,
+							vmin=(10, 20, 30), vmax=(90, 80, 70))
 cortex.quickshow(vol_data, with_colorbar=False)
 plt.show()
