@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.green
+==============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoattribute:: VertexRGB.green

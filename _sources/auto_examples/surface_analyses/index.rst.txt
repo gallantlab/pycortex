@@ -25,7 +25,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_tissots_indicatrix_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py`
+  :doc:`/auto_examples/surface_analyses/plot_tissots_indicatrix`
 
 .. raw:: html
 
@@ -42,7 +42,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_path_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py`
+  :doc:`/auto_examples/surface_analyses/plot_geodesic_path`
 
 .. raw:: html
 
@@ -59,7 +59,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_distance_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py`
+  :doc:`/auto_examples/surface_analyses/plot_geodesic_distance`
 
 .. raw:: html
 
@@ -76,7 +76,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_flatmap_distortion_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py`
+  :doc:`/auto_examples/surface_analyses/plot_flatmap_distortion`
 
 .. raw:: html
 
@@ -93,7 +93,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_subsurfaces_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py`
+  :doc:`/auto_examples/surface_analyses/plot_subsurfaces`
 
 .. raw:: html
 
@@ -110,7 +110,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_interpolate_data_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py`
+  :doc:`/auto_examples/surface_analyses/plot_interpolate_data`
 
 .. raw:: html
 

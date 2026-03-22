@@ -46,7 +46,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_dataset_arithmetic_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py`
+  :doc:`/auto_examples/datasets/plot_dataset_arithmetic`
 
 .. raw:: html
 
@@ -63,7 +63,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_to_vertex_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py`
+  :doc:`/auto_examples/datasets/plot_volume_to_vertex`
 
 .. raw:: html
 
@@ -80,7 +80,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume.py`
+  :doc:`/auto_examples/datasets/plot_volume`
 
 .. raw:: html
 
@@ -97,7 +97,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py`
+  :doc:`/auto_examples/datasets/plot_vertex`
 
 .. raw:: html
 
@@ -114,7 +114,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex2D_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py`
+  :doc:`/auto_examples/datasets/plot_vertex2D`
 
 .. raw:: html
 
@@ -131,7 +131,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume2D_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py`
+  :doc:`/auto_examples/datasets/plot_volume2D`
 
 .. raw:: html
 
@@ -148,7 +148,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertexRGB_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py`
+  :doc:`/auto_examples/datasets/plot_vertexRGB`
 
 .. raw:: html
 
@@ -165,7 +165,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
+  :doc:`/auto_examples/datasets/plot_volumeRGB`
 
 .. raw:: html
 
@@ -200,7 +200,7 @@ Examples showing how to use PyCortex to visualize data on fsaverage.
   .. image:: /auto_examples/fsaverage/images/thumb/sphx_glr_upsample_to_fsaverage_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_fsaverage_upsample_to_fsaverage.py`
+  :doc:`/auto_examples/fsaverage/upsample_to_fsaverage`
 
 .. raw:: html
 
@@ -238,7 +238,7 @@ FreeSurfer, fmriprep).
   .. image:: /auto_examples/import_surface/images/thumb/sphx_glr_import_fmriprep_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_import_surface_import_fmriprep.py`
+  :doc:`/auto_examples/import_surface/import_fmriprep`
 
 .. raw:: html
 
@@ -275,7 +275,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_sulci_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_sulci.py`
+  :doc:`/auto_examples/quickflat/plot_sulci`
 
 .. raw:: html
 
@@ -292,28 +292,11 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_dropout_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_dropout.py`
+  :doc:`/auto_examples/quickflat/plot_dropout`
 
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Plot dropout regions on the flatmap</div>
-    </div>
-
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
-
-.. only:: html
-
-  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
-    :alt:
-
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_svg.py`
-
-.. raw:: html
-
-      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
     </div>
 
 
@@ -326,11 +309,28 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_png_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_png.py`
+  :doc:`/auto_examples/quickflat/plot_make_png`
 
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file.">
+
+.. only:: html
+
+  .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_svg_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/quickflat/plot_make_svg`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
     </div>
 
 
@@ -343,7 +343,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_cutouts_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_cutouts.py`
+  :doc:`/auto_examples/quickflat/plot_cutouts`
 
 .. raw:: html
 
@@ -360,7 +360,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_rois_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_rois.py`
+  :doc:`/auto_examples/quickflat/plot_rois`
 
 .. raw:: html
 
@@ -377,7 +377,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_connected_vertices_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_connected_vertices.py`
+  :doc:`/auto_examples/quickflat/plot_connected_vertices`
 
 .. raw:: html
 
@@ -394,7 +394,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_gif_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_gif.py`
+  :doc:`/auto_examples/quickflat/plot_make_gif`
 
 .. raw:: html
 
@@ -411,7 +411,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_thickness_nanmean_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_thickness_nanmean.py`
+  :doc:`/auto_examples/quickflat/plot_thickness_nanmean`
 
 .. raw:: html
 
@@ -428,7 +428,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_zoom_to_roi_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_zoom_to_roi.py`
+  :doc:`/auto_examples/quickflat/plot_zoom_to_roi`
 
 .. raw:: html
 
@@ -445,7 +445,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_make_figure_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_make_figure.py`
+  :doc:`/auto_examples/quickflat/plot_make_figure`
 
 .. raw:: html
 
@@ -462,7 +462,7 @@ Examples demonstrating how to create flatmaps.
   .. image:: /auto_examples/quickflat/images/thumb/sphx_glr_plot_advanced_compositing_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickflat_plot_advanced_compositing.py`
+  :doc:`/auto_examples/quickflat/plot_advanced_compositing`
 
 .. raw:: html
 
@@ -499,7 +499,7 @@ Examples demonstrating how to get started with pycortex.
   .. image:: /auto_examples/quickstart/images/thumb/sphx_glr_retinotopy_webgl_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickstart_retinotopy_webgl.py`
+  :doc:`/auto_examples/quickstart/retinotopy_webgl`
 
 .. raw:: html
 
@@ -516,7 +516,7 @@ Examples demonstrating how to get started with pycortex.
   .. image:: /auto_examples/quickstart/images/thumb/sphx_glr_show_config_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickstart_show_config.py`
+  :doc:`/auto_examples/quickstart/show_config`
 
 .. raw:: html
 
@@ -533,7 +533,7 @@ Examples demonstrating how to get started with pycortex.
   .. image:: /auto_examples/quickstart/images/thumb/sphx_glr_plot_retinotopy_flatmap_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_quickstart_plot_retinotopy_flatmap.py`
+  :doc:`/auto_examples/quickstart/plot_retinotopy_flatmap`
 
 .. raw:: html
 
@@ -570,7 +570,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_tissots_indicatrix_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py`
+  :doc:`/auto_examples/surface_analyses/plot_tissots_indicatrix`
 
 .. raw:: html
 
@@ -587,7 +587,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_path_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py`
+  :doc:`/auto_examples/surface_analyses/plot_geodesic_path`
 
 .. raw:: html
 
@@ -604,7 +604,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_geodesic_distance_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py`
+  :doc:`/auto_examples/surface_analyses/plot_geodesic_distance`
 
 .. raw:: html
 
@@ -621,7 +621,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_flatmap_distortion_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py`
+  :doc:`/auto_examples/surface_analyses/plot_flatmap_distortion`
 
 .. raw:: html
 
@@ -638,7 +638,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_subsurfaces_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py`
+  :doc:`/auto_examples/surface_analyses/plot_subsurfaces`
 
 .. raw:: html
 
@@ -655,7 +655,7 @@ Examples demonstrating operations and analyses done on brain surfaces.
   .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_interpolate_data_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py`
+  :doc:`/auto_examples/surface_analyses/plot_interpolate_data`
 
 .. raw:: html
 
@@ -692,7 +692,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_plot_get_roi_vertices_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_plot_get_roi_vertices.py`
+  :doc:`/auto_examples/utils/plot_get_roi_vertices`
 
 .. raw:: html
 
@@ -709,7 +709,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_plot_voxel_distance_from_surface_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_plot_voxel_distance_from_surface.py`
+  :doc:`/auto_examples/utils/plot_voxel_distance_from_surface`
 
 .. raw:: html
 
@@ -726,7 +726,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_plot_mosaic_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_plot_mosaic.py`
+  :doc:`/auto_examples/utils/plot_mosaic`
 
 .. raw:: html
 
@@ -743,7 +743,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_subject_to_mni_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_subject_to_mni.py`
+  :doc:`/auto_examples/utils/subject_to_mni`
 
 .. raw:: html
 
@@ -760,7 +760,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_plot_roi_voxel_mask_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_mask.py`
+  :doc:`/auto_examples/utils/plot_roi_voxel_mask`
 
 .. raw:: html
 
@@ -777,7 +777,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_mni_to_subject_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_mni_to_subject.py`
+  :doc:`/auto_examples/utils/mni_to_subject`
 
 .. raw:: html
 
@@ -794,7 +794,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_multi_panels_plots_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_multi_panels_plots.py`
+  :doc:`/auto_examples/utils/multi_panels_plots`
 
 .. raw:: html
 
@@ -811,7 +811,7 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
   .. image:: /auto_examples/utils/images/thumb/sphx_glr_plot_roi_voxel_index_volume_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_utils_plot_roi_voxel_index_volume.py`
+  :doc:`/auto_examples/utils/plot_roi_voxel_index_volume`
 
 .. raw:: html
 
@@ -848,7 +848,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
   .. image:: /auto_examples/webgl/images/thumb/sphx_glr_single_dataset_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_webgl_single_dataset.py`
+  :doc:`/auto_examples/webgl/single_dataset`
 
 .. raw:: html
 
@@ -865,7 +865,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
   .. image:: /auto_examples/webgl/images/thumb/sphx_glr_static_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_webgl_static.py`
+  :doc:`/auto_examples/webgl/static`
 
 .. raw:: html
 
@@ -882,7 +882,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
   .. image:: /auto_examples/webgl/images/thumb/sphx_glr_dynamic_with_custom_template_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_webgl_dynamic_with_custom_template.py`
+  :doc:`/auto_examples/webgl/dynamic_with_custom_template`
 
 .. raw:: html
 
@@ -899,7 +899,7 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
   .. image:: /auto_examples/webgl/images/thumb/sphx_glr_static_with_custom_template_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_webgl_static_with_custom_template.py`
+  :doc:`/auto_examples/webgl/static_with_custom_template`
 
 .. raw:: html
 
@@ -916,11 +916,28 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
   .. image:: /auto_examples/webgl/images/thumb/sphx_glr_multiple_datasets_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_webgl_multiple_datasets.py`
+  :doc:`/auto_examples/webgl/multiple_datasets`
 
 .. raw:: html
 
       <div class="sphx-glr-thumbnail-title">Create a 3D WebGL Viewer with Multiple Datasets</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="cortex.export.save_3d_views and cortex.export.plot_panels can render and save multiple 3D screenshots of brain data without any manual browser interaction by passing headless=True.">
+
+.. only:: html
+
+  .. image:: /auto_examples/webgl/images/thumb/sphx_glr_plot_panels_headless_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/webgl/plot_panels_headless`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot 3D Brain Views Headlessly (No Browser)</div>
     </div>
 
 

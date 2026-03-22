@@ -63,9 +63,8 @@ normal arithmetic operators like +, -, *, /, and **
  .. code-block:: none
 
     Generating a flatmap cache
-    ** (inkscape:4249): WARNING **: 02:14:17.107: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4263): WARNING **: 02:14:18.055: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:4276): WARNING **: 02:14:18.952: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
+    /home/runner/work/pycortex/pycortex/cortex/svgoverlay.py:785: SyntaxWarning: invalid escape sequence '\.'
+      FLOAT_RE = re.compile("[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?")
 
 
 
@@ -108,7 +107,7 @@ normal arithmetic operators like +, -, *, /, and **
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 14.557 seconds)
+   **Total running time of the script:** (0 minutes 14.329 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_dataset_arithmetic.py:

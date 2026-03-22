@@ -25,7 +25,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_dataset_arithmetic_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py`
+  :doc:`/auto_examples/datasets/plot_dataset_arithmetic`
 
 .. raw:: html
 
@@ -42,7 +42,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_to_vertex_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py`
+  :doc:`/auto_examples/datasets/plot_volume_to_vertex`
 
 .. raw:: html
 
@@ -59,7 +59,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume.py`
+  :doc:`/auto_examples/datasets/plot_volume`
 
 .. raw:: html
 
@@ -76,7 +76,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py`
+  :doc:`/auto_examples/datasets/plot_vertex`
 
 .. raw:: html
 
@@ -93,7 +93,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertex2D_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py`
+  :doc:`/auto_examples/datasets/plot_vertex2D`
 
 .. raw:: html
 
@@ -110,7 +110,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volume2D_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py`
+  :doc:`/auto_examples/datasets/plot_volume2D`
 
 .. raw:: html
 
@@ -127,7 +127,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_vertexRGB_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py`
+  :doc:`/auto_examples/datasets/plot_vertexRGB`
 
 .. raw:: html
 
@@ -144,7 +144,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
   .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_volumeRGB_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py`
+  :doc:`/auto_examples/datasets/plot_volumeRGB`
 
 .. raw:: html
 

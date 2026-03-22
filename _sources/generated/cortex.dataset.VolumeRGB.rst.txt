@@ -35,5 +35,8 @@
       ~VolumeRGB.priority
       ~VolumeRGB.raw
       ~VolumeRGB.volume
+      ~VolumeRGB.red
+      ~VolumeRGB.green
+      ~VolumeRGB.blue
    
    

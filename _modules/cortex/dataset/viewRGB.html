@@ -6,14 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>cortex.dataset.viewRGB &#8212; pycortex 1.3.0.dev0 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <script src="../../../_static/documentation_options.js?v=e5de4b90"></script>
-    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -34,32 +35,43 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.dataset.viewRGB</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">colorsys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataview</span><span class="p">,</span> <span class="n">Volume</span><span class="p">,</span> <span class="n">Vertex</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.braindata</span><span class="w"> </span><span class="kn">import</span> <span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">,</span> <span class="n">_hash</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.braindata</span><span class="w"> </span><span class="kn">import</span> <span class="n">BrainData</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">,</span> <span class="n">_hash</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">options</span>
+
 <span class="n">default_cmap</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;default_cmap&quot;</span><span class="p">)</span>
 
 
-<span class="k">class</span><span class="w"> </span><span class="nc">Colors</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="n">ColorDtype</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;ColorDtype&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+<span class="n">Color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ColorDtype</span><span class="p">,</span> <span class="n">ColorDtype</span><span class="p">,</span> <span class="n">ColorDtype</span><span class="p">]</span>  <span class="c1"># RGB color</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Colors</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Set of known colors</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">RoseRed</span> <span class="o">=</span> <span class="p">(</span><span class="mi">237</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">96</span><span class="p">)</span>
-    <span class="n">LimeGreen</span> <span class="o">=</span> <span class="p">(</span><span class="mi">141</span><span class="p">,</span> <span class="mi">198</span><span class="p">,</span> <span class="mi">63</span><span class="p">)</span>
-    <span class="n">SkyBlue</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">176</span><span class="p">,</span> <span class="mi">218</span><span class="p">)</span>
-    <span class="n">DodgerBlue</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">144</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
-    <span class="n">Red</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">000</span><span class="p">,</span> <span class="mi">000</span><span class="p">)</span>
-    <span class="n">Green</span> <span class="o">=</span> <span class="p">(</span><span class="mi">000</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">000</span><span class="p">)</span>
-    <span class="n">Blue</span> <span class="o">=</span> <span class="p">(</span><span class="mi">000</span><span class="p">,</span> <span class="mi">000</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
+
+    <span class="n">RoseRed</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">237</span><span class="p">,</span> <span class="mi">35</span><span class="p">,</span> <span class="mi">96</span><span class="p">)</span>
+    <span class="n">LimeGreen</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">141</span><span class="p">,</span> <span class="mi">198</span><span class="p">,</span> <span class="mi">63</span><span class="p">)</span>
+    <span class="n">SkyBlue</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">176</span><span class="p">,</span> <span class="mi">218</span><span class="p">)</span>
+    <span class="n">DodgerBlue</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">144</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
+    <span class="n">Red</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">000</span><span class="p">,</span> <span class="mi">000</span><span class="p">)</span>
+    <span class="n">Green</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">000</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">000</span><span class="p">)</span>
+    <span class="n">Blue</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">000</span><span class="p">,</span> <span class="mi">000</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">RGB2HSV</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">RGB2HSV</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">Color</span> <span class="o">|</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts RGB to HS</span>
 <span class="sd">    Parameters</span>
@@ -73,12 +85,14 @@
 <span class="sd">        HSV values. Hue in degrees, saturation and value on [0, 1]</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">colorsys</span><span class="o">.</span><span class="n">rgb_to_hsv</span><span class="p">(</span><span class="n">color</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span> <span class="n">color</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span> <span class="n">color</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">)</span>
+    <span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">colorsys</span><span class="o">.</span><span class="n">rgb_to_hsv</span><span class="p">(</span>
+        <span class="n">color</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span> <span class="n">color</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">,</span> <span class="n">color</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="mf">255.0</span>
+    <span class="p">)</span>
     <span class="n">hue</span> <span class="o">*=</span> <span class="mi">360</span>
     <span class="k">return</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">hue</span><span class="p">),</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">HSV2RGB</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">HSV2RGB</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">Color</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Color</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts HSV to RGB</span>
 
@@ -97,22 +111,33 @@
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DataviewRGB</span><span class="p">(</span><span class="n">Dataview</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for RGB data views.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for RGB data views.&quot;&quot;&quot;</span>
+
+    <span class="n">_cls</span> <span class="o">=</span> <span class="n">BrainData</span>
+    <span class="n">red</span><span class="p">:</span> <span class="n">Dataview</span>
+    <span class="n">green</span><span class="p">:</span> <span class="n">Dataview</span>
+    <span class="n">blue</span><span class="p">:</span> <span class="n">Dataview</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">subject</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">movie</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">movie</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">kwargs</span>
-        <span class="k">if</span> <span class="s1">&#39;priority&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;priority&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">)</span>
 
         <span class="c1"># If movie, make sure each channel has the same number of time points</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">movie</span><span class="p">:</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;For movie data, all three channels have to be the same length&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;For movie data, all three channels have to be the same length&quot;</span>
+                <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">uniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collapse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">collapse</span><span class="p">:</span>
@@ -135,8 +160,9 @@
             <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">name</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">alpha</span><span class="p">]</span>
-        <span class="n">viewnode</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-                                       <span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">)</span>
+        <span class="n">viewnode</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">[</span><span class="n">data</span><span class="p">],</span> <span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span>
+        <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">viewnode</span>
 
@@ -144,19 +170,209 @@
         <span class="n">sdict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">DataviewRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">simple</span><span class="o">=</span><span class="n">simple</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;subject&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subject</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;min&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;max&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;cmap&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">default_cmap</span><span class="p">]</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;vmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;vmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">255</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;cmap&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">default_cmap</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;vmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;vmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">255</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">sdict</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cmapdict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">color_voxels</span><span class="p">(</span>
+        <span class="n">channel1</span><span class="p">,</span>
+        <span class="n">channel2</span><span class="p">,</span>
+        <span class="n">channel3</span><span class="p">,</span>
+        <span class="n">channel1color</span><span class="p">,</span>
+        <span class="n">channel2color</span><span class="p">,</span>
+        <span class="n">channel3Color</span><span class="p">,</span>
+        <span class="n">value_max</span><span class="p">,</span>
+        <span class="n">saturation_max</span><span class="p">,</span>
+        <span class="n">vmin</span><span class="p">,</span>
+        <span class="n">vmax</span><span class="p">,</span>
+        <span class="n">autorange</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        channel1 : ndarray or Volume or Vertex</span>
+<span class="sd">            voxel values for first channel</span>
+<span class="sd">        channel2 : ndarray or Volume or Vertex</span>
+<span class="sd">            voxel values for second channel</span>
+<span class="sd">        channel3 : ndarray or Volume or Vertex</span>
+<span class="sd">            voxel values for third channel</span>
+<span class="sd">        channel1color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">            color in RGB for first channel</span>
+<span class="sd">        channel2color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">            color in RGB for second channel</span>
+<span class="sd">        channel3Color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">            color in RGB for third channel</span>
+<span class="sd">        value_max : float, optional</span>
+<span class="sd">            Maximum HSV value for voxel colors. If not given, will be the value of</span>
+<span class="sd">            the average of the three channel colors.</span>
+<span class="sd">        saturation_max : float [0, 1]</span>
+<span class="sd">            Maximum HSV saturation for voxel colors.</span>
+<span class="sd">        vmin : float or tuple of float, optional</span>
+<span class="sd">            Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound</span>
+<span class="sd">            is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">            uses its respective value. If None, the lower bound is auto-determined</span>
+<span class="sd">            based on ``autorange``.</span>
+<span class="sd">        vmax : float or tuple of float, optional</span>
+<span class="sd">            Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound</span>
+<span class="sd">            is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">            uses its respective value. If None, the upper bound is auto-determined</span>
+<span class="sd">            based on ``autorange``.</span>
+<span class="sd">        autorange : &#39;shared&#39; or &#39;individual&#39;</span>
+<span class="sd">            How to auto-determine bounds when vmin or vmax is None. &#39;shared&#39; computes</span>
+<span class="sd">            the 1st and 99th percentile across all three channels combined. &#39;individual&#39;</span>
+<span class="sd">            computes per-channel 1st and 99th percentiles. Overridden when vmin and</span>
+<span class="sd">            vmax are both provided.</span>
+<span class="sd">        alpha : ndarray or Volume or Vertex, optional</span>
+<span class="sd">            Alpha values for each voxel. If None, alpha is set to 1 for all voxels.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        red : ndarray of channel1.shape</span>
+<span class="sd">            uint8 array of red values</span>
+<span class="sd">        green : ndarray of channel1.shape</span>
+<span class="sd">            uint8 array of green values</span>
+<span class="sd">        blue : ndarray of channel1.shape</span>
+<span class="sd">            uint8 array of blue values</span>
+<span class="sd">        alpha : ndarray</span>
+<span class="sd">            If alpha=None, uint8 array of alpha values with alpha=1 for every voxel.</span>
+<span class="sd">            Otherwise, the same alpha values that were passed in. Additionally,</span>
+<span class="sd">            voxels with NaNs will have an alpha value of 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># normalize each channel to [0, 1]</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">channel1</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel1</span><span class="p">,</span> <span class="p">(</span><span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">))</span>
+            <span class="k">else</span> <span class="n">channel1</span>
+        <span class="p">)</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">channel2</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="p">(</span><span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">))</span>
+            <span class="k">else</span> <span class="n">channel2</span>
+        <span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">data3</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">channel3</span><span class="o">.</span><span class="n">data</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel3</span><span class="p">,</span> <span class="p">(</span><span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">))</span>
+            <span class="k">else</span> <span class="n">channel3</span>
+        <span class="p">)</span>
+        <span class="n">data3</span> <span class="o">=</span> <span class="n">data3</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">data2</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">data2</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">data3</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Volumes are of different shapes&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Create an alpha mask now, before casting nans to 0</span>
+        <span class="c1"># Voxels with at least one channel equal to NaN will be masked out.</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">]))</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Now convert to NaNs to num for all channels</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data2</span><span class="p">)</span>
+        <span class="n">data3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data3</span><span class="p">)</span>
+
+        <span class="c1"># Expand vmin/vmax to per-channel lists</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vmin</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">channel_vmins</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">vmin</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vmin</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vmin</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">channel_vmins</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vmin</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">channel_vmins</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">vmax</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">channel_vmaxs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">vmax</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vmax</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">vmax</span><span class="p">)]</span>
+        <span class="k">elif</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">channel_vmaxs</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vmax</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">channel_vmaxs</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="c1"># Auto-determine any None bounds</span>
+        <span class="n">needs_auto_min</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">channel_vmins</span><span class="p">)</span>
+        <span class="n">needs_auto_max</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">channel_vmaxs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">needs_auto_min</span> <span class="ow">or</span> <span class="n">needs_auto_max</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;shared&#39;</span><span class="p">:</span>
+                <span class="n">all_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">data1</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">data2</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">data3</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+                <span class="n">shared_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">all_data</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">shared_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">all_data</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
+                <span class="n">channel_vmins</span> <span class="o">=</span> <span class="p">[</span><span class="n">shared_min</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">channel_vmins</span><span class="p">]</span>
+                <span class="n">channel_vmaxs</span> <span class="o">=</span> <span class="p">[</span><span class="n">shared_max</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">channel_vmaxs</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;individual&#39;</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">channel_vmins</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">channel_vmins</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">channel_vmaxs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">channel_vmaxs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="mi">99</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;autorange must be </span><span class="se">\&#39;</span><span class="s1">shared</span><span class="se">\&#39;</span><span class="s1"> or </span><span class="se">\&#39;</span><span class="s1">individual</span><span class="se">\&#39;</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">normalized</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">channel</span><span class="p">,</span> <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">channel_min</span><span class="p">,</span> <span class="n">channel_max</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">([</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">],</span> <span class="n">channel_vmins</span><span class="p">,</span> <span class="n">channel_vmaxs</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">):</span>
+            <span class="n">channel_range</span> <span class="o">=</span> <span class="n">channel_max</span> <span class="o">-</span> <span class="n">channel_min</span>
+            <span class="k">if</span> <span class="n">channel_range</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;Channel </span><span class="si">{}</span><span class="s2"> has no dynamic range (vmin == vmax) and will be zeroed out&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">normalized</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">normalized</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">data</span> <span class="o">-</span> <span class="n">channel_min</span><span class="p">)</span> <span class="o">/</span> <span class="n">channel_range</span><span class="p">)</span>
+        <span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span> <span class="o">=</span> <span class="n">normalized</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">data3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">channel1color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel1color</span><span class="p">)</span>
+        <span class="n">channel2color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel2color</span><span class="p">)</span>
+        <span class="n">channel3Color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel3Color</span><span class="p">)</span>
+
+        <span class="n">averageColor</span> <span class="o">=</span> <span class="p">(</span><span class="n">channel1color</span> <span class="o">+</span> <span class="n">channel2color</span> <span class="o">+</span> <span class="n">channel3Color</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
+
+        <span class="k">if</span> <span class="n">value_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">RGB2HSV</span><span class="p">(</span><span class="n">averageColor</span><span class="p">)</span>
+            <span class="n">value_max</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="n">red</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">green</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">blue</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">this_color</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">data1</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel1color</span>
+                <span class="o">+</span> <span class="n">data2</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel2color</span>
+                <span class="o">+</span> <span class="n">data3</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel3Color</span>
+            <span class="p">)</span>
+            <span class="n">this_color</span> <span class="o">/=</span> <span class="mf">3.0</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">value_max</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">saturation_max</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">):</span>
+                <span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">RGB2HSV</span><span class="p">(</span><span class="n">this_color</span><span class="p">)</span>
+                <span class="n">saturation</span> <span class="o">/=</span> <span class="n">saturation_max</span>
+                <span class="n">value</span> <span class="o">/=</span> <span class="n">value_max</span>
+                <span class="k">if</span> <span class="n">saturation</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">saturation</span> <span class="o">=</span> <span class="mf">1.0</span>
+                <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="mf">1.0</span>
+                <span class="n">this_color</span> <span class="o">=</span> <span class="n">HSV2RGB</span><span class="p">([</span><span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span><span class="p">])</span>
+            <span class="n">red</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">green</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">blue</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c1"># Now make an alpha volume</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+        <span class="n">alpha</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span>
 
 
 <div class="viewcode-block" id="VolumeRGB">
@@ -172,10 +388,9 @@
 
 <span class="sd">    Each data channel is represented as a separate Volume object (these can</span>
 <span class="sd">    either be supplied explicitly as Volume objects or implicitly as numpy</span>
-<span class="sd">    arrays). The vmin for each Volume will be mapped to the minimum value for</span>
-<span class="sd">    that data channel, and the vmax will be mapped to the maximum value.</span>
-<span class="sd">    If `shared_range` is True, the vim and vmax will instead computed by</span>
-<span class="sd">    combining all three data channels.</span>
+<span class="sd">    arrays). By default, each channel&#39;s range is determined independently from</span>
+<span class="sd">    the data. Use ``vmin``/``vmax`` to specify explicit bounds, or ``autorange``</span>
+<span class="sd">    to control how bounds are auto-determined.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -213,52 +428,104 @@
 <span class="sd">        the average of the three channel colors.</span>
 <span class="sd">    max_color_saturation: float [0, 1]</span>
 <span class="sd">        Maximum HSV saturation for voxel colors.</span>
-<span class="sd">    shared_range : bool</span>
-<span class="sd">        Use the same vmin and vmax for all three color channels?</span>
-<span class="sd">    shared_vmin : float, optional</span>
-<span class="sd">        Predetermined shared vmin. Does nothing if shared_range == False. If not given,</span>
-<span class="sd">        will be the 1st percentile of all values across all three channels.</span>
-<span class="sd">    shared_vmax : float, optional</span>
-<span class="sd">        Predetermined shared vmax. Does nothing if shared_range == False. If not given,</span>
-<span class="sd">        will be the 99th percentile of all values across all three channels</span>
-<span class="sd">    **kwargs</span>
-<span class="sd">        All additional arguments in kwargs are passed to the VolumeData and</span>
-<span class="sd">        Dataview.</span>
+<span class="sd">    vmin : float or tuple of float, optional</span>
+<span class="sd">        Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound</span>
+<span class="sd">        is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">        uses its respective value. If None, the lower bound is auto-determined</span>
+<span class="sd">        based on ``autorange``.</span>
+<span class="sd">    vmax : float or tuple of float, optional</span>
+<span class="sd">        Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound</span>
+<span class="sd">        is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">        uses its respective value. If None, the upper bound is auto-determined</span>
+<span class="sd">        based on ``autorange``.</span>
+<span class="sd">    autorange : &#39;shared&#39; or &#39;individual&#39;</span>
+<span class="sd">        How to auto-determine bounds when vmin or vmax is None. &#39;shared&#39; computes</span>
+<span class="sd">        the 1st and 99th percentile across all three channels combined. &#39;individual&#39;</span>
+<span class="sd">        computes per-channel 1st and 99th percentiles. Overridden when vmin and</span>
+<span class="sd">        vmax are both provided. Default is &#39;individual&#39;.</span>
+<span class="sd">    priority : int, optional</span>
+<span class="sd">        Priority for display ordering. Default is 1.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">_cls</span> <span class="o">=</span> <span class="n">VolumeData</span>
+    <span class="n">red</span><span class="p">:</span> <span class="n">Volume</span>
+    <span class="n">green</span><span class="p">:</span> <span class="n">Volume</span>
+    <span class="n">blue</span><span class="p">:</span> <span class="n">Volume</span>
+    <span class="n">_alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="VolumeRGB.__init__">
 <a class="viewcode-back" href="../../../generated/VolumeRGB/cortex.dataset.VolumeRGB.__init__.html#cortex.dataset.VolumeRGB.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel1</span><span class="p">,</span> <span class="n">channel2</span><span class="p">,</span> <span class="n">channel3</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-                 <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channel1color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">channel2color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span> <span class="n">channel3color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">,</span>
-                 <span class="n">max_color_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_color_saturation</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">shared_range</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">shared_vmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">shared_vmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">channel1</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span>
+        <span class="n">channel2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span>
+        <span class="n">channel3</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span>
+        <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">xfmname</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">channel1color</span><span class="p">:</span> <span class="n">Color</span> <span class="o">=</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span>
+        <span class="n">channel2color</span><span class="p">:</span> <span class="n">Color</span> <span class="o">=</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span>
+        <span class="n">channel3color</span><span class="p">:</span> <span class="n">Color</span> <span class="o">=</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">,</span>
+        <span class="n">max_color_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_color_saturation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">vmin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">vmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">autorange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;individual&#39;</span><span class="p">,</span>
+        <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="n">channel1color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel1color</span><span class="p">)</span>
         <span class="n">channel2color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel2color</span><span class="p">)</span>
         <span class="n">channel3color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel3color</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel1</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">channel2</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Data channel 2 is not a VolumeData object or is from a different subject&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel3</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">channel3</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Data channel 2 is not a VolumeData object or is from a different subject&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">channel2</span><span class="o">.</span><span class="n">subject</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Data channel 2 is not a VolumeData object or is from a different subject&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel3</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">channel3</span><span class="o">.</span><span class="n">subject</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Data channel 3 is not a VolumeData object or is from a different subject&quot;</span>
+                <span class="p">)</span>
             <span class="k">if</span> <span class="p">(</span><span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">channel1</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">subject</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Subject in VolumeData objects is different than specified subject&#39;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span> \
-                    <span class="ow">and</span> <span class="n">shared_range</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Subject in VolumeData objects is different than specified subject&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;individual&#39;</span>
+            <span class="p">):</span>
                 <span class="c1"># R/G/B basis can be directly passed through</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">channel1</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">channel2</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">channel3</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
             <span class="k">else</span><span class="p">:</span>  <span class="c1"># need to remap colors</span>
-                <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">VolumeRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
-                    <span class="n">channel1</span><span class="p">,</span> <span class="n">channel2</span><span class="p">,</span> <span class="n">channel3</span><span class="p">,</span>
-                    <span class="n">channel1color</span><span class="p">,</span> <span class="n">channel2color</span><span class="p">,</span> <span class="n">channel3color</span><span class="p">,</span>
-                    <span class="n">max_color_value</span><span class="p">,</span> <span class="n">max_color_saturation</span><span class="p">,</span>
-                    <span class="n">shared_range</span><span class="p">,</span> <span class="n">shared_vmin</span><span class="p">,</span> <span class="n">shared_vmax</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span>
+                <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">DataviewRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
+                    <span class="n">channel1</span><span class="p">,</span>
+                    <span class="n">channel2</span><span class="p">,</span>
+                    <span class="n">channel3</span><span class="p">,</span>
+                    <span class="n">channel1color</span><span class="p">,</span>
+                    <span class="n">channel2color</span><span class="p">,</span>
+                    <span class="n">channel3color</span><span class="p">,</span>
+                    <span class="n">max_color_value</span><span class="p">,</span>
+                    <span class="n">max_color_saturation</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="p">,</span>
+                    <span class="n">vmax</span><span class="p">,</span>
+                    <span class="n">autorange</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">channel1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">channel1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">channel1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
@@ -267,31 +534,59 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject and xfmname are required&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span>\
-                    <span class="ow">and</span> <span class="n">shared_range</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">channel3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Data channels must be numpy arrays if channel1 is a numpy array&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;individual&#39;</span>
+            <span class="p">):</span>
                 <span class="c1"># R/G/B basis can be directly passed through</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">channel1</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">channel3</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
             <span class="k">else</span><span class="p">:</span>  <span class="c1"># need to remap colors</span>
-                <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">VolumeRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
-                    <span class="n">channel1</span><span class="p">,</span> <span class="n">channel2</span><span class="p">,</span> <span class="n">channel3</span><span class="p">,</span>
-                    <span class="n">channel1color</span><span class="p">,</span> <span class="n">channel2color</span><span class="p">,</span> <span class="n">channel3color</span><span class="p">,</span>
-                    <span class="n">max_color_value</span><span class="p">,</span> <span class="n">max_color_saturation</span><span class="p">,</span>
-                    <span class="n">shared_range</span><span class="p">,</span> <span class="n">shared_vmin</span><span class="p">,</span> <span class="n">shared_vmax</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span>
+                <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">DataviewRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
+                    <span class="n">channel1</span><span class="p">,</span>
+                    <span class="n">channel2</span><span class="p">,</span>
+                    <span class="n">channel3</span><span class="p">,</span>
+                    <span class="n">channel1color</span><span class="p">,</span>
+                    <span class="n">channel2color</span><span class="p">,</span>
+                    <span class="n">channel3color</span><span class="p">,</span>
+                    <span class="n">max_color_value</span><span class="p">,</span>
+                    <span class="n">max_color_saturation</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="p">,</span>
+                    <span class="n">vmax</span><span class="p">,</span>
+                    <span class="n">autorange</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
 
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">xfmname</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span>
+            <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">green</span><span class="o">.</span><span class="n">xfmname</span>
+            <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">blue</span><span class="o">.</span><span class="n">xfmname</span>
+            <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">.</span><span class="n">xfmname</span>
+        <span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot handle different transforms per volume&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot handle different transforms per volume&quot;</span><span class="p">)</span>
 
-        <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">priority</span>
+        <span class="p">)</span></div>
 
 
     <span class="nd">@property</span>
@@ -307,7 +602,7 @@
                     <span class="s2">&quot;Some alpha values are outside the range of [0, 1]. &quot;</span>
                     <span class="s2">&quot;Consider passing a Volume object as alpha with explicit vmin, vmax &quot;</span>
                     <span class="s2">&quot;keyword arguments.&quot;</span><span class="p">,</span>
-                    <span class="ne">Warning</span>
+                    <span class="ne">Warning</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="n">alpha</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
@@ -317,7 +612,7 @@
         <span class="k">return</span> <span class="n">alpha</span>
 
     <span class="nd">@alpha</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">]]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_alpha</span> <span class="o">=</span> <span class="n">alpha</span>
 
 <div class="viewcode-block" id="VolumeRGB.to_json">
@@ -325,9 +620,15 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simple</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="n">sdict</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">simple</span><span class="o">=</span><span class="n">simple</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">simple</span><span class="p">:</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">shape</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;shape&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">shape</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="s1">&#39;coord&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">())]</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s2">&quot;xfm&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="nb">list</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                        <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="s2">&quot;coord&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">xfm</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
 
         <span class="k">return</span> <span class="n">sdict</span></div>
 
@@ -361,159 +662,24 @@
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">volume</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&lt;RGB volumetric data for (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;RGB volumetric data for (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">))</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volume</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">VolumeRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">xfmname</span><span class="p">])</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span>
-
-<div class="viewcode-block" id="VolumeRGB.color_voxels">
-<a class="viewcode-back" href="../../../generated/VolumeRGB/cortex.dataset.VolumeRGB.color_voxels.html#cortex.dataset.VolumeRGB.color_voxels">[docs]</a>
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">color_voxels</span><span class="p">(</span><span class="n">channel1</span><span class="p">,</span> <span class="n">channel2</span><span class="p">,</span> <span class="n">channel3</span><span class="p">,</span> <span class="n">channel1color</span><span class="p">,</span> <span class="n">channel2color</span><span class="p">,</span>
-                     <span class="n">channel3Color</span><span class="p">,</span> <span class="n">value_max</span><span class="p">,</span> <span class="n">saturation_max</span><span class="p">,</span> <span class="n">common_range</span><span class="p">,</span>
-                     <span class="n">common_min</span><span class="p">,</span> <span class="n">common_max</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue</span>
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        channel1 : ndarray or Volume</span>
-<span class="sd">            voxel values for first channel</span>
-<span class="sd">        channel2 : ndarray or Volume</span>
-<span class="sd">            voxel values for second channel</span>
-<span class="sd">        channel3 : ndarray or Volume</span>
-<span class="sd">            voxel values for third channel</span>
-<span class="sd">        channel1color : tuple&lt;uint8, uint8, uint8&gt;</span>
-<span class="sd">            color in RGB for first channel</span>
-<span class="sd">        channel2color : tuple&lt;uint8, uint8, uint8&gt;</span>
-<span class="sd">            color in RGB for second channel</span>
-<span class="sd">        channel3Color : tuple&lt;uint8, uint8, uint8&gt;</span>
-<span class="sd">            color in RGB for third channel</span>
-<span class="sd">        value_max : float, optional</span>
-<span class="sd">            Maximum HSV value for voxel colors. If not given, will be the value of</span>
-<span class="sd">            the average of the three channel colors.</span>
-<span class="sd">        saturation_max : float [0, 1]</span>
-<span class="sd">            Maximum HSV saturation for voxel colors.</span>
-<span class="sd">        common_range : bool</span>
-<span class="sd">            Use the same vmin and vmax for all three color channels?</span>
-<span class="sd">        common_min : float, optional</span>
-<span class="sd">            Predetermined shared vmin. Does nothing if shared_range == False. If not given,</span>
-<span class="sd">            will be the 1st percentile of all values across all three channels.</span>
-<span class="sd">        common_max : float, optional</span>
-<span class="sd">            Predetermined shared vmax. Does nothing if shared_range == False. If not given,</span>
-<span class="sd">            will be the 99th percentile of all values across all three channels</span>
-<span class="sd">        alpha : ndarray or Volume, optional</span>
-<span class="sd">            Alpha values for each voxel. If None, alpha is set to 1 for all voxels. </span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        red : ndarray of channel1.shape</span>
-<span class="sd">            uint8 array of red values</span>
-<span class="sd">        green : ndarray of channel1.shape</span>
-<span class="sd">            uint8 array of green values</span>
-<span class="sd">        blue : ndarray of channel1.shape</span>
-<span class="sd">            uint8 array of blue values</span>
-<span class="sd">        alpha : ndarray</span>
-<span class="sd">            If alpha=None, uint8 array of alpha values with alpha=1 for every voxel. </span>
-<span class="sd">            Otherwise, the same alpha values that were passed in. Additionally, </span>
-<span class="sd">            voxels with NaNs will have an alpha value of 0.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># normalize each channel to [0, 1]</span>
-        <span class="n">data1</span> <span class="o">=</span> <span class="n">channel1</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel1</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="k">else</span> <span class="n">channel1</span>
-        <span class="n">data1</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-        <span class="n">data2</span> <span class="o">=</span> <span class="n">channel2</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel2</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="k">else</span> <span class="n">channel2</span>
-        <span class="n">data2</span> <span class="o">=</span> <span class="n">data2</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-        <span class="n">data3</span> <span class="o">=</span> <span class="n">channel3</span><span class="o">.</span><span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">channel3</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">)</span> <span class="k">else</span> <span class="n">channel3</span>
-        <span class="n">data3</span> <span class="o">=</span> <span class="n">data3</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">data2</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">data2</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">data3</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Volumes are of different shapes&#39;</span><span class="p">)</span>
-
-        <span class="c1"># Create an alpha mask now, before casting nans to 0</span>
-        <span class="c1"># Voxels with at least one channel equal to NaN will be masked out.</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">]))</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        <span class="c1"># Now convert to NaNs to num for all channels</span>
-        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
-        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data2</span><span class="p">)</span>
-        <span class="n">data3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data3</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">common_range</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">common_min</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">common_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">common_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">)),</span> <span class="mi">1</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">common_min</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">if</span> <span class="n">common_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">common_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">,</span> <span class="n">data3</span><span class="p">)),</span> <span class="mi">99</span><span class="p">)</span>
-            <span class="n">data1</span> <span class="o">-=</span> <span class="n">common_min</span>
-            <span class="n">data2</span> <span class="o">-=</span> <span class="n">common_min</span>
-            <span class="n">data3</span> <span class="o">-=</span> <span class="n">common_min</span>
-            <span class="n">data1</span> <span class="o">/=</span> <span class="p">(</span><span class="n">common_max</span> <span class="o">-</span> <span class="n">common_min</span><span class="p">)</span>
-            <span class="n">data2</span> <span class="o">/=</span> <span class="p">(</span><span class="n">common_max</span> <span class="o">-</span> <span class="n">common_min</span><span class="p">)</span>
-            <span class="n">data3</span> <span class="o">/=</span> <span class="p">(</span><span class="n">common_max</span> <span class="o">-</span> <span class="n">common_min</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">channelMin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">channelMax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
-            <span class="n">data1</span> <span class="o">-=</span> <span class="n">channelMin</span>
-            <span class="n">data1</span> <span class="o">/=</span> <span class="p">(</span><span class="n">channelMax</span> <span class="o">-</span> <span class="n">channelMin</span><span class="p">)</span>
-            <span class="n">channelMin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">channelMax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
-            <span class="n">data2</span> <span class="o">-=</span> <span class="n">channelMin</span>
-            <span class="n">data2</span> <span class="o">/=</span> <span class="p">(</span><span class="n">channelMax</span> <span class="o">-</span> <span class="n">channelMin</span><span class="p">)</span>
-            <span class="n">channelMin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data3</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="n">channelMax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data3</span><span class="p">,</span> <span class="mi">99</span><span class="p">)</span>
-            <span class="n">data3</span> <span class="o">-=</span> <span class="n">channelMin</span>
-            <span class="n">data3</span> <span class="o">/=</span> <span class="p">(</span><span class="n">channelMax</span> <span class="o">-</span> <span class="n">channelMin</span><span class="p">)</span>
-        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">data3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">data3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
-        <span class="n">channel1color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel1color</span><span class="p">)</span>
-        <span class="n">channel2color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel2color</span><span class="p">)</span>
-        <span class="n">channel3Color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">channel3Color</span><span class="p">)</span>
-
-        <span class="n">averageColor</span> <span class="o">=</span> <span class="p">(</span><span class="n">channel1color</span> <span class="o">+</span> <span class="n">channel2color</span> <span class="o">+</span> <span class="n">channel3Color</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
-
-        <span class="k">if</span> <span class="n">value_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">RGB2HSV</span><span class="p">(</span><span class="n">averageColor</span><span class="p">)</span>
-            <span class="n">value_max</span> <span class="o">=</span> <span class="n">value</span>
-
-        <span class="n">red</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-        <span class="n">green</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-        <span class="n">blue</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">data1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">data1</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-            <span class="n">this_color</span> <span class="o">=</span> <span class="n">data1</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel1color</span> <span class="o">+</span> <span class="n">data2</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel2color</span> <span class="o">+</span> <span class="n">data3</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">channel3Color</span>
-            <span class="n">this_color</span> <span class="o">/=</span> <span class="mf">3.0</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">value_max</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">saturation_max</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">):</span>
-                <span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">RGB2HSV</span><span class="p">(</span><span class="n">this_color</span><span class="p">)</span>
-                <span class="n">saturation</span> <span class="o">/=</span> <span class="n">saturation_max</span>
-                <span class="n">value</span> <span class="o">/=</span> <span class="n">value_max</span>
-                <span class="k">if</span> <span class="n">saturation</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">saturation</span> <span class="o">=</span> <span class="mf">1.0</span>
-                <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">value</span> <span class="o">=</span> <span class="mf">1.0</span>
-                <span class="n">this_color</span> <span class="o">=</span> <span class="n">HSV2RGB</span><span class="p">([</span><span class="n">hue</span><span class="p">,</span> <span class="n">saturation</span><span class="p">,</span> <span class="n">value</span><span class="p">])</span>
-            <span class="n">red</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">green</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">blue</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">this_color</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-
-        <span class="c1"># Now make an alpha volume</span>
-        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
-        <span class="n">alpha</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">return</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">alpha</span></div>
-</div>
+        <span class="k">return</span> <span class="bp">self</span></div>
 
 
 
@@ -524,65 +690,186 @@
 <span class="sd">    Contains RGB (or RGBA) colors for each vertex in a surface dataset.</span>
 <span class="sd">    Includes information about the subject.</span>
 
+<span class="sd">    Three data channels are mapped into a 3D color set. By default the data</span>
+<span class="sd">    channels are mapped on to red, green, and blue. They can also be mapped to</span>
+<span class="sd">    be different colors as specified, and then linearly combined.</span>
+
 <span class="sd">    Each color channel is represented as a separate Vertex object (these can</span>
 <span class="sd">    either be supplied explicitly as Vertex objects or implicitly as np</span>
-<span class="sd">    arrays). The vmin for each Vertex will be mapped to the minimum value for</span>
-<span class="sd">    that color channel, and the vmax will be mapped to the maximum value.</span>
+<span class="sd">    arrays). By default, each channel&#39;s range is determined independently from</span>
+<span class="sd">    the data. Use ``vmin``/``vmax`` to specify explicit bounds, or ``autorange``</span>
+<span class="sd">    to control how bounds are auto-determined.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    red : ndarray or Vertex</span>
-<span class="sd">        Array or Vertex that represents the red component of the color for each</span>
-<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">        Array or Vertex that represents the first data channel for each</span>
+<span class="sd">        vertex. Can be a 1D array (see Vertex for details), or a Vertex.</span>
 <span class="sd">    green : ndarray or Vertex</span>
-<span class="sd">        Array or Vertex that represents the green component of the color for each</span>
-<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">        Array or Vertex that represents the second data channel for each</span>
+<span class="sd">        vertex. Can be a 1D array (see Vertex for details), or a Vertex.</span>
 <span class="sd">    blue : ndarray or Vertex</span>
-<span class="sd">        Array or Vertex that represents the blue component of the color for each</span>
-<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex.</span>
+<span class="sd">        Array or Vertex that represents the third data channel for each</span>
+<span class="sd">        vertex. Can be a 1D array (see Vertex for details), or a Vertex.</span>
 <span class="sd">    subject : str, optional</span>
 <span class="sd">        Subject identifier. Must exist in the pycortex database. If not given,</span>
 <span class="sd">        red must be a Vertex from which the subject can be extracted.</span>
 <span class="sd">    alpha : ndarray or Vertex, optional</span>
 <span class="sd">        Array or Vertex that represents the alpha component of the color for each</span>
-<span class="sd">        voxel. Can be a 1D or 3D array (see Vertex for details), or a Vertex. If</span>
+<span class="sd">        vertex. Can be a 1D array (see Vertex for details), or a Vertex. If</span>
 <span class="sd">        None, all vertices will be assumed to have alpha=1.0.</span>
 <span class="sd">    description : str, optional</span>
 <span class="sd">        String describing this dataset. Displayed in webgl viewer.</span>
 <span class="sd">    state : optional</span>
 <span class="sd">        TODO: describe what this is</span>
-<span class="sd">    **kwargs</span>
-<span class="sd">        All additional arguments in kwargs are passed to the VertexData and</span>
-<span class="sd">        Dataview.</span>
+<span class="sd">    channel1color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">        RGB color to use for the first data channel</span>
+<span class="sd">    channel2color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">        RGB color to use for the second data channel</span>
+<span class="sd">    channel3color : tuple&lt;uint8, uint8, uint8&gt;</span>
+<span class="sd">        RGB color to use for the third data channel</span>
+<span class="sd">    max_color_value : float [0, 1], optional</span>
+<span class="sd">        Maximum HSV value for voxel colors. If not given, will be the value of</span>
+<span class="sd">        the average of the three channel colors.</span>
+<span class="sd">    max_color_saturation: float [0, 1]</span>
+<span class="sd">        Maximum HSV saturation for voxel colors.</span>
+<span class="sd">    vmin : float or tuple of float, optional</span>
+<span class="sd">        Lower bound(s) that map to 0 in each color channel. If a single float, the same lower bound</span>
+<span class="sd">        is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">        uses its respective value. If None, the lower bound is auto-determined</span>
+<span class="sd">        based on ``autorange``.</span>
+<span class="sd">    vmax : float or tuple of float, optional</span>
+<span class="sd">        Upper bound(s) that map to 255 in each color channel. If a single float, the same upper bound</span>
+<span class="sd">        is used for all three channels. If a tuple of three floats, each channel</span>
+<span class="sd">        uses its respective value. If None, the upper bound is auto-determined</span>
+<span class="sd">        based on ``autorange``.</span>
+<span class="sd">    autorange : &#39;shared&#39; or &#39;individual&#39;</span>
+<span class="sd">        How to auto-determine bounds when vmin or vmax is None. &#39;shared&#39; computes</span>
+<span class="sd">        the 1st and 99th percentile across all three channels combined. &#39;individual&#39;</span>
+<span class="sd">        computes per-channel 1st and 99th percentiles. Overridden when vmin and</span>
+<span class="sd">        vmax are both provided. Default is &#39;individual&#39;.</span>
+<span class="sd">    priority : int, optional</span>
+<span class="sd">        Priority for display ordering. Default is 1.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">_cls</span> <span class="o">=</span> <span class="n">VertexData</span>
     <span class="n">blend_curvature</span> <span class="o">=</span> <span class="n">_cls</span><span class="o">.</span><span class="n">blend_curvature</span>  <span class="c1"># hacky inheritance</span>
+    <span class="n">red</span><span class="p">:</span> <span class="n">Vertex</span>
+    <span class="n">green</span><span class="p">:</span> <span class="n">Vertex</span>
+    <span class="n">blue</span><span class="p">:</span> <span class="n">Vertex</span>
+    <span class="n">_alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">]]</span>
 
 <div class="viewcode-block" id="VertexRGB.__init__">
 <a class="viewcode-back" href="../../../generated/VertexRGB/cortex.dataset.VertexRGB.__init__.html#cortex.dataset.VertexRGB.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-                 <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">red</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span>
+        <span class="n">green</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span>
+        <span class="n">blue</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span>
+        <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">channel1color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span>
+        <span class="n">channel2color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span>
+        <span class="n">channel3color</span><span class="o">=</span><span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">,</span>
+        <span class="n">max_color_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_color_saturation</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">vmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">vmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">autorange</span><span class="o">=</span><span class="s1">&#39;individual&#39;</span><span class="p">,</span>
+        <span class="n">priority</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">channel1color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel1color</span><span class="p">)</span>
+        <span class="n">channel2color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel2color</span><span class="p">)</span>
+        <span class="n">channel3color</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">channel3color</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">green</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for green channel&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">blue</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for blue channel&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">red</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">green</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">subject</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Subject in VertexData objects is different than specified subject&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;individual&#39;</span>
+            <span class="p">):</span>
+                <span class="c1"># R/G/B basis can be directly passed through</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">red</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">green</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">blue</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># need to remap colors</span>
+                <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">DataviewRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
+                    <span class="n">red</span><span class="p">,</span>
+                    <span class="n">green</span><span class="p">,</span>
+                    <span class="n">blue</span><span class="p">,</span>
+                    <span class="n">channel1color</span><span class="p">,</span>
+                    <span class="n">channel2color</span><span class="p">,</span>
+                    <span class="n">channel3color</span><span class="p">,</span>
+                    <span class="n">max_color_value</span><span class="p">,</span>
+                    <span class="n">max_color_saturation</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="p">,</span>
+                    <span class="n">vmax</span><span class="p">,</span>
+                    <span class="n">autorange</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject name is required&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Data channels must be numpy arrays if red is a numpy array&quot;</span>
+                <span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">channel1color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Red</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel2color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Green</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">channel3color</span> <span class="o">==</span> <span class="n">Colors</span><span class="o">.</span><span class="n">Blue</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">autorange</span> <span class="o">==</span> <span class="s1">&#39;individual&#39;</span>
+            <span class="p">):</span>
+                <span class="c1"># R/G/B basis can be directly passed through</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">green</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># need to remap colors</span>
+                <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">DataviewRGB</span><span class="o">.</span><span class="n">color_voxels</span><span class="p">(</span>
+                    <span class="n">red</span><span class="p">,</span>
+                    <span class="n">green</span><span class="p">,</span>
+                    <span class="n">blue</span><span class="p">,</span>
+                    <span class="n">channel1color</span><span class="p">,</span>
+                    <span class="n">channel2color</span><span class="p">,</span>
+                    <span class="n">channel3color</span><span class="p">,</span>
+                    <span class="n">max_color_value</span><span class="p">,</span>
+                    <span class="n">max_color_saturation</span><span class="p">,</span>
+                    <span class="n">vmin</span><span class="p">,</span>
+                    <span class="n">vmax</span><span class="p">,</span>
+                    <span class="n">autorange</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">red</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">green</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">blue</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">subject</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
 
-        <span class="nb">super</span><span class="p">(</span><span class="n">VertexRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
-                                        <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+        <span class="nb">super</span><span class="p">(</span><span class="n">VertexRGB</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">priority</span>
+        <span class="p">)</span></div>
 
 
     <span class="nd">@property</span>
@@ -598,7 +885,7 @@
                     <span class="s2">&quot;Some alpha values are outside the range of [0, 1]. &quot;</span>
                     <span class="s2">&quot;Consider passing a Vertex object as alpha with explicit vmin, vmax &quot;</span>
                     <span class="s2">&quot;keyword arguments.&quot;</span><span class="p">,</span>
-                    <span class="ne">Warning</span>
+                    <span class="ne">Warning</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="n">alpha</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
@@ -608,7 +895,7 @@
         <span class="k">return</span> <span class="n">alpha</span>
 
     <span class="nd">@alpha</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">]]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_alpha</span> <span class="o">=</span> <span class="n">alpha</span>
 
     <span class="nd">@property</span>
@@ -651,21 +938,21 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">left</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,:</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">]</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">right</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,</span><span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">red</span><span class="o">.</span><span class="n">llen</span> <span class="p">:]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&lt;RGB vertex data for (</span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;RGB vertex data for (</span><span class="si">%s</span><span class="s2">)&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">))</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span><span class="o">%</span><span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;__</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">_hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vertices</span><span class="p">)[:</span><span class="mi">16</span><span class="p">]</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -747,8 +1034,8 @@
       &#169;2012, James Gao.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
-      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
     </div>
 

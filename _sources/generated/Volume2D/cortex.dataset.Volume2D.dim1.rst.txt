@@ -1,0 +1,6 @@
+cortex.dataset.Volume2D.dim1
+============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoattribute:: Volume2D.dim1

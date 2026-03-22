@@ -34,5 +34,7 @@
       ~Vertex2D.raw
       ~Vertex2D.subject
       ~Vertex2D.vertices
+      ~Vertex2D.dim1
+      ~Vertex2D.dim2
    
    

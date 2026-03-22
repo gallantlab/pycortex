@@ -1,0 +1,6 @@
+cortex.dataset.Vertex2D.dim2
+============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoattribute:: Vertex2D.dim2

@@ -44,18 +44,8 @@ use any cortex.Vertex objects in their place though.
    :class: sphx-glr-single-img
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    ** (inkscape:4440): WARNING **: 02:14:41.182: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
-
-
-
-
-|
 
 .. code-block:: Python
 
@@ -111,7 +101,7 @@ use any cortex.Vertex objects in their place though.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.401 seconds)
+   **Total running time of the script:** (0 minutes 1.347 seconds)
 
 
 .. _sphx_glr_download_auto_examples_datasets_plot_vertexRGB.py:

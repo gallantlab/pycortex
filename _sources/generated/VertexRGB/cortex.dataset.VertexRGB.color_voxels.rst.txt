@@ -1,0 +1,6 @@
+cortex.dataset.VertexRGB.color\_voxels
+======================================
+
+.. currentmodule:: cortex.dataset
+
+.. automethod:: VertexRGB.color_voxels

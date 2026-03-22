@@ -1,0 +1,6 @@
+cortex.dataset.VolumeRGB.blue
+=============================
+
+.. currentmodule:: cortex.dataset
+
+.. autoattribute:: VolumeRGB.blue

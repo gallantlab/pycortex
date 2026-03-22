@@ -33,5 +33,7 @@
       ~Volume2D.raw
       ~Volume2D.subject
       ~Volume2D.xfmname
+      ~Volume2D.dim1
+      ~Volume2D.dim2
    
    

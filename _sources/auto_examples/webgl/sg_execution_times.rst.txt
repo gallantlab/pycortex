@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.000** total execution time for 5 files **from auto_examples/webgl**:
+**06:09.726** total execution time for 6 files **from auto_examples/webgl**:
 
 .. container::
 
@@ -32,6 +32,9 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
+   * - :ref:`sphx_glr_auto_examples_webgl_plot_panels_headless.py` (``plot_panels_headless.py``)
+     - 06:09.726
+     - 0.0
    * - :ref:`sphx_glr_auto_examples_webgl_dynamic_with_custom_template.py` (``dynamic_with_custom_template.py``)
      - 00:00.000
      - 0.0

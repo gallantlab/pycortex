@@ -56,19 +56,8 @@ The two hemispheres must be run separately.
          :class: sphx-glr-multi-img
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    ** (inkscape:5004): WARNING **: 02:17:59.641: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
-    ** (inkscape:5017): WARNING **: 02:18:03.813: Failed to wrap object of type 'GtkRecentManager'. Hint: this error is commonly caused by failing to call a library init() function.
 
 
-
-
-
-
-|
 
 .. code-block:: Python
 
@@ -114,7 +103,7 @@ The two hemispheres must be run separately.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 13.622 seconds)
+   **Total running time of the script:** (0 minutes 13.340 seconds)
 
 
 .. _sphx_glr_download_auto_examples_surface_analyses_plot_geodesic_distance.py:
