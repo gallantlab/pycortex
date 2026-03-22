@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:  # Manual trigger for publishing docs
 
 jobs:
   build-docs:
@@ -24,7 +25,7 @@ jobs:
     - uses: actions/cache@v5
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py', '**/pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -38,16 +39,25 @@ jobs:
         pip install -U nibabel
         pip install -q ipython Sphinx sphinx-gallery numpydoc # TODO: move to pyproject.toml
         pip install -e . --no-build-isolation --group dev
-        playwright install --with-deps --only-shell chromium
         python -c 'import cortex; print(cortex.__full_version__)'
 
+    - name: Cache Playwright browsers
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/pyproject.toml') }}
+
+    - name: Install Playwright Chromium
+      run: playwright install --with-deps --only-shell chromium
+
     - name: Build documents
+      timeout-minutes: 20
       run: |
         cd docs && make html && cd ..
         touch docs/_build/html/.nojekyll
 
     - name: Publish to gh-pages if tagged
-      if: startsWith(github.ref, 'refs/tags')
+      if: startsWith(github.ref, 'refs/tags') || github.event_name == 'workflow_dispatch'
       uses: JamesIves/github-pages-deploy-action@v4.8.0
       with:
         branch: gh-pages

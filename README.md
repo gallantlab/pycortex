@@ -1,7 +1,9 @@
 pycortex
 ========
 [![Build Status](https://github.com/gallantlab/pycortex/actions/workflows/run_tests.yml/badge.svg)](https://github.com/gallantlab/pycortex/actions/workflows/run_tests.yml)
-[![Python version](https://img.shields.io/badge/python-3.6%2B-blue)](https://www.python.org/downloads/release/python)
+[![codecov](https://codecov.io/gh/gallantlab/pycortex/branch/main/graph/badge.svg)](https://codecov.io/gh/gallantlab/pycortex)
+[![PyPI](https://img.shields.io/pypi/v/pycortex)](https://pypi.org/project/pycortex/)
+[![Python version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/release/python)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 
