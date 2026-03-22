@@ -125,15 +125,11 @@ headless renderer as `cortex.export.save_3d_views`.
     wm
     inflated
     inflated
-    Started server on port 58954
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
+    Started server on port 39192
     {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
 
 
@@ -213,9 +209,8 @@ Save individual views to files
 
  .. code-block:: none
 
-    Started server on port 52408
+    Started server on port 6691
     {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.azimuth {} -> 0
     waiting for camera.altitude {} -> 90
@@ -226,7 +221,6 @@ Save individual views to files
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.azimuth {} -> 90
     waiting for camera.altitude {} -> 90
@@ -237,7 +231,6 @@ Save individual views to files
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.azimuth {} -> 270
     waiting for camera.altitude {} -> 90
@@ -248,7 +241,6 @@ Save individual views to files
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
     Stopping server
 
 
@@ -336,41 +328,10 @@ are added.
 
  .. code-block:: none
 
-    Started server on port 64724
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.altitude 0.1 -> 0
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
+    Started server on port 60082
     {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.altitude 179.9 -> 180
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    Stopping server
-    Started server on port 24722
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.altitude 0.1 -> 0
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    Stopping server
-    Started server on port 44728
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
-    waiting for camera.altitude {} -> 180
-    waiting for camera.target {} -> [0, -100, 0]
-    waiting for surface.S1.unfold {} -> 0.5
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.azimuth {} -> 0
     waiting for camera.altitude {} -> 90
@@ -381,7 +342,54 @@ are added.
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
+    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.azimuth {} -> 180
+    waiting for camera.altitude {} -> 0
+    waiting for camera.target {} -> [0, 0, 0]
+    waiting for surface.S1.unfold {} -> 1
+    waiting for surface.S1.pivot {} -> 180
+    waiting for surface.S1.shift {} -> 0
+    waiting for surface.S1.specularity {} -> 0
+    waiting for surface.S1.sampler {} -> nearest
+    waiting for surface.S1.layers {} -> 1
+    Stopping server
+    Started server on port 13581
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.azimuth {} -> 0
+    waiting for camera.altitude {} -> 90
+    waiting for camera.target {} -> [0, 0, 0]
+    waiting for surface.S1.unfold {} -> 0.5
+    waiting for surface.S1.pivot {} -> 180
+    waiting for surface.S1.shift {} -> 10
+    waiting for surface.S1.specularity {} -> 0
+    waiting for surface.S1.sampler {} -> nearest
+    waiting for surface.S1.layers {} -> 1
+    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.azimuth {} -> 180
+    waiting for camera.altitude {} -> 0
+    waiting for camera.target {} -> [0, 0, 0]
+    waiting for surface.S1.unfold {} -> 1
+    waiting for surface.S1.pivot {} -> 180
+    waiting for surface.S1.shift {} -> 0
+    waiting for surface.S1.specularity {} -> 0
+    waiting for surface.S1.sampler {} -> nearest
+    waiting for surface.S1.layers {} -> 1
+    Stopping server
+    Started server on port 23598
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.altitude 179.9 -> 180
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.azimuth {} -> 0
+    waiting for camera.altitude {} -> 90
+    waiting for camera.target {} -> [0, 0, 0]
+    waiting for surface.S1.unfold {} -> 0.5
+    waiting for surface.S1.pivot {} -> 180
+    waiting for surface.S1.shift {} -> 10
+    waiting for surface.S1.specularity {} -> 0
+    waiting for surface.S1.sampler {} -> nearest
+    waiting for surface.S1.layers {} -> 1
     {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.azimuth {} -> 180
     waiting for camera.altitude {} -> 0
@@ -392,37 +400,37 @@ are added.
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
     Stopping server
-    Started server on port 26749
+    Started server on port 21312
     {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.altitude 179.9 -> 180
-    [Errno 2] No such file or directory: 'convert'
     {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
+    Stopping server
+    Started server on port 31735
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.altitude 179.9 -> 180
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.azimuth {} -> 0
     waiting for camera.altitude {} -> 90
     waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 0.25
+    waiting for surface.S1.unfold {} -> 0.5
     waiting for surface.S1.pivot {} -> 180
     waiting for surface.S1.shift {} -> 10
     waiting for surface.S1.specularity {} -> 0
     waiting for surface.S1.sampler {} -> nearest
     waiting for surface.S1.layers {} -> 1
-    [Errno 2] No such file or directory: 'convert'
-    Stopping server
-    Started server on port 63236
     {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.altitude 0.1 -> 0
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.altitude 179.9 -> 180
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    [Errno 2] No such file or directory: 'convert'
+    waiting for camera.azimuth {} -> 180
+    waiting for camera.altitude {} -> 0
+    waiting for camera.target {} -> [0, 0, 0]
+    waiting for surface.S1.unfold {} -> 1
+    waiting for surface.S1.pivot {} -> 180
+    waiting for surface.S1.shift {} -> 0
+    waiting for surface.S1.specularity {} -> 0
+    waiting for surface.S1.sampler {} -> nearest
+    waiting for surface.S1.layers {} -> 1
     Stopping server
 
 
@@ -431,7 +439,7 @@ are added.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (6 minutes 9.726 seconds)
+   **Total running time of the script:** (6 minutes 33.686 seconds)
 
 
 .. _sphx_glr_download_auto_examples_webgl_plot_panels_headless.py:
