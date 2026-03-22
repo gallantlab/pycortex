@@ -190,20 +190,18 @@ def save_3d_views(
                 )
             time.sleep(1)
 
-            # Trim white edges
+            # Trim transparent edges
             if trim:
                 try:
-                    import subprocess
+                    from PIL import Image
 
-                    retcode = subprocess.call(
-                        ["convert", "-trim", file_name, file_name]
-                    )
-                    if retcode != 0:
-                        print(
-                            f"ImageMagick convert returned non-zero exit code {retcode} when trimming {file_name}."
-                        )
+                    img = Image.open(file_name)
+                    bbox = img.getbbox()
+                    if bbox:
+                        img = img.crop(bbox)
+                        img.save(file_name)
                 except Exception as e:
-                    print(str(e))
+                    print(f"Could not trim {file_name}: {e}")
 
         # For non-headless mode, close the viewer handle explicitly
         # (the headless context manager handles its own teardown)
