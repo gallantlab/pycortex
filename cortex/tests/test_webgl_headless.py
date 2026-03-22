@@ -61,10 +61,10 @@ def make_dataview(dtype_name):
         raise ValueError(f"Unknown dtype_name: {dtype_name}")
 
 
-def _wait_for_file(path, timeout=20):
-    """Poll until file exists, raise after timeout."""
+def _wait_for_file(path, timeout=30):
+    """Poll until file exists and has nonzero size, raise after timeout."""
     for _ in range(int(timeout / 0.1)):
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.getsize(path) > 0:
             return
         time.sleep(0.1)
     raise RuntimeError(f"File {path!r} not written within {timeout}s")
