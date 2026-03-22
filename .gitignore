@@ -66,3 +66,6 @@ docs/colormaps.rst
 
 # Python virtual environment
 .venv
+
+# Git worktrees
+.worktrees
