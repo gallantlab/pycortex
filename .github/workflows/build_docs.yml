@@ -43,6 +43,7 @@ jobs:
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Build documents
+      timeout-minutes: 20
       run: |
         cd docs && make html && cd ..
         touch docs/_build/html/.nojekyll
