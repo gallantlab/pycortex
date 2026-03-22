@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import colorsys
-from typing import Optional, TypeVar, Union, cast
+from typing import Literal, Optional, TypeVar, Union, cast
 import warnings
 
 import numpy as np
@@ -162,19 +162,19 @@ class DataviewRGB(Dataview):
 
     @staticmethod
     def color_voxels(
-        channel1,
-        channel2,
-        channel3,
-        channel1color,
-        channel2color,
-        channel3Color,
-        value_max,
-        saturation_max,
-        vmin,
-        vmax,
-        autorange,
-        alpha=None,
-    ):
+        channel1: Union[npt.NDArray, VolumeData, VertexData],
+        channel2: Union[npt.NDArray, VolumeData, VertexData],
+        channel3: Union[npt.NDArray, VolumeData, VertexData],
+        channel1color: Color[int],
+        channel2color: Color[int],
+        channel3Color: Color[int],
+        value_max: Optional[float],
+        saturation_max: float,
+        vmin: Optional[Union[float, tuple[float, float, float]]],
+        vmax: Optional[Union[float, tuple[float, float, float]]],
+        autorange: Literal['shared', 'individual'] = 'individual',
+        alpha: Optional[Union[npt.NDArray, VolumeData, VertexData]] = None,
+    ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
         """
         Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
         Parameters
@@ -447,7 +447,7 @@ class VolumeRGB(DataviewRGB):
         max_color_saturation: float = 1.0,
         vmin: Optional[Union[float, tuple]] = None,
         vmax: Optional[Union[float, tuple]] = None,
-        autorange: str = "individual",
+        autorange: Literal['shared', 'individual'] = "individual",
         priority: int = 1,
     ):
         channel1color = tuple(channel1color)
@@ -738,15 +738,15 @@ class VertexRGB(DataviewRGB):
         alpha: Optional[Union[npt.NDArray, Vertex]] = None,
         description: str = "",
         state=None,
-        channel1color=Colors.Red,
-        channel2color=Colors.Green,
-        channel3color=Colors.Blue,
-        max_color_value=None,
-        max_color_saturation=1.0,
-        vmin=None,
-        vmax=None,
-        autorange="individual",
-        priority=1,
+        channel1color: Color[int] = Colors.Red,
+        channel2color: Color[int] = Colors.Green,
+        channel3color: Color[int] = Colors.Blue,
+        max_color_value: Optional[float] = None,
+        max_color_saturation: float = 1.0,
+        vmin: Optional[Union[float, tuple[float, float, float]]] = None,
+        vmax: Optional[Union[float, tuple[float, float, float]]] = None,
+        autorange: Literal['shared', 'individual'] = "individual",
+        priority: int = 1,
     ):
         channel1color = tuple(channel1color)
         channel2color = tuple(channel2color)
