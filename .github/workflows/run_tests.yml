@@ -42,7 +42,7 @@ jobs:
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Test with pytest
-      timeout-minutes: 10  # in case webviewer tests hang
+      timeout-minutes: 20  # in case webviewer tests hang
       run: |
         pip install -e . --no-build-isolation --group dev
         playwright install --with-deps --only-shell chromium
