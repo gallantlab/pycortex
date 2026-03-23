@@ -32,7 +32,7 @@ def _make_parcellation(subject=SUBJECT):
     n_verts = cortex.db.get_surf(subject, "fiducial", merge=True)[0].shape[0]
     parcellation = np.zeros(n_verts, dtype=float)
     for i, (name, verts) in enumerate(roi_verts.items(), start=1):
-        parcellation[verts] = float(i)
+        parcellation[np.asarray(verts, dtype=int)] = float(i)
     return parcellation
 
 

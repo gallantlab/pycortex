@@ -1,5 +1,5 @@
-"""Contain utility functions
-"""
+"""Contain utility functions"""
+
 import binascii
 import copy
 from importlib import import_module
@@ -12,7 +12,19 @@ import tempfile
 import urllib.request
 import warnings
 
-from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Optional,
+    TypeVar,
+    TYPE_CHECKING,
+    Union,
+    cast,
+    overload,
+    Literal,
+)
+
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
 else:
@@ -33,33 +45,44 @@ from .volume import anat2epispace
 # register_cmap is deprecated in matplotlib > 3.7.0 and replaced by colormaps.register
 try:
     from matplotlib import colormaps as cm
+
     def register_cmap(cmap):
         return cm.register(cmap)
 except ImportError:
     from matplotlib.cm import register_cmap
 
-P = ParamSpec('P')
-T = TypeVar('T')
+P = ParamSpec("P")
+T = TypeVar("T")
+
 
 class DocLoader(Generic[P, T]):
-    def __init__(self, func, mod, package, actual_func: Optional[Callable[P, T]] = None):
-        self._load: Callable[[], Callable[P, T]] = lambda: getattr(import_module(mod, package), func)
-        self._actual_func = actual_func # stored only to resolve generic types during type checking
+    def __init__(
+        self, func, mod, package, actual_func: Optional[Callable[P, T]] = None
+    ):
+        self._load: Callable[[], Callable[P, T]] = lambda: getattr(
+            import_module(mod, package), func
+        )
+        self._actual_func = (
+            actual_func  # stored only to resolve generic types during type checking
+        )
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
         return self._load()(*args, **kwargs)
 
     @overload
-    def __getattribute__(self, name: Literal['_load']) -> Callable[P, T]: ...
+    def __getattribute__(self, name: Literal["_load"]) -> Callable[P, T]: ...
 
     @overload
     def __getattribute__(self, name: str) -> Any: ...
 
-    def __getattribute__(self, name: Union[Literal['_load'], str]) -> Union[Any, Callable[P, T]]:
+    def __getattribute__(
+        self, name: Union[Literal["_load"], str]
+    ) -> Union[Any, Callable[P, T]]:
         if name != "_load":
             return getattr(self._load(), name)
         else:
             return cast(Callable[P, T], object.__getattribute__(self, name))
+
 
 if TYPE_CHECKING:
     from cortex.mapper import get_mapper as _get_mapper
@@ -67,13 +90,22 @@ else:
     _get_mapper = None
 get_mapper = DocLoader("get_mapper", ".mapper", "cortex", actual_func=_get_mapper)
 
+
 def get_roipack(*args, **kwargs):
-    warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
+    warnings.warn("Please use db.get_overlay instead", DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
-def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=False,
-                decimate=False, external_svg=None,
-                overlays_available=None):
+
+def get_ctmpack(
+    subject,
+    types=("inflated",),
+    method="raw",
+    level=0,
+    recache=False,
+    decimate=False,
+    external_svg=None,
+    overlays_available=None,
+):
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which
@@ -108,12 +140,10 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     -------
     ctmfile :
     """
-    lvlstr = ("%dd" if decimate else "%d")%level
+    lvlstr = ("%dd" if decimate else "%d") % level
     # Generates different cache files for each combination of disp_layers
-    ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
-    ctmcache = ctmcache.format(types=','.join(types),
-                               method=method,
-                               level=lvlstr)
+    ctmcache = "%s_[{types}]_{method}_{level}_v3.json" % subject
+    ctmcache = ctmcache.format(types=",".join(types), method=method, level=lvlstr)
     ctmfile = os.path.join(db.get_cache(subject), ctmcache)
 
     if os.path.exists(ctmfile) and not recache:
@@ -121,20 +151,23 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
 
     print("Generating new ctm file...")
     from . import brainctm
-    ptmap = brainctm.make_pack(ctmfile,
-                               subject,
-                               types=types,
-                               method=method,
-                               level=level,
-                               decimate=decimate,
-                               external_svg=external_svg,
-                               overlays_available=overlays_available)
+
+    ptmap = brainctm.make_pack(
+        ctmfile,
+        subject,
+        types=types,
+        method=method,
+        level=level,
+        decimate=decimate,
+        external_svg=external_svg,
+        overlays_available=overlays_available,
+    )
     return ctmfile
 
 
 def get_ctmmap(subject, **kwargs):
     """Return a mapping from the vertices in the CTM surface to the vertices
-    in the freesurfer surface. 
+    in the freesurfer surface.
     The mapping is a numpy array, such that `ctm2fs_left[i] = j` means that the
     i-th vertex in the CTM surface corresponds to the j-th vertex in the freesurfer
     surface.
@@ -162,8 +195,9 @@ def get_ctmmap(subject, **kwargs):
     from scipy.spatial import cKDTree
 
     from . import brainctm
+
     jsfile = get_ctmpack(subject, **kwargs)
-    ctmfile = os.path.splitext(jsfile)[0]+".ctm"
+    ctmfile = os.path.splitext(jsfile)[0] + ".ctm"
 
     # Load freesurfer surfaces
     try:
@@ -209,6 +243,7 @@ def get_ctm2webgl_map(subject, **kwargs):
     maximum length of 65535.
     """
     from . import brainctm
+
     # Load CTM surfaces
     jsonfile = get_ctmpack(subject, **kwargs)
     ctmfile = os.path.splitext(jsonfile)[0] + ".ctm"
@@ -290,7 +325,7 @@ def get_fs2webgl_map(subject, **kwargs):
     return fs2webgl_left, fs2webgl_right
 
 
-def get_cortical_mask(subject, xfmname, type='nearest'):
+def get_cortical_mask(subject, xfmname, type="nearest"):
     """Gets the cortical mask for a particular transform
 
     Parameters
@@ -301,12 +336,12 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
         Transform name
     type : str
         Mask type, one of {"cortical", "thin", "thick", "nearest", "line_nearest"}.
-          - 'cortical' includes voxels contained within the cortical ribbon, 
-          between the freesurfer-estimated white matter and pial surfaces. 
-          - 'thin' includes voxels that are < 2mm away from the fiducial surface. 
+          - 'cortical' includes voxels contained within the cortical ribbon,
+          between the freesurfer-estimated white matter and pial surfaces.
+          - 'thin' includes voxels that are < 2mm away from the fiducial surface.
           - 'thick' includes voxels that are < 8mm away from the fiducial surface.
           - 'nearest' includes only the voxels overlapping the fiducial surface.
-          - 'line_nearest' includes all voxels that have any part within the cortical 
+          - 'line_nearest' includes all voxels that have any part within the cortical
             ribbon.
 
     Returns
@@ -316,13 +351,13 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
 
     Notes
     -----
-    "nearest" is a conservative "cortical" mask, while "line_nearest" is a liberal 
+    "nearest" is a conservative "cortical" mask, while "line_nearest" is a liberal
     "cortical" mask.
     """
-    if type == 'cortical':
+    if type == "cortical":
         ppts, polys = db.get_surf(subject, "pia", merge=True, nudge=False)
         wpts, polys = db.get_surf(subject, "wm", merge=True, nudge=False)
-        thickness = np.sqrt(((ppts - wpts)**2).sum(1))
+        thickness = np.sqrt(((ppts - wpts) ** 2).sum(1))
 
         dist, idx = get_vox_dist(subject, xfmname)
         cortex = np.zeros(dist.shape, dtype=bool)
@@ -331,9 +366,9 @@ def get_cortical_mask(subject, xfmname, type='nearest'):
             mask = idx == vert
             cortex[mask] = dist[mask] <= thickness[vert]
             if i % 100 == 0:
-                print("%0.3f%%"%(i/float(len(verts)) * 100))
+                print("%0.3f%%" % (i / float(len(verts)) * 100))
         return cortex
-    elif type in ('thick', 'thin'):
+    elif type in ("thick", "thin"):
         dist, idx = get_vox_dist(subject, xfmname)
         return dist < dict(thick=8, thin=2)[type]
     else:
@@ -379,8 +414,8 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
     return dist.T, argdist.T
 
 
-def get_hemi_masks(subject, xfmname, type='nearest'):
-    '''Returns a binary mask of the left and right hemisphere
+def get_hemi_masks(subject, xfmname, type="nearest"):
+    """Returns a binary mask of the left and right hemisphere
     surface voxels for the given subject.
 
     Parameters
@@ -394,11 +429,13 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
     Returns
     -------
 
-    '''
+    """
     return get_mapper(subject, xfmname, type=type).hemimasks
 
-def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
-            overlay_file=None, **kwargs):
+
+def add_roi(
+    data, name="new_roi", open_inkscape=True, add_path=True, overlay_file=None, **kwargs
+):
     """Add new flatmap image to the ROI file for a subject.
 
     (The subject is specified in creation of the data object)
@@ -440,14 +477,16 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
     svg = db.get_overlay(dv.subject, overlay_file=overlay_file)
     fp = io.BytesIO()
 
-    quickflat.make_png(fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs)
+    quickflat.make_png(
+        fp, dv, height=1024, with_rois=False, with_labels=False, **kwargs
+    )
     fp.seek(0)
-    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode('utf-8'), add_path)
+    svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode("utf-8"), add_path)
 
     if open_inkscape:
-        inkscape_cmd = config.get('dependency_paths', 'inkscape')
-        if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
-            cmd = [inkscape_cmd, '-f', svg.svgfile]
+        inkscape_cmd = config.get("dependency_paths", "inkscape")
+        if LooseVersion(INKSCAPE_VERSION) < LooseVersion("1.0"):
+            cmd = [inkscape_cmd, "-f", svg.svgfile]
         else:
             cmd = [inkscape_cmd, svg.svgfile]
         return sp.call(cmd)
@@ -461,6 +500,41 @@ def _get_neighbors_dict(polys):
             neighbors_dict.setdefault(poly[i], set()).add(poly[j])
             neighbors_dict.setdefault(poly[j], set()).add(poly[i])
     return neighbors_dict
+
+
+def get_contour_vertices(data, subject, surface="fiducial"):
+    """Find vertices at borders of parcellation labels.
+
+    A vertex is a border vertex if any of its mesh neighbors has a different
+    label value. This is useful for drawing contour lines around parcellation
+    regions on the cortical surface.
+
+    Parameters
+    ----------
+    data : array_like, shape (n_vertices,)
+        Label values per vertex (e.g., parcellation integers).
+    subject : str
+        Subject name in the pycortex database.
+    surface : str
+        Surface type for adjacency computation (default: 'fiducial').
+
+    Returns
+    -------
+    border_mask : ndarray, shape (n_vertices,), dtype bool
+        True at border vertices, False elsewhere.
+    """
+    _, polys = db.get_surf(subject, surface, merge=True)
+    neighbors = _get_neighbors_dict(polys)
+    data = np.asarray(data)
+    border = np.zeros(len(data), dtype=bool)
+    for v, neighs in neighbors.items():
+        if v >= len(data):
+            continue
+        for n in neighs:
+            if n < len(data) and data[v] != data[n]:
+                border[v] = True
+                break
+    return border
 
 
 def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
@@ -509,8 +583,8 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
 
     for name in roi:
         roi_idx = np.intersect1d(svg.rois.get_mask(name), goodpts)
-        # Now we want to include also the vertices that were removed from the flat 
-        # surface that is, for every vertex in roi_idx we want to add the pts that are 
+        # Now we want to include also the vertices that were removed from the flat
+        # surface that is, for every vertex in roi_idx we want to add the pts that are
         # not in goodpts but that are in pts_full
         # to do that, we need to find the neighboring indices from polys_full
         extra_idx = set()
@@ -568,7 +642,7 @@ def get_roi_surf(subject, surf_type, roi, overlay_file=None):
     return pts[vert_idx], np.array(reindexed_polys)
 
 
-def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
+def get_roi_mask(subject, xfmname, roi=None, projection="nearest"):
     """Return a mask for the given ROI(s)
 
     Deprecated - use get_roi_masks()
@@ -588,15 +662,15 @@ def get_roi_mask(subject, xfmname, roi=None, projection='nearest'):
     output : dict
         Dict of ROIs and their masks
     """
-    warnings.warn('Deprecated! Use get_roi_masks')
+    warnings.warn("Deprecated! Use get_roi_masks")
 
     mapper = get_mapper(subject, xfmname, type=projection)
     rois = get_roi_verts(subject, roi=roi, mask=True)
     output = dict()
     for name, verts in list(rois.items()):
         # This is broken; unclear when/if backward mappers ever worked this way.
-        #left, right = mapper.backwards(vert_mask)
-        #output[name] = left + right
+        # left, right = mapper.backwards(vert_mask)
+        # output[name] = left + right
         output[name] = mapper.backwards(verts.astype(float))
         # Threshold?
     return output
@@ -644,6 +718,7 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
 
     """
     from .freesurfer import fs_aseg_dict
+
     aseg = db.get_anat(subject, type="aseg").get_fdata().T
 
     if not isinstance(aseg_name, (list, tuple)):
@@ -652,24 +727,36 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
     mask = np.zeros(aseg.shape)
     for name in aseg_name:
         if name in fs_aseg_dict:
-            tmp = aseg==fs_aseg_dict[name]
+            tmp = aseg == fs_aseg_dict[name]
         else:
             # Combine all masks containing `name` (e.g. all masks with 'cerebellum' in the name)
             keys = [k for k in fs_aseg_dict.keys() if name.lower() in k.lower()]
             if len(keys) == 0:
-                raise ValueError('Unknown aseg_name!')
-            tmp = np.any(np.array([aseg==fs_aseg_dict[k] for k in keys]), axis=0)
+                raise ValueError("Unknown aseg_name!")
+            tmp = np.any(np.array([aseg == fs_aseg_dict[k] for k in keys]), axis=0)
         mask = np.logical_or(mask, tmp)
     if xfmname is not None:
-        mask = anat2epispace(mask.astype(float), subject, xfmname, order=order, **kwargs)
+        mask = anat2epispace(
+            mask.astype(float), subject, xfmname, order=order, **kwargs
+        )
     if threshold is not None:
         mask = mask > threshold
     return mask
 
 
-def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_lr=False,
-                  allow_overlap=False, fail_for_missing_rois=True, exclude_empty_rois=False,
-                  threshold=None, return_dict=True, overlay_file=None):
+def get_roi_masks(
+    subject,
+    xfmname,
+    roi_list=None,
+    gm_sampler="cortical",
+    split_lr=False,
+    allow_overlap=False,
+    fail_for_missing_rois=True,
+    exclude_empty_rois=False,
+    threshold=None,
+    return_dict=True,
+    overlay_file=None,
+):
     """Return a dictionary of roi masks
 
     This function returns a single 3D array with a separate numerical index for each ROI,
@@ -748,13 +835,17 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     'thin' as your `gm_sampler`.
     """
     # Convert mapper names to pycortex sampler types
-    mapper_dict = {'cortical-conservative':'nearest',
-                   'cortical-liberal':'line_nearest'}
+    mapper_dict = {
+        "cortical-conservative": "nearest",
+        "cortical-liberal": "line_nearest",
+    }
     # Method
     use_mapper = gm_sampler in mapper_dict
-    use_cortex_mask = (gm_sampler in ('cortical', 'thick', 'thin')) or not isinstance(gm_sampler, str)
+    use_cortex_mask = (gm_sampler in ("cortical", "thick", "thin")) or not isinstance(
+        gm_sampler, str
+    )
     if not (use_mapper or use_cortex_mask):
-        raise ValueError('Unknown gray matter sampler (gm_sampler)!')
+        raise ValueError("Unknown gray matter sampler (gm_sampler)!")
     # Initialize
     roi_voxels = {}
     pct_coverage = {}
@@ -773,18 +864,28 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         roi_verts = get_roi_verts(subject, mask=use_mapper, overlay_file=overlay_file)
         roi_list = list(roi_verts.keys())
     else:
-        tmp_list = [r for r in roi_list if not r=='Cortex']
+        tmp_list = [r for r in roi_list if not r == "Cortex"]
         try:
-            roi_verts = get_roi_verts(subject, roi=tmp_list, mask=use_mapper, overlay_file=overlay_file)
+            roi_verts = get_roi_verts(
+                subject, roi=tmp_list, mask=use_mapper, overlay_file=overlay_file
+            )
         except KeyError as key:
             if fail_for_missing_rois:
-                raise KeyError("Requested ROI {} not found in overlays.svg!".format(key))
+                raise KeyError(
+                    "Requested ROI {} not found in overlays.svg!".format(key)
+                )
             else:
-                roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper, overlay_file=overlay_file)
-                missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
-                roi_verts = dict((roi, verts) for roi, verts in roi_verts.items() if roi in roi_list)
-                roi_list = list(set(roi_list)-set(missing))
-                print('Requested ROI(s) {} not found in overlays.svg!'.format(missing))
+                roi_verts = get_roi_verts(
+                    subject, roi=None, mask=use_mapper, overlay_file=overlay_file
+                )
+                missing = [
+                    r for r in roi_list if not r in roi_verts.keys() + ["Cortex"]
+                ]
+                roi_verts = dict(
+                    (roi, verts) for roi, verts in roi_verts.items() if roi in roi_list
+                )
+                roi_list = list(set(roi_list) - set(missing))
+                print("Requested ROI(s) {} not found in overlays.svg!".format(missing))
     # Get (a) indices for nearest vertex to each voxel
     # and (b) distance from each voxel to nearest vertex in fiducial surface
     if (use_cortex_mask or split_lr) or (not return_dict):
@@ -799,7 +900,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
     # Loop over ROIs to map vertices to volume, using mapper or cortex mask + vertex indices
     for roi in roi_list:
         if roi not in roi_verts:
-            if not roi=='Cortex':
+            if not roi == "Cortex":
                 print("ROI {} not found...".format(roi))
             continue
         if use_mapper:
@@ -808,10 +909,14 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             if threshold is not None:
                 roi_voxels[roi] = roi_voxels[roi] > threshold
             # Check for partial / empty rois:
-            vert_in_scan = np.hstack([np.array((m>0).sum(1)).flatten() for m in mapper.masks])
+            vert_in_scan = np.hstack(
+                [np.array((m > 0).sum(1)).flatten() for m in mapper.masks]
+            )
             vert_in_scan = vert_in_scan[roi_verts[roi]]
         elif use_cortex_mask:
-            vox_in_roi = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(vox_idx.shape)
+            vox_in_roi = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(
+                vox_idx.shape
+            )
             roi_voxels[roi] = vox_in_roi & cortex_mask
             # This is not accurate... because vox_idx only contains the indices of the *nearest*
             # vertex to each voxel, it excludes many vertices. I can't think of a way to compute
@@ -820,58 +925,69 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
         # Compute ROI coverage
         pct_coverage[roi] = vert_in_scan.mean() * 100
         if use_mapper:
-            print("Found %0.2f%% of %s"%(pct_coverage[roi], roi))
+            print("Found %0.2f%% of %s" % (pct_coverage[roi], roi))
 
     # Create cortex mask
     all_mask = np.array(list(roi_voxels.values())).sum(0)
-    if 'Cortex' in roi_list:
+    if "Cortex" in roi_list:
         if use_mapper:
             # cortex_mask isn't defined / exactly definable if you're using a mapper
-            print("Cortex roi not included b/c currently not compatible with your selection for gm_sampler")
-            _ = roi_list.pop(roi_list.index('Cortex'))
+            print(
+                "Cortex roi not included b/c currently not compatible with your selection for gm_sampler"
+            )
+            _ = roi_list.pop(roi_list.index("Cortex"))
         else:
-            roi_voxels['Cortex'] = (all_mask==0) & cortex_mask
+            roi_voxels["Cortex"] = (all_mask == 0) & cortex_mask
     # Optionally cull voxels assigned to > 1 ROI due to partly overlapping ROI splines
     # in inkscape overlays.svg file:
     if not allow_overlap:
-        print('Cutting {} overlapping voxels (should be < ~50)'.format(np.sum(all_mask > 1)))
+        print(
+            "Cutting {} overlapping voxels (should be < ~50)".format(
+                np.sum(all_mask > 1)
+            )
+        )
         for roi in roi_list:
             roi_voxels[roi][all_mask > 1] = False
     # Split left / right hemispheres if desired
     if split_lr:
         # Use the fiducial surface because we need to have all vertices
-        left_verts, _ = db.get_surf(subject, "fiducial", merge=False, nudge=True)  
+        left_verts, _ = db.get_surf(subject, "fiducial", merge=False, nudge=True)
         left_mask = vox_idx < len(np.unique(left_verts[1]))
         right_mask = np.logical_not(left_mask)
         roi_voxels_lr = {}
         for roi in roi_list:
             # roi_voxels may contain float values if using a mapper, therefore we need
             # to manually set the voxels in the other hemisphere to False. Then we let
-            # numpy do the conversion False -> 0. 
-            roi_voxels_lr[roi + '_L'] = copy.copy(roi_voxels[roi])
-            roi_voxels_lr[roi + '_L'][right_mask] = False
-            roi_voxels_lr[roi + '_R'] = copy.copy(roi_voxels[roi])
-            roi_voxels_lr[roi + '_R'][left_mask] = False
+            # numpy do the conversion False -> 0.
+            roi_voxels_lr[roi + "_L"] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + "_L"][right_mask] = False
+            roi_voxels_lr[roi + "_R"] = copy.copy(roi_voxels[roi])
+            roi_voxels_lr[roi + "_R"][left_mask] = False
         output = roi_voxels_lr
     else:
         output = roi_voxels
 
     # Check percent coverage / optionally cull empty ROIs
-    for roi in set(roi_list)-set(['Cortex']):
+    for roi in set(roi_list) - set(["Cortex"]):
         if pct_coverage[roi] < 100:
             # if not np.any(mask) : reject ROI
-            if pct_coverage[roi]==0:
-                warnings.warn('ROI %s is entirely missing from your scan protocol!'%(roi))
+            if pct_coverage[roi] == 0:
+                warnings.warn(
+                    "ROI %s is entirely missing from your scan protocol!" % (roi)
+                )
                 if exclude_empty_rois:
                     if split_lr:
-                        _ = output.pop(roi+'_L')
-                        _ = output.pop(roi+'_R')
+                        _ = output.pop(roi + "_L")
+                        _ = output.pop(roi + "_R")
                     else:
                         _ = output.pop(roi)
             else:
                 # I think this is the only one for which this works correctly...
-                if gm_sampler=='cortical-conservative':
-                    warnings.warn('ROI %s is only %0.2f%% contained in your scan protocol!'%(roi, pct_coverage[roi]))
+                if gm_sampler == "cortical-conservative":
+                    warnings.warn(
+                        "ROI %s is only %0.2f%% contained in your scan protocol!"
+                        % (roi, pct_coverage[roi])
+                    )
 
     # Support alternative outputs for backward compatibility
     if return_dict:
@@ -884,6 +1000,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             idx_labels[roi] = iroi
         idx_vol[left_mask] *= -1
         return idx_vol, idx_labels
+
 
 def get_dropout(subject: str, xfmname: str, power: float = 20):
     """Create a dropout Volume showing where EPI signal
@@ -909,12 +1026,14 @@ def get_dropout(subject: str, xfmname: str, power: float = 20):
     if rawdata.ndim > 3:
         rawdata = rawdata.mean(0)
 
-    rawdata[rawdata==0] = np.mean(rawdata[rawdata!=0])
+    rawdata[rawdata == 0] = np.mean(rawdata[rawdata != 0])
     normdata = (rawdata - rawdata.min()) / (rawdata.max() - rawdata.min())
     normdata = (1 - normdata) ** power
 
     from .dataset import Volume
+
     return Volume(normdata, subject, xfmname)
+
 
 def make_movie(stim, outfile, fps=15, size="640x480"):
     """Makes an .ogv movie
@@ -939,9 +1058,11 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     """
     import shlex
     import subprocess as sp
+
     cmd = "ffmpeg -r {fps} -i {infile} -b 4800k -g 30 -s {size} -vcodec libtheora {outfile}.ogv"
     fcmd = cmd.format(infile=stim, size=size, fps=fps, outfile=outfile)
     sp.call(shlex.split(fcmd))
+
 
 def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
     """
@@ -975,28 +1096,30 @@ def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
 
 
 def _set_edge_distance_graph_attribute(graph, pts, polys):
-    '''
+    """
     adds the attribute 'edge distance' to a graph
-    '''
+    """
     import networkx as nx
 
     l2_distance = lambda v1, v2: np.linalg.norm(pts[v1] - pts[v2])
-    heuristic = l2_distance # A* heuristic
+    heuristic = l2_distance  # A* heuristic
 
-    if not nx.get_edge_attributes(graph, 'distance'): # Add edge distances as an attribute to this graph if it isn't there
+    if not nx.get_edge_attributes(
+        graph, "distance"
+    ):  # Add edge distances as an attribute to this graph if it isn't there
         edge_distances = dict()
-        for x,y,z in polys:
-            edge_distances[(x,y)] = heuristic(x,y)
-            edge_distances[(y,x)] = heuristic(y,x)
-            edge_distances[(y,z)] = heuristic(y,z)
-            edge_distances[(z,y)] = heuristic(z,y)
-            edge_distances[(x,z)] = heuristic(x,z)
-            edge_distances[(z,x)] = heuristic(z,x)
-        nx.set_edge_attributes(graph, edge_distances, name='distance')
+        for x, y, z in polys:
+            edge_distances[(x, y)] = heuristic(x, y)
+            edge_distances[(y, x)] = heuristic(y, x)
+            edge_distances[(y, z)] = heuristic(y, z)
+            edge_distances[(z, y)] = heuristic(z, y)
+            edge_distances[(x, z)] = heuristic(x, z)
+            edge_distances[(z, x)] = heuristic(z, x)
+        nx.set_edge_attributes(graph, edge_distances, name="distance")
 
 
 def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True):
-    '''Return voxels that are shared by multiple vertices, and for each such voxel,
+    """Return voxels that are shared by multiple vertices, and for each such voxel,
        also returns the mutually farthest pair of vertices mapping to the voxel
     Parameters
     ----------
@@ -1017,18 +1140,21 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
     vox_vert_array: np.array,
     array of dimensions # voxels X 3, columns being: (vox_idx, farthest_pair[0],
     farthest_pair[1])
-    '''
+    """
 
     import networkx as nx
     from scipy.sparse import find as sparse_find
-    Lmask, Rmask = get_mapper(subject, xfmname).masks  # Get masks for left and right hemisphere
-    if hemi == 'both':
-        hemispheres = ['lh', 'rh']
+
+    Lmask, Rmask = get_mapper(
+        subject, xfmname
+    ).masks  # Get masks for left and right hemisphere
+    if hemi == "both":
+        hemispheres = ["lh", "rh"]
     else:
         hemispheres = [hemi]
     out = []
     for hem in hemispheres:
-        if hem == 'lh':
+        if hem == "lh":
             mask = Lmask
         else:
             mask = Rmask
@@ -1036,8 +1162,10 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
         all_voxels = mask.tolil().transpose().rows  # Map from voxels to verts
         vert_to_vox_map = dict(zip(*(sparse_find(mask)[:2])))  # From verts to vox
 
-        pts_fid, polys_fid = db.get_surf(subject, 'fiducial', hem)  # Get the fiducial surface
-        surf = Surface(pts_fid, polys_fid) #Get the fiducial surface
+        pts_fid, polys_fid = db.get_surf(
+            subject, "fiducial", hem
+        )  # Get the fiducial surface
+        surf = Surface(pts_fid, polys_fid)  # Get the fiducial surface
         graph = surf.graph
 
         _set_edge_distance_graph_attribute(graph, pts_fid, polys_fid)
@@ -1046,32 +1174,44 @@ def get_shared_voxels(subject, xfmname, hemi="both", merge=True, use_astar=True)
         heuristic = l2_distance  # A* heuristic
 
         if use_astar:
-            shortest_path = lambda a, b: nx.astar_path(graph, a, b, heuristic=heuristic, weight='distance') # Find approximate shortest paths using A* search
+            shortest_path = lambda a, b: nx.astar_path(
+                graph, a, b, heuristic=heuristic, weight="distance"
+            )  # Find approximate shortest paths using A* search
         else:
-            shortest_path = surf.geodesic_path  # Find shortest paths using geodesic distances
+            shortest_path = (
+                surf.geodesic_path
+            )  # Find shortest paths using geodesic distances
 
         vox_vert_list = []
         for vox_idx, vox in enumerate(all_voxels):
             if len(vox) > 1:  # If the voxel maps to multiple vertices
                 vox = np.array(vox).astype(int)
-                for v1 in range(vox.size-1):
+                for v1 in range(vox.size - 1):
                     vert1 = vox[v1]
                     if vert1 in vert_to_vox_map:  # If the vertex is a valid vertex
-                        for v2 in range(v1+1, vox.size):
+                        for v2 in range(v1 + 1, vox.size):
                             vert2 = vox[v2]
-                            if vert2 in vert_to_vox_map:  # If the vertex is a valid vertex
+                            if (
+                                vert2 in vert_to_vox_map
+                            ):  # If the vertex is a valid vertex
                                 path = shortest_path(vert1, vert2)
                                 # Test whether any vertex in path goes out of the voxel
-                                stays_in_voxel = all([(v in vert_to_vox_map) and (vert_to_vox_map[v] == vox_idx) for v in path])
+                                stays_in_voxel = all(
+                                    [
+                                        (v in vert_to_vox_map)
+                                        and (vert_to_vox_map[v] == vox_idx)
+                                        for v in path
+                                    ]
+                                )
                                 if not stays_in_voxel:
                                     vox_vert_list.append([vox_idx, vert1, vert2])
 
-        tmp =  np.array(vox_vert_list)
+        tmp = np.array(vox_vert_list)
         # Add offset for right hem voxels
-        if hem=='rh':
+        if hem == "rh":
             tmp[:, 1:3] += Lmask.shape[0]
         out.append(tmp)
-    if hemi in ('lh', 'rh'):
+    if hemi in ("lh", "rh"):
         return out[0]
     else:
         if merge:
@@ -1096,13 +1236,18 @@ def load_sparse_array(fname, varname):
     conventions, so cannot be used to load arbitrary sparse arrays.
     """
     import scipy.sparse
+
     with h5py.File(fname) as hf:
-        data = (hf['%s_data'%varname], hf['%s_indices'%varname], hf['%s_indptr'%varname])
-        sparsemat = scipy.sparse.csr_matrix(data, shape=hf['%s_shape'%varname])
+        data = (
+            hf["%s_data" % varname],
+            hf["%s_indices" % varname],
+            hf["%s_indptr" % varname],
+        )
+        sparsemat = scipy.sparse.csr_matrix(data, shape=hf["%s_shape" % varname])
     return sparsemat
 
 
-def save_sparse_array(fname, data, varname, mode='a'):
+def save_sparse_array(fname, data, varname, mode="a"):
     """Save a numpy sparse array to an hdf file
 
     Results in relatively smaller file size than numpy.savez
@@ -1119,19 +1264,20 @@ def save_sparse_array(fname, data, varname, mode='a'):
         write / append mode set, one of ['w','a'] (passed to h5py.File())
     """
     import scipy.sparse
+
     if not isinstance(data, scipy.sparse.csr.csr_matrix):
         data_ = scipy.sparse.csr_matrix(data)
     else:
         data_ = data
     with h5py.File(fname, mode=mode) as hf:
         # Save indices
-        hf.create_dataset(varname + '_indices', data=data_.indices, compression='gzip')
+        hf.create_dataset(varname + "_indices", data=data_.indices, compression="gzip")
         # Save data
-        hf.create_dataset(varname + '_data', data=data_.data, compression='gzip')
+        hf.create_dataset(varname + "_data", data=data_.data, compression="gzip")
         # Save indptr
-        hf.create_dataset(varname + '_indptr', data=data_.indptr, compression='gzip')
+        hf.create_dataset(varname + "_indptr", data=data_.indptr, compression="gzip")
         # Save shape
-        hf.create_dataset(varname + '_shape', data=data_.shape, compression='gzip')
+        hf.create_dataset(varname + "_shape", data=data_.shape, compression="gzip")
 
 
 def get_cmap(name):
@@ -1149,10 +1295,11 @@ def get_cmap(name):
     """
     import matplotlib.pyplot as plt
     from matplotlib import colors
+
     # unknown colormap, test whether it's in pycortex colormaps
-    cmapdir = config.get('webgl', 'colormaps')
+    cmapdir = config.get("webgl", "colormaps")
     colormaps = os.listdir(cmapdir)
-    colormaps = sorted([c for c in colormaps if '.png' in c])
+    colormaps = sorted([c for c in colormaps if ".png" in c])
     colormaps = dict((c[:-4], os.path.join(cmapdir, c)) for c in colormaps)
     if name in colormaps:
         I = plt.imread(colormaps[name])
@@ -1165,15 +1312,16 @@ def get_cmap(name):
         try:
             cmap = plt.cm.get_cmap(name)
         except:
-            raise Exception('Unkown color map!')
+            raise Exception("Unkown color map!")
     return cmap
+
 
 def add_cmap(cmap, name, cmapdir=None):
     """Add a colormap to pycortex.
 
     This stores a matplotlib colormap in the pycortex filestore, such that it can
-    be used in the webgl viewer in pycortex. See 
-    https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html 
+    be used in the webgl viewer in pycortex. See
+    https://matplotlib.org/stable/users/explain/colors/colormap-manipulation.html
     for more information about how to generate colormaps in matplotlib.
 
     Parameters
@@ -1182,8 +1330,8 @@ def add_cmap(cmap, name, cmapdir=None):
         Color map to be saved
     name : str
         Name for colormap, e.g. 'jet', 'blue_to_yellow', etc. The name will be used
-        to generate a filename for the colormap stored in the pycortex store, 
-        so avoid illegal characters for a filename. This name will also be used to 
+        to generate a filename for the colormap stored in the pycortex store,
+        so avoid illegal characters for a filename. This name will also be used to
         specify this colormap in future calls to `cortex.quickflat.make_figure()`
         or `cortex.webgl.show()`.
     """
@@ -1199,8 +1347,9 @@ def add_cmap(cmap, name, cmapdir=None):
     plt.imsave(os.path.join(cmapdir, name), cmap_im, format="png")
 
 
-def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
-                     download_again=False):
+def download_subject(
+    subject_id="fsaverage", url=None, pycortex_store=None, download_again=False
+):
     """Download subjects to pycortex store
 
     Parameters
@@ -1224,15 +1373,16 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
         warnings.warn(
             "{} is already present in the database. "
             "Set download_again to True if you wish to download "
-            "the subject again.".format(subject_id))
+            "the subject again.".format(subject_id)
+        )
         return
     # Map codes to URLs; more coming eventually
     id_to_url = dict(
-        fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
+        fsaverage="https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758",
     )
     if url is None:
         if subject_id not in id_to_url:
-            raise ValueError('Unknown subject_id!')
+            raise ValueError("Unknown subject_id!")
         url = id_to_url[subject_id]
     # Setup pycortex store location
     if pycortex_store is None:
@@ -1242,12 +1392,11 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
     # Download to temp dir
     print("Downloading from: {}".format(url))
     with tempfile.TemporaryDirectory() as tmp_dir:
-        print('Downloading subject {} to {}'.format(subject_id, tmp_dir))
+        print("Downloading subject {} to {}".format(subject_id, tmp_dir))
         fnout, _ = urllib.request.urlretrieve(
-            url,
-            os.path.join(tmp_dir, f"{subject_id}.tar.gz")
+            url, os.path.join(tmp_dir, f"{subject_id}.tar.gz")
         )
-        print(f'Done downloading to {fnout}')
+        print(f"Done downloading to {fnout}")
         # Un-tar to pycortex store
         with tarfile.open(fnout, "r:gz") as tar:
             print("Extracting subject {} to {}".format(subject_id, pycortex_store))
@@ -1259,51 +1408,56 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
 
 def rotate_flatmap(surf_id, theta, plot=False):
     """Rotate flatmap to be less V-shaped
-    
+
     Parameters
     ----------
     surf_id : str
         pycortex surface identifier
     theta : scalar
-        angle in degrees to rotate flatmaps (rotation is clockwise 
+        angle in degrees to rotate flatmaps (rotation is clockwise
         for right hemisphere and counter-clockwise for left)
     plot : bool
         Whether to make a coarse plot to visualize the changes
     """
     # Lazy load of matplotlib
     import matplotlib.pyplot as plt
-    paths = db.get_paths(surf_id)['surfs']['flat']
+
+    paths = db.get_paths(surf_id)["surfs"]["flat"]
     theta = np.radians(theta)
     if plot:
         fig, axs = plt.subplots(2, 2)
-    for j, hem in enumerate(('lh','rh')):
+    for j, hem in enumerate(("lh", "rh")):
         this_file = paths[hem]
         pts, polys = formats.read_gii(this_file)
         # Rotate clockwise (- rotation) for RH, counter-clockwise (+ rotation) for LH
-        if hem == 'rh':
-            rtheta = - theta
+        if hem == "rh":
+            rtheta = -theta
         else:
             rtheta = copy.copy(theta)
-        rotation_mat = np.array([[np.cos(rtheta), -np.sin(rtheta)], [np.sin(rtheta), np.cos(rtheta)]])
+        rotation_mat = np.array(
+            [[np.cos(rtheta), -np.sin(rtheta)], [np.sin(rtheta), np.cos(rtheta)]]
+        )
         rotated = rotation_mat.dot(pts[:, :2].T).T
         pts_new = pts.copy()
         pts_new[:, :2] = rotated
         new_file, bkup_num = copy.copy(this_file), 0
         while os.path.exists(new_file):
-            new_file = this_file.replace('.gii', '_rotbkup%02d.gii'%bkup_num)
+            new_file = this_file.replace(".gii", "_rotbkup%02d.gii" % bkup_num)
             bkup_num += 1
-        print('Backing up file at %s...' % new_file)
+        print("Backing up file at %s..." % new_file)
         shutil.copy(this_file, new_file)
         formats.write_gii(this_file, pts_new, polys)
-        print('Overwriting %s...' % this_file)
+        print("Overwriting %s..." % this_file)
         if plot:
-            axs[0,j].plot(*pts[::100, :2].T, marker='r.')
-            axs[0,j].axis('equal')
-            axs[1,j].plot(*pts_new[::100, :2].T, marker='b.')
-            axs[1,j].axis('equal')
+            axs[0, j].plot(*pts[::100, :2].T, marker="r.")
+            axs[0, j].axis("equal")
+            axs[1, j].plot(*pts_new[::100, :2].T, marker="b.")
+            axs[1, j].axis("equal")
     # Remove and back up overlays file
-    overlay_file = db.get_paths(surf_id)['overlays']
-    shutil.copy(overlay_file, overlay_file.replace('.svg', '_rotbkup%02d.svg'%bkup_num))
+    overlay_file = db.get_paths(surf_id)["overlays"]
+    shutil.copy(
+        overlay_file, overlay_file.replace(".svg", "_rotbkup%02d.svg" % bkup_num)
+    )
     os.unlink(overlay_file)
     # Regenerate file
     svg = db.get_overlay(surf_id)
