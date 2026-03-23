@@ -30,8 +30,15 @@ Example Gallery
 ---------------
 .. toctree::
     :maxdepth: 3
-    
+
     auto_examples/index
+
+Jupyter Notebooks
+-----------------
+.. toctree::
+    :maxdepth: 2
+
+    notebooks/jupyter_notebook
 
 API Reference
 -------------

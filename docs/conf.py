@@ -33,10 +33,15 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'numpydoc',
               'sphinx.ext.githubpages',
-              'sphinx_gallery.gen_gallery']
+              'sphinx_gallery.gen_gallery',
+              'nbsphinx']
 
 autosummary_generate = True
 numpydoc_show_class_members=False 
+
+# nbsphinx – render Jupyter notebooks in docs without re-executing them
+nbsphinx_execute = 'never'
+nbsphinx_custom_formats = {}
 
 # Sphinx-gallery
 sphinx_gallery_conf = {
@@ -84,7 +89,7 @@ release = cortex.version.__hardcoded_version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', 'auto_examples/**/*.ipynb']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
