@@ -71,6 +71,12 @@ var mriview = (function(module) {
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
                 extratex:   { type:'t', value:null},
 
+                // Contour rendering
+                contourMode:      { type:'i',  value: 0 },
+                contourThreshold: { type:'f',  value: 0.01 },
+                contourColor:     { type:'v3', value: new THREE.Vector3(0, 0, 0) },
+                contourOverlay:   { type:'i',  value: 0 },
+
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
@@ -109,6 +115,8 @@ var mriview = (function(module) {
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
             uniform_illumination: {action:[this, "setUniformIllumination"]},
+            contourMode: {action:[this, "setContourMode", {off:0, "contours only":1, "contours + fill":2}]},
+            contourThreshold: {action:[this.uniforms.contourThreshold, "value", 0.001, 0.5]},
         });
         
 
@@ -256,6 +264,10 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+
+                //Queue blank contour overlay data attributes
+                hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
@@ -853,6 +865,13 @@ var mriview = (function(module) {
         this.mesh = new THREE.Mesh(this.sheets, null);
         this.object.add(this.mesh);
     }
+
+    module.Surface.prototype.setContourMode = function(val) {
+        if (val === undefined)
+            return this.uniforms.contourMode.value;
+        this.uniforms.contourMode.value = val;
+        viewer.schedule();
+    };
 
     module.Surface.prototype.setUniformIllumination = function(val) {
         if (val === undefined)

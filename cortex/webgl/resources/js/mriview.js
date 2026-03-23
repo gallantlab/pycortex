@@ -222,6 +222,19 @@ var mriview = (function(module) {
         }
 
         this.setData(data[0].name);
+
+        // Build contour overlay dropdown from available vertex datasets
+        var contourOptions = {"none": "none"};
+        for (var dname in this.dataviews) {
+            if (this.dataviews[dname].vertex) {
+                contourOptions[dname] = dname;
+            }
+        }
+        if (Object.keys(contourOptions).length > 1) {
+            this.ui.add({
+                contour_overlay: {action:[this, "setContourOverlay", contourOptions]},
+            });
+        }
     };
 
     module.Viewer.prototype.setData = function(name) {
@@ -614,6 +627,39 @@ var mriview = (function(module) {
             this.playpause();
         this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
+    module.Viewer.prototype.setContourOverlay = function(name) {
+        if (name === "none" || name === null || name === 0) {
+            this.contourOverlay = null;
+            for (var i = 0; i < this.surfs.length; i++) {
+                this.surfs[i].surf.uniforms.contourOverlay.value = 0;
+            }
+            this.schedule();
+            return;
+        }
+
+        var overlayView = this.dataviews[name];
+        if (!overlayView || !overlayView.vertex) return;
+
+        this.contourOverlay = name;
+        var overlayData = overlayView.data[0];
+
+        overlayData.loaded.done(function() {
+            var fframe = 0;
+            var verts = overlayData.verts[fframe];
+            for (var i = 0; i < this.surfs.length; i++) {
+                var hemis = this.surfs[i].surf.hemis;
+                hemis.left.attributes.contourData0 = verts[0];
+                hemis.right.attributes.contourData0 = verts[1];
+                var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
+                hemis.left.attributes.contourData1 = verts1[0];
+                hemis.right.attributes.contourData1 = verts1[1];
+
+                this.surfs[i].surf.uniforms.contourOverlay.value = 1;
+            }
+            this.schedule();
+        }.bind(this));
+    };
+
     module.Viewer.prototype.rmData = function(name) {
         delete this.datasets[name];
         $(this.object).find("#datasets li").each(function() {
