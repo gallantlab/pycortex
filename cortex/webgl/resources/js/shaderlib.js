@@ -819,10 +819,10 @@ var Shaderlib = (function() {
             // utils.thickmixer,
 
             // Contour rendering uniforms
-            "uniform int contourMode;",       // 0=off, 1=contours only, 2=contours+fill
+            "uniform float contourMode;",       // 0=off, 1=contours only, 2=contours+fill
             "uniform float contourThreshold;",
             "uniform vec3 contourColor;",
-            "uniform int contourOverlay;",    // 0=use self data, 1=use overlay data
+            "uniform float contourOverlay;",    // 0=use self data, 1=use overlay data
 
             utils.standard_frag_vars,
 
@@ -852,19 +852,22 @@ var Shaderlib = (function() {
             "#endif",
 
                 // Contour edge detection
-                "float contourEdge = contourOverlay == 1 ? fwidth(vContourDataValue) : fwidth(vDataValue);",
+                "float contourEdge = contourOverlay > 0.5 ? fwidth(vContourDataValue) : fwidth(vDataValue);",
                 "bool isBorder = contourEdge > contourThreshold;",
 
                 "gl_FragColor = cColor;",
                 // contourMode: 0=off, 1=contours only, 2=contours+fill
-                "if (contourMode == 0) {",
+                "if (contourMode < 0.5) {",
+                    // Mode 0: normal rendering, no contours
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
-                "} else if (contourMode == 1) {",
+                "} else if (contourMode < 1.5) {",
+                    // Mode 1: contours only (interior = curvature)
                     "if (isBorder) {",
                         "vec4 borderColor = vec4(contourColor, 1.0);",
                         "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
                     "}",
-                "} else if (contourMode == 2) {",
+                "} else {",
+                    // Mode 2: data + contour borders on top
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     "if (isBorder) {",
                         "vec4 borderColor = vec4(contourColor, 1.0);",

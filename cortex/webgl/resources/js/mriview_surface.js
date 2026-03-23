@@ -72,10 +72,10 @@ var mriview = (function(module) {
                 extratex:   { type:'t', value:null},
 
                 // Contour rendering
-                contourMode:      { type:'i',  value: 0 },
+                contourMode:      { type:'f',  value: 0 },
                 contourThreshold: { type:'f',  value: 0.01 },
                 contourColor:     { type:'v3', value: new THREE.Vector3(0, 0, 0) },
-                contourOverlay:   { type:'i',  value: 0 },
+                contourOverlay:   { type:'f',  value: 0 },
 
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
@@ -265,9 +265,10 @@ var mriview = (function(module) {
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
 
-                //Queue blank contour overlay data attributes
-                hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(), 1));
-                hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(), 1));
+                //Queue contour overlay data attributes (pre-sized to vertex count for proper WebGL buffer allocation)
+                var nVerts = hemi.attributes.position.array.length / hemi.attributes.position.itemSize;
+                hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
+                hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
