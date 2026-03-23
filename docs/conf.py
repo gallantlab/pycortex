@@ -39,9 +39,8 @@ extensions = ['sphinx.ext.autodoc',
 autosummary_generate = True
 numpydoc_show_class_members=False 
 
-# nbsphinx – render Jupyter notebooks in docs without re-executing them
-nbsphinx_execute = 'never'
-nbsphinx_custom_formats = {}
+# nbsphinx – execute notebooks at docs build time
+nbsphinx_execute = 'always'
 
 # Sphinx-gallery
 sphinx_gallery_conf = {
