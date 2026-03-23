@@ -1,7 +1,7 @@
 """
-=================================
+=============================================
 Display WebGL Viewer in a Jupyter Notebook
-=================================
+=============================================
 
 Pycortex can embed the interactive WebGL brain viewer directly in a Jupyter
 notebook cell. There are two methods:
@@ -16,8 +16,15 @@ notebook cell. There are two methods:
 
 Both methods are **non-blocking** — subsequent notebook cells execute
 immediately.
+
+.. note::
+
+   This example cannot be executed during the documentation build because it
+   requires a running Jupyter kernel and a browser. The code below is shown
+   for reference only.
 """
 # sphinx_gallery_thumbnail_path = ''
+# sphinx_gallery_dummy_images = 1
 
 import cortex
 import numpy as np
