@@ -35,14 +35,24 @@ extensions = [
     "numpydoc",
     "sphinx.ext.githubpages",
     "sphinx_gallery.gen_gallery",
-    "nbsphinx",
 ]
+
+exclude_patterns = ["_build", "auto_examples/**/*.ipynb"]
+
+# nbsphinx – render and execute Jupyter notebooks in docs
+# Only enable if nbsphinx (and its deps: pandoc, ipykernel) are installed
+try:
+    import nbsphinx  # noqa: F401
+
+    extensions.append("nbsphinx")
+    nbsphinx_execute = "always"
+except ImportError:
+    # nbsphinx not installed – exclude notebook sources so the build
+    # doesn't fail on unrecognised .ipynb files in the toctree
+    exclude_patterns.append("notebooks")
 
 autosummary_generate = True
 numpydoc_show_class_members = False
-
-# nbsphinx – execute notebooks at docs build time
-nbsphinx_execute = "always"
 
 
 def _copy_notebook_artifacts(app, exception):
@@ -108,7 +118,8 @@ release = cortex.version.__hardcoded_version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build", "auto_examples/**/*.ipynb"]
+# (exclude_patterns is defined near the top of this file, before the
+# nbsphinx conditional block that may append to it)
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
