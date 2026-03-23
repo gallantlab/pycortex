@@ -1,5 +1,5 @@
-"""Makes an interactive viewer for viewing data in a browser
-"""
+"""Makes an interactive viewer for viewing data in a browser"""
+
 from typing import TYPE_CHECKING
 
 from ..utils import DocLoader
@@ -13,3 +13,9 @@ else:
 
 show = DocLoader("show", ".view", "cortex.webgl", actual_func=_show)
 make_static = DocLoader("make_static", ".view", "cortex.webgl", actual_func=_static)
+
+try:
+    from . import jupyter
+except ImportError:
+    # IPython not available
+    pass
