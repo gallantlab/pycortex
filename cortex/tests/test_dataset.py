@@ -110,11 +110,11 @@ def test_rgb_rejects_unknown_kwargs():
     """VolumeRGB and VertexRGB should reject unknown keyword arguments."""
     red, green, blue = [np.random.randn(nverts) for _ in range(3)]
     with pytest.raises(TypeError):
-        dataset.VertexRGB(red, green, blue, subj, bogus_kwarg=True)
+        dataset.VertexRGB(red, green, blue, subj, bogus_kwarg=True)  # type: ignore
 
     red, green, blue = [np.random.randn(*volshape) for _ in range(3)]
     with pytest.raises(TypeError):
-        dataset.VolumeRGB(red, green, blue, subj, xfmname, bogus_kwarg=True)
+        dataset.VolumeRGB(red, green, blue, subj, xfmname, bogus_kwarg=True)  # type: ignore
 
 
 def test_volumergb_shared_range():
