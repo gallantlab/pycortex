@@ -223,17 +223,21 @@ var mriview = (function(module) {
 
         this.setData(data[0].name);
 
-        // Build contour overlay dropdown from available vertex datasets
-        var contourOptions = {"none": "none"};
-        for (var dname in this.dataviews) {
-            if (this.dataviews[dname].vertex) {
-                contourOptions[dname] = dname;
+        // Build contour overlay dropdown from available vertex datasets (only once)
+        if (!this._contourOverlayUIAdded) {
+            var contourOptions = {"none": "none"};
+            for (var dname in this.dataviews) {
+                if (this.dataviews[dname].vertex) {
+                    contourOptions[dname] = dname;
+                }
             }
-        }
-        if (Object.keys(contourOptions).length > 1) {
-            this.ui.add({
-                contour_overlay: {action:[this, "setContourOverlay", contourOptions]},
-            });
+            if (Object.keys(contourOptions).length > 1) {
+                this._contourOverlayName = "none";
+                this.ui.add({
+                    contour_overlay: {action:[this, "setContourOverlay", contourOptions]},
+                });
+                this._contourOverlayUIAdded = true;
+            }
         }
     };
 
@@ -628,7 +632,11 @@ var mriview = (function(module) {
         this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
     module.Viewer.prototype.setContourOverlay = function(name) {
+        if (name === undefined)
+            return this._contourOverlayName || "none";
+
         if (name === "none" || name === null || name === 0) {
+            this._contourOverlayName = "none";
             this.contourOverlay = null;
             for (var i = 0; i < this.surfs.length; i++) {
                 this.surfs[i].surf.uniforms.contourOverlay.value = 0;
@@ -640,6 +648,7 @@ var mriview = (function(module) {
         var overlayView = this.dataviews[name];
         if (!overlayView || !overlayView.vertex) return;
 
+        this._contourOverlayName = name;
         this.contourOverlay = name;
         var overlayData = overlayView.data[0];
 
