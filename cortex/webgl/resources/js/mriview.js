@@ -656,20 +656,11 @@ var mriview = (function(module) {
             var fframe = 0;
             var verts = overlayData.verts[fframe];
             var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
+            // Dispatch attribute events through the active DataView so that
+            // SurfDelegate.setAttribute picks them up (same mechanism as data0/data1)
+            this.active.dispatchEvent({type:"attribute", name:"contourData0", value:verts});
+            this.active.dispatchEvent({type:"attribute", name:"contourData1", value:verts1});
             for (var i = 0; i < this.surfs.length; i++) {
-                var hemis = this.surfs[i].surf.hemis;
-                // Copy data into existing pre-sized attribute arrays
-                // (replacing the attribute object doesn't work in THREE.js r73
-                //  because the WebGL buffer is bound by ID at shader compile time)
-                hemis.left.attributes.contourData0.array.set(verts[0].array);
-                hemis.left.attributes.contourData0.needsUpdate = true;
-                hemis.right.attributes.contourData0.array.set(verts[1].array);
-                hemis.right.attributes.contourData0.needsUpdate = true;
-                hemis.left.attributes.contourData1.array.set(verts1[0].array);
-                hemis.left.attributes.contourData1.needsUpdate = true;
-                hemis.right.attributes.contourData1.array.set(verts1[1].array);
-                hemis.right.attributes.contourData1.needsUpdate = true;
-
                 this.surfs[i].surf.uniforms.contourOverlay.value = 1;
             }
             this.schedule();
