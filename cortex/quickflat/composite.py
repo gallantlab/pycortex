@@ -855,15 +855,24 @@ def add_contours(
     if not isinstance(dataview, dataset.Dataview):
         raise TypeError("Please provide a Dataview (e.g. cortex.Vertex), not a Dataset")
 
-    if extents is None:
-        extents = _get_extents(fig)
+    try:
+        if extents is None:
+            extents = _get_extents(fig)
+    except ValueError:
+        extents = None
     if height is None:
-        height = _get_height(fig)
+        try:
+            height = _get_height(fig)
+        except (ValueError, IndexError):
+            height = 1024
 
     # Generate flatmap image of the label data
     label_img, extents_out = make_flatmap_image(
         dataview, height=height, recache=recache, sampler=sampler
     )
+
+    if extents is None:
+        extents = extents_out
 
     # Detect borders
     border = _detect_label_borders(label_img)
@@ -878,9 +887,6 @@ def add_contours(
     # Create RGBA overlay image
     rgba = np.zeros(label_img.shape[:2] + (4,), dtype=np.float32)
     rgba[border] = linecolor
-
-    if extents is None:
-        extents = extents_out
 
     _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(
