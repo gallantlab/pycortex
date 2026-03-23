@@ -15,7 +15,8 @@ show = DocLoader("show", ".view", "cortex.webgl", actual_func=_show)
 make_static = DocLoader("make_static", ".view", "cortex.webgl", actual_func=_static)
 
 try:
-    from . import jupyter
+    import IPython  # noqa: F401
 except ImportError:
-    # IPython not available
     pass
+else:
+    from . import jupyter
