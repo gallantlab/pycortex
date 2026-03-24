@@ -660,7 +660,16 @@ var mriview = (function(module) {
         }
 
         var overlayView = this.dataviews[name];
-        if (!overlayView || !overlayView.vertex) return;
+        if (!overlayView) {
+            console.warn("setContourOverlay: dataset '" + name + "' not found. Available: " +
+                         Object.keys(this.dataviews).join(", "));
+            return;
+        }
+        if (!overlayView.vertex) {
+            console.warn("setContourOverlay: dataset '" + name + "' is not vertex data. " +
+                         "Contour overlays require vertex (surface) data.");
+            return;
+        }
 
         this._contourOverlayName = name;
         this.contourOverlay = name;

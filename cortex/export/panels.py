@@ -52,7 +52,7 @@ def plot_panels(
     interpolation: str = "nearest",
     layers: int = 1,
     headless: bool = False,
-    contour_overlay=None,
+    contour_overlay: Optional[Union[str, Dataview]] = None,
     contour_mode: str = "contours+fill",
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
@@ -111,6 +111,15 @@ def plot_panels(
         Chromium to be available (``playwright install chromium``).
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed. (Default: False)
+
+    contour_overlay : Dataview, str, or None
+        Parcellation data whose borders will be drawn as contour lines.
+        Can be a Vertex/Dataview (automatically bundled into a Dataset),
+        or a string naming a view within an existing Dataset.  (Default: None)
+
+    contour_mode : str
+        Contour rendering mode. Options: "contours", "contours+fill",
+        "colored", "colored+fill".  (Default: "contours+fill")
 
     Returns
     -------

@@ -150,7 +150,12 @@ def save_3d_views(
                 "colored": 3,
                 "colored+fill": 4,
             }
-            _contour_mode_int = _contour_mode_map.get(contour_mode, contour_mode)
+            if contour_mode not in _contour_mode_map:
+                raise ValueError(
+                    f"Unknown contour_mode {contour_mode!r}. "
+                    f"Valid options: {list(_contour_mode_map.keys())}"
+                )
+            _contour_mode_int = _contour_mode_map[contour_mode]
             handle._set_view(
                 **{
                     "surface.{subject}.contours.overlay": _contour_overlay_name,

@@ -4,7 +4,7 @@ import tempfile
 import binascii
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Union, IO
+from typing import Literal, Optional, Union, IO
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -74,7 +74,7 @@ def make_figure(
     roi_list: Optional[list[str]] = None,
     sulci_list: Optional[list[str]] = None,
     nanmean: bool = False,
-    with_contours: Union[bool, dataset.Dataview] = False,
+    with_contours: Union[Literal[False], dataset.Dataview] = False,
     contour_linewidth: Optional[int] = None,
     contour_linecolor: Optional[ColorType] = None,
 ) -> Figure:
@@ -158,6 +158,14 @@ def make_figure(
         figure into which to plot flatmap
     nanmean : bool, optional (default = False)
         If True, NaNs in the data will be ignored when averaging across layers.
+    with_contours : cortex.Dataview or False, optional
+        Parcellation data whose label boundaries will be drawn as contour
+        lines on top of the plotted data. Pass a Vertex (or other Dataview)
+        with discrete labels. False (default) disables contours.
+    contour_linewidth : int, optional
+        Width of contour lines in pixels. None defaults to 1.
+    contour_linecolor : tuple of float, optional
+        (R, G, B, A) color for contour lines. None defaults to black.
     """
     from matplotlib import pyplot as plt
 

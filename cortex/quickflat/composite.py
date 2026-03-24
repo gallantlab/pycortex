@@ -811,6 +811,15 @@ def _detect_label_borders(label_img):
     for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
         shifted = np.roll(np.roll(vals, di, axis=0), dj, axis=1)
         shifted_valid = ~np.isnan(shifted)
+        # Invalidate wrapped edges to avoid false borders from np.roll
+        if di == -1:
+            shifted_valid[-1, :] = False
+        elif di == 1:
+            shifted_valid[0, :] = False
+        if dj == -1:
+            shifted_valid[:, -1] = False
+        elif dj == 1:
+            shifted_valid[:, 0] = False
         border |= (vals != shifted) & valid & shifted_valid
     return border
 

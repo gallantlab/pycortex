@@ -78,7 +78,7 @@ var mriview = (function(module) {
                 contourOverlay:   { type:'f',  value: 0 },
                 contourVmin:      { type:'f',  value: 0 },
                 contourVmax:      { type:'f',  value: 1 },
-                contourColormap:  { type:'t',  value: null },
+                contourColormap:  { type:'t',  value: new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1, THREE.RGBAFormat) },
 
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
