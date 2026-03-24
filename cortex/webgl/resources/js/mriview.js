@@ -223,29 +223,35 @@ var mriview = (function(module) {
 
         this.setData(data[0].name);
 
-        // Add contour overlay dropdown to the surface's contours folder (only once)
-        if (!this._contourOverlayUIAdded) {
+        // Populate the contours folder: overlay first, then mode and threshold (only once)
+        if (!this._contourUIAdded) {
             var contourOptions = {"none": "none"};
             for (var dname in this.dataviews) {
                 if (this.dataviews[dname].vertex) {
                     contourOptions[dname] = dname;
                 }
             }
-            if (Object.keys(contourOptions).length > 1) {
-                this._contourOverlayName = "none";
-                // Add overlay dropdown to each surface's contours folder
-                var viewer = this;
-                for (var i = 0; i < this.surfs.length; i++) {
-                    (function(surf) {
-                        surf.surf.loaded.done(function() {
-                            surf.surf.ui.contours.add({
+            this._contourOverlayName = "none";
+            var viewer = this;
+            for (var i = 0; i < this.surfs.length; i++) {
+                (function(surf) {
+                    surf.surf.loaded.done(function() {
+                        var contoursFolder = surf.surf.ui.contours;
+                        // Overlay dropdown first (if multiple vertex datasets)
+                        if (Object.keys(contourOptions).length > 1) {
+                            contoursFolder.add({
                                 overlay: {action:[viewer, "setContourOverlay", contourOptions]},
                             });
+                        }
+                        // Then mode and threshold
+                        contoursFolder.add({
+                            mode: {action:[surf.surf, "setContourMode", {off:0, "contours only":1, "contours + fill":2, "colored contours":3, "colored + fill":4}]},
+                            threshold: {action:[surf.surf.uniforms.contourThreshold, "value", 0.001, 0.5]},
                         });
-                    })(this.surfs[i]);
-                }
-                this._contourOverlayUIAdded = true;
+                    });
+                })(this.surfs[i]);
             }
+            this._contourUIAdded = true;
         }
     };
 
@@ -676,9 +682,10 @@ var mriview = (function(module) {
                 surf.hemis.right.attributes.contourData1.array = verts1[1].array;
                 surf.hemis.right.attributes.contourData1.needsUpdate = true;
                 surf.uniforms.contourOverlay.value = 1;
-                // Set vmin/vmax for colored contour colormap lookup
+                // Set vmin/vmax and colormap for colored contour lookup
                 surf.uniforms.contourVmin.value = overlayView.vmin[0].value[0];
                 surf.uniforms.contourVmax.value = overlayView.vmax[0].value[0];
+                surf.uniforms.contourColormap.value = overlayView.cmap[0].value;
             }
             viewer.schedule();
         };

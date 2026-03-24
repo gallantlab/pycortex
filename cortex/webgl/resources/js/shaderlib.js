@@ -737,6 +737,7 @@ var Shaderlib = (function() {
             "varying vec4 vContourColor;",
             "uniform float contourVmin;",
             "uniform float contourVmax;",
+            "uniform sampler2D contourColormap;",
             // "varying float vDrop;",
 
             utils.mixer(morphs),
@@ -763,10 +764,10 @@ var Shaderlib = (function() {
                 "vDataValue = mix(data0, data1, framemix);",
         "#endif",
                 "vContourDataValue = mix(contourData0, contourData1, framemix);",
-                // Look up contour overlay color in the colormap using overlay vmin/vmax
+                // Look up contour color in the overlay's own colormap
                 "float contourRange = contourVmax - contourVmin;",
                 "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
-                "vContourColor = texture2D(colormap, vec2(contourNorm, 0.0));",
+                "vContourColor = texture2D(contourColormap, vec2(contourNorm, 0.0));",
 
         "#ifdef CORTSHEET",
                 "vec3 mpos = mix(position, wm.xyz, use_thickmix);",

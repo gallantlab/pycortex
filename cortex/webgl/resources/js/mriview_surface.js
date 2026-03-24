@@ -78,6 +78,7 @@ var mriview = (function(module) {
                 contourOverlay:   { type:'f',  value: 0 },
                 contourVmin:      { type:'f',  value: 0 },
                 contourVmax:      { type:'f',  value: 1 },
+                contourColormap:  { type:'t',  value: null },
 
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
@@ -119,10 +120,7 @@ var mriview = (function(module) {
             uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
 
-        this.ui.addFolder("contours", true).add({
-            mode: {action:[this, "setContourMode", {off:0, "contours only":1, "contours + fill":2, "colored contours":3, "colored + fill":4}]},
-            threshold: {action:[this.uniforms.contourThreshold, "value", 0.001, 0.5]},
-        });
+        this.ui.addFolder("contours", true);
 
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.brightness, "value", 0, 1]},
