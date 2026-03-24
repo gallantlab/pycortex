@@ -4,19 +4,19 @@ Plot parcellation contours on 3D brain (headless)
 ===============================================
 
 The WebGL viewer supports contour rendering of parcellation borders on
-the 3D cortical surface. When multiple vertex datasets are loaded, you
-can overlay one dataset's contour borders on top of another.
+the 3D cortical surface. When multiple vertex datasets are loaded as a
+``cortex.Dataset``, you can overlay one dataset's contour borders on top
+of another.
 
-This example uses the headless viewer to render a left lateral inflated
-view of activation data with parcellation contour borders overlaid.
+``cortex.export.save_3d_views`` accepts a ``contour_overlay`` parameter
+that names the dataset whose borders should be drawn, and a ``contour_mode``
+that controls how the contours are rendered:
 
-The contour controls available via ``handle._set_view()``:
-
-- ``surface.{subject}.contours.mode``:
-    0=off, 1=contours only, 2=contours+fill,
-    3=colored contours, 4=colored+fill
-- ``surface.{subject}.contours.threshold``: edge sensitivity (0.001–0.5)
-- ``surface.{subject}.contours.overlay``: dataset name or "none"
+- 0: off
+- 1: contours only (borders on curvature)
+- 2: contours + fill (data with solid-colour borders)
+- 3: colored contours only (borders coloured by the overlay's colormap)
+- 4: colored contours + fill (data with colormap-coloured borders)
 
 Prerequisites
 -------------
@@ -27,7 +27,8 @@ Install Playwright and download the bundled Chromium binary once::
 
 """
 
-import time
+import os
+import tempfile
 from collections import deque
 
 import matplotlib.pyplot as plt
@@ -79,34 +80,35 @@ ds = cortex.Dataset(
 ###############################################################################
 # Render with colored parcellation contour overlay
 # --------------------------------------------------
-# Use ``headless_viewer`` to open the WebGL viewer in a headless Chromium
-# browser, set the view to left lateral inflated, enable the parcellation
-# contour overlay with colored borders, and capture a screenshot.
+# Use ``save_3d_views`` with ``contour_overlay="parcellation"`` to draw
+# the parcellation borders on top of the activation data. ``contour_mode=4``
+# uses the parcellation's own colormap to colour the border lines.
 
-with cortex.export.headless_viewer(ds, viewer_params={}, timeout=30) as handle:
-    time.sleep(5)
-    handle._set_view(
-        **{
-            "surface.{subject}.unfold": 0.5,
-            "surface.{subject}.contours.overlay": "parcellation",
-        }
-    )
-    time.sleep(5)
-    handle._set_view(
-        **{
-            "surface.{subject}.contours.mode": 4,  # colored + fill
-            "camera.azimuth": 160,
-            "camera.altitude": 90,
-        }
-    )
-    time.sleep(3)
-    handle.getImage("/tmp/contour_webgl_example.png", (1920, 1080))
-    time.sleep(3)
+base_name = os.path.join(tempfile.mkdtemp(), "contour")
 
-img = plt.imread("/tmp/contour_webgl_example.png")
-fig, ax = plt.subplots(figsize=(10, 10 * img.shape[0] / img.shape[1]))
-ax.imshow(img)
-ax.axis("off")
-ax.set_title("Activation + colored parcellation contours (inflated)", fontsize=14)
-fig.subplots_adjust(left=0, right=1, top=0.92, bottom=0)
-plt.show()
+fnames = cortex.export.save_3d_views(
+    ds,
+    base_name=base_name,
+    list_angles=["left"],
+    list_surfaces=["inflated"],
+    viewer_params=dict(labels_visible=[], overlays_visible=[]),
+    size=(1920, 1080),
+    trim=True,
+    headless=True,
+    contour_overlay="parcellation",
+    contour_mode=4,  # colored contours + fill
+)
+
+for fname in fnames:
+    img = plt.imread(fname)
+    aspect = img.shape[0] / img.shape[1]
+    fig, ax = plt.subplots(figsize=(10, 10 * aspect))
+    ax.imshow(img)
+    ax.axis("off")
+    ax.set_title(
+        "Activation + colored parcellation contours (inflated, left)",
+        fontsize=14,
+        fontweight="bold",
+    )
+    fig.subplots_adjust(left=0, right=1, top=0.92, bottom=0)
+    plt.show()

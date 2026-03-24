@@ -52,6 +52,8 @@ def plot_panels(
     interpolation: str = "nearest",
     layers: int = 1,
     headless: bool = False,
+    contour_overlay: Optional[str] = None,
+    contour_mode: int = 2,
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
     specifications.
@@ -150,6 +152,8 @@ def plot_panels(
         interpolation=interpolation,
         layers=layers,
         headless=headless,
+        contour_overlay=contour_overlay,
+        contour_mode=contour_mode,
     )
 
     fig = plt.figure(figsize=figsize)

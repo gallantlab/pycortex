@@ -1,7 +1,7 @@
 import contextlib
 import os
 import time
-from typing import Any, Mapping, Sequence, TypedDict, Union
+from typing import Any, Mapping, Optional, Sequence, TypedDict, Union
 
 import cortex
 
@@ -38,6 +38,8 @@ def save_3d_views(
     trim: bool = True,
     sleep: float = 10,
     headless: bool = False,
+    contour_overlay: Optional[str] = None,
+    contour_mode: int = 2,
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
@@ -47,7 +49,7 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume: pycortex.Volume or pycortex.Vertex object
+    volume: pycortex.Volume or pycortex.Vertex object, or Dataset
         Data to be displayed.
 
     base_name: str
@@ -96,6 +98,16 @@ def save_3d_views(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed.  (Default: False)
 
+    contour_overlay: str or None
+        Name of a vertex dataset (within the ``volume`` Dataset) whose
+        parcellation borders will be drawn as contour lines.  Requires
+        ``volume`` to be a Dataset containing the named view.  (Default: None)
+
+    contour_mode: int
+        Contour rendering mode when ``contour_overlay`` is set.
+        0=off, 1=contours only, 2=contours+fill,
+        3=colored contours only, 4=colored contours+fill.  (Default: 2)
+
     Returns
     -------
     file_names: list of str
@@ -117,6 +129,22 @@ def save_3d_views(
         # Wait for the viewer to be loaded
         time.sleep(sleep)
 
+        # Set up contour overlay if requested
+        if contour_overlay is not None:
+            handle._set_view(
+                **{
+                    "surface.{subject}.contours.overlay": contour_overlay,
+                }
+            )
+            # Wait for overlay data to load
+            time.sleep(sleep)
+            handle._set_view(
+                **{
+                    "surface.{subject}.contours.mode": contour_mode,
+                }
+            )
+            time.sleep(1)
+
         # Add interpolation and layers params only if we have a volume
         if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
             interpolation_params = {
@@ -126,7 +154,13 @@ def save_3d_views(
         else:
             interpolation_params = dict()
 
-        has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
+        # Get subject name — handle both Dataview and Dataset
+        if hasattr(volume, "subject"):
+            _subject = volume.subject
+        else:
+            # Dataset: get subject from first view
+            _subject = next(iter(volume))[1].subject
+        has_flatmap = hasattr(getattr(cortex.db, _subject).surfaces, "flat")
         file_names: list[str] = []
         for view, surface in zip(list_angles, list_surfaces):
             if isinstance(view, str):
@@ -163,7 +197,7 @@ def save_3d_views(
             # wait for the view to have changed
             for _ in range(100):
                 for k, v in this_view_params.items():
-                    k = k.format(subject=volume.subject) if "{subject}" in k else k
+                    k = k.format(subject=_subject) if "{subject}" in k else k
                     if handle.ui.get(k)[0] != v:
                         print("waiting for", k, handle.ui.get(k)[0], "->", v)
                         time.sleep(0.1)
