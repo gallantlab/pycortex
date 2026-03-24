@@ -117,8 +117,10 @@ def save_3d_views(
     msg = "list_angles and list_surfaces should have the same length."
     assert len(list_angles) == len(list_surfaces), msg
 
-    # If contour_overlay is a Dataview, bundle volume + overlay into a Dataset
+    # If contour_overlay is a Dataview, bundle volume + overlay into a Dataset.
+    # Preserve the original volume reference for isinstance checks below.
     _contour_overlay_name = None
+    _original_volume = volume
     if contour_overlay is not None:
         if isinstance(contour_overlay, str):
             _contour_overlay_name = contour_overlay
@@ -170,8 +172,11 @@ def save_3d_views(
             )
             time.sleep(1)
 
-        # Add interpolation and layers params only if we have a volume
-        if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
+        # Add interpolation and layers params only if the primary data is a volume.
+        # Use _original_volume (before Dataset wrapping) for the type check.
+        if isinstance(
+            _original_volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)
+        ):
             interpolation_params = {
                 "surface.{subject}.sampler": interpolation,
                 "surface.{subject}.layers": layers,
@@ -180,8 +185,8 @@ def save_3d_views(
             interpolation_params = dict()
 
         # Get subject name — handle both Dataview and Dataset
-        if hasattr(volume, "subject"):
-            _subject = volume.subject
+        if hasattr(_original_volume, "subject"):
+            _subject = _original_volume.subject
         else:
             # Dataset: get subject from first view
             _subject = next(iter(volume))[1].subject

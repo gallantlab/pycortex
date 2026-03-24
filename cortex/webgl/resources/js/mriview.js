@@ -677,6 +677,9 @@ var mriview = (function(module) {
 
         var viewer = this;
         var applyOverlay = function() {
+            // Use frame 0 for contour overlay data. Parcellation overlays
+            // are typically single-frame (static labels). Multi-frame
+            // contour overlays are not currently supported.
             var fframe = 0;
             var verts = overlayData.verts[fframe];
             var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];

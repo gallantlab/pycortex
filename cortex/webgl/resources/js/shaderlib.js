@@ -679,25 +679,28 @@ var Shaderlib = (function() {
                 // contourMode: 0=off, 1=contours only, 2=contours+fill,
                 //              3=colored contours only, 4=colored contours+fill
                 "if (contourMode < 0.5) {",
+                    // Mode 0: normal rendering, no contours
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                 "} else if (contourMode < 1.5) {",
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    // Mode 1: contours only (interior = curvature, no data fill)
                     "if (isBorder) {",
                         "vec4 borderColor = vec4(contourColor, 1.0);",
                         "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
                     "}",
                 "} else if (contourMode < 2.5) {",
+                    // Mode 2: data + contour borders on top
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     "if (isBorder) {",
                         "vec4 borderColor = vec4(contourColor, 1.0);",
                         "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
                     "}",
                 "} else if (contourMode < 3.5) {",
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    // Mode 3: colored contours only (no data fill)
                     "if (isBorder) {",
                         "gl_FragColor = vContourColor + (1.-vContourColor.a)*gl_FragColor;",
                     "}",
                 "} else {",
+                    // Mode 4: data + colored contour borders on top
                     "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
                     "if (isBorder) {",
                         "gl_FragColor = vContourColor + (1.-vContourColor.a)*gl_FragColor;",
