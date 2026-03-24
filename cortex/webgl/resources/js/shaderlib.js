@@ -382,6 +382,16 @@ var Shaderlib = (function() {
             "varying vec3 vWorldPosition;",
             // "varying float vDrop;",
 
+            // Contour overlay attributes and varyings
+            "attribute float contourData0;",
+            "attribute float contourData1;",
+            "varying float vContourDataValue;",
+            "varying vec4 vContourColor;",
+            "uniform float contourVmin;",
+            "uniform float contourVmax;",
+            "uniform sampler2D contourColormap;",
+            "uniform float framemix;",
+
             "varying vec3 vPos_x[2];",
         "#ifdef TWOD",
             "varying vec3 vPos_y[2];",
@@ -446,6 +456,12 @@ var Shaderlib = (function() {
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
                 "vWorldPosition = pos;",
+
+                // Contour overlay data
+                "vContourDataValue = mix(contourData0, contourData1, framemix);",
+                "float contourRange = contourVmax - contourVmin;",
+                "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
+                "vContourColor = texture2D(contourColormap, vec2(contourNorm, 0.0));",
             "}"
             ].join("\n");
 
@@ -504,7 +520,15 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;", // the x,y,z coordinates of this pixel
-            
+
+            // Contour rendering uniforms and varyings
+            "varying float vContourDataValue;",
+            "varying vec4 vContourColor;",
+            "uniform float contourMode;",
+            "uniform float contourThreshold;",
+            "uniform vec3 contourColor;",
+            "uniform float contourOverlay;",
+
             utils.standard_frag_vars,
             utils.rand,
             utils.edge,
@@ -647,8 +671,38 @@ var Shaderlib = (function() {
                 "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
             "#endif",
 
+                // Contour edge detection (uses overlay vertex data even for pixel-shaded volumes)
+                "float contourEdge = contourOverlay > 0.5 ? fwidth(vContourDataValue) : 0.0;",
+                "bool isBorder = contourEdge > contourThreshold;",
+
                 "gl_FragColor = cColor;",
-                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                // contourMode: 0=off, 1=contours only, 2=contours+fill,
+                //              3=colored contours only, 4=colored contours+fill
+                "if (contourMode < 0.5) {",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                "} else if (contourMode < 1.5) {",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "if (isBorder) {",
+                        "vec4 borderColor = vec4(contourColor, 1.0);",
+                        "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
+                    "}",
+                "} else if (contourMode < 2.5) {",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "if (isBorder) {",
+                        "vec4 borderColor = vec4(contourColor, 1.0);",
+                        "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
+                    "}",
+                "} else if (contourMode < 3.5) {",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "if (isBorder) {",
+                        "gl_FragColor = vContourColor + (1.-vContourColor.a)*gl_FragColor;",
+                    "}",
+                "} else {",
+                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "if (isBorder) {",
+                        "gl_FragColor = vContourColor + (1.-vContourColor.a)*gl_FragColor;",
+                    "}",
+                "}",
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
                 "gl_FragColor = rColor + (1.-rColor.a)*gl_FragColor;",
@@ -674,6 +728,9 @@ var Shaderlib = (function() {
                 attributes.flatBumpNorms = { type: 'v3', value:null };
                 attributes.flatheight = { type: 'f', value:null };
             }
+            attributes['contourData0'] = {type:'f', value:null};
+            attributes['contourData1'] = {type:'f', value:null};
+
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
                 attributes['mixNorms'+i] = { type:'v3', value:null};

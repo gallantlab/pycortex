@@ -179,6 +179,25 @@ class TestQuickflatContours:
         assert len(images) >= 2
 
     @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+    def test_make_figure_volume_with_vertex_contours(self):
+        """make_figure() should work with Volume data + Vertex contour overlay."""
+        parcellation = _make_parcellation()
+        parc_vertex = cortex.Vertex(parcellation, SUBJECT)
+        volume = cortex.Volume.random(subject=SUBJECT, xfmname="fullhead")
+
+        fig = cortex.quickflat.make_figure(
+            volume,
+            with_contours=parc_vertex,
+            with_rois=False,
+            with_colorbar=False,
+            height=256,
+        )
+        assert fig is not None
+        ax = fig.get_axes()[0]
+        images = ax.get_images()
+        assert len(images) >= 2
+
+    @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
     def test_contour_linewidth(self):
         """Thicker linewidth should produce more border pixels."""
         from cortex.quickflat.composite import add_contours
@@ -234,8 +253,8 @@ class TestQuickflatContours:
 
 class TestWebGLContours:
     def test_shader_includes_contour_uniforms(self):
-        """surface_vertex shader should include contour-related uniforms."""
-        # Import the shader library and generate a shader
+        """Both surface_vertex and surface_pixel shaders should include
+        contour-related uniforms."""
         import os
 
         shader_path = os.path.join(
@@ -249,6 +268,8 @@ class TestWebGLContours:
         assert "contourColor" in shader_code
         assert "fwidth" in shader_code
         assert "vDataValue" in shader_code
+        assert "vContourDataValue" in shader_code
+        assert "contourColormap" in shader_code
 
     def test_geometry_has_contour_attributes(self):
         """mriview_surface.js should initialize contourData attributes."""
