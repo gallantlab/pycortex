@@ -38,7 +38,7 @@ def save_3d_views(
     trim: bool = True,
     sleep: float = 10,
     headless: bool = False,
-    contour_overlay: Optional[str] = None,
+    contour_overlay: Optional[Union[str, Dataview]] = None,
     contour_mode: int = 2,
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
@@ -49,13 +49,13 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume: pycortex.Volume or pycortex.Vertex object, or Dataset
+    volume : pycortex.Volume, pycortex.Vertex, or pycortex.Dataset
         Data to be displayed.
 
-    base_name: str
+    base_name : str
         Base name for images.
 
-    list_angles: list of (str or dict)
+    list_angles : list of (str or dict)
         Views to be used. Should be of length one, or of the same length as
         `list_surfaces`. Choices are:
             'left', 'right', 'front', 'back', 'top', 'bottom', 'flatmap',
@@ -63,33 +63,33 @@ def save_3d_views(
             or tuple of (view_name, custom dictionary of parameters).
             See `angle_view_params` in this file for parameter dict examples.
 
-    list_surfaces: list of (str or dict)
+    list_surfaces : list of (str or dict)
         Surfaces to be used. Should be of length one, or of the same length as
         `list_angles`. Choices are:
             'inflated', 'flatmap', 'fiducial', 'inflated_cut',
             or a custom dictionary of parameters.
 
-    viewer_params: dict
+    viewer_params : dict
         Parameters passed to the viewer.
 
-    interpolation: str
+    interpolation : str
         Interpolation used to visualize the data. Possible choices are "nearest",
         "trilinear". (Default: "nearest").
 
-    layers: int
+    layers : int
         Number of layers between the white and pial surfaces to average prior to
         plotting the data. (Default: 1).
 
-    size: tuple of int
+    size : tuple of int
         Size of produced image (before trimming).
 
-    trim: bool
+    trim : bool
         Whether to trim the white borders of the image.
 
-    sleep: float > 0
+    sleep : float > 0
         Time in seconds, to let the viewer open.
 
-    headless: bool
+    headless : bool
         If True, render using a headless Chromium browser via Playwright instead
         of requiring the user to manually open a browser window.  This allows
         the function to run fully autonomously without any user interaction.
@@ -98,23 +98,36 @@ def save_3d_views(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed.  (Default: False)
 
-    contour_overlay: str or None
-        Name of a vertex dataset (within the ``volume`` Dataset) whose
-        parcellation borders will be drawn as contour lines.  Requires
-        ``volume`` to be a Dataset containing the named view.  (Default: None)
+    contour_overlay : Dataview, str, or None
+        Parcellation data whose borders will be drawn as contour lines.
+        Can be a Vertex/Dataview object (automatically bundled into a Dataset
+        with ``volume``), or a string naming a view within an existing Dataset
+        passed as ``volume``.  (Default: None)
 
-    contour_mode: int
+    contour_mode : int
         Contour rendering mode when ``contour_overlay`` is set.
         0=off, 1=contours only, 2=contours+fill,
         3=colored contours only, 4=colored contours+fill.  (Default: 2)
 
     Returns
     -------
-    file_names: list of str
+    file_names : list of str
         Image paths.
     """
     msg = "list_angles and list_surfaces should have the same length."
     assert len(list_angles) == len(list_surfaces), msg
+
+    # If contour_overlay is a Dataview, bundle volume + overlay into a Dataset
+    _contour_overlay_name = None
+    if contour_overlay is not None:
+        if isinstance(contour_overlay, str):
+            _contour_overlay_name = contour_overlay
+        else:
+            # contour_overlay is a Dataview — wrap into Dataset
+            _contour_overlay_name = "__contour_overlay__"
+            volume = cortex.Dataset(
+                data=volume, **{_contour_overlay_name: contour_overlay}
+            )
 
     # Create viewer — use a proper context manager so that cleanup always
     # runs, even if an exception occurs during rendering.
@@ -130,10 +143,10 @@ def save_3d_views(
         time.sleep(sleep)
 
         # Set up contour overlay if requested
-        if contour_overlay is not None:
+        if _contour_overlay_name is not None:
             handle._set_view(
                 **{
-                    "surface.{subject}.contours.overlay": contour_overlay,
+                    "surface.{subject}.contours.overlay": _contour_overlay_name,
                 }
             )
             # Wait for overlay data to load
