@@ -17,6 +17,7 @@ class TestJupyterImports(unittest.TestCase):
         self.assertTrue(hasattr(jupyter, "display_static"))
         self.assertTrue(hasattr(jupyter, "make_notebook_html"))
         self.assertTrue(hasattr(jupyter, "StaticViewer"))
+        self.assertTrue(hasattr(jupyter, "close_all"))
 
     def test_import_from_webgl(self):
         import cortex
@@ -195,7 +196,57 @@ class TestDisplayStatic(unittest.TestCase):
         result = display_static("fake_data", width=800)
 
         mock_display.assert_called_once()
+        iframe_arg = mock_display.call_args[0][0]
+        self.assertEqual("800px", iframe_arg.width)
         result.close()
+
+
+class TestViewerRegistry(unittest.TestCase):
+    """Test the active viewer registry and close_all."""
+
+    def _fake_make_static(self, outpath, data, **kwargs):
+        os.makedirs(outpath, exist_ok=True)
+        with open(os.path.join(outpath, "index.html"), "w") as f:
+            f.write("<html><body>test</body></html>")
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_viewer_registered_on_create(self, mock_make_static, mock_display):
+        from cortex.webgl.jupyter import _active_viewers, display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        viewer = display_static("fake_data")
+
+        self.assertIn(viewer, _active_viewers)
+        viewer.close()
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_close_all_cleans_up(self, mock_make_static, mock_display):
+        from cortex.webgl.jupyter import close_all, display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        v1 = display_static("fake_data")
+        v2 = display_static("fake_data")
+
+        self.assertTrue(os.path.isdir(v1._tmpdir))
+        self.assertTrue(os.path.isdir(v2._tmpdir))
+
+        close_all()
+
+        self.assertFalse(os.path.isdir(v1._tmpdir))
+        self.assertFalse(os.path.isdir(v2._tmpdir))
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_close_all_idempotent(self, mock_make_static, mock_display):
+        from cortex.webgl.jupyter import close_all, display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        viewer = display_static("fake_data")
+        viewer.close()
+        # Should not raise even though viewer is already closed
+        close_all()
 
 
 class TestMakeNotebookHtml(unittest.TestCase):
