@@ -5,16 +5,18 @@ Provides two approaches for displaying brain surfaces in Jupyter notebooks:
 1. **IFrame-based** (``display_iframe``): Starts a Tornado server and embeds
    the viewer in an IFrame. Full interactivity with WebSocket support.
 
-2. **Static HTML** (``display_static``): Generates a self-contained HTML viewer
-   with all resources embedded. Works in static notebooks (nbviewer, GitHub).
+2. **Static viewer** (``display_static``): Generates a static viewer directory
+   served via a local HTTP server and embedded in an IFrame. Requires a live
+   Jupyter environment (will not work in static notebook renderers).
 
 Usage
 -----
 >>> import cortex
 >>> vol = cortex.Volume.random("S1", "fullhead")
->>> cortex.webgl.jupyter.display(vol)  # auto-detects best approach
+>>> cortex.webgl.jupyter.display(vol)  # defaults to iframe method
 """
 
+import atexit
 import http.server
 import logging
 import os
@@ -22,15 +24,46 @@ import shutil
 import socket
 import tempfile
 import threading
+import weakref
 
-from IPython.display import HTML, IFrame
+from IPython.display import IFrame
 from IPython.display import display as ipydisplay
 
 logger = logging.getLogger(__name__)
 
+# Registry of active StaticViewer instances for cleanup.
+# Uses weak references so viewers that are garbage-collected don't linger here.
+_active_viewers = weakref.WeakSet()
+_viewer_lock = threading.Lock()
+
+
+def close_all():
+    """Close all active static viewers, shutting down servers and removing temp files."""
+    with _viewer_lock:
+        viewers = list(_active_viewers)
+    closed = 0
+    for viewer in viewers:
+        try:
+            viewer.close()
+            closed += 1
+        except Exception:
+            logger.warning("Failed to close viewer during close_all", exc_info=True)
+    if closed:
+        logger.info("Closed %d static viewer(s)", closed)
+
+
+atexit.register(close_all)
+
 
 def _find_free_port():
-    """Find a free TCP port by binding to port 0 and reading the OS-assigned port."""
+    """Find a free TCP port by binding to port 0 and reading the OS-assigned port.
+
+    Note: There is an inherent TOCTOU race between releasing this socket and
+    the caller binding the port. For ``display_static`` this is avoided by
+    binding ``HTTPServer`` to port 0 directly. For ``display_iframe`` the
+    underlying Tornado server does not support port 0, so this helper is used
+    as a best-effort fallback.
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
@@ -52,27 +85,52 @@ class StaticViewer:
         self._httpd = httpd
         self._thread = thread
         self._tmpdir = tmpdir
+        self._closed = False
+        self._lock = threading.Lock()
+        with _viewer_lock:
+            _active_viewers.add(self)
 
-    def close(self):
-        """Shut down the HTTP server and remove temp files."""
-        try:
-            self._httpd.shutdown()
-        except Exception:
-            logger.warning("Failed to shut down static viewer server", exc_info=True)
-        try:
-            shutil.rmtree(self._tmpdir, ignore_errors=True)
-        except Exception:
-            logger.warning(
-                "Failed to clean up temp dir %s", self._tmpdir, exc_info=True
-            )
+    def close(self, timeout=1.0):
+        """Shut down the HTTP server, wait for the thread, and remove temp files.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Maximum seconds to wait for the server thread to finish.
+        """
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+
+        if self._httpd is not None:
+            try:
+                self._httpd.shutdown()
+                self._httpd.server_close()
+            except Exception:
+                logger.warning(
+                    "Failed to shut down static viewer server", exc_info=True
+                )
+
+        if self._thread is not None and self._thread.is_alive():
+            try:
+                self._thread.join(timeout=timeout)
+            except Exception:
+                logger.warning(
+                    "Failed to join static viewer server thread", exc_info=True
+                )
+
+        if self._tmpdir is not None:
+            try:
+                shutil.rmtree(self._tmpdir, ignore_errors=True)
+            except Exception:
+                logger.warning(
+                    "Failed to clean up temp dir %s", self._tmpdir, exc_info=True
+                )
 
     def __del__(self):
         try:
-            self._httpd.shutdown()
-        except Exception:
-            pass
-        try:
-            shutil.rmtree(self._tmpdir, ignore_errors=True)
+            self.close(timeout=0.1)
         except Exception:
             pass
 
@@ -160,13 +218,23 @@ def display_iframe(data, width="100%", height=600, port=None, **kwargs):
 
 
 def display_static(data, width="100%", height=600, **kwargs):
-    """Display brain data as a self-contained HTML viewer inline.
+    """Display brain data using a temporary static WebGL viewer inline.
 
-    Generates a complete static viewer with all JS/CSS/data embedded,
-    then displays it in the notebook via a lightweight local HTTP server.
+    Uses ``cortex.webgl.make_static`` to generate a *directory* containing
+    ``index.html`` plus all required JS/CSS/data assets, then serves that
+    directory via a lightweight local HTTP server and embeds it in the
+    notebook inside an IFrame.
 
-    Note: The embedded HTML is large (~4-5MB) because all JavaScript
-    libraries and CSS are inlined.
+    Note
+    ----
+    The output is **not** a single self-contained HTML string; it is a static
+    viewer directory that must be served for the page to function. This works
+    in live Jupyter environments but most static notebook renderers will not
+    display the interactive viewer.
+
+    The bind host defaults to ``127.0.0.1``. For remote notebook setups
+    (JupyterHub, SSH tunnels), set the ``CORTEX_JUPYTER_STATIC_HOST``
+    environment variable to the appropriate hostname.
 
     Parameters
     ----------
@@ -227,14 +295,16 @@ def display_static(data, width="100%", height=600, **kwargs):
                 except (ValueError, IndexError):
                     pass
 
-    httpd = http.server.HTTPServer(("127.0.0.1", 0), _QuietHandler)
+    host = os.environ.get("CORTEX_JUPYTER_STATIC_HOST", "127.0.0.1")
+
+    httpd = http.server.HTTPServer((host, 0), _QuietHandler)
     port = httpd.server_address[1]
 
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
 
     iframe = IFrame(
-        src="http://127.0.0.1:%d/index.html" % port, width=width_str, height=height
+        src="http://%s:%d/index.html" % (host, port), width=width_str, height=height
     )
     ipydisplay(iframe)
 
@@ -242,10 +312,14 @@ def display_static(data, width="100%", height=600, **kwargs):
 
 
 def make_notebook_html(data, template="static.html", types=("inflated",), **kwargs):
-    """Generate a self-contained HTML string for the WebGL viewer.
+    """Generate the ``index.html`` for a static WebGL viewer.
 
-    This is a lower-level function that returns the raw HTML string rather
-    than displaying it. Useful for saving or embedding in custom contexts.
+    This is a lower-level function that returns the raw HTML string produced
+    by ``make_static()``. Note that the HTML references external asset files
+    (CTM meshes, JSON data, PNG colormaps) that ``make_static()`` writes
+    alongside ``index.html``. The returned string alone is **not** a fully
+    self-contained viewer -- it must be served from a directory containing
+    those assets for the viewer to function.
 
     Parameters
     ----------
@@ -261,7 +335,7 @@ def make_notebook_html(data, template="static.html", types=("inflated",), **kwar
     Returns
     -------
     html : str
-        The self-contained HTML string.
+        The generated HTML string (requires adjacent assets to function).
     """
     from . import view
 
