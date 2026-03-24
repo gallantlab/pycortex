@@ -870,7 +870,7 @@ var mriview = (function(module) {
     module.Surface.prototype.setContourMode = function(val) {
         if (val === undefined)
             return this.uniforms.contourMode.value;
-        this.uniforms.contourMode.value = val;
+        this.uniforms.contourMode.value = parseFloat(val);
         viewer.schedule();
     };
 
