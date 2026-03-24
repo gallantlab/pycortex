@@ -11,11 +11,10 @@ enabling contour borders in the rendered views.
 
 Available contour modes (``contour_mode``):
 
-- 0: off
-- 1: contours only (borders on curvature)
-- 2: contours + fill (data with solid-colour borders)
-- 3: colored contours only (borders coloured by the overlay's colormap)
-- 4: colored contours + fill (data with colormap-coloured borders)
+- ``"contours"``: borders only on curvature
+- ``"contours+fill"``: data with solid-colour borders (default)
+- ``"colored"``: borders coloured by the overlay's colormap
+- ``"colored+fill"``: data with colormap-coloured borders
 
 Prerequisites
 -------------
@@ -73,10 +72,11 @@ activation = cortex.Vertex(
 parc_vertex = cortex.Vertex(parcellation, subject, cmap="Set1", vmin=0, vmax=n_parcels)
 
 ###############################################################################
-# Render with colored parcellation contour overlay
-# --------------------------------------------------
+# Render with parcellation contour overlay
+# ------------------------------------------
 # Pass the parcellation ``Vertex`` directly as ``contour_overlay``.
 # The function wraps both into a Dataset automatically.
+# The default ``contour_mode="contours+fill"`` draws black borders.
 
 base_name = os.path.join(tempfile.mkdtemp(), "contour")
 
@@ -90,7 +90,6 @@ fnames = cortex.export.save_3d_views(
     trim=True,
     headless=True,
     contour_overlay=parc_vertex,
-    contour_mode=4,  # colored contours + fill
 )
 
 for fname in fnames:
@@ -100,7 +99,7 @@ for fname in fnames:
     ax.imshow(img)
     ax.axis("off")
     ax.set_title(
-        "Activation + colored parcellation contours (inflated, left)",
+        "Activation + parcellation contours (inflated, left)",
         fontsize=14,
         fontweight="bold",
     )

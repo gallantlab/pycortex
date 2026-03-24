@@ -39,7 +39,7 @@ def save_3d_views(
     sleep: float = 10,
     headless: bool = False,
     contour_overlay: Optional[Union[str, Dataview]] = None,
-    contour_mode: int = 2,
+    contour_mode: str = "contours+fill",
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
@@ -104,10 +104,10 @@ def save_3d_views(
         with ``volume``), or a string naming a view within an existing Dataset
         passed as ``volume``.  (Default: None)
 
-    contour_mode : int
+    contour_mode : str
         Contour rendering mode when ``contour_overlay`` is set.
-        0=off, 1=contours only, 2=contours+fill,
-        3=colored contours only, 4=colored contours+fill.  (Default: 2)
+        Options: "contours", "contours+fill", "colored", "colored+fill".
+        (Default: "contours+fill")
 
     Returns
     -------
@@ -144,6 +144,13 @@ def save_3d_views(
 
         # Set up contour overlay if requested
         if _contour_overlay_name is not None:
+            _contour_mode_map = {
+                "contours": 1,
+                "contours+fill": 2,
+                "colored": 3,
+                "colored+fill": 4,
+            }
+            _contour_mode_int = _contour_mode_map.get(contour_mode, contour_mode)
             handle._set_view(
                 **{
                     "surface.{subject}.contours.overlay": _contour_overlay_name,
@@ -153,7 +160,7 @@ def save_3d_views(
             time.sleep(sleep)
             handle._set_view(
                 **{
-                    "surface.{subject}.contours.mode": contour_mode,
+                    "surface.{subject}.contours.mode": _contour_mode_int,
                 }
             )
             time.sleep(1)
