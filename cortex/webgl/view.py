@@ -607,7 +607,11 @@ def show(
                 "surface.{subject}.curvature.contrast",
                 "surface.{subject}.curvature.smoothness",
             ]
-            _contour_props = ["contour_overlay"]
+            _contour_props = [
+                "surface.{subject}.contours.mode",
+                "surface.{subject}.contours.threshold",
+                "surface.{subject}.contours.overlay",
+            ]
             return _camera_props + _surface_props + _curvature_props + _contour_props
 
         def _set_view(self, **kwargs):
@@ -617,11 +621,11 @@ def show(
             that can be set include all parameters in the data.gui in the html view.
 
             Contour-related parameters:
-                surface.{subject}.contourMode : int
+                surface.{subject}.contours.mode : int
                     0=off, 1=contours only, 2=contours+fill
-                surface.{subject}.contourThreshold : float
+                surface.{subject}.contours.threshold : float
                     Edge detection threshold (0.001-0.5)
-                contour_overlay : str
+                surface.{subject}.contours.overlay : str
                     Dataset name to use as contour overlay, or "none"
 
             """

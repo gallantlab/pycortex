@@ -223,7 +223,7 @@ var mriview = (function(module) {
 
         this.setData(data[0].name);
 
-        // Build contour overlay dropdown from available vertex datasets (only once)
+        // Add contour overlay dropdown to the surface's contours folder (only once)
         if (!this._contourOverlayUIAdded) {
             var contourOptions = {"none": "none"};
             for (var dname in this.dataviews) {
@@ -233,9 +233,17 @@ var mriview = (function(module) {
             }
             if (Object.keys(contourOptions).length > 1) {
                 this._contourOverlayName = "none";
-                this.ui.add({
-                    contour_overlay: {action:[this, "setContourOverlay", contourOptions]},
-                });
+                // Add overlay dropdown to each surface's contours folder
+                var viewer = this;
+                for (var i = 0; i < this.surfs.length; i++) {
+                    (function(surf) {
+                        surf.surf.loaded.done(function() {
+                            surf.surf.ui.contours.add({
+                                overlay: {action:[viewer, "setContourOverlay", contourOptions]},
+                            });
+                        });
+                    })(this.surfs[i]);
+                }
                 this._contourOverlayUIAdded = true;
             }
         }

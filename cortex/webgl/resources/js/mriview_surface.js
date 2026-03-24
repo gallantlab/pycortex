@@ -115,10 +115,12 @@ var mriview = (function(module) {
             dither: {action:[this, "setDither"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
             uniform_illumination: {action:[this, "setUniformIllumination"]},
-            contourMode: {action:[this, "setContourMode", {off:0, "contours only":1, "contours + fill":2}]},
-            contourThreshold: {action:[this.uniforms.contourThreshold, "value", 0.001, 0.5]},
         });
-        
+
+        this.ui.addFolder("contours", true).add({
+            mode: {action:[this, "setContourMode", {off:0, "contours only":1, "contours + fill":2}]},
+            threshold: {action:[this.uniforms.contourThreshold, "value", 0.001, 0.5]},
+        });
 
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.brightness, "value", 0, 1]},
