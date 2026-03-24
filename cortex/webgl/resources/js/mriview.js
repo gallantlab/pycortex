@@ -652,19 +652,39 @@ var mriview = (function(module) {
         this.contourOverlay = name;
         var overlayData = overlayView.data[0];
 
-        overlayData.loaded.done(function() {
+        var viewer = this;
+        var applyOverlay = function() {
             var fframe = 0;
             var verts = overlayData.verts[fframe];
             var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
-            // Dispatch attribute events through the active DataView so that
-            // SurfDelegate.setAttribute picks them up (same mechanism as data0/data1)
-            this.active.dispatchEvent({type:"attribute", name:"contourData0", value:verts});
-            this.active.dispatchEvent({type:"attribute", name:"contourData1", value:verts1});
-            for (var i = 0; i < this.surfs.length; i++) {
-                this.surfs[i].surf.uniforms.contourOverlay.value = 1;
+            for (var i = 0; i < viewer.surfs.length; i++) {
+                var surf = viewer.surfs[i].surf;
+                surf.hemis.left.attributes.contourData0.array = verts[0].array;
+                surf.hemis.left.attributes.contourData0.needsUpdate = true;
+                surf.hemis.right.attributes.contourData0.array = verts[1].array;
+                surf.hemis.right.attributes.contourData0.needsUpdate = true;
+                surf.hemis.left.attributes.contourData1.array = verts1[0].array;
+                surf.hemis.left.attributes.contourData1.needsUpdate = true;
+                surf.hemis.right.attributes.contourData1.array = verts1[1].array;
+                surf.hemis.right.attributes.contourData1.needsUpdate = true;
+                surf.uniforms.contourOverlay.value = 1;
             }
-            this.schedule();
-        }.bind(this));
+            viewer.schedule();
+        };
+
+        // Data may already be available (verts populated via progress callback)
+        // even though loaded.state() is "pending" (resolve() is never called
+        // for VertexData). Check verts directly.
+        if (overlayData.verts.length > 0) {
+            applyOverlay();
+        } else {
+            // Data not yet available — wait for progress
+            overlayData.loaded.progress(function() {
+                if (overlayData.verts.length > 0) {
+                    applyOverlay();
+                }
+            });
+        }
     };
 
     module.Viewer.prototype.rmData = function(name) {
