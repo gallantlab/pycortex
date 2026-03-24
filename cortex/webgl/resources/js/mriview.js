@@ -676,6 +676,9 @@ var mriview = (function(module) {
                 surf.hemis.right.attributes.contourData1.array = verts1[1].array;
                 surf.hemis.right.attributes.contourData1.needsUpdate = true;
                 surf.uniforms.contourOverlay.value = 1;
+                // Set vmin/vmax for colored contour colormap lookup
+                surf.uniforms.contourVmin.value = overlayView.vmin[0].value[0];
+                surf.uniforms.contourVmax.value = overlayView.vmax[0].value[0];
             }
             viewer.schedule();
         };
