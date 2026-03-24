@@ -1312,7 +1312,7 @@ def get_cmap(name):
         try:
             cmap = plt.cm.get_cmap(name)
         except:
-            raise Exception("Unkown color map!")
+            raise Exception("Unknown color map!")
     return cmap
 
 
