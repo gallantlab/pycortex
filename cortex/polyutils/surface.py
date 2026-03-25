@@ -8,10 +8,16 @@ from scipy.spatial import distance
 from scipy import sparse
 import scipy.sparse.linalg
 
+try:
+    from scipy.sparse.linalg import factorized as _factorized
+except ImportError:
+    # This API was deprecated in SciPy 1.8.0.
+    # https://docs.scipy.org/doc/scipy-1.16.1/release/1.8.0-notes.html#clear-split-between-public-and-private-api
+    from scipy.sparse.linalg.dsolve import factorized as _factorized
+
 from . import exact_geodesic
 from . import subsurface
 from .misc import _memo
-
 
 class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     """Represents a single cortical hemisphere surface. Can be the white matter surface,
@@ -217,7 +223,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         npt = len(D)
         lfac = sparse.dia_matrix((D,[0]), (npt,npt)) - factor * (W-V)
         goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
-        lfac_solver = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
+        lfac_solver = _factorized(lfac[goodrows][:,goodrows])
         to_smooth = scalars.copy()
         for _ in range(iterations):
             from_smooth = lfac_solver((D * to_smooth)[goodrows])
@@ -313,7 +319,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             from scikits.sparse.cholmod import cholesky
             factorize = lambda x: cholesky(x).solve_A
         except ImportError:
-            factorize = sparse.linalg.dsolve.factorized
+            factorize = _factorized
             
         B, D, W, V = self.laplace_operator
         npt = len(D)
@@ -457,7 +463,7 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             # Exclude rows with zero weight (these break the sparse LU)
             goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
             self._goodrows = goodrows
-            self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
+            self._rlfac_solvers[m] = _factorized(lfac[goodrows][:,goodrows])
 
         # Solve system to get u, the heat values
         u0 = np.zeros((npt,)) # initial heat values
@@ -518,8 +524,8 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             # Exclude rows with zero weight (these break the sparse LU)
             goodrows = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
             self._goodrows = goodrows
-            self._rlfac_solvers[m] = sparse.linalg.dsolve.factorized(lfac[goodrows][:,goodrows])
-            self._nLC_solvers[m] = sparse.linalg.dsolve.factorized(nLC[goodrows][:,goodrows])
+            self._rlfac_solvers[m] = _factorized(lfac[goodrows][:,goodrows])
+            self._nLC_solvers[m] = _factorized(nLC[goodrows][:,goodrows])
 
         # I. "Integrate the heat flow ̇u = ∆u for some fixed time t"
         # ---------------------------------------------------------
