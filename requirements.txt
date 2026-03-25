@@ -1,7 +1,7 @@
 setuptools
 future
 numpy
-scipy>=1.8.0
+scipy
 tornado>=4.3
 shapely
 lxml
