@@ -569,7 +569,10 @@ class VolumeRGB(DataviewRGB):
         alpha.volume[mask] = alpha.vmin
 
         # Apply stored NaN mask from .raw conversion (uint8 RGB channels
-        # cannot hold NaN, so we use the mask captured before conversion)
+        # cannot hold NaN, so we use the mask captured before conversion).
+        # The mask may be in data space or volume space depending on whether
+        # the source Volume was linear (masked). If neither shape matches,
+        # the existing float NaN check above already covers that case.
         nan_mask = getattr(self, '_nan_mask', None)
         if nan_mask is not None:
             if nan_mask.shape == alpha.data.shape:
@@ -852,7 +855,9 @@ class VertexRGB(DataviewRGB):
         alpha.data[mask] = alpha.vmin
 
         # Apply stored NaN mask from .raw conversion (uint8 RGB channels
-        # cannot hold NaN, so we use the mask captured before conversion)
+        # cannot hold NaN, so we use the mask captured before conversion).
+        # Unlike VolumeRGB, vertex data has no separate volume representation,
+        # so only a data-space shape check is needed.
         nan_mask = getattr(self, '_nan_mask', None)
         if nan_mask is not None and nan_mask.shape == alpha.data.shape:
             alpha.data[nan_mask] = alpha.vmin
