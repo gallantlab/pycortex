@@ -567,6 +567,15 @@ class VolumeRGB(DataviewRGB):
         rgb = np.array([self.red.volume, self.green.volume, self.blue.volume])
         mask = np.isnan(rgb).any(axis=0)
         alpha.volume[mask] = alpha.vmin
+
+        # Apply stored NaN mask from .raw conversion (uint8 RGB channels
+        # cannot hold NaN, so we use the mask captured before conversion)
+        nan_mask = getattr(self, '_nan_mask', None)
+        if nan_mask is not None:
+            if nan_mask.shape == alpha.data.shape:
+                alpha.data[nan_mask] = alpha.vmin
+            elif nan_mask.shape == alpha.volume.shape:
+                alpha.volume[nan_mask] = alpha.vmin
         return alpha
 
     @alpha.setter
@@ -841,6 +850,12 @@ class VertexRGB(DataviewRGB):
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
         alpha.data[mask] = alpha.vmin
+
+        # Apply stored NaN mask from .raw conversion (uint8 RGB channels
+        # cannot hold NaN, so we use the mask captured before conversion)
+        nan_mask = getattr(self, '_nan_mask', None)
+        if nan_mask is not None and nan_mask.shape == alpha.data.shape:
+            alpha.data[nan_mask] = alpha.vmin
         return alpha
 
     @alpha.setter

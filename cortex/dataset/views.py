@@ -323,12 +323,17 @@ class Dataview(object):
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax)
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        # Detect NaN values before colormap conversion (NaN info is lost
+        # after uint8 conversion, so we must capture it here)
+        nan_mask = np.isnan(self.data)
         # TODO: self.data relies on BrainData. Would need common inheritance for this to work.
         color_data = cmapper.to_rgba(self.data.flatten()).reshape(
             self.data.shape + (4,)
         )
         # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
         color_data = (np.clip(color_data, 0, 1) * 255).astype(np.uint8)
+        # Ensure NaN values have alpha=0 regardless of colormap bad color
+        color_data[nan_mask, 3] = 0
         return np.rollaxis(color_data, -1)
 
 
@@ -430,7 +435,7 @@ class Volume(VolumeData, Dataview):
     @property
     def raw(self):
         r, g, b, a = super(Volume, self).raw
-        return VolumeRGB(
+        result = VolumeRGB(
             r,
             g,
             b,
@@ -441,6 +446,10 @@ class Volume(VolumeData, Dataview):
             state=self.state,
             priority=self.priority,
         )
+        # Store NaN mask so alpha getter can enforce transparency for NaN
+        # voxels even when user overrides the alpha channel
+        result._nan_mask = np.isnan(self.data)
+        return result
 
 
 class Vertex(VertexData, Dataview):
@@ -512,7 +521,7 @@ class Vertex(VertexData, Dataview):
     @property
     def raw(self):
         r, g, b, a = super(Vertex, self).raw
-        return VertexRGB(
+        result = VertexRGB(
             r,
             g,
             b,
@@ -522,6 +531,10 @@ class Vertex(VertexData, Dataview):
             state=self.state,
             priority=self.priority,
         )
+        # Store NaN mask so alpha getter can enforce transparency for NaN
+        # vertices even when user overrides the alpha channel
+        result._nan_mask = np.isnan(self.data)
+        return result
 
     def map(
         self,
