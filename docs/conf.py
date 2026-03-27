@@ -12,7 +12,6 @@
 # serve to show the default.
 
 import os
-import re
 import sys
 from datetime import datetime
 
@@ -70,9 +69,9 @@ copyright = u'2012\u2013%d, Gallant Lab' % datetime.now().year
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 import cortex  # noqa
-# Strip any dev/pre-release suffixes (e.g. ".dev0") to get the clean release version.
-_raw_version = cortex.version.__hardcoded_version__
-release = re.sub(r'(\.dev\d+|\.post\d+\.dev\d+)$', '', _raw_version)
+# The full version, including alpha/beta/rc tags.
+# Relies on setuptools-scm generating cortex/_version.py at install time.
+release = cortex.__version__
 # The short X.Y version.
 version = ".".join(release.split(".")[:2])
 
