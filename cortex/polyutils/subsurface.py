@@ -1,5 +1,6 @@
 """utilities for efficiently working with patches of cortex (aka subsurfaces)"""
 import numpy as np
+import numpy.typing as npt
 import scipy.sparse
 
 from .misc import _memo
@@ -32,6 +33,8 @@ class SubsurfaceMixin(object):
         - use cases: calling operations small number of times or on medium subsets of cortex
     - [benchmarks recorded on lab desktop workstation]
     """
+    pts: npt.NDArray[np.floating]
+    polys: npt.NDArray[np.integer]
 
     def create_subsurface(self, vertex_mask=None, polygon_mask=None):
         """Create subsurface for efficient operations on subset of Surface
@@ -75,6 +78,7 @@ class SubsurfaceMixin(object):
 
         # create subsurface
         subsurface = self.__class__(pts=subsurface_vertices, polys=subsurface_polygons)
+        # TODO: add types for these?
         subsurface.subsurface_vertex_mask = vertex_mask
         subsurface.subsurface_vertex_map = vertex_map
         subsurface.subsurface_polygon_mask = polygon_mask
