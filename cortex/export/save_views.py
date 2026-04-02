@@ -1,7 +1,7 @@
 import contextlib
 import os
 import time
-from typing import Any, Mapping, Sequence, TypedDict, Union
+from typing import Any, Mapping, Optional, Sequence, TypedDict, Union
 
 import cortex
 
@@ -38,6 +38,8 @@ def save_3d_views(
     trim: bool = True,
     sleep: float = 10,
     headless: bool = False,
+    contour_overlay: Optional[Union[str, Dataview]] = None,
+    contour_mode: str = "contours+fill",
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
@@ -47,13 +49,13 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume: pycortex.Volume or pycortex.Vertex object
+    volume : pycortex.Volume, pycortex.Vertex, or pycortex.Dataset
         Data to be displayed.
 
-    base_name: str
+    base_name : str
         Base name for images.
 
-    list_angles: list of (str or dict)
+    list_angles : list of (str or dict)
         Views to be used. Should be of length one, or of the same length as
         `list_surfaces`. Choices are:
             'left', 'right', 'front', 'back', 'top', 'bottom', 'flatmap',
@@ -61,33 +63,33 @@ def save_3d_views(
             or tuple of (view_name, custom dictionary of parameters).
             See `angle_view_params` in this file for parameter dict examples.
 
-    list_surfaces: list of (str or dict)
+    list_surfaces : list of (str or dict)
         Surfaces to be used. Should be of length one, or of the same length as
         `list_angles`. Choices are:
             'inflated', 'flatmap', 'fiducial', 'inflated_cut',
             or a custom dictionary of parameters.
 
-    viewer_params: dict
+    viewer_params : dict
         Parameters passed to the viewer.
 
-    interpolation: str
+    interpolation : str
         Interpolation used to visualize the data. Possible choices are "nearest",
         "trilinear". (Default: "nearest").
 
-    layers: int
+    layers : int
         Number of layers between the white and pial surfaces to average prior to
         plotting the data. (Default: 1).
 
-    size: tuple of int
+    size : tuple of int
         Size of produced image (before trimming).
 
-    trim: bool
+    trim : bool
         Whether to trim the white borders of the image.
 
-    sleep: float > 0
+    sleep : float > 0
         Time in seconds, to let the viewer open.
 
-    headless: bool
+    headless : bool
         If True, render using a headless Chromium browser via Playwright instead
         of requiring the user to manually open a browser window.  This allows
         the function to run fully autonomously without any user interaction.
@@ -96,13 +98,38 @@ def save_3d_views(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed.  (Default: False)
 
+    contour_overlay : Dataview, str, or None
+        Parcellation data whose borders will be drawn as contour lines.
+        Can be a Vertex/Dataview object (automatically bundled into a Dataset
+        with ``volume``), or a string naming a view within an existing Dataset
+        passed as ``volume``.  (Default: None)
+
+    contour_mode : str
+        Contour rendering mode when ``contour_overlay`` is set.
+        Options: "contours", "contours+fill", "colored", "colored+fill".
+        (Default: "contours+fill")
+
     Returns
     -------
-    file_names: list of str
+    file_names : list of str
         Image paths.
     """
     msg = "list_angles and list_surfaces should have the same length."
     assert len(list_angles) == len(list_surfaces), msg
+
+    # If contour_overlay is a Dataview, bundle volume + overlay into a Dataset.
+    # Preserve the original volume reference for isinstance checks below.
+    _contour_overlay_name = None
+    _original_volume = volume
+    if contour_overlay is not None:
+        if isinstance(contour_overlay, str):
+            _contour_overlay_name = contour_overlay
+        else:
+            # contour_overlay is a Dataview — wrap into Dataset
+            _contour_overlay_name = "__contour_overlay__"
+            volume = cortex.Dataset(
+                data=volume, **{_contour_overlay_name: contour_overlay}
+            )
 
     # Create viewer — use a proper context manager so that cleanup always
     # runs, even if an exception occurs during rendering.
@@ -117,8 +144,39 @@ def save_3d_views(
         # Wait for the viewer to be loaded
         time.sleep(sleep)
 
-        # Add interpolation and layers params only if we have a volume
-        if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
+        # Set up contour overlay if requested
+        if _contour_overlay_name is not None:
+            _contour_mode_map = {
+                "contours": 1,
+                "contours+fill": 2,
+                "colored": 3,
+                "colored+fill": 4,
+            }
+            if contour_mode not in _contour_mode_map:
+                raise ValueError(
+                    f"Unknown contour_mode {contour_mode!r}. "
+                    f"Valid options: {list(_contour_mode_map.keys())}"
+                )
+            _contour_mode_int = _contour_mode_map[contour_mode]
+            handle._set_view(
+                **{
+                    "surface.{subject}.contours.overlay": _contour_overlay_name,
+                }
+            )
+            # Wait for overlay data to load
+            time.sleep(sleep)
+            handle._set_view(
+                **{
+                    "surface.{subject}.contours.mode": _contour_mode_int,
+                }
+            )
+            time.sleep(1)
+
+        # Add interpolation and layers params only if the primary data is a volume.
+        # Use _original_volume (before Dataset wrapping) for the type check.
+        if isinstance(
+            _original_volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)
+        ):
             interpolation_params = {
                 "surface.{subject}.sampler": interpolation,
                 "surface.{subject}.layers": layers,
@@ -126,7 +184,13 @@ def save_3d_views(
         else:
             interpolation_params = dict()
 
-        has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
+        # Get subject name — handle both Dataview and Dataset
+        if hasattr(_original_volume, "subject"):
+            _subject = _original_volume.subject
+        else:
+            # Dataset: get subject from first view
+            _subject = next(iter(volume))[1].subject
+        has_flatmap = hasattr(getattr(cortex.db, _subject).surfaces, "flat")
         file_names: list[str] = []
         for view, surface in zip(list_angles, list_surfaces):
             if isinstance(view, str):
@@ -163,7 +227,7 @@ def save_3d_views(
             # wait for the view to have changed
             for _ in range(100):
                 for k, v in this_view_params.items():
-                    k = k.format(subject=volume.subject) if "{subject}" in k else k
+                    k = k.format(subject=_subject) if "{subject}" in k else k
                     if handle.ui.get(k)[0] != v:
                         print("waiting for", k, handle.ui.get(k)[0], "->", v)
                         time.sleep(0.1)

@@ -71,6 +71,15 @@ var mriview = (function(module) {
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
                 extratex:   { type:'t', value:null},
 
+                // Contour rendering
+                contourMode:      { type:'f',  value: 0 },
+                contourThreshold: { type:'f',  value: 0.01 },
+                contourColor:     { type:'v3', value: new THREE.Vector3(0, 0, 0) },
+                contourOverlay:   { type:'f',  value: 0 },
+                contourVmin:      { type:'f',  value: 0 },
+                contourVmax:      { type:'f',  value: 1 },
+                contourColormap:  { type:'t',  value: new THREE.DataTexture(new Uint8Array([0,0,0,255]), 1, 1, THREE.RGBAFormat) },
+
                 // screen:     { type:'t', value:this.volumebuf},
                 // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
@@ -110,7 +119,8 @@ var mriview = (function(module) {
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
             uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
-        
+
+        this.ui.addFolder("contours", true);
 
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.brightness, "value", 0, 1]},
@@ -256,6 +266,11 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+
+                //Queue contour overlay data attributes (pre-sized to vertex count for proper WebGL buffer allocation)
+                var nVerts = hemi.attributes.position.array.length / hemi.attributes.position.itemSize;
+                hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
+                hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
@@ -853,6 +868,13 @@ var mriview = (function(module) {
         this.mesh = new THREE.Mesh(this.sheets, null);
         this.object.add(this.mesh);
     }
+
+    module.Surface.prototype.setContourMode = function(val) {
+        if (val === undefined)
+            return this.uniforms.contourMode.value;
+        this.uniforms.contourMode.value = parseFloat(val);
+        viewer.schedule();
+    };
 
     module.Surface.prototype.setUniformIllumination = function(val) {
         if (val === undefined)

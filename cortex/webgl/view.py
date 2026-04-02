@@ -28,19 +28,25 @@ from .data import Package
 from .FallbackLoader import FallbackLoader
 
 try:
-    cmapdir = options.config.get('webgl', 'colormaps')
+    cmapdir = options.config.get("webgl", "colormaps")
     if not os.path.exists(cmapdir):
-        raise Exception("Colormap directory (%s) does not exist"%cmapdir)
+        raise Exception("Colormap directory (%s) does not exist" % cmapdir)
 except NoOptionError:
     cmapdir = os.path.join(options.config.get("basic", "filestore"), "colormaps")
     if not os.path.exists(cmapdir):
-        raise Exception("Colormap directory was not defined in the config file and the default (%s) does not exist"%cmapdir)
+        raise Exception(
+            "Colormap directory was not defined in the config file and the default (%s) does not exist"
+            % cmapdir
+        )
 
 domain_name = options.config.get("webgl", "domain_name")
 
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
-             for cm in sorted(colormaps)]
+colormaps = [
+    (os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
+    for cm in sorted(colormaps)
+]
+
 
 def make_static(
     outpath,
@@ -130,7 +136,7 @@ def make_static(
         Smoothness of curvature overlay. Default None, which uses the value
         specified in the config file.
     surface_specularity : float or None, optional
-        Specularity of surfaces visualized with the WebGL viewer. 
+        Specularity of surfaces visualized with the WebGL viewer.
         Default None, which uses the value specified in the config file under
         `webgl_viewopts.specularity`.
     **kwargs
@@ -285,24 +291,24 @@ def make_static(
 
 def show(
     data: Union[dataset.Dataset, dataset.Dataview],
-    autoclose: Optional[bool]=None,
-    open_browser: Optional[bool]=None,
-    port: Optional[int]=None,
-    pickerfun: Optional[Callable[[tuple[int, int, int], int, str], None]]=None,
-    recache: bool=False,
-    template: str="mixer.html",
-    overlays_available: Optional[tuple[str, ...]]=None,
-    overlays_visible: Optional[tuple[str, ...]]=("rois", "sulci"),
-    labels_visible: Optional[tuple[str, ...]]=("rois",),
-    types: Optional[tuple[str, ...]]=("inflated",),
-    overlay_file: Optional[str]=None,
-    curvature_brightness: Optional[float]=None,
-    curvature_contrast: Optional[float]=None,
-    curvature_smoothness: Optional[float]=None,
-    surface_specularity: Optional[float]=None,
-    title: str="Brain",
-    layout: Optional[str]=None,
-    display_url: bool=True,
+    autoclose: Optional[bool] = None,
+    open_browser: Optional[bool] = None,
+    port: Optional[int] = None,
+    pickerfun: Optional[Callable[[tuple[int, int, int], int, str], None]] = None,
+    recache: bool = False,
+    template: str = "mixer.html",
+    overlays_available: Optional[tuple[str, ...]] = None,
+    overlays_visible: Optional[tuple[str, ...]] = ("rois", "sulci"),
+    labels_visible: Optional[tuple[str, ...]] = ("rois",),
+    types: Optional[tuple[str, ...]] = ("inflated",),
+    overlay_file: Optional[str] = None,
+    curvature_brightness: Optional[float] = None,
+    curvature_contrast: Optional[float] = None,
+    curvature_smoothness: Optional[float] = None,
+    surface_specularity: Optional[float] = None,
+    title: str = "Brain",
+    layout: Optional[str] = None,
+    display_url: bool = True,
     **kwargs,
 ):
     """
@@ -338,7 +344,7 @@ def show(
     overlays_available : tuple, optional
         Overlays available in the viewer. If None, then all overlay layers of the
         svg file will be potentially available in the viewer (whether initially
-        visible or not). 
+        visible or not).
     overlays_visible : tuple, optional
         The listed overlay layers will be set visible by default. Layers not listed
         here will be hidden by default (but can be enabled in the viewer GUI).
@@ -366,7 +372,7 @@ def show(
         Smoothness of curvature overlay. Default None, which uses the value
         specified in the config file.
     surface_specularity : float or None, optional
-        Specularity of surfaces visualized with the WebGL viewer. 
+        Specularity of surfaces visualized with the WebGL viewer.
         Default None, which uses the value specified in the config file under
         `webgl_viewopts.specularity`.
     title : str, optional
@@ -387,52 +393,61 @@ def show(
 
     # populate default webshow args
     if autoclose is None:
-        autoclose = options.config.get('webshow', 'autoclose', fallback='true') == 'true'
+        autoclose = (
+            options.config.get("webshow", "autoclose", fallback="true") == "true"
+        )
     if open_browser is None:
-        open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
+        open_browser = (
+            options.config.get("webshow", "open_browser", fallback="true") == "true"
+        )
 
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
-    html = FallbackLoader([os.path.split(os.path.abspath(template))[0], serve.cwd]).load(template)
+    html = FallbackLoader(
+        [os.path.split(os.path.abspath(template))[0], serve.cwd]
+    ).load(template)
     db.auxfile = data
 
-    #Extract the list of stimuli, for special-casing
+    # Extract the list of stimuli, for special-casing
     stims: dict[str, str] = dict()
     for name, view in data:
-        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
-            sname = os.path.split(view.attrs['stim'])[1]
-            stims[sname] = view.attrs['stim']
+        if "stim" in view.attrs and os.path.exists(view.attrs["stim"]):
+            sname = os.path.split(view.attrs["stim"])[1]
+            stims[sname] = view.attrs["stim"]
 
     package = Package(data)
     metadata = json.dumps(package.metadata())
     images = package.images
     subjects = list(package.subjects)
 
-    ctmargs = dict(method='mg2', level=9, recache=recache,
-        external_svg=overlay_file, overlays_available=overlays_available)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
-                for subj in subjects)
+    ctmargs = dict(
+        method="mg2",
+        level=9,
+        recache=recache,
+        external_svg=overlay_file,
+        overlays_available=overlays_available,
+    )
+    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs)) for subj in subjects)
     package.reorder(ctms)
 
-    subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
+    subjectjs = json.dumps(dict((subj, "ctm/%s/" % subj) for subj in subjects))
     db.auxfile = None
 
-
-    linear = lambda x, y, m: (1.-m)*x + m*y
+    linear = lambda x, y, m: (1.0 - m) * x + m * y
     mixes = dict(
         linear=linear,
-        smoothstep=(lambda x, y, m: linear(x, y, 3*m**2 - 2*m**3)),
-        smootherstep=(lambda x, y, m: linear(x, y, 6*m**5 - 15*m**4 + 10*m**3))
+        smoothstep=(lambda x, y, m: linear(x, y, 3 * m**2 - 2 * m**3)),
+        smootherstep=(lambda x, y, m: linear(x, y, 6 * m**5 - 15 * m**4 + 10 * m**3)),
     )
 
     post_name: Queue[str] = Queue()
 
     # Put together all view options
-    my_viewopts: dict[str, Any] = dict(options.config.items('webgl_viewopts'))
-    my_viewopts['overlays_visible'] = overlays_visible
-    my_viewopts['labels_visible'] = labels_visible
+    my_viewopts: dict[str, Any] = dict(options.config.items("webgl_viewopts"))
+    my_viewopts["overlays_visible"] = overlays_visible
+    my_viewopts["labels_visible"] = labels_visible
     my_viewopts["brightness"] = (
         options.config.get("curvature", "brightness")
         if curvature_brightness is None
@@ -455,7 +470,7 @@ def show(
     )
 
     for sec in options.config.sections():
-        if 'paths' in sec or 'labels' in sec:
+        if "paths" in sec or "labels" in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
 
     if pickerfun is None:
@@ -463,8 +478,8 @@ def show(
 
     class CTMHandler(web.RequestHandler):
         def get(self, path: str):
-            subj, path = path.split('/')
-            if path == '':
+            subj, path = path.split("/")
+            if path == "":
                 self.set_header("Content-Type", "application/json")
                 self.write(open(ctms[subj]).read())
             else:
@@ -473,14 +488,14 @@ def show(
                 if mtype is None:
                     mtype = "application/octet-stream"
                 self.set_header("Content-Type", mtype)
-                self.write(open(os.path.join(fpath, path), 'rb').read())
+                self.write(open(os.path.join(fpath, path), "rb").read())
 
     class DataHandler(web.RequestHandler):
         def get(self, path: str):
             path = path.strip("/")
             frame: Union[int, str]
             try:
-                dataname, frame = path.split('/')
+                dataname, frame = path.split("/")
             except ValueError:
                 dataname = path
                 frame = 0
@@ -492,15 +507,21 @@ def show(
                 else:
                     self.set_header("Content-Type", "image/png")
 
-                if 'Range' in self.request.headers:
+                if "Range" in self.request.headers:
                     self.set_status(206)
-                    rangestr = self.request.headers['Range'].split('=')[1]
-                    start, end = [ int(i) if len(i) > 0 else None for i in rangestr.split('-') ]
+                    rangestr = self.request.headers["Range"].split("=")[1]
+                    start, end = [
+                        int(i) if len(i) > 0 else None for i in rangestr.split("-")
+                    ]
 
-                    clenheader = 'bytes %s-%s/%s' % (start, end or len(dataimg), len(dataimg) )
-                    self.set_header('Content-Range', clenheader)
-                    self.set_header('Content-Length', end-start+1)
-                    self.write(dataimg[start:end+1])
+                    clenheader = "bytes %s-%s/%s" % (
+                        start,
+                        end or len(dataimg),
+                        len(dataimg),
+                    )
+                    self.set_header("Content-Range", clenheader)
+                    self.set_header("Content-Length", end - start + 1)
+                    self.write(dataimg[start : end + 1])
                 else:
                     self.write(dataimg)
             else:
@@ -521,24 +542,26 @@ def show(
 
     class StaticHandler(web.StaticFileHandler):
         def initialize(self):
-            self.root = ''
+            self.root = ""
 
     class MixerHandler(web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
-            generated = html.generate(data=metadata,
-                                      colormaps=colormaps,
-                                      default_cmap="RdBu_r",
-                                      python_interface=True,
-                                      leapmotion=True,
-                                      layout=layout,
-                                      subjects=subjectjs,
-                                      viewopts=json.dumps(my_viewopts),
-                                      title=title,
-                                      **kwargs)
-                                      #overlays_visible=json.dumps(overlays_visible),
-                                      #labels_visible=json.dumps(labels_visible),
-                                      #**viewopts)
+            generated = html.generate(
+                data=metadata,
+                colormaps=colormaps,
+                default_cmap="RdBu_r",
+                python_interface=True,
+                leapmotion=True,
+                layout=layout,
+                subjects=subjectjs,
+                viewopts=json.dumps(my_viewopts),
+                title=title,
+                **kwargs,
+            )
+            # overlays_visible=json.dumps(overlays_visible),
+            # labels_visible=json.dumps(labels_visible),
+            # **viewopts)
             self.write(generated)
 
         def post(self):
@@ -554,13 +577,13 @@ def show(
                         data = png
                 svgfile.write(data)
 
-    P = ParamSpec('P')
+    P = ParamSpec("P")
 
     class JSMixer(serve.JSProxy[P]):
         @property
         def view_props(self) -> list[str]:
-            """An enumerated list of settable properties for views. 
-            There may be a way to get this from the javascript object, 
+            """An enumerated list of settable properties for views.
+            There may be a way to get this from the javascript object,
             but I (ML) don't know how.
 
             There may be additional properties we want to set in views
@@ -572,15 +595,24 @@ def show(
                 'volume_vis', 'frame', 'slices']
             """
             camera = getattr(self.ui, "camera")
-            _camera_props = ['camera.%s' % k for k in camera._controls.attrs.keys()]
+            _camera_props = ["camera.%s" % k for k in camera._controls.attrs.keys()]
             surface = getattr(self.ui, "surface")
             _subject = list(surface._folders.attrs.keys())[0]
             _surface = getattr(surface, _subject)
-            _surface_props = ['surface.{subject}.%s'%k for k in _surface._controls.attrs.keys()]
-            _curvature_props = ['surface.{subject}.curvature.brightness',
-                                'surface.{subject}.curvature.contrast',
-                                'surface.{subject}.curvature.smoothness']
-            return _camera_props + _surface_props + _curvature_props
+            _surface_props = [
+                "surface.{subject}.%s" % k for k in _surface._controls.attrs.keys()
+            ]
+            _curvature_props = [
+                "surface.{subject}.curvature.brightness",
+                "surface.{subject}.curvature.contrast",
+                "surface.{subject}.curvature.smoothness",
+            ]
+            _contour_props = [
+                "surface.{subject}.contours.mode",
+                "surface.{subject}.contours.threshold",
+                "surface.{subject}.contours.overlay",
+            ]
+            return _camera_props + _surface_props + _curvature_props + _contour_props
 
         def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
@@ -588,24 +620,36 @@ def show(
             Sets each the state of each keyword argument provided. View parameters
             that can be set include all parameters in the data.gui in the html view.
 
+            Contour-related parameters:
+                surface.{subject}.contours.mode : int
+                    0=off, 1=contours only, 2=contours+fill
+                surface.{subject}.contours.threshold : float
+                    Edge detection threshold (0.001-0.5)
+                surface.{subject}.contours.overlay : str
+                    Dataset name to use as contour overlay, or "none"
+
             """
             # Set unfolding level first, as it interacts with other arguments
             assert isinstance(self.ui, serve.JSProxy)
             surface: serve.JSProxy[P] = getattr(self.ui, "surface")
             subject_list = cast(serve.JSProxy[P], surface._folders).attrs.keys()
-            # Better to only self.view_props once; it interacts with javascript, 
+            # Better to only self.view_props once; it interacts with javascript,
             # don't want to do that too often, it leads to glitches.
             vw_props = copy.copy(self.view_props)
             for subject in subject_list:
-                if 'surface.{subject}.unfold' in kwargs:
-                    unfold = kwargs.pop('surface.{subject}.unfold')
-                    self.ui.set('surface.{subject}.unfold'.format(subject=subject), unfold)
+                if "surface.{subject}.unfold" in kwargs:
+                    unfold = kwargs.pop("surface.{subject}.unfold")
+                    self.ui.set(
+                        "surface.{subject}.unfold".format(subject=subject), unfold
+                    )
                 for k, v in kwargs.items():
                     if not k in vw_props:
-                        print('Unknown parameter %s!'%k)
+                        print("Unknown parameter %s!" % k)
                         continue
                     else:
-                        self.ui.set(k.format(subject=subject) if '{subject}' in k else k, v)
+                        self.ui.set(
+                            k.format(subject=subject) if "{subject}" in k else k, v
+                        )
                         # Wait for webgl. Wait for it. .... WAAAAAIIIT.
                         time.sleep(0.03)
 
@@ -621,7 +665,7 @@ def show(
             ----------
             frame_time : scalar
                 time (in seconds) to specify for this frame.
-            
+
             Notes
             -----
             If multiple subjects are present, only retrieves view for first subject.
@@ -630,16 +674,18 @@ def show(
             subject = list(self.ui.surface._folders.attrs.keys())[0]
             for p in self.view_props:
                 try:
-                    view[p] = self.ui.get(p.format(subject=subject) if '{subject}' in p else p)[0]
+                    view[p] = self.ui.get(
+                        p.format(subject=subject) if "{subject}" in p else p
+                    )[0]
                     # Wait for webgl.
                     time.sleep(0.03)
                 except Exception as err:
                     # TO DO: Fix this hack with an error class in serve.py & catch it here
-                    print(err) #msg = "Cannot read property 'undefined'"
-                    #if err.message[:len(msg)] != msg:
+                    print(err)  # msg = "Cannot read property 'undefined'"
+                    # if err.message[:len(msg)] != msg:
                     #    raise err
             if frame_time is not None:
-                view['time'] = frame_time
+                view["time"] = frame_time
             return view
 
         def save_view(self, subject, name, is_overwrite=False):
@@ -683,12 +729,14 @@ def show(
 
         def addData(self, **kwargs):
             Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            new_meta, new_ims = _convert_dataset(Dataset(**kwargs), path='/data/', fmt='%s_%d.png')
+            new_meta, new_ims = _convert_dataset(
+                Dataset(**kwargs), path="/data/", fmt="%s_%d.png"
+            )
             metadata.update(new_meta)
             images.update(new_ims)
             return Proxy(metadata)
 
-        def getImage(self, filename: str, size: tuple[int, int]=(1920, 1080)):
+        def getImage(self, filename: str, size: tuple[int, int] = (1920, 1080)):
             """Saves currently displayed view to a .png image file
 
             Parameters
@@ -702,8 +750,15 @@ def show(
             Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
-                      fps=30, size=(1920, 1080), interpolation="linear"):
+        def makeMovie(
+            self,
+            animation,
+            filename="brainmovie%07d.png",
+            offset=0,
+            fps=30,
+            size=(1920, 1080),
+            interpolation="linear",
+        ):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -754,39 +809,47 @@ def show(
             # anim is a list of transitions between keyframes
             anim = []
             setfunc = self.ui.set
-            for f in sorted(animation, key=lambda x:x['idx']):
-                if f['idx'] == 0:
-                    setfunc(f['state'], f['value'])
-                    state[f['state']] = dict(idx=f['idx'], val=f['value'])
+            for f in sorted(animation, key=lambda x: x["idx"]):
+                if f["idx"] == 0:
+                    setfunc(f["state"], f["value"])
+                    state[f["state"]] = dict(idx=f["idx"], val=f["value"])
                 else:
-                    if f['state'] not in state:
-                        state[f['state']] = dict(idx=0, val=self.getState(f['state'])[0])
-                    start = dict(idx=state[f['state']]['idx'],
-                                 state=f['state'],
-                                 value=state[f['state']]['val'])
-                    end = dict(idx=f['idx'], state=f['state'], value=f['value'])
-                    state[f['state']]['idx'] = f['idx']
-                    state[f['state']]['val'] = f['value']
-                    if start['value'] != end['value']:
+                    if f["state"] not in state:
+                        state[f["state"]] = dict(
+                            idx=0, val=self.getState(f["state"])[0]
+                        )
+                    start = dict(
+                        idx=state[f["state"]]["idx"],
+                        state=f["state"],
+                        value=state[f["state"]]["val"],
+                    )
+                    end = dict(idx=f["idx"], state=f["state"], value=f["value"])
+                    state[f["state"]]["idx"] = f["idx"]
+                    state[f["state"]]["val"] = f["value"]
+                    if start["value"] != end["value"]:
                         anim.append((start, end))
 
-            for i, sec in enumerate(np.arange(0, anim[-1][1]['idx']+1./fps, 1./fps)):
+            for i, sec in enumerate(
+                np.arange(0, anim[-1][1]["idx"] + 1.0 / fps, 1.0 / fps)
+            ):
                 for start, end in anim:
-                    if start['idx'] < sec <= end['idx']:
-                        idx = (sec - start['idx']) / float(end['idx'] - start['idx'])
-                        if start['state'] == 'frame':
-                            func = mixes['linear']
+                    if start["idx"] < sec <= end["idx"]:
+                        idx = (sec - start["idx"]) / float(end["idx"] - start["idx"])
+                        if start["state"] == "frame":
+                            func = mixes["linear"]
                         else:
                             func = mixes[interpolation]
 
-                        val = func(np.array(start['value']), np.array(end['value']), idx)
+                        val = func(
+                            np.array(start["value"]), np.array(end["value"]), idx
+                        )
                         if isinstance(val, np.ndarray):
-                            setfunc(start['state'], val.ravel().tolist())
+                            setfunc(start["state"], val.ravel().tolist())
                         else:
-                            setfunc(start['state'], val)
-                self.getImage(filename%(i+offset), size=size)
+                            setfunc(start["state"], val)
+                self.getImage(filename % (i + offset), size=size)
 
-        def _get_anim_seq(self, keyframes, fps=30, interpolation='linear'):
+        def _get_anim_seq(self, keyframes, fps=30, interpolation="linear"):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
 
             Utility function called by make_movie; separated out so that individual
@@ -798,23 +861,23 @@ def show(
             fr = 0
             a = np.array
             func = mixes[interpolation]
-            #skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
+            # skip_props = ['surface.{subject}.right', 'surface.{subject}.left', ] #'projection',
             # Get keyframes
-            keyframes = sorted(keyframes, key=lambda x:x['time'])
+            keyframes = sorted(keyframes, key=lambda x: x["time"])
             # Normalize all time to frame rate
-            fs = 1./fps
+            fs = 1.0 / fps
             for k in range(len(keyframes)):
-                t = keyframes[k]['time']
-                t = np.round(t/fs)*fs
-                keyframes[k]['time'] = t
+                t = keyframes[k]["time"]
+                t = np.round(t / fs) * fs
+                keyframes[k]["time"] = t
             allframes = []
             for start, end in zip(keyframes[:-1], keyframes[1:]):
-                t0 = start['time']
-                t1 = end['time']
-                tdif = float(t1-t0)
+                t0 = start["time"]
+                t1 = end["time"]
+                tdif = float(t1 - t0)
                 # Check whether to continue frame sequence to endpoint
-                use_endpoint = keyframes[-1]==end
-                nvalues = np.round(tdif/fs).astype(int)
+                use_endpoint = keyframes[-1] == end
+                nvalues = np.round(tdif / fs).astype(int)
                 if use_endpoint:
                     nvalues += 1
                 fr_time = np.linspace(0, 1, nvalues, endpoint=use_endpoint)
@@ -822,9 +885,13 @@ def show(
                 for t in fr_time:
                     frame = {}
                     for prop in start.keys():
-                        if prop=='time':
+                        if prop == "time":
                             continue
-                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
+                        if (
+                            (start[prop] is None)
+                            or (start[prop] == end[prop])
+                            or isinstance(start[prop], (bool, str))
+                        ):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)
@@ -835,9 +902,18 @@ def show(
                     allframes.append(frame)
             return allframes
 
-        def make_movie_views(self, animation, filename="brainmovie%07d.png", 
-            offset=0, fps=30, size=(1920, 1080), alpha=1, frame_sleep=0.05,
-            frame_start=0, interpolation="linear"):
+        def make_movie_views(
+            self,
+            animation,
+            filename="brainmovie%07d.png",
+            offset=0,
+            fps=30,
+            size=(1920, 1080),
+            alpha=1,
+            frame_sleep=0.05,
+            frame_start=0,
+            interpolation="linear",
+        ):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -894,7 +970,7 @@ def show(
             for fr, frame in enumerate(allframes[frame_start:], frame_start):
                 self._set_view(**frame)
                 time.sleep(frame_sleep)
-                self.getImage(filename%(fr+offset+1), size=size)
+                self.getImage(filename % (fr + offset + 1), size=size)
                 time.sleep(frame_sleep)
 
     class PickerHandler(web.RequestHandler):
@@ -907,7 +983,9 @@ def show(
             parts = voxel_arg.split(",")
             if len(parts) != 3:
                 self.set_status(400)
-                self.finish("Invalid 'voxel' query parameter: expected 3 comma-separated integers")
+                self.finish(
+                    "Invalid 'voxel' query parameter: expected 3 comma-separated integers"
+                )
                 return
             try:
                 voxel: tuple[int, int, int] = tuple(int(i) for i in parts)
@@ -921,6 +999,7 @@ def show(
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
+
         def get_client(self):
             self.connect.wait()
             self.connect.clear()
@@ -932,18 +1011,22 @@ def show(
     if port is None:
         port = random.randint(1024, 65536)
 
-    server = WebApp([(r'/ctm/(.*)', CTMHandler),
-                     (r'/data/(.*)', DataHandler),
-                     (r'/stim/(.*)', StimHandler),
-                     (r'/mixer.html', MixerHandler),
-                     (r'/picker', PickerHandler),
-                     (r'/', MixerHandler),
-                     (r'/static/(.*)', StaticHandler)],
-                    port)
+    server = WebApp(
+        [
+            (r"/ctm/(.*)", CTMHandler),
+            (r"/data/(.*)", DataHandler),
+            (r"/stim/(.*)", StimHandler),
+            (r"/mixer.html", MixerHandler),
+            (r"/picker", PickerHandler),
+            (r"/", MixerHandler),
+            (r"/static/(.*)", StaticHandler),
+        ],
+        port,
+    )
 
     server.start()
-    print("Started server on port %d"%server.port)
-    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
+    print("Started server on port %d" % server.port)
+    url = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, server.port)
     if open_browser:
         webbrowser.open(url)
         client = server.get_client()
@@ -952,7 +1035,10 @@ def show(
     elif display_url:
         try:
             from IPython.display import HTML, display
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+
+            display(
+                HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url))
+            )
         except:
             pass
 

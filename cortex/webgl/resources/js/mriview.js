@@ -222,6 +222,37 @@ var mriview = (function(module) {
         }
 
         this.setData(data[0].name);
+
+        // Populate the contours folder: overlay first, then mode and threshold (only once)
+        if (!this._contourUIAdded) {
+            var contourOptions = {"none": "none"};
+            for (var dname in this.dataviews) {
+                if (this.dataviews[dname].vertex) {
+                    contourOptions[dname] = dname;
+                }
+            }
+            this._contourOverlayName = "none";
+            var viewer = this;
+            for (var i = 0; i < this.surfs.length; i++) {
+                (function(surf) {
+                    surf.surf.loaded.done(function() {
+                        var contoursFolder = surf.surf.ui.contours;
+                        // Overlay dropdown first (if multiple vertex datasets)
+                        if (Object.keys(contourOptions).length > 1) {
+                            contoursFolder.add({
+                                overlay: {action:[viewer, "setContourOverlay", contourOptions]},
+                            });
+                        }
+                        // Then mode and threshold
+                        contoursFolder.add({
+                            mode: {action:[surf.surf, "setContourMode", {off:0, "contours only":1, "contours + fill":2, "colored contours":3, "colored + fill":4}]},
+                            threshold: {action:[surf.surf.uniforms.contourThreshold, "value", 0.001, 0.5]},
+                        });
+                    });
+                })(this.surfs[i]);
+            }
+            this._contourUIAdded = true;
+        }
     };
 
     module.Viewer.prototype.setData = function(name) {
@@ -614,6 +645,78 @@ var mriview = (function(module) {
             this.playpause();
         this.setData([datasets[(i+dir).mod(datasets.length)]]);
     };
+    module.Viewer.prototype.setContourOverlay = function(name) {
+        if (name === undefined)
+            return this._contourOverlayName || "none";
+
+        if (name === "none" || name === null || name === 0) {
+            this._contourOverlayName = "none";
+            this.contourOverlay = null;
+            for (var i = 0; i < this.surfs.length; i++) {
+                this.surfs[i].surf.uniforms.contourOverlay.value = 0;
+            }
+            this.schedule();
+            return;
+        }
+
+        var overlayView = this.dataviews[name];
+        if (!overlayView) {
+            console.warn("setContourOverlay: dataset '" + name + "' not found. Available: " +
+                         Object.keys(this.dataviews).join(", "));
+            return;
+        }
+        if (!overlayView.vertex) {
+            console.warn("setContourOverlay: dataset '" + name + "' is not vertex data. " +
+                         "Contour overlays require vertex (surface) data.");
+            return;
+        }
+
+        this._contourOverlayName = name;
+        this.contourOverlay = name;
+        var overlayData = overlayView.data[0];
+
+        var viewer = this;
+        var applyOverlay = function() {
+            // Use frame 0 for contour overlay data. Parcellation overlays
+            // are typically single-frame (static labels). Multi-frame
+            // contour overlays are not currently supported.
+            var fframe = 0;
+            var verts = overlayData.verts[fframe];
+            var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
+            for (var i = 0; i < viewer.surfs.length; i++) {
+                var surf = viewer.surfs[i].surf;
+                surf.hemis.left.attributes.contourData0.array = verts[0].array;
+                surf.hemis.left.attributes.contourData0.needsUpdate = true;
+                surf.hemis.right.attributes.contourData0.array = verts[1].array;
+                surf.hemis.right.attributes.contourData0.needsUpdate = true;
+                surf.hemis.left.attributes.contourData1.array = verts1[0].array;
+                surf.hemis.left.attributes.contourData1.needsUpdate = true;
+                surf.hemis.right.attributes.contourData1.array = verts1[1].array;
+                surf.hemis.right.attributes.contourData1.needsUpdate = true;
+                surf.uniforms.contourOverlay.value = 1;
+                // Set vmin/vmax and colormap for colored contour lookup
+                surf.uniforms.contourVmin.value = overlayView.vmin[0].value[0];
+                surf.uniforms.contourVmax.value = overlayView.vmax[0].value[0];
+                surf.uniforms.contourColormap.value = overlayView.cmap[0].value;
+            }
+            viewer.schedule();
+        };
+
+        // Data may already be available (verts populated via progress callback)
+        // even though loaded.state() is "pending" (resolve() is never called
+        // for VertexData). Check verts directly.
+        if (overlayData.verts.length > 0) {
+            applyOverlay();
+        } else {
+            // Data not yet available — wait for progress
+            overlayData.loaded.progress(function() {
+                if (overlayData.verts.length > 0) {
+                    applyOverlay();
+                }
+            });
+        }
+    };
+
     module.Viewer.prototype.rmData = function(name) {
         delete this.datasets[name];
         $(this.object).find("#datasets li").each(function() {
