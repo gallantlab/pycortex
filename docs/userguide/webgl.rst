@@ -34,7 +34,8 @@ Key             Action
 f               flatten brain
 i 	            inflate brain
 k 	            inflate brain to surface cuts
-r               fold brain into original coordinates
+r               fold brain into original coordinates (without moving camera)
+t               reset entire view (fold brain, reset camera position, rotation, and zoom)
 shift + wheel   change inflation level
 p               show pial surface
 u               show fiducial surface
@@ -65,16 +66,17 @@ The **Open Controls** button in the upper right corner opens a control panel for
 Camera Controls
 ***************
 
-======== ===================================
+======== =====================================================
 name     description
-======== ===================================
+======== =====================================================
 azimuth  camera rotation within the xy plane
 altitude angle above the xy plane
 radius   zoom level
-reset    reset view to original position
+fold     fold brain into original coordinates
+reset    reset entire view (position, rotation, zoom, fold)
 inflate  inflate cortical surface
 flatten  flatten cortical surface
-======== ===================================
+======== =====================================================
 
 
 Surface Controls

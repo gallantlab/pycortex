@@ -1004,9 +1004,17 @@ var mriview = (function(module) {
             target: {action:[this.controls, 'setTarget'], hidden:true},
         });
 
+        var fold_brain = function() {
+            this.animate([
+                {state:'mix', idx:parseFloat(viewopts.anim_speed), value:0},
+            ]);
+        }.bind(this);
         this.reset_view = function() {
             this.animate([
                 {state:'camera.target', idx:parseFloat(viewopts.anim_speed), value:[0,0,0]},
+                {state:'camera.azimuth', idx:parseFloat(viewopts.anim_speed), value:45},
+                {state:'camera.altitude', idx:parseFloat(viewopts.anim_speed), value:75},
+                {state:'camera.radius', idx:parseFloat(viewopts.anim_speed), value:400},
                 {state:'mix', idx:parseFloat(viewopts.anim_speed), value:0},
             ]);
         }.bind(this);
@@ -1032,7 +1040,8 @@ var mriview = (function(module) {
         }.bind(this);
 
         cam_ui.add({
-            reset: {action:this.reset_view, key:'r', help:'Reset view'},
+            fold: {action:fold_brain, key:'r', help:'Fold brain'},
+            reset: {action:this.reset_view, key:'t', help:'Reset view'},
             inflate: {action:inflate, key:'i', help:'Inflate'},
             "inflate to cuts": {action:inflate_to_cuts, key:'k', help:'Inflate to cuts'},
             flatten: {action:flatten, key:'f', help:'Flatten'},
