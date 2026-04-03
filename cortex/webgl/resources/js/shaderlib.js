@@ -752,6 +752,11 @@ var Shaderlib = (function() {
                 "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
+                // NaN check: make vertex transparent if data contains NaN
+                "if (cuv.x != cuv.x) vColor = vec4(0.);",
+            "#ifdef TWOD",
+                "if (cuv.y != cuv.y) vColor = vec4(0.);",
+            "#endif",
         "#endif",
 
         "#ifdef CORTSHEET",
