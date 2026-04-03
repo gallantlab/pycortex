@@ -92,7 +92,7 @@ var mriview = (function(module) {
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
-            allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
+            allow_tilt: {action:[this, "setAllowTilt"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
             changeInflation: {action: this.changeInflation.bind(this), wheel: true, modKeys: ['shiftKey'], hidden: true, help:'Change inflation'},
@@ -667,6 +667,13 @@ var mriview = (function(module) {
             return this._equivolume;
         this._equivolume = val;
         this.resetShaders();
+    }
+
+    module.Surface.prototype.setAllowTilt = function(val) {
+        if (val === undefined)
+            return this.uniforms.allowtilt.value;
+        this.uniforms.allowtilt.value = val;
+        this.dispatchEvent({type:'allowTilt', value:val});
     }
 
     module.Surface.prototype._makeMesh = function(geom, shader) {
