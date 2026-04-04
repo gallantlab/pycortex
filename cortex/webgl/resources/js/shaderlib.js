@@ -718,6 +718,7 @@ var Shaderlib = (function() {
             "attribute float data1;",
             "attribute float data2;",
             "attribute float data3;",
+            "attribute float nanmask;",
     "#endif",
 
             "attribute vec4 wm;",
@@ -752,6 +753,9 @@ var Shaderlib = (function() {
                 "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
+                // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
+                // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
+                "if (nanmask < 0.5) vColor = vec4(0.);",
         "#endif",
 
         "#ifdef CORTSHEET",
@@ -865,6 +869,9 @@ var Shaderlib = (function() {
 
             for (var i = 0; i < 4; i++)
                 attributes['data'+i] = {type:opts.rgb ? 'v4':'f', value:null};
+
+            if (!opts.rgb)
+                attributes['nanmask'] = {type:'f', value:null};
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null };

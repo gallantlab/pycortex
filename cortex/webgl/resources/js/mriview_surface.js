@@ -256,6 +256,7 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("nanmask", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
