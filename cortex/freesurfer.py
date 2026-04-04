@@ -265,8 +265,8 @@ def import_subj(
     database.db = database.Database()
 
 
-def import_flat(fs_subject: str, patch: str, hemis=['lh', 'rh'], cx_subject: Optional[str]=None,
-                flat_type: Literal['freesurfer', 'slim', 'blender']='freesurfer', auto_overwrite=False,
+def import_flat(fs_subject: str, patch: str, hemis: list[Literal['lh', 'rh']]=['lh', 'rh'], cx_subject: Optional[str]=None,
+                flat_type: Literal['freesurfer', 'slim', 'blender']='freesurfer', auto_overwrite: bool=False,
                 freesurfer_subject_dir: Optional[str]=None, clean: bool=True) -> None:
     """Imports a flat brain from freesurfer
 
@@ -397,7 +397,7 @@ def _move_disconnect_points_to_zero(pts: npt.NDArray[np.floating], polys: npt.ND
     return pts
 
 
-def make_fiducial(fs_subject: str, freesurfer_subject_dir: Optional[str]=None):
+def make_fiducial(fs_subject: str, freesurfer_subject_dir: Optional[str]=None) -> None:
     """Make fiducial surface (halfway between white matter and pial surfaces)
     """
     hemi: Literal['lh', 'rh']
@@ -621,7 +621,7 @@ def get_label(cx_subject: str, label: str, fs_subject: Optional[str]=None, fs_di
     return idx, values
 
 
-def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
+def _mri_surf2surf_command(src_subj: str, trg_subj: str, input_file: str, output_file: str, hemi: Literal['lh', 'rh']) -> list[str]:
     # mri_surf2surf --srcsubject <source subject name> --srcsurfval
     # <sourcefile> --trgsubject <target suhject name> --trgsurfval <target
     # file> --hemi <hemifield>
@@ -645,7 +645,8 @@ def _check_datatype(data: npt.NDArray) -> np.dtype:
         return dtype
 
 
-def mri_surf2surf(data: npt.NDArray, source_subj: str, target_subj: str, hemi: Literal['lh', 'rh'], subjects_dir: Optional[str]=None):
+def mri_surf2surf(data: npt.NDArray, source_subj: str, target_subj: str, hemi: Literal['lh', 'rh'], subjects_dir: Optional[str]=None) -> npt.NDArray:
+    # TODO: what dtype ndarray?
     """Uses freesurfer mri_surf2surf to transfer vertex data between
         two freesurfer subjects
     
