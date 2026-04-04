@@ -39,17 +39,26 @@ _viewer_lock = threading.Lock()
 
 def close_all():
     """Close all active static viewers, shutting down servers and removing temp files."""
-    with _viewer_lock:
-        viewers = list(_active_viewers)
+    try:
+        with _viewer_lock:
+            viewers = list(_active_viewers)
+    except Exception:
+        return  # Module teardown in progress
     closed = 0
     for viewer in viewers:
         try:
             viewer.close()
             closed += 1
         except Exception:
-            logger.warning("Failed to close viewer during close_all", exc_info=True)
+            try:
+                logger.warning("Failed to close viewer during close_all", exc_info=True)
+            except Exception:
+                pass
     if closed:
-        logger.info("Closed %d static viewer(s)", closed)
+        try:
+            logger.info("Closed %d static viewer(s)", closed)
+        except Exception:
+            pass
 
 
 atexit.register(close_all)
@@ -90,6 +99,11 @@ class StaticViewer:
         with _viewer_lock:
             _active_viewers.add(self)
 
+    @property
+    def closed(self):
+        """Whether this viewer has been closed."""
+        return self._closed
+
     def close(self, timeout=1.0):
         """Shut down the HTTP server, wait for the thread, and remove temp files.
 
@@ -115,6 +129,12 @@ class StaticViewer:
         if self._thread is not None and self._thread.is_alive():
             try:
                 self._thread.join(timeout=timeout)
+                if self._thread.is_alive():
+                    logger.warning(
+                        "Static viewer server thread did not terminate "
+                        "within %.1fs timeout",
+                        timeout,
+                    )
             except Exception:
                 logger.warning(
                     "Failed to join static viewer server thread", exc_info=True
@@ -128,6 +148,15 @@ class StaticViewer:
                     "Failed to clean up temp dir %s", self._tmpdir, exc_info=True
                 )
 
+        with _viewer_lock:
+            _active_viewers.discard(self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
     def __del__(self):
         try:
             self.close(timeout=0.1)
@@ -136,6 +165,8 @@ class StaticViewer:
 
     def _repr_html_(self):
         """Allow Jupyter to display this object directly."""
+        if self._closed:
+            return "<p><em>Static viewer closed.</em></p>"
         return self.iframe._repr_html_()
 
 
@@ -196,7 +227,7 @@ def display_iframe(data, width="100%", height=600, port=None, **kwargs):
         The Tornado server object. Can be used to get a JSMixer client for
         programmatic control.
     """
-    from . import view, serve
+    from . import view
 
     if port is None:
         port = _find_free_port()
@@ -204,9 +235,11 @@ def display_iframe(data, width="100%", height=600, port=None, **kwargs):
     # Start the server without opening a browser
     kwargs["open_browser"] = False
     kwargs["autoclose"] = False
+    kwargs["display_url"] = False
     server = view.show(data, port=port, **kwargs)
 
-    url = "http://%s:%d/mixer.html" % (serve.hostname, port)
+    host = os.environ.get("CORTEX_JUPYTER_IFRAME_HOST", "127.0.0.1")
+    url = "http://%s:%d/mixer.html" % (host, port)
 
     # Format width for IFrame
     if isinstance(width, int):
@@ -297,16 +330,30 @@ def display_static(data, width="100%", height=600, **kwargs):
 
     host = os.environ.get("CORTEX_JUPYTER_STATIC_HOST", "127.0.0.1")
 
-    httpd = http.server.HTTPServer((host, 0), _QuietHandler)
+    try:
+        httpd = http.server.HTTPServer((host, 0), _QuietHandler)
+    except OSError:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise
+
     port = httpd.server_address[1]
 
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
 
-    iframe = IFrame(
-        src="http://%s:%d/index.html" % (host, port), width=width_str, height=height
-    )
-    ipydisplay(iframe)
+    try:
+        iframe = IFrame(
+            src="http://%s:%d/index.html" % (host, port),
+            width=width_str,
+            height=height,
+        )
+        ipydisplay(iframe)
+    except Exception:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=1.0)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise
 
     return StaticViewer(iframe, httpd, thread, tmpdir)
 

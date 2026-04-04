@@ -40,8 +40,13 @@ extensions = [
 
 exclude_patterns = ["_build", "auto_examples/**/*.ipynb"]
 
-extensions.append("nbsphinx")
-nbsphinx_execute = "always"
+try:
+    import nbsphinx  # noqa: F401
+
+    extensions.append("nbsphinx")
+    nbsphinx_execute = "auto"
+except ImportError:
+    exclude_patterns.append("notebooks/*.ipynb")
 
 autosummary_generate = True
 numpydoc_show_class_members = False

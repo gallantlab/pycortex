@@ -16,7 +16,6 @@ make_static = DocLoader("make_static", ".view", "cortex.webgl", actual_func=_sta
 
 try:
     import IPython  # noqa: F401
+    from . import jupyter  # noqa: F401
 except ImportError:
     pass
-else:
-    from . import jupyter
