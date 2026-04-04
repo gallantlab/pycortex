@@ -356,3 +356,93 @@ def test_warn_non_perceptually_uniform_2D_cmap():
     )
     with pytest.warns(UserWarning):
         cortex.quickshow(view)
+
+
+def test_nan_transparent_vertex_raw():
+    """NaN values in Vertex.raw should have alpha=0 (transparent)."""
+    data = np.random.randn(nverts)
+    nan_indices = [0, 10, 100, nverts - 1]
+    data[nan_indices] = np.nan
+
+    vtx = dataset.Vertex(data, subj, vmin=-2, vmax=2, cmap="RdBu_r")
+    raw = vtx.raw
+
+    # Default alpha: NaN positions should have alpha=0
+    vertices = raw.vertices  # (1, nverts, 4)
+    for idx in nan_indices:
+        assert vertices[0, idx, 3] == 0, (
+            f"NaN vertex {idx} should have alpha=0, got {vertices[0, idx, 3]}"
+        )
+
+    # Non-NaN positions should have non-zero alpha
+    non_nan_idx = 1
+    assert not np.isnan(data[non_nan_idx])
+    assert vertices[0, non_nan_idx, 3] > 0
+
+
+def test_nan_transparent_vertex_raw_alpha_override():
+    """NaN values should remain transparent even when user overrides alpha."""
+    data = np.random.randn(nverts)
+    nan_indices = [0, 10, 100, nverts - 1]
+    data[nan_indices] = np.nan
+
+    vtx = dataset.Vertex(data, subj, vmin=-2, vmax=2, cmap="RdBu_r")
+    raw = vtx.raw
+
+    # Override alpha with all-opaque values
+    alpha = np.ones(nverts) * 0.8
+    raw.alpha = alpha
+
+    vertices = raw.vertices  # (1, nverts, 4)
+    for idx in nan_indices:
+        assert vertices[0, idx, 3] == 0, (
+            f"NaN vertex {idx} should have alpha=0 after override, got {vertices[0, idx, 3]}"
+        )
+
+    # Non-NaN positions should reflect the user's alpha
+    non_nan_idx = 1
+    assert not np.isnan(data[non_nan_idx])
+    assert vertices[0, non_nan_idx, 3] > 0
+
+
+def test_nan_transparent_volume_raw():
+    """NaN values in Volume.raw should have alpha=0 (transparent)."""
+    data = np.random.randn(*volshape)
+    data[0, 0, 0] = np.nan
+    data[10, 50, 50] = np.nan
+
+    vol = dataset.Volume(data, subj, xfmname, vmin=-2, vmax=2, cmap="RdBu_r")
+    raw = vol.raw
+
+    # Default alpha: NaN positions should have alpha=0
+    volume = raw.volume  # (1, z, y, x, 4)
+    assert volume[0, 0, 0, 0, 3] == 0
+    assert volume[0, 10, 50, 50, 3] == 0
+
+    # Non-NaN positions should have non-zero alpha
+    assert not np.isnan(data[15, 50, 50])
+    assert volume[0, 15, 50, 50, 3] > 0
+
+
+def test_nan_transparent_volume_raw_alpha_override():
+    """NaN values should remain transparent even when user overrides alpha."""
+    data = np.random.randn(*volshape)
+    data[0, 0, 0] = np.nan
+    data[10, 50, 50] = np.nan
+
+    vol = dataset.Volume(data, subj, xfmname, vmin=-2, vmax=2, cmap="RdBu_r")
+    raw = vol.raw
+
+    # Override alpha with all-opaque values
+    alpha = np.ones(volshape) * 0.8
+    raw.alpha = alpha
+
+    volume = raw.volume  # (1, z, y, x, 4)
+    assert volume[0, 0, 0, 0, 3] == 0, (
+        f"NaN voxel should have alpha=0 after override, got {volume[0, 0, 0, 0, 3]}"
+    )
+    assert volume[0, 10, 50, 50, 3] == 0
+
+    # Non-NaN positions should reflect the user's alpha
+    assert not np.isnan(data[15, 50, 50])
+    assert volume[0, 15, 50, 50, 3] > 0
