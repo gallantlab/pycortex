@@ -112,6 +112,19 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
+    def _apply_nan_mask(self, alpha):
+        """Apply stored NaN mask to alpha, enforcing transparency for NaN
+        positions even when the user overrides the alpha channel. uint8 RGB
+        channels cannot hold NaN, so the mask is captured before conversion
+        in Dataview.raw and stored as ``_nan_mask``."""
+        nan_mask = getattr(self, "_nan_mask", None)
+        if nan_mask is None:
+            return
+        if nan_mask.shape == alpha.data.shape:
+            alpha.data[nan_mask] = alpha.vmin
+        elif hasattr(alpha, "volume") and nan_mask.shape == alpha.volume.shape:
+            alpha.volume[nan_mask] = alpha.vmin
+
     def _write_hdf(self, h5, name="data", xfmname=None):
         self._cls._write_hdf(self.red, h5)
         self._cls._write_hdf(self.green, h5)
@@ -264,21 +277,21 @@ class DataviewRGB(Dataview):
         needs_auto_min = any(v is None for v in channel_vmins)
         needs_auto_max = any(v is None for v in channel_vmaxs)
 
-        if (needs_auto_min or needs_auto_max):
-            if autorange == 'shared':
+        if needs_auto_min or needs_auto_max:
+            if autorange == "shared":
                 all_data = np.concatenate([data1.ravel(), data2.ravel(), data3.ravel()])
                 shared_min = np.percentile(all_data, 1)
                 shared_max = np.percentile(all_data, 99)
                 channel_vmins = [shared_min if v is None else v for v in channel_vmins]
                 channel_vmaxs = [shared_max if v is None else v for v in channel_vmaxs]
-            elif autorange == 'individual':
+            elif autorange == "individual":
                 for i, data in enumerate([data1, data2, data3]):
                     if channel_vmins[i] is None:
                         channel_vmins[i] = np.percentile(data.ravel(), 1)
                     if channel_vmaxs[i] is None:
                         channel_vmaxs[i] = np.percentile(data.ravel(), 99)
             else:
-                raise ValueError('autorange must be \'shared\' or \'individual\'')
+                raise ValueError("autorange must be 'shared' or 'individual'")
 
         normalized = []
         for channel, (data, channel_min, channel_max) in enumerate(
@@ -287,7 +300,9 @@ class DataviewRGB(Dataview):
             channel_range = channel_max - channel_min
             if channel_range == 0:
                 warnings.warn(
-                    "Channel {} has no dynamic range (vmin == vmax) and will be zeroed out".format(channel)
+                    "Channel {} has no dynamic range (vmin == vmax) and will be zeroed out".format(
+                        channel
+                    )
                 )
                 normalized.append(np.zeros_like(data))
             else:
@@ -432,7 +447,7 @@ class VolumeRGB(DataviewRGB):
         max_color_saturation: float = 1.0,
         vmin: Optional[Union[float, tuple]] = None,
         vmax: Optional[Union[float, tuple]] = None,
-        autorange: str = 'individual',
+        autorange: str = "individual",
         priority: int = 1,
     ):
         channel1color = tuple(channel1color)
@@ -464,7 +479,7 @@ class VolumeRGB(DataviewRGB):
                 and (channel3color == Colors.Blue)
                 and vmin is None
                 and vmax is None
-                and autorange == 'individual'
+                and autorange == "individual"
             ):
                 # R/G/B basis can be directly passed through
                 self.red = channel1
@@ -506,7 +521,7 @@ class VolumeRGB(DataviewRGB):
                 and (channel3color == Colors.Blue)
                 and vmin is None
                 and vmax is None
-                and autorange == 'individual'
+                and autorange == "individual"
             ):
                 # R/G/B basis can be directly passed through
                 self.red = Volume(channel1, subject, xfmname)
@@ -568,17 +583,7 @@ class VolumeRGB(DataviewRGB):
         mask = np.isnan(rgb).any(axis=0)
         alpha.volume[mask] = alpha.vmin
 
-        # Apply stored NaN mask from .raw conversion (uint8 RGB channels
-        # cannot hold NaN, so we use the mask captured before conversion).
-        # The mask may be in data space or volume space depending on whether
-        # the source Volume was linear (masked). If neither shape matches,
-        # the existing float NaN check above already covers that case.
-        nan_mask = getattr(self, '_nan_mask', None)
-        if nan_mask is not None:
-            if nan_mask.shape == alpha.data.shape:
-                alpha.data[nan_mask] = alpha.vmin
-            elif nan_mask.shape == alpha.volume.shape:
-                alpha.volume[nan_mask] = alpha.vmin
+        self._apply_nan_mask(alpha)
         return alpha
 
     @alpha.setter
@@ -740,7 +745,7 @@ class VertexRGB(DataviewRGB):
         max_color_saturation=1.0,
         vmin=None,
         vmax=None,
-        autorange='individual',
+        autorange="individual",
         priority=1,
     ):
         channel1color = tuple(channel1color)
@@ -762,7 +767,7 @@ class VertexRGB(DataviewRGB):
                 and (channel3color == Colors.Blue)
                 and vmin is None
                 and vmax is None
-                and autorange == 'individual'
+                and autorange == "individual"
             ):
                 # R/G/B basis can be directly passed through
                 self.red = red
@@ -802,7 +807,7 @@ class VertexRGB(DataviewRGB):
                 and (channel3color == Colors.Blue)
                 and vmin is None
                 and vmax is None
-                and autorange == 'individual'
+                and autorange == "individual"
             ):
                 # R/G/B basis can be directly passed through
                 self.red = Vertex(red, subject)
@@ -854,13 +859,7 @@ class VertexRGB(DataviewRGB):
         mask = np.isnan(rgb).any(axis=0)
         alpha.data[mask] = alpha.vmin
 
-        # Apply stored NaN mask from .raw conversion (uint8 RGB channels
-        # cannot hold NaN, so we use the mask captured before conversion).
-        # Unlike VolumeRGB, vertex data has no separate volume representation,
-        # so only a data-space shape check is needed.
-        nan_mask = getattr(self, '_nan_mask', None)
-        if nan_mask is not None and nan_mask.shape == alpha.data.shape:
-            alpha.data[nan_mask] = alpha.vmin
+        self._apply_nan_mask(alpha)
         return alpha
 
     @alpha.setter

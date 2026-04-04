@@ -391,6 +391,7 @@ var dataset = (function(module) {
         this.frames = json.frames;
 
         this.verts = [];
+        this.nanmasks = [];
         NParray.fromURL(this.data[0], function(array) {
             array.loaded.progress(function(available){
                 var data = array.view(available-1).data;
@@ -418,11 +419,30 @@ var dataset = (function(module) {
 			}
 
                     } else {
+                        // Remap indices and detect NaN in a single pass.
+                        // WebGL drivers may sanitize NaN in vertex attributes,
+                        // so we build a mask and replace NaN with 0 here.
+                        var hasNaN = false;
                         for (var i = 0; i < sleft.length; i++) {
                             sleft[i] = left[hemis.left.reverseIndexMap[i]];
+                            if (isNaN(sleft[i])) hasNaN = true;
                         }
                         for (var i = 0; i < sright.length; i++) {
                             sright[i] = right[hemis.right.reverseIndexMap[i]];
+                            if (isNaN(sright[i])) hasNaN = true;
+                        }
+                        if (hasNaN) {
+                            var masks = [sleft, sright].map(function(arr) {
+                                var mask = new Float32Array(arr.length);
+                                for (var i = 0; i < arr.length; i++) {
+                                    if (isNaN(arr[i])) { mask[i] = 0.0; arr[i] = 0.0; }
+                                    else { mask[i] = 1.0; }
+                                }
+                                var attr = new THREE.BufferAttribute(mask, 1);
+                                attr.needsUpdate = true;
+                                return attr;
+                            });
+                            this.nanmasks.push(masks);
                         }
                     }
                     var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
@@ -447,6 +467,9 @@ var dataset = (function(module) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
         dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
+        if (this.nanmasks.length > 0) {
+            dispatch({type:"attribute", name:"nanmask", value:this.nanmasks[fframe]});
+        }
     }
 
     return module;
