@@ -8,6 +8,11 @@ var mriview = (function(module) {
             this.controls.setMix(evt.flat);
         }.bind(this);
 
+        //allowTilt function to attach to surface when it's added
+        this._allowTilt = function(evt){
+            this.controls.allowTilt = evt.value;
+        }.bind(this);
+
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
 
@@ -625,6 +630,7 @@ var mriview = (function(module) {
         //Sets the slicing surface used to visualize the data
         var surf = new surftype(this.active, opts);
         surf.addEventListener("mix", this._mix);
+        surf.addEventListener("allowTilt", this._allowTilt);
 
         this.surfs.push(surf);
         this.root.add(surf.object);
@@ -791,6 +797,7 @@ var mriview = (function(module) {
                 this.active.removeEventListener("attribute", this.surfs[i]._attrib);
                 this.removeEventListener("resize", this.surfs[i]._resize);
                 this.surfs[i].removeEventListener("mix", this._mix);
+                this.surfs[i].removeEventListener("allowTilt", this._allowTilt);
 
                 this.root.remove(this.surfs[i].object);
             } else
