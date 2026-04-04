@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import overload, Literal
 import sys
 
 import cython
@@ -24,7 +25,16 @@ def read_gii(filename):
 def read_stl(filename):
     ...
 
-def read_obj(filename, norm=False, uv=False):
+@overload
+def read_obj(filename: str, norm: Literal[False]=False, uv: Literal[False]=False) -> tuple[npt.NDArray[_py_np.floating], npt.NDArray[_py_np.integer]]:
+    ...
+
+# TODO: add overloads for all cases
+@overload
+def read_obj(filename: str, norm: Literal[True], uv: Literal[True]) -> tuple[npt.NDArray[_py_np.floating], npt.NDArray[_py_np.integer], list[list[float]], list[list[float]]]:
+    ...
+
+def read_obj(filename: str, norm: bool=False, uv: bool=False) -> tuple[npt.NDArray[_py_np.floating], npt.NDArray[_py_np.integer], list[list[float]] | None, list[list[float]] | None]:
     ...
 
 @cython.boundscheck(False)
