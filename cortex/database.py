@@ -395,7 +395,7 @@ class Database:
             overlay_file = paths['overlays']
         return svgoverlay.get_overlay(subject, overlay_file, pts, polys, **kwargs)
     
-    def save_xfm(self, subject, name, xfm, xfmtype="magnet", reference=None):
+    def save_xfm(self, subject: str, name: str, xfm: npt.NDArray[np.floating], xfmtype: str="magnet", reference: Optional[str]=None):
         """
         Load a transform into the surface database. If the transform exists already, update it
         If it does not exist, copy the reference epi into the filestore and insert.
@@ -566,7 +566,7 @@ class Database:
         except KeyError:
             raise IOError(f"Surface type '{type}' not found for {hemi} hemisphere of subject '{subject}'")
 
-    def save_mask(self, subject, xfmname, type, mask):
+    def save_mask(self, subject: str, xfmname: str, type: str, mask: npt.NDArray[np.bool]) -> None:
         fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
         if os.path.exists(fname):
             raise IOError('Refusing to overwrite existing mask')
@@ -601,7 +601,7 @@ class Database:
             self.save_mask(subject, xfmname, type, mask)
             return mask
 
-    def get_shared_voxels(self, subject, xfmname, hemi="both", merge=True, use_astar=True, recache=False):
+    def get_shared_voxels(self, subject: str, xfmname: str, hemi: Literal['lh', 'rh', 'both']="both", merge: bool=True, use_astar: bool=True, recache: bool=False):
         """Get an array indicating which vertices are inappropriately mapped to the same voxel.
 
         For a given transform and surface, returns an array containing a list of vertices which 
@@ -678,7 +678,7 @@ class Database:
             os.makedirs(cachedir)
         return cachedir
 
-    def clear_cache(self, subject, clear_all_caches=True):
+    def clear_cache(self, subject: str, clear_all_caches: bool=True) -> None:
         """Clears config-specified and default file caches for a subject.
         
         """
@@ -738,7 +738,7 @@ class Database:
 
         return filenames
 
-    def make_subj(self, subject: str):
+    def make_subj(self, subject: str) -> None:
         if os.path.exists(os.path.join(self.filestore, subject)):
             if input("Are you sure you want to overwrite this existing subject?\n"
                      "This will delete all files for this subject in the filestore, "
@@ -754,7 +754,7 @@ class Database:
             except OSError:
                 print("Error making directory %s"%path)
     
-    def save_view(self,vw,subject,name,is_overwrite=False):
+    def save_view(self,vw,subject: str,name: str,is_overwrite: bool=False) -> None:
         """Set the view for an open webshow instance from a saved view
 
         Sets the view in a currently-open cortex.webshow instance (with handle `vw`)
@@ -806,7 +806,7 @@ class Database:
             view = json.load(fp)
         vw._set_view(**view)
 
-    def get_mnixfm(self, subject, xfm, template=None):
+    def get_mnixfm(self, subject: str, xfm: str, template: Optional[str]=None) -> npt.NDArray[np.floating]:
         """Get transform from the space specified by `xfm` to MNI space.
 
         Parameters
