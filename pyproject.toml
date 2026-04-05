@@ -26,7 +26,15 @@ types = [
     "mypy",
     "scipy-stubs",
 ]
-
+docs = [
+    "sphinx",
+    "numpydoc",
+    "sphinx-gallery",
+    "alabaster",
+    "nbsphinx",
+    "pandoc",
+    "ipykernel",
+]
 
 [project.optional-dependencies]
 headless = [
