@@ -8,3 +8,4 @@ Interactive examples using pycortex in Jupyter notebooks.
    :class: nbsphinx-gallery
 
    jupyter_notebook
+   headless_panels
