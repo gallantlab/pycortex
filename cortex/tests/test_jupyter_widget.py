@@ -810,5 +810,122 @@ class TestInitImportProtection(unittest.TestCase):
         self.assertTrue(hasattr(cortex.webgl, "make_static"))
 
 
+class TestDisplayStaticOutputDir(unittest.TestCase):
+    """Test display_static with output_dir parameter."""
+
+    def _fake_make_static(self, outpath, data, **kwargs):
+        os.makedirs(outpath, exist_ok=True)
+        with open(os.path.join(outpath, "index.html"), "w") as f:
+            f.write("<html><body>test</body></html>")
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_output_dir_uses_relative_iframe_src(self, mock_make_static, mock_display):
+        """When output_dir is given, IFrame src should be a relative path."""
+        import tempfile
+
+        from cortex.webgl.jupyter import display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        tmpdir = tempfile.mkdtemp()
+        outdir = os.path.join(tmpdir, "my_viewer")
+        try:
+            viewer = display_static("fake_data", output_dir=outdir)
+            iframe_arg = mock_display.call_args[0][0]
+            self.assertEqual(iframe_arg.src, os.path.join(outdir, "index.html"))
+            viewer.close()
+        finally:
+            import shutil
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_output_dir_no_http_server(self, mock_make_static, mock_display):
+        """When output_dir is given, no HTTP server should be started."""
+        import tempfile
+
+        from cortex.webgl.jupyter import display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        tmpdir = tempfile.mkdtemp()
+        outdir = os.path.join(tmpdir, "my_viewer")
+        try:
+            viewer = display_static("fake_data", output_dir=outdir)
+            self.assertIsNone(viewer._httpd)
+            self.assertIsNone(viewer._thread)
+            viewer.close()
+        finally:
+            import shutil
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_output_dir_close_does_not_delete(self, mock_make_static, mock_display):
+        """When output_dir is given, close() should NOT delete the directory."""
+        import tempfile
+
+        from cortex.webgl.jupyter import display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        tmpdir = tempfile.mkdtemp()
+        outdir = os.path.join(tmpdir, "my_viewer")
+        try:
+            viewer = display_static("fake_data", output_dir=outdir)
+            viewer.close()
+            self.assertTrue(os.path.isdir(outdir))
+            self.assertTrue(os.path.isfile(os.path.join(outdir, "index.html")))
+        finally:
+            import shutil
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_output_dir_passes_kwargs_to_make_static(
+        self, mock_make_static, mock_display
+    ):
+        """output_dir should still forward kwargs to make_static."""
+        import tempfile
+
+        from cortex.webgl.jupyter import display_static
+
+        mock_make_static.side_effect = self._fake_make_static
+        tmpdir = tempfile.mkdtemp()
+        outdir = os.path.join(tmpdir, "my_viewer")
+        try:
+            viewer = display_static("fake_data", output_dir=outdir)
+            call_args = mock_make_static.call_args
+            self.assertEqual(call_args[0][0], outdir)
+            self.assertTrue(call_args[1].get("html_embed", False))
+            viewer.close()
+        finally:
+            import shutil
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @patch("cortex.webgl.jupyter.ipydisplay")
+    @patch("cortex.webgl.view.make_static")
+    def test_display_forwards_output_dir(self, mock_make_static, mock_display):
+        """display() should forward output_dir to display_static."""
+        import tempfile
+
+        from cortex.webgl.jupyter import display
+
+        mock_make_static.side_effect = self._fake_make_static
+        tmpdir = tempfile.mkdtemp()
+        outdir = os.path.join(tmpdir, "my_viewer")
+        try:
+            viewer = display("fake_data", method="static", output_dir=outdir)
+            iframe_arg = mock_display.call_args[0][0]
+            self.assertEqual(iframe_arg.src, os.path.join(outdir, "index.html"))
+            viewer.close()
+        finally:
+            import shutil
+
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main()

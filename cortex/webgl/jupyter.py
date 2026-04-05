@@ -250,24 +250,12 @@ def display_iframe(data, width="100%", height=600, port=None, **kwargs):
     return server
 
 
-def display_static(data, width="100%", height=600, **kwargs):
-    """Display brain data using a temporary static WebGL viewer inline.
+def display_static(data, width="100%", height=600, output_dir=None, **kwargs):
+    """Display brain data using a static WebGL viewer inline.
 
     Uses ``cortex.webgl.make_static`` to generate a *directory* containing
-    ``index.html`` plus all required JS/CSS/data assets, then serves that
-    directory via a lightweight local HTTP server and embeds it in the
-    notebook inside an IFrame.
-
-    Note
-    ----
-    The output is **not** a single self-contained HTML string; it is a static
-    viewer directory that must be served for the page to function. This works
-    in live Jupyter environments but most static notebook renderers will not
-    display the interactive viewer.
-
-    The bind host defaults to ``127.0.0.1``. For remote notebook setups
-    (JupyterHub, SSH tunnels), set the ``CORTEX_JUPYTER_STATIC_HOST``
-    environment variable to the appropriate hostname.
+    ``index.html`` plus all required JS/CSS/data assets, then embeds it in
+    the notebook inside an IFrame.
 
     Parameters
     ----------
@@ -277,6 +265,13 @@ def display_static(data, width="100%", height=600, **kwargs):
         Viewer width. Default "100%".
     height : int, optional
         Viewer height in pixels. Default 600.
+    output_dir : str or None, optional
+        Directory to write the static viewer into. When provided, the IFrame
+        uses a relative path (no HTTP server is started) and ``close()`` will
+        **not** delete the directory. This is useful for embedding in rendered
+        documentation or for persisting the viewer files.
+        When ``None`` (default), a temporary directory is created, served via
+        a local HTTP server, and cleaned up on ``close()``.
     **kwargs
         Additional keyword arguments passed to ``cortex.webgl.make_static()``.
 
@@ -284,10 +279,38 @@ def display_static(data, width="100%", height=600, **kwargs):
     -------
     viewer : StaticViewer
         Handle for the static viewer. Call ``viewer.close()`` to shut down the
-        HTTP server and clean up temporary files.
+        HTTP server (if any) and clean up temporary files.
     """
     from . import view
 
+    # Format width
+    if isinstance(width, int):
+        width_str = "%dpx" % width
+    else:
+        width_str = width
+
+    if output_dir is not None:
+        # Persistent mode: write to the given directory, use relative IFrame
+        try:
+            view.make_static(output_dir, data, html_embed=True, **kwargs)
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to generate static viewer. "
+                "Check that data is valid and cortex is properly configured."
+            ) from e
+
+        index_html = os.path.join(output_dir, "index.html")
+        if not os.path.isfile(index_html):
+            raise FileNotFoundError(
+                "make_static() did not produce index.html. "
+                "This may indicate a problem with the static template."
+            )
+
+        iframe = IFrame(src=index_html, width=width_str, height=height)
+        ipydisplay(iframe)
+        return StaticViewer(iframe, None, None, None)
+
+    # Ephemeral mode: temp directory + HTTP server
     tmpdir = tempfile.mkdtemp(prefix="pycortex_jupyter_")
     outpath = os.path.join(tmpdir, "viewer")
 
@@ -307,12 +330,6 @@ def display_static(data, width="100%", height=600, **kwargs):
             "make_static() did not produce index.html. "
             "This may indicate a problem with the static template."
         )
-
-    # Format width
-    if isinstance(width, int):
-        width_str = "%dpx" % width
-    else:
-        width_str = width
 
     class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **handler_kwargs):
