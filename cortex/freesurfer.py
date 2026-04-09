@@ -416,8 +416,8 @@ def parse_surf(filename):
         fp.readline()
         print(comment)
         verts, faces = struct.unpack('>2I', fp.read(8))
-        pts = np.fromstring(fp.read(4*3*verts), dtype='f4').byteswap()
-        polys = np.fromstring(fp.read(4*3*faces), dtype='i4').byteswap()
+        pts = np.frombuffer(fp.read(4*3*verts), dtype='f4').byteswap()
+        polys = np.frombuffer(fp.read(4*3*faces), dtype='i4').byteswap()
 
         return pts.reshape(-1, 3), polys.reshape(-1, 3)
 
@@ -470,7 +470,7 @@ def parse_curv(filename):
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
-        return np.fromstring(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('='))
+        return np.frombuffer(fp.read(), dtype='>f4').byteswap().view(np.dtype('>f4').newbyteorder('='))
 
 
 def parse_patch(filename):
@@ -479,7 +479,7 @@ def parse_patch(filename):
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
         nverts, = struct.unpack('>i', fp.read(4))
-        data = np.fromstring(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'),
+        data = np.frombuffer(fp.read(), dtype=[('vert', '>i4'), ('x', '>f4'),
                                                ('y', '>f4'), ('z', '>f4')])
         assert len(data) == nverts
         return data

@@ -68,7 +68,7 @@ def read_stl(filename):
         if header[:5] == "solid":
             raise TypeError("Cannot read ASCII STL files")
         npolys, = struct.unpack('I', fp.read(4))
-        data = np.fromstring(fp.read(), dtype=dtype)
+        data = np.frombuffer(fp.read(), dtype=dtype)
         if npolys != len(data):
             raise ValueError('File invalid')
 
