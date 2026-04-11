@@ -7,6 +7,9 @@ def collapse(j, data):
     return uniques, np.array([data[j == u].sum() for u in uniques])
 
 def nearest(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.float64]]:
+    if len(kwargs) > 0:
+        raise ValueError('nearest sampler does not take any kwargs')
+
     valid = ~(np.isnan(coords).all(1))
     valid = np.logical_and(valid, np.logical_and(coords[:,0] > -.5, coords[:,0] < shape[2]+.5))
     valid = np.logical_and(valid, np.logical_and(coords[:,1] > -.5, coords[:,1] < shape[1]+.5))
@@ -19,6 +22,9 @@ def nearest(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwa
     return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
     
 def trilinear(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.floating]]:
+    if len(kwargs) > 0:
+        raise ValueError('trilinear sampler does not take any kwargs')
+
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
     valid = ~(np.isnan(coords).all(1))
     (x, y, z), floor = np.modf(coords[valid].T)

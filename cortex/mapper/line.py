@@ -26,7 +26,7 @@ class LineMapper(Mapper):
         #vidx = np.nonzero(valid)[0]
         mapper = sparse.csr_matrix((len(pia), np.prod(shape)))
         for t in np.linspace(0, 1, npts+2)[1:-1]:
-            i, j, data = cls.sampler(pia*t + wm*(1-t), shape)
+            i, j, data = cls.sampler(pia*t + wm*(1-t), shape, **kwargs)
             mapper = mapper + sparse.csr_matrix((data / npts, (i, j)), shape=mapper.shape)
         return mapper
 
