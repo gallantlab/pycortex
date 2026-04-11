@@ -13,7 +13,7 @@ import numpy.typing as npt
 import subprocess as sp
 from matplotlib.path import Path
 from scipy.spatial import cKDTree
-from typing import Any, Iterator, Union, overload, Literal, Optional
+from typing import Any, Iterator, Union, overload, Literal, Optional, Sequence
 
 from looseversion import LooseVersion
 
@@ -138,7 +138,7 @@ class SVGOverlay:
         return etree.tostring(self.svg, pretty_print=pretty)
 
     # TODO: with_ims?
-    def get_svg(self, filename: Optional[str]=None, layers: list[str]=['rois'], labels: bool=True, with_ims=None) -> None:
+    def get_svg(self, filename: Optional[str]=None, layers: Sequence[str]=['rois'], labels: bool=True, with_ims=None) -> None:
         """Saves a new SVG file with images embedded
 
         Parameters
@@ -194,7 +194,7 @@ class SVGOverlay:
         print('Saved SVG to: %s'%filename)
 
     def get_texture(self, layer_name: str, height: Optional[Union[int, float]], name: Optional[str]=None, background: Optional[str]=None, labels: bool=True,
-        shape_list: Optional[list[str]]=None, **kwargs: str) -> npt.NDArray:
+        shape_list: Optional[Sequence[str]]=None, **kwargs: str) -> npt.NDArray:
         """Renders a specific layer of this svgobject as a png
 
         Parameters

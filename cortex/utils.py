@@ -13,7 +13,7 @@ import tempfile
 import urllib.request
 import warnings
 
-from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal
+from typing import Any, Callable, Generic, Optional, TypeVar, TYPE_CHECKING, Union, cast, overload, Literal, Sequence
 import sys
 
 if sys.version_info < (3, 10):
@@ -75,9 +75,9 @@ def get_roipack(*args, **kwargs):
     warnings.warn('Please use db.get_overlay instead', DeprecationWarning)
     return db.get_overlay(*args, **kwargs)
 
-def get_ctmpack(subject: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']="raw", level: int=0, recache: bool=False,
+def get_ctmpack(subject: str, types: Sequence[str]=("inflated",), method: Literal['mg2', 'raw']="raw", level: int=0, recache: bool=False,
                 decimate: bool=False, external_svg: Optional[str]=None,
-                overlays_available: Optional[tuple[str, ...]]=None) -> str:
+                overlays_available: Optional[Sequence[str]]=None) -> str:
     """Creates ctm file for the specified input arguments.
 
     This is a cached file that specifies (1) the surfaces between which

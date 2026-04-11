@@ -10,7 +10,7 @@ import shutil
 import sys
 import threading
 import time
-from typing import Union, Any, Callable, Optional, ParamSpec, cast
+from typing import Sequence, Union, Any, Callable, Optional, ParamSpec, cast
 import warnings
 import webbrowser
 from configparser import NoOptionError
@@ -291,10 +291,10 @@ def show(
     pickerfun: Optional[Callable[[tuple[int, int, int], int, str], None]]=None,
     recache: bool=False,
     template: str="mixer.html",
-    overlays_available: Optional[tuple[str, ...]]=None,
-    overlays_visible: Optional[tuple[str, ...]]=("rois", "sulci"),
-    labels_visible: Optional[tuple[str, ...]]=("rois",),
-    types: Optional[tuple[str, ...]]=("inflated",),
+    overlays_available: Optional[Sequence[str]]=None,
+    overlays_visible: Optional[Sequence[str]]=("rois", "sulci"),
+    labels_visible: Optional[Sequence[str]]=("rois",),
+    types: Sequence[str]=("inflated",),
     overlay_file: Optional[str]=None,
     curvature_brightness: Optional[float]=None,
     curvature_contrast: Optional[float]=None,

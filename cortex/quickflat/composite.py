@@ -1,5 +1,5 @@
 import copy
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 
 from matplotlib.axes import Axes
 from matplotlib.collections import LineCollection
@@ -183,7 +183,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
                     **cmapdict)
     return img, extents
 
-def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -230,7 +230,7 @@ def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datase
     return img
 
 
-def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[list[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -393,7 +393,7 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, fl
     return cbar
 
 def add_custom(fig: Figure, dataview: dataset.Volume, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
-               shape_list: Optional[list[str]]=None, **kwargs):
+               shape_list: Optional[Sequence[str]]=None, **kwargs):
     """Add a custom data layer
 
     Parameters

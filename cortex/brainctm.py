@@ -281,9 +281,9 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts: npt.NDArray[np.floating], *args, **kwargs) -> None:
         super().addSurf(pts[self.mask], *args, **kwargs)
 
-def make_pack(outfile: str, subj: str, types: tuple[str, ...]=("inflated",), method: Literal['mg2', 'raw']='raw', level: int=0,
-              decimate: bool=False, disp_layers: list[str]=['rois'], 
-              external_svg: Optional[str]=None, overlays_available: Optional[list[str]]=None,) -> list[npt.NDArray[np.integer]]:
+def make_pack(outfile: str, subj: str, types: Sequence[str]=("inflated",), method: Literal['mg2', 'raw']='raw', level: int=0,
+              decimate: bool=False, disp_layers: Sequence[str]=['rois'],
+              external_svg: Optional[str]=None, overlays_available: Optional[Sequence[str]]=None,) -> list[npt.NDArray[np.integer]]:
     """Generates a cached CTM file
 
     Parameters

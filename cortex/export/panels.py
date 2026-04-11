@@ -4,7 +4,7 @@ import errno
 import shutil
 import sys
 import tempfile
-from typing import Any, Mapping, Optional, TypedDict, Union
+from typing import Any, Mapping, Optional, Sequence, TypedDict, Union
 
 if sys.version_info < (3, 11):
     from typing_extensions import NotRequired
@@ -41,7 +41,7 @@ class PanelParams(TypedDict):
 
 def plot_panels(
     volume: Dataview,
-    panels: list[PanelParams],
+    panels: Sequence[PanelParams],
     figsize: npt.ArrayLike = (16, 9),
     windowsize: tuple[int, int] = (1600 * 4, 900 * 4),
     save_name: Optional[str] = None,

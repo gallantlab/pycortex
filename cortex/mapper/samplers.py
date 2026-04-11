@@ -18,7 +18,6 @@ def nearest(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwa
     rcoords = coords[valid].round().astype(int)
     j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
     #return np.nonzero(valid)[0], j, (rcoords > 0).all(1) #np.ones((valid.sum(),))
-    reveal_type(np.ones((valid.sum(),)))
     return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
     
 def trilinear(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.floating]]:
