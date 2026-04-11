@@ -1,3 +1,4 @@
+import abc
 from typing import Union, overload
 
 import numpy as np
@@ -13,13 +14,12 @@ else:
     from typing import Self
 
 import warnings
-from scipy.sparse._csr import csr_matrix
 
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-class Mapper:
+class Mapper(abc.ABC):
     '''Maps data from epi volume onto surface using various projections'''
-    def __init__(self, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str):
+    def __init__(self, left: sparse.csr_matrix, right: sparse.csr_matrix, shape: npt.NDArray[np.integer], subject: str, xfmname: str):
         self.idxmap = None
         self.masks = [left, right]
         self.nverts = left.shape[0] + right.shape[0]
@@ -50,7 +50,13 @@ class Mapper:
         ptype = self.__class__.__name__
         return '<%s mapper with %d vertices>'%(ptype, self.nverts)
 
-    def __call__(self, data: Union[dataset.Dataview, npt.NDArray, tuple]) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
+    @overload
+    def __call__(self, data: Union[dataset.Volume, tuple]) -> dataset.Vertex: ...
+
+    @overload
+    def __call__(self, data: dataset.Vertex) -> tuple[npt.NDArray, npt.NDArray]: ...
+
+    def __call__(self, data: Union[dataset.Vertex, dataset.Volume, tuple]) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
         if isinstance(data, tuple):
             data = dataset.Volume(*data)
 
@@ -72,9 +78,9 @@ class Mapper:
         volume.shape = len(volume), -1
         volume = volume.T
 
-        mapped = []
+        mapped: list[npt.NDArray] = []
         for mask in self.masks:
-            mapped.append(np.array(mask * volume).T)
+            mapped.append(np.array(mask * volume).T) # change to @ matmul
 
         if self.idxmap is not None:
             mapped[0] = mapped[0][:, self.idxmap[0]]
@@ -132,7 +138,7 @@ class Mapper:
     def _cache(cls, filename: str, subject: str, xfmname: str, **kwargs) -> Self:
         print('Caching mapper...')
         from ..database import db
-        masks = []
+        masks: list[sparse.csr_matrix] = []
         xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
         fid = db.get_surf(subject, 'fiducial', merge=False, nudge=False)
 
@@ -147,7 +153,19 @@ class Mapper:
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape, subject, xfmname)
 
-def _savecache(filename: str, left: csr_matrix, right: csr_matrix, shape: npt.NDArray[np.integer]) -> None:
+    @classmethod
+    @abc.abstractmethod
+    def _getmask(cls, coords: npt.NDArray[np.floating], polys: npt.NDArray[np.intp], shape: tuple[int, int, int], **kwargs) -> sparse.csr_matrix:
+        '''Generates a sparse matrix mapping from volume to surface vertices'''
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def sampler(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.floating]]:
+        '''Generates a sparse matrix mapping from volume to surface vertices'''
+        pass
+
+def _savecache(filename: str, left: sparse.csr_matrix, right: sparse.csr_matrix, shape: npt.NDArray[np.integer]) -> None:
     np.savez(filename,
              left_data=left.data,
              left_indices=left.indices,

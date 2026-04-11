@@ -1,11 +1,12 @@
 import numpy as np
+import numpy.typing as npt
 
 def collapse(j, data):
     """Collapses samples into a single row"""
     uniques = np.unique(j)
     return uniques, np.array([data[j == u].sum() for u in uniques])
 
-def nearest(coords, shape, **kwargs):
+def nearest(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.float64]]:
     valid = ~(np.isnan(coords).all(1))
     valid = np.logical_and(valid, np.logical_and(coords[:,0] > -.5, coords[:,0] < shape[2]+.5))
     valid = np.logical_and(valid, np.logical_and(coords[:,1] > -.5, coords[:,1] < shape[1]+.5))
@@ -14,9 +15,10 @@ def nearest(coords, shape, **kwargs):
     rcoords = coords[valid].round().astype(int)
     j = np.ravel_multi_index(rcoords.T[::-1], shape, mode='clip')
     #return np.nonzero(valid)[0], j, (rcoords > 0).all(1) #np.ones((valid.sum(),))
+    reveal_type(np.ones((valid.sum(),)))
     return np.nonzero(valid)[0], j, np.ones((valid.sum(),))
     
-def trilinear(coords, shape, **kwargs):
+def trilinear(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.floating]]:
     #trilinear interpolation equation from http://paulbourke.net/miscellaneous/interpolation/
     valid = ~(np.isnan(coords).all(1))
     (x, y, z), floor = np.modf(coords[valid].T)
