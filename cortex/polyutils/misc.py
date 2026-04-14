@@ -33,7 +33,7 @@ def sort_polys(polys):
     xind = np.arange(len(polys))
     return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
 
-def face_area(pts):
+def face_area(pts: np.ndarray[tuple[int, int, int], np.dtype[np.floating]]) -> np.ndarray[tuple[int,], np.dtype[np.floating]]:
     '''Area of triangles
 
     Parameters

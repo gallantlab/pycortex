@@ -76,6 +76,7 @@ class NPEncode(json.JSONEncoder):
             return super(NPEncode, self).default(obj)
 
 
+# TODO: unused, remove this
 class StaticFileHandler(tornado.web.RequestHandler):
     """A simple handler that can serve static content from a directory.
 

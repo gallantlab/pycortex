@@ -6,6 +6,8 @@ from . import samplers
 from .. import polyutils
 
 class PatchMapper(Mapper):
+    patchsize: int
+
     @classmethod
     def _getmask(cls, pts, polys, shape, npts=64, mp=True, **kwargs):
         rand = np.random.rand(2, npts)

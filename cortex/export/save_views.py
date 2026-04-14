@@ -9,6 +9,7 @@ from ..dataset import Dataview
 
 file_pattern = "{base}_{view}_{surface}.png"
 
+# TODO: remove this in favor of using the ViewParams type from cortex.webgl.view
 ViewParams = TypedDict(
     "ViewParams",
     {

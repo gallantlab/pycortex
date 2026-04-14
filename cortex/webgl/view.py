@@ -10,7 +10,7 @@ import shutil
 import sys
 import threading
 import time
-from typing import Sequence, Union, Any, Callable, Optional, ParamSpec, cast
+from typing import Sequence, TypeVar, TypedDict, Union, Any, Callable, Optional, ParamSpec, Literal, cast
 import warnings
 import webbrowser
 from configparser import NoOptionError
@@ -19,6 +19,7 @@ from configparser import NoOptionError
 from queue import Queue
 
 import numpy as np
+import numpy.typing as npt
 from tornado import web
 
 from .. import dataset, options, utils, volume
@@ -41,6 +42,32 @@ domain_name = options.config.get("webgl", "domain_name")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
+
+
+ViewParams = TypedDict(
+    "ViewParams",
+    {
+        "camera.azimuth": float,
+        "camera.altitude": float,
+        "camera.target": list[float],
+        "surface.{subject}.unfold": float,
+        "surface.{subject}.pivot": float,
+        "surface.{subject}.shift": float,
+        "surface.{subject}.specularity": float,
+    },
+    total=False,
+)
+
+class AnimationKeyframe(ViewParams):
+    time: float
+
+"""
+class AnimationDict(TypedDict):
+    idx: int
+    state: str
+    value: float
+"""
+
 
 def make_static(
     outpath: str,
@@ -420,7 +447,8 @@ def show(
     db.auxfile = None
 
 
-    linear = lambda x, y, m: (1.-m)*x + m*y
+    # The three mixing functions for animation interpolation. These are used in `makeMovie`` in the JSMixer class below.
+    linear: Callable[[npt.NDArray[np.floating], npt.NDArray[np.floating], float], npt.NDArray[np.floating]] = lambda x, y, m: (1.-m)*x + m*y
     mixes = dict(
         linear=linear,
         smoothstep=(lambda x, y, m: linear(x, y, 3*m**2 - 2*m**3)),
@@ -702,8 +730,8 @@ def show(
             Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
 
-        def makeMovie(self, animation, filename="brainmovie%07d.png", offset=0,
-                      fps=30, size=(1920, 1080), interpolation="linear"):
+        def makeMovie(self, animation: list[AnimationDict], filename: str="brainmovie%07d.png", offset: int=0,
+                      fps: int=30, size: tuple[int, int]=(1920, 1080), interpolation: Literal["linear", "smoothstep", "smootherstep"]="linear"):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
@@ -786,7 +814,7 @@ def show(
                             setfunc(start['state'], val)
                 self.getImage(filename%(i+offset), size=size)
 
-        def _get_anim_seq(self, keyframes, fps=30, interpolation='linear'):
+        def _get_anim_seq(self, keyframes: list[AnimationKeyframe], fps: int=30, interpolation: Literal['linear', 'smoothstep', 'smootherstep']='linear'):
             """Convert a list of keyframes to a list of EVERY frame in an animation.
 
             Utility function called by make_movie; separated out so that individual
@@ -807,20 +835,21 @@ def show(
                 t = keyframes[k]['time']
                 t = np.round(t/fs)*fs
                 keyframes[k]['time'] = t
-            allframes = []
+            allframes: list[AnimationKeyframe] = []
             for start, end in zip(keyframes[:-1], keyframes[1:]):
                 t0 = start['time']
                 t1 = end['time']
                 tdif = float(t1-t0)
                 # Check whether to continue frame sequence to endpoint
                 use_endpoint = keyframes[-1]==end
-                nvalues = np.round(tdif/fs).astype(int)
+                nvalues: int = np.round(tdif/fs).astype(int)
                 if use_endpoint:
                     nvalues += 1
                 fr_time = np.linspace(0, 1, nvalues, endpoint=use_endpoint)
                 # Interpolate between values
+                t: float
                 for t in fr_time:
-                    frame = {}
+                    frame: AnimationKeyframe = {} # type: ignore
                     for prop in start.keys():
                         if prop=='time':
                             continue
@@ -835,9 +864,9 @@ def show(
                     allframes.append(frame)
             return allframes
 
-        def make_movie_views(self, animation, filename="brainmovie%07d.png", 
-            offset=0, fps=30, size=(1920, 1080), alpha=1, frame_sleep=0.05,
-            frame_start=0, interpolation="linear"):
+        def make_movie_views(self, animation: list[AnimationKeyframe], filename: str="brainmovie%07d.png", 
+            offset: int=0, fps: int=30, size: tuple[int, int]=(1920, 1080), alpha: float=1, frame_sleep: float=0.05,
+            frame_start: int=0, interpolation: Literal['linear', 'smoothstep', 'smootherstep']="linear"):
             """Renders movie frames for animation of mesh movement
 
             Makes an animation (for example, a transition between inflated and
