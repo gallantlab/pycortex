@@ -1,10 +1,15 @@
 """utilities for efficiently working with patches of cortex (aka subsurfaces)"""
+from typing import Optional, Union, Literal, TYPE_CHECKING
+
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse
 
 from .misc import _memo
 
+if TYPE_CHECKING:
+    # TODO: make sure this is safe
+    from .surface import Surface
 
 class SubsurfaceMixin(object):
     """mixin for Surface of efficient methods for working with subsurfaces
@@ -33,10 +38,12 @@ class SubsurfaceMixin(object):
         - use cases: calling operations small number of times or on medium subsets of cortex
     - [benchmarks recorded on lab desktop workstation]
     """
-    pts: npt.NDArray[np.floating]
-    polys: npt.NDArray[np.integer]
+    #pts: npt.NDArray[np.floating]
+    #polys: npt.NDArray[np.integer]
+    pts: np.ndarray[tuple[int, int], np.dtype[np.floating]]
+    polys: np.ndarray[tuple[int, int], np.dtype[np.intp]]
 
-    def create_subsurface(self, vertex_mask=None, polygon_mask=None):
+    def create_subsurface(self, vertex_mask: Optional[npt.NDArray[np.bool_]]=None, polygon_mask: Optional[npt.NDArray[np.bool_]]=None) -> 'Surface':
         """Create subsurface for efficient operations on subset of Surface
 
         - should specify either vertex_mask or polygon_mask
@@ -87,10 +94,10 @@ class SubsurfaceMixin(object):
 
     @property
     @_memo
-    def subsurface_vertex_inverse(self):
+    def subsurface_vertex_inverse(self) -> npt.NDArray[np.intp]:
         return np.nonzero(self.subsurface_vertex_mask)[0]
 
-    def get_connected_vertices(self, vertex, mask, old_version=False):
+    def get_connected_vertices(self, vertex: Union[np.intp, int, npt.NDArray[np.intp], list[np.intp], list[int]], mask: npt.NDArray[np.bool_], old_version: bool=False) -> npt.NDArray[np.bool_]:
         """return vertices connected to vertex that satisfy mask
 
         - helper method for other methods
@@ -146,7 +153,7 @@ class SubsurfaceMixin(object):
 
         return output_mask
 
-    def get_euclidean_patch(self, vertex, radius, old_version=False):
+    def get_euclidean_patch(self, vertex: Union[list[np.intp], npt.NDArray[np.intp], np.intp, int], radius: float, old_version: bool=False) -> dict[str, npt.NDArray[np.bool_]]:
         """return connected vertices within some 3d euclidean distance of a vertex
 
         Parameters
@@ -176,7 +183,7 @@ class SubsurfaceMixin(object):
             'vertex_mask': self.get_connected_vertices(vertex=vertex, mask=close_enough, old_version=old_version),
         }
 
-    def get_euclidean_ball(self, xyz, radius):
+    def get_euclidean_ball(self, xyz: npt.NDArray[np.floating], radius: float) -> npt.NDArray[np.bool_]:
         """return vertices within some 3d euclidean distance of an xyz coordinate
 
         Parameters
@@ -199,7 +206,7 @@ class SubsurfaceMixin(object):
 
         return diff < radius
 
-    def get_geodesic_patch(self, vertex, radius, attempts=5, m=1.0, old_version=False):
+    def get_geodesic_patch(self, vertex: Union[np.intp, int, npt.NDArray[np.intp]], radius: float, attempts: int=5, m: float=1.0, old_version: bool=False) -> dict[str, npt.NDArray]:
         """return vertices within some 2d geodesic distance of a vertex (or vertices)
 
         Parameters
@@ -259,7 +266,7 @@ class SubsurfaceMixin(object):
             'geodesic_distance': geodesic_distance[vertex_mask],
         }
 
-    def get_geodesic_patches(self, radius, seeds=None, n_random_seeds=None, output='dense'):
+    def get_geodesic_patches(self, radius: float, seeds: Optional[npt.NDArray[np.intp]]=None, n_random_seeds: Optional[int]=None, output: Literal['dense', 'sparse']='dense') -> dict[str, Union[npt.NDArray[np.bool_], scipy.sparse.dok_matrix]]:
         """create patches of cortex centered around each vertex seed
 
         - must specify seeds or n_random_seeds
@@ -301,7 +308,7 @@ class SubsurfaceMixin(object):
             'vertex_masks': patches,
         }
 
-    def lift_subsurface_data(self, data, vertex_mask=None):
+    def lift_subsurface_data(self, data: npt.NDArray, vertex_mask: Optional[npt.NDArray[np.bool_]]=None) -> npt.NDArray:
         """expand vertex dimension of data to original surface's size
 
         - agnostic to dtype and dimensionality of data
@@ -325,8 +332,8 @@ class SubsurfaceMixin(object):
 
         return lifted
 
-    def get_geodesic_strip_patch(self, v0, v1, radius, room_factor=2, method='bb',
-                                 graph_search='astar', include_strip_coordinates=True):
+    def get_geodesic_strip_patch(self, v0: int, v1: int, radius: float, room_factor: float=2, method: Literal['bb', 'graph_distance', 'whole_surface']='bb',
+                                 graph_search: Literal['astar', 'dijkstra']='astar', include_strip_coordinates: bool=True) -> dict[str, Union[npt.NDArray, list[np.intp], 'Surface']]:
         """return patch that includes v0, v1, their geodesic path, and all points within some radius
 
         Algorithms
@@ -448,9 +455,10 @@ class SubsurfaceMixin(object):
             output['subsurface'] = subsurface
             output['coordinates'] = subsurface.lift_subsurface_data(coordinates['coordinates'])
 
+        # TODO: create custom return type
         return output
 
-    def get_strip_coordinates(self, v0, v1, geodesic_path=None, distance_algorithm='softmax'):
+    def get_strip_coordinates(self, v0: np.intp, v1: np.intp, geodesic_path: Optional[np.ndarray[tuple[int], np.dtype[np.intp]]]=None, distance_algorithm: Literal['softmax', 'closest']='softmax') -> dict[str, Union[npt.NDArray, np.intp]]:
         """get 2D coordinates of surface from v0 to v1
 
         - first coordinate: distance along geodesic path from v0
