@@ -746,7 +746,7 @@ def show(
             Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
 
-        def makeMovie(self, animation: list[AnimationDict], filename: str="brainmovie%07d.png", offset: int=0,
+        def makeMovie(self, animation: list[dict], filename: str="brainmovie%07d.png", offset: int=0,
                       fps: int=30, size: tuple[int, int]=(1920, 1080), interpolation: Literal["linear", "smoothstep", "smootherstep"]="linear"):
             """Renders movie frames for animation of mesh movement
 
