@@ -1,12 +1,14 @@
 
 import io
+from typing import Callable, TypeVar
 
 from scipy.spatial import Delaunay
 import numpy as np
 import functools
 
 
-def _memo(fn):
+T = TypeVar('T')
+def _memo(fn: Callable[..., T]) -> Callable[..., T]:
     """Helper decorator memoizes the given zero-argument function.
     Really helpful for memoizing properties so they don't have to be recomputed
     dozens of times.
@@ -28,7 +30,7 @@ def brick_vol(pts):
     '''Volume of a triangular prism'''
     return tetra_vol(pts[[0, 1, 2, 4]]) + tetra_vol(pts[[0, 2, 3, 4]]) + tetra_vol(pts[[2, 3, 4, 5]])
 
-def sort_polys(polys):
+def sort_polys(polys: np.ndarray[tuple[int, int], np.dtype[np.intp]]) -> np.ndarray[tuple[int, int], np.dtype[np.intp]]:
     amin = polys.argmin(1)
     xind = np.arange(len(polys))
     return np.array([polys[xind, amin], polys[xind, (amin+1)%3], polys[xind, (amin+2)%3]]).T
