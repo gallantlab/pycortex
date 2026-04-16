@@ -606,7 +606,7 @@ class VolumeRGB(DataviewRGB):
         return sdict
 
     @property
-    def volume(self) -> npt.NDArray[np.uint8]:
+    def volume(self) -> np.ndarray[tuple[int, int, int, int, int], np.dtype[np.uint8]]:
         """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
@@ -874,7 +874,7 @@ class VertexRGB(DataviewRGB):
         verts = []
         for dv in (self.red, self.green, self.blue, self.alpha):
             if dv.vertices.dtype != np.uint8:
-                vert = dv.vertices.astype("float32", copy=True)
+                vert = dv.vertices.astype(np.float32, copy=True)
                 if dv.vmin is None:
                     if vert.min() < 0:
                         vert -= vert.min()

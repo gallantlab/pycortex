@@ -285,8 +285,9 @@ class VolumeData(BrainData):
     def copy(self, data: npt.NDArray) -> Self:
         return super().copy(data, self.subject, self.xfmname, mask=self._mask)
 
+    # TODO: need to include np.ma.MaskedArra in return type?
     @property
-    def volume(self):
+    def volume(self) -> npt.NDArray:
         """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
         masked data.
         """

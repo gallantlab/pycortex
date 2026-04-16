@@ -16,7 +16,7 @@ import numpy.typing as npt
 
 from .. import dataset
 from .. import volume
-from typing import Optional, TypedDict
+from typing import Optional, TypedDict, Union
 
 class PackageMetadata(TypedDict):
     views: list[dataset.DataviewJSON]
@@ -128,7 +128,7 @@ class Package(object):
         return names
 
 
-def _pack_png(mosaic: npt.NDArray) -> bytes:
+def _pack_png(mosaic: Union[npt.NDArray[np.float32], npt.NDArray[np.uint8]]) -> bytes:
     from PIL import Image
 
     buf = BytesIO()

@@ -10,7 +10,8 @@ from .database import db
 from .xfm import Transform
 
 DType = TypeVar('DType', bound=np.generic)
-def unmask(mask: np.ndarray[tuple[int, int, int], np.dtype[np.bool_]], data: npt.NDArray[DType]) -> Union[np.ma.MaskedArray, npt.NDArray[DType], npt.NDArray[np.uint8]]:
+# TODO: MaskedArray typing might require newer numpy versions. If so, drop the generic typing.
+def unmask(mask: np.ndarray[tuple[int, int, int], np.dtype[np.bool_]], data: npt.NDArray[DType]) -> Union[np.ma.MaskedArray[tuple[int, ...], np.dtype[DType]], npt.NDArray[DType], npt.NDArray[np.uint8]]:
     """unmask(mask, data)
 
     Unmask the data, assuming it's been masked. Creates a volume
