@@ -1,7 +1,7 @@
 """Contains functions for working with volume data
 """
 import os
-from typing import Optional, Union
+from typing import Optional, TypeVar, Union
 import numpy as np
 import numpy.typing as npt
 
@@ -9,7 +9,8 @@ from . import dataset
 from .database import db
 from .xfm import Transform
 
-def unmask(mask: npt.NDArray, data: npt.NDArray) -> Union[np.ma.MaskedArray, npt.NDArray]:
+DType = TypeVar('DType', bound=np.generic)
+def unmask(mask: np.ndarray[tuple[int, int, int], np.dtype[np.bool_]], data: npt.NDArray[DType]) -> Union[np.ma.MaskedArray, npt.NDArray[DType], npt.NDArray[np.uint8]]:
     """unmask(mask, data)
 
     Unmask the data, assuming it's been masked. Creates a volume
@@ -86,7 +87,7 @@ def detrend_poly(data: npt.NDArray, polyorder: int = 10, mask: Optional[npt.NDAr
     else:
         return detrended.reshape(*s)
 
-def mosaic(data: npt.NDArray, dim: int=0, show: bool=True, **kwargs) -> tuple[npt.NDArray, tuple[int, int]]:
+def mosaic(data: npt.NDArray[DType], dim: int=0, show: bool=True, **kwargs) -> tuple[Union[npt.NDArray[DType], npt.NDArray[np.uint8]], tuple[int, int]]:
     """
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
     with radiological convention (left side of figure is right side of subject).
