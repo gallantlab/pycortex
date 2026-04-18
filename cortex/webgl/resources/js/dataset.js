@@ -322,7 +322,7 @@ var dataset = (function(module) {
                     tex.premultiplyAlpha = false;
                 }
                 tex.minFilter = module.filtertypes[this._interp];
-                tex.magfilter = module.filtertypes[this._interp];
+                tex.magFilter = module.filtertypes[this._interp];
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
@@ -371,7 +371,7 @@ var dataset = (function(module) {
         var tex = new THREE.DataTexture(data.data, this._width, this._height, THREE.LuminanceFormat, THREE.FloatType);
         tex.premultiplyAlpha = false;
         tex.minFilter = module.filtertypes[this._interp];
-        tex.magfilter = module.filtertypes[this._interp];
+        tex.magFilter = module.filtertypes[this._interp];
         tex.needsUpdate = true;
         tex.flipY = false;
         this.textures[fframe] = tex;
