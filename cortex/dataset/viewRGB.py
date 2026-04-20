@@ -112,7 +112,7 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
-    def _apply_nan_mask(self, alpha):
+    def _apply_nan_mask(self, alpha: BrainData):
         """Apply stored NaN mask to alpha, enforcing transparency for NaN
         positions even when the user overrides the alpha channel. uint8 RGB
         channels cannot hold NaN, so the mask is captured before conversion

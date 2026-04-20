@@ -183,6 +183,8 @@ class DataviewJSON(TypedDict):
 
 
 class Dataview:
+    _nan_mask: Optional[npt.NDArray[np.bool_]]
+
     def __init__(
         self,
         cmap: Optional[str] = None,
@@ -343,7 +345,7 @@ class Dataview:
         return ColormapDict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
-    def raw(self):
+    def raw(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.bool_]]:
         from matplotlib import cm, colors
 
         cmap = self.get_cmapdict()["cmap"]
@@ -351,7 +353,7 @@ class Dataview:
         norm = colors.Normalize(self.vmin, self.vmax)
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
         # Capture NaN mask before uint8 conversion (NaN info is lost after)
-        nan_mask = np.isnan(self.data)
+        nan_mask: npt.NDArray[np.bool_] = np.isnan(self.data)
         # TODO: self.data relies on BrainData. Would need common inheritance for this to work.
         color_data = cmapper.to_rgba(self.data.flatten()).reshape(
             self.data.shape + (4,)
