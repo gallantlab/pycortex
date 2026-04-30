@@ -164,7 +164,7 @@ def determine_path_hemi(overlay, path, percent_cutoff=.4):
     if isinstance(path, matplotlib.path.Path):
         path = path.vertices
     middle_x = overlay.svgshape[0]/2
-    return np.mean(middle_x < path[:, 0]) >= percent_cutoff
+    return int(np.mean(middle_x < path[:, 0]) >= percent_cutoff)
 
 
 def center_of_mass(X):
