@@ -41,12 +41,19 @@ var mriview = (function(module) {
             var pid = this.parentNode.id;
             var name = (prefix && pid.indexOf(prefix) === 0) ? pid.slice(prefix.length) : pid;
             viewerCmaps[name] = tex;
-            colormaps[pid] = tex;
         });
-        // Alias the global to this viewer's dict so legacy global lookups
-        // (dataset.js, figure.js select2) hit our textures during this viewer's
-        // data-loading and UI handlers. Each viewer re-aliases at addData and
-        // any UI-driven setColormap entry-point (see _activateColormaps).
+        // Bridge the per-viewer registry to the global `colormaps` symbol that
+        // legacy callers still read (dataset.js's fromJSON / setColormap and
+        // figure.js's select2 templateResult). New code in this file resolves
+        // colormaps via `viewer.colormaps` directly; this assignment exists
+        // ONLY so those legacy synchronous lookups land in the right viewer's
+        // dict during that viewer's addData/setData/UI handlers. Each viewer's
+        // entry point calls `_activateColormaps` to re-alias just before the
+        // legacy code runs, so the window between alias and lookup is the
+        // current synchronous task — no async path observes a stale alias.
+        // A cleaner design would thread the registry explicitly through
+        // dataset.js + figure.js; deferred until the multi-viewer feature
+        // lands so the diff stays bounded.
         window.colormaps = this.colormaps;
 
         this.canvas = this.$id("brain");
@@ -353,44 +360,45 @@ var mriview = (function(module) {
         // // // // // // // // // // // // // // // // // // // // // // // //
         // start colorlegend code
 
+        // Pull from the per-viewer registry rather than `window.colormaps`,
+        // which is a re-aliased shim for legacy callers (dataset.js,
+        // figure.js) and could otherwise point at a different viewer's dict.
         function get1dColormaps () {
-            let colormaps1d = {}
-            for (let colormap of Object.keys(window.colormaps)) {
-                if (colormaps[colormap].image.height == 1) {
-                    colormaps1d[colormap] = colormaps[colormap]
+            let registry = viewer.colormaps;
+            let out = {};
+            for (let name of Object.keys(registry)) {
+                if (registry[name].image.height == 1) {
+                    out[name] = registry[name];
                 }
             }
-            return colormaps1d
+            return out;
         }
 
         function get2dColormaps () {
-            let colormaps2d = {}
-            for (let colormap of Object.keys(window.colormaps)) {
-                if (colormaps[colormap].image.height > 1) {
-                    colormaps2d[colormap] = colormaps[colormap]
+            let registry = viewer.colormaps;
+            let out = {};
+            for (let name of Object.keys(registry)) {
+                if (registry[name].image.height > 1) {
+                    out[name] = registry[name];
                 }
             }
-            return colormaps2d
+            return out;
         }
 
+        // Scope the select-element queries to this viewer's DOM root so a
+        // 1d/2d swap on viewer 0 doesn't reach into viewer 1's dropdown
+        // (and vice versa). `colormaps` here is the parameter, shadowing
+        // any outer reference.
         function setColorOptions (colormaps) {
-
-            // clear current options
-            let options = $('.colorlegend-select option')
-            for (let key in Object.keys(options)) {
-                let option = options[key]
-                if (option) {
-                    option.remove()
-                }
-            }
-
-            // add new options
-            let selectElement = $('.colorlegend-select')[0]
-            for (let colormap of Object.keys(colormaps).sort()) {
-                let optionElement = document.createElement('option')
-                optionElement.setAttribute('value', colormap)
-                optionElement.innerText = colormap
-                selectElement.appendChild(optionElement)
+            let $select = $(viewer.object).find('.colorlegend-select');
+            $select.find('option').remove();
+            let selectElement = $select[0];
+            if (!selectElement) return;
+            for (let name of Object.keys(colormaps).sort()) {
+                let optionElement = document.createElement('option');
+                optionElement.setAttribute('value', name);
+                optionElement.innerText = name;
+                selectElement.appendChild(optionElement);
             }
         }
 
@@ -484,7 +492,7 @@ var mriview = (function(module) {
             viewer.active.cmapName = cmapName;
             viewer.active.setColormap(cmapName);
             viewer.schedule();
-            viewer.$id('colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
+            viewer.$id('colorlegend-colorbar').attr('src', viewer.colormaps[cmapName].image.currentSrc);
         });
 
         // textTarget may be a jQuery object (from setWheel/setClick callers) or a
@@ -587,7 +595,7 @@ var mriview = (function(module) {
             $text.on('click', enterFunction);
             $input.off();
             $input.on('blur', leaveFunction);
-            $input.on('keyup', function (e) { if (event.keyCode === 13) leaveFunction() });
+            $input.on('keyup', function (e) { if (e.keyCode === 13) leaveFunction() });
         }
 
         setClickFunctions('vmin', 'vmin', 'vmin-input', 0)
