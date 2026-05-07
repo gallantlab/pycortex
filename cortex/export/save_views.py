@@ -82,7 +82,9 @@ def save_3d_views(
         Size of produced image (before trimming).
 
     trim: bool
-        Whether to trim the white borders of the image.
+        Whether to trim the transparent/white borders of the image.
+        Trimming is done with ``Pillow`` (``PIL``), and does not require
+        ImageMagick's ``convert`` binary.
 
     sleep: float > 0
         Time in seconds, to let the viewer open.
