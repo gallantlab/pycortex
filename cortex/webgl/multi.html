@@ -1,0 +1,62 @@
+{% autoescape None %}
+{% extends template.html %}
+{% block jsinit %}
+    var viewers = [], figure, subjects, sock, viewopts, yokeController;
+{% end %}
+{% block onload %}
+        viewopts = {{viewopts}};
+        // Raw per-subject CTM info keyed by subject name. Keep the unwrapped
+        // info around so each viewer can build its own Surface (Three.js
+        // objects can have only one parent — a shared Surface would get
+        // reparented out of the first viewer's scene when added to the second).
+        var subjectInfo = {{subjects}};
+        subjects = {};
+
+        var panels = {{panels_json}};
+        var nrows = {{nrows}};
+        var ncols = {{ncols}};
+
+        figure = new jsplot.GridFigure(undefined, nrows, ncols);
+
+        for (var i = 0; i < panels.length; i++) {
+            try {
+                console.log("[multi] constructing viewer", i);
+                var v = figure.add(mriview.Viewer, i, {idPrefix: 'p' + i + '_'});
+                // Per-viewer Surface registry; one Surface instance per subject
+                // *for this viewer*. SurfDelegate.update prefers viewer.subjects
+                // over the global `subjects` dict.
+                v.subjects = {};
+                for (var sname in subjectInfo) {
+                    var sur = new mriview.Surface(subjectInfo[sname]);
+                    // Disable per-Surface picking in multi-viewer mode. The
+                    // picker shares the viewer's WebGLRenderer to draw vertex
+                    // IDs into offscreen render targets, but in multi-viewer
+                    // the renderer's cached render-target/texture-unit state
+                    // gets corrupted on the way back, so the next regular
+                    // render samples from the picker's encoding targets and
+                    // shows a high-frequency speckled brain. Out of scope for
+                    // MVP (see plan).
+                    sur.pick = function () { return null; };
+                    v.subjects[sname] = sur;
+                }
+                console.log("[multi] viewer constructed, calling addData", i);
+                v.addData(dataset.fromJSON(panels[i].data));
+                console.log("[multi] addData done", i);
+                viewers.push(v);
+            } catch (e) {
+                console.error("[multi] viewer", i, "failed:", e.message, e.stack);
+                throw e;
+            }
+        }
+        // Expose for tests/debug.
+        window.viewers = viewers;
+        window.figure = figure;
+
+        // Yoke controller + toggle button. The Python side passes the initial
+        // ON/OFF state via the `yoke` template var.
+        yokeController = new multiview.YokeController(viewers);
+        multiview.attachYokeToggle(figure.object, yokeController, {{yoke}});
+        window.yokeController = yokeController;
+
+        sock = new Websock();
+{% end %}

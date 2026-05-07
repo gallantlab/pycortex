@@ -1,6 +1,12 @@
 var mriview = (function(module) {
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
-    module.Viewer = function(figure) {
+    module.Viewer = function(figure, opts) {
+        opts = opts || {};
+        // Per-instance prefix for stamped template element IDs. Empty in single-viewer
+        // mode; set to e.g. "p0_" by show_multi so multiple viewers can coexist on
+        // one page without ID collisions.
+        this._idPrefix = opts.idPrefix || '';
+
         jsplot.Axes.call(this, figure);
 
         //mix function to attach to surface when it's added
@@ -13,10 +19,18 @@ var mriview = (function(module) {
             this.controls.allowTilt = evt.value;
         }.bind(this);
 
-        //Initialize all the html
-        $(this.object).html($("#mriview_html").html())
+        //Initialize all the html (with per-instance ID prefix when in multi-viewer mode)
+        module.stampTemplate(this.object, "#mriview_html", this._idPrefix);
 
-        //Catalog the available colormaps
+        //Catalog the available colormaps. Each viewer owns its own
+        //THREE.Texture instances because Three.js textures are bound to the
+        //first WebGLRenderer that uploads them; sharing them across viewers'
+        //renderers triggers "object does not belong to this context" errors.
+        //Keys are stored UNPREFIXED so dataset.js / select2 lookups by the
+        //original cmap name (e.g. "RdBu_r") still work for both viewers.
+        this.colormaps = {};
+        var prefix = this._idPrefix;
+        var viewerCmaps = this.colormaps;
         $(this.object).find(".cmap img").each(function() {
             var tex = new THREE.Texture(this);
             tex.minFilter = THREE.LinearFilter;
@@ -24,11 +38,18 @@ var mriview = (function(module) {
             tex.premultiplyAlpha = false;
             tex.flipY = true;
             tex.needsUpdate = true;
-            colormaps[this.parentNode.id] = tex;
+            var pid = this.parentNode.id;
+            var name = (prefix && pid.indexOf(prefix) === 0) ? pid.slice(prefix.length) : pid;
+            viewerCmaps[name] = tex;
+            colormaps[pid] = tex;
         });
-        window.colormaps = colormaps
+        // Alias the global to this viewer's dict so legacy global lookups
+        // (dataset.js, figure.js select2) hit our textures during this viewer's
+        // data-loading and UI handlers. Each viewer re-aliases at addData and
+        // any UI-driven setColormap entry-point (see _activateColormaps).
+        window.colormaps = this.colormaps;
 
-        this.canvas = $(this.object).find("#brain");
+        this.canvas = this.$id("brain");
         jsplot.Axes3D.call(this, figure);
 
         this.surfs = [];
@@ -38,7 +59,7 @@ var mriview = (function(module) {
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
             this.resize();
-            $(this.object).find("#ctmload").hide();
+            this.$id("ctmload").hide();
             this.canvas.css("opacity", 1);
             this.object.appendChild(this.controls.twodbutton[0]);
             this.controls.twodbutton.click(function(){
@@ -71,6 +92,13 @@ var mriview = (function(module) {
     module.Viewer.prototype = Object.create(jsplot.Axes3D.prototype);
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
+
+    // Scoped ID lookup: returns a jQuery wrapper around the per-viewer prefixed ID
+    // inside this viewer's DOM container. In single-viewer mode (prefix='') this
+    // is equivalent to $('#name').
+    module.Viewer.prototype.$id = function(name) {
+        return $(this.object).find('#' + this._idPrefix + name);
+    };
 
     module.Viewer.prototype.drawView = function(scene, idx) {
         if (this.surfs[idx].prerender !== undefined)
@@ -198,7 +226,14 @@ var mriview = (function(module) {
     //     }.bind(this));
     // };
 
+    // Make this viewer's colormaps the active global so global lookups in
+    // dataset.js / figure.js / setColormap UI handlers hit the right textures.
+    module.Viewer.prototype._activateColormaps = function() {
+        window.colormaps = this.colormaps;
+    };
+
     module.Viewer.prototype.addData = function(data) {
+        this._activateColormaps();
         if (!(data instanceof Array))
             data = [data];
 
@@ -230,20 +265,23 @@ var mriview = (function(module) {
     };
 
     module.Viewer.prototype.setData = function(name) {
+        var viewer = this;
+        this._activateColormaps();
 
-        // blur any selected input elements
+        // blur any selected input elements (use bare names; resolved via viewer.$id)
         let ids = [
-            ['#vmin', '#vmin-input'],
-            ['#vmax', '#vmax-input'],
-            ['#xd-vmin', '#xd-vmin-input'],
-            ['#xd-vmax', '#xd-vmax-input'],
-            ['#yd-vmin', '#yd-vmin-input'],
-            ['#yd-vmax', '#yd-vmax-input'],
+            ['vmin', 'vmin-input'],
+            ['vmax', 'vmax-input'],
+            ['xd-vmin', 'xd-vmin-input'],
+            ['xd-vmax', 'xd-vmax-input'],
+            ['yd-vmin', 'yd-vmin-input'],
+            ['yd-vmax', 'yd-vmax-input'],
         ]
-        for (let displayIdInputId of ids) {
-            $(displayIdInputId[0]).css('display', 'block')
-            $(displayIdInputId[1]).css('display', 'none')
-            document.getElementById(displayIdInputId[1].slice(1)).blur()
+        for (let pair of ids) {
+            viewer.$id(pair[0]).css('display', 'block')
+            var inputJq = viewer.$id(pair[1]);
+            inputJq.css('display', 'none')
+            if (inputJq.length) inputJq[0].blur()
         }
 
         if (name instanceof Array) {
@@ -307,9 +345,9 @@ var mriview = (function(module) {
 
         //Show or hide the colormap for raw / non-raw dataviews
         if (this.active.data[0].raw) {
-            $("#color_fieldset").fadeTo(0.15, 0);
+            viewer.$id("color_fieldset").fadeTo(0.15, 0);
         } else {
-            $("#color_fieldset").fadeTo(0.15, 1);
+            viewer.$id("color_fieldset").fadeTo(0.15, 1);
         }
 
         // // // // // // // // // // // // // // // // // // // // // // // //
@@ -364,18 +402,19 @@ var mriview = (function(module) {
         }
 
         function setColorOptionsByDim(dims) {
+            var $cl = viewer.$id('colorlegend');
             if (dims === 1) {
-                $('#colorlegend').removeClass('colorlegend-2d')
-                $('#colorlegend').removeClass('colorlegend-3d')
+                $cl.removeClass('colorlegend-2d')
+                $cl.removeClass('colorlegend-3d')
                 setColorOptions(get1dColormaps())
             } else if (dims === 2) {
-                $('#colorlegend').removeClass('colorlegend-3d')
-                $('#colorlegend').addClass('colorlegend-2d')
+                $cl.removeClass('colorlegend-3d')
+                $cl.addClass('colorlegend-2d')
                 setColorOptions(get2dColormaps())
             } else if (dims === 3) {
                 console.log('rgb detected')
-                $('#colorlegend').removeClass('colorlegend-2d')
-                $('#colorlegend').addClass('colorlegend-3d')
+                $cl.removeClass('colorlegend-2d')
+                $cl.addClass('colorlegend-3d')
             } else {
                 console.log('unknown case: dims=' + dims)
             }
@@ -408,48 +447,49 @@ var mriview = (function(module) {
             return cleaned
         }
 
-        var viewer = this
+        let imageData = viewer.$id(this.active.cmapName).find('img')[0].src
 
-        let imageData = $('#' + this.active.cmapName + ' img')[0].src
-
-        $('#colorlegend-colorbar').attr('src', imageData);
-        $('.colorlegend-select').val(this.active.cmapName).trigger('change');
+        viewer.$id('colorlegend-colorbar').attr('src', imageData);
+        var $cmapSelect = $(viewer.object).find('.colorlegend-select');
+        $cmapSelect.val(this.active.cmapName).trigger('change');
 
         // displaycolor limits
         if (dims === 1) {
-            $('#vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
-            $('#vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
+            viewer.$id('vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0]));
+            viewer.$id('vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0]));
         } else if (dims === 2) {
-            $('#xd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0], 3, true));
-            $('#xd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0], 3, true));
-            $('#yd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][1], 3, true));
-            $('#yd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][1], 3, true));
+            viewer.$id('xd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][0], 3, true));
+            viewer.$id('xd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][0], 3, true));
+            viewer.$id('yd-vmin').text(cleanNumber(viewer.active.vmin[0]['value'][1], 3, true));
+            viewer.$id('yd-vmax').text(cleanNumber(viewer.active.vmax[0]['value'][1], 3, true));
         }
 
-        $('.colorlegend-select').off('select2:open')
-        $('.colorlegend-select').on('select2:open', function (e) {
+        $cmapSelect.off('select2:open')
+        $cmapSelect.on('select2:open', function (e) {
             window.colorlegendOpen = true
         });
 
-        $('.colorlegend-select').off('select2:opening')
-        $('.colorlegend-select').on('select2:opening', function (e) {
+        $cmapSelect.off('select2:opening')
+        $cmapSelect.on('select2:opening', function (e) {
             setColorOptionsByDim(dims)
         });
-        $('.colorlegend-select').off('select2:close')
-        $('.colorlegend-select').on('select2:close', function (e) {
+        $cmapSelect.off('select2:close')
+        $cmapSelect.on('select2:close', function (e) {
             window.colorlegendOpen = false
         });
 
-        $('.colorlegend-select').off('select2:select')
-        $('.colorlegend-select').on('select2:select', function (e) {
+        $cmapSelect.off('select2:select')
+        $cmapSelect.on('select2:select', function (e) {
             var cmapName = e.params.data.id;
             viewer.active.cmapName = cmapName;
             viewer.active.setColormap(cmapName);
             viewer.schedule();
-            $('#colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
+            viewer.$id('colorlegend-colorbar').attr('src', colormaps[cmapName].image.currentSrc);
         });
 
-        function submitVmin(newVal, dim, textId, decimals) {
+        // textTarget may be a jQuery object (from setWheel/setClick callers) or a
+        // selector string. $(textTarget) handles both.
+        function submitVmin(newVal, dim, textTarget, decimals) {
             if (!decimals) {
                 decimals = 3
             }
@@ -460,12 +500,12 @@ var mriview = (function(module) {
 
             if ($.isNumeric(newVal)) {
                 viewer.active.setvmin(newVal, dim);
-                $(textId).text(cleanNumber(newVal, decimals--));
+                $(textTarget).text(cleanNumber(newVal, decimals--));
                 viewer.schedule();
             }
         }
 
-        function submitVmax(newVal, dim, textId, decimals) {
+        function submitVmax(newVal, dim, textTarget, decimals) {
             if (!decimals) {
                 decimals = 3
             }
@@ -476,7 +516,7 @@ var mriview = (function(module) {
 
             if ($.isNumeric(newVal)) {
                 viewer.active.setvmax(newVal, dim);
-                $(textId).text(cleanNumber(newVal, decimals));
+                $(textTarget).text(cleanNumber(newVal, decimals));
                 viewer.schedule();
             }
         }
@@ -486,10 +526,11 @@ var mriview = (function(module) {
             'vmax': submitVmax,
         }
 
-        // new wheel functions
+        // new wheel functions (`id` here is a bare ID name; resolved via viewer.$id)
         function setWheelFunctions (side, id, dim) {
-            $(id).off('wheel')
-            $(id).on('wheel', function (e) {
+            var $el = viewer.$id(id);
+            $el.off('wheel')
+            $el.on('wheel', function (e) {
                 let currentVal = parseFloat(viewer.active[side][0]['value'][dim]);
                 let newVal;
                 let step = 0.25;
@@ -515,43 +556,46 @@ var mriview = (function(module) {
                         newVal = currentVal - step;
                     }
                 }
-                submitFunctions[side](newVal, dim, id);
+                submitFunctions[side](newVal, dim, $el);
             });
         }
 
-        setWheelFunctions('vmin', '#vmin', 0)
-        setWheelFunctions('vmax', '#vmax', 0)
-        setWheelFunctions('vmin', '#xd-vmin', 0)
-        setWheelFunctions('vmax', '#xd-vmax', 0)
-        setWheelFunctions('vmin', '#yd-vmin', 1)
-        setWheelFunctions('vmax', '#yd-vmax', 1)
+        setWheelFunctions('vmin', 'vmin', 0)
+        setWheelFunctions('vmax', 'vmax', 0)
+        setWheelFunctions('vmin', 'xd-vmin', 0)
+        setWheelFunctions('vmax', 'xd-vmax', 0)
+        setWheelFunctions('vmin', 'yd-vmin', 1)
+        setWheelFunctions('vmax', 'yd-vmax', 1)
 
         function setClickFunctions (side, textId, inputId, dim, decimals) {
+            var $text = viewer.$id(textId);
+            var $input = viewer.$id(inputId);
+
             function enterFunction () {
-                $(textId).css('display', 'none');
-                $(inputId).val(cleanNumber(viewer.active[side][0]['value'][dim], decimals, true));
-                $(inputId).css('display', 'block');
-                $(inputId).focus();
+                $text.css('display', 'none');
+                $input.val(cleanNumber(viewer.active[side][0]['value'][dim], decimals, true));
+                $input.css('display', 'block');
+                $input.focus();
             }
 
             function leaveFunction () {
-                $(inputId).css('display', 'none');
-                $(textId).css('display', 'block');
-                submitFunctions[side]($(inputId).val(), dim, textId, decimals);
+                $input.css('display', 'none');
+                $text.css('display', 'block');
+                submitFunctions[side]($input.val(), dim, $text, decimals);
             }
 
-            $(textId).on('click', enterFunction);
-            $(inputId).off();
-            $(inputId).on('blur', leaveFunction);
-            $(inputId).on('keyup', function (e) { if (event.keyCode === 13) leaveFunction() });
+            $text.on('click', enterFunction);
+            $input.off();
+            $input.on('blur', leaveFunction);
+            $input.on('keyup', function (e) { if (event.keyCode === 13) leaveFunction() });
         }
 
-        setClickFunctions('vmin', '#vmin', '#vmin-input', 0)
-        setClickFunctions('vmax', '#vmax', '#vmax-input', 0)
-        setClickFunctions('vmin', '#xd-vmin', '#xd-vmin-input', 0, 3)
-        setClickFunctions('vmax', '#xd-vmax', '#xd-vmax-input', 0, 3)
-        setClickFunctions('vmin', '#yd-vmin', '#yd-vmin-input', 1, 3)
-        setClickFunctions('vmax', '#yd-vmax', '#yd-vmax-input', 1, 3)
+        setClickFunctions('vmin', 'vmin', 'vmin-input', 0)
+        setClickFunctions('vmax', 'vmax', 'vmax-input', 0)
+        setClickFunctions('vmin', 'xd-vmin', 'xd-vmin-input', 0, 3)
+        setClickFunctions('vmax', 'xd-vmax', 'xd-vmax-input', 0, 3)
+        setClickFunctions('vmin', 'yd-vmin', 'yd-vmin-input', 1, 3)
+        setClickFunctions('vmax', 'yd-vmax', 'yd-vmax-input', 1, 3)
 
         // end colorlegend code
         // // // // // // // // // // // // // // // // // // // // // // // //
@@ -559,8 +603,10 @@ var mriview = (function(module) {
 
 
         var defers = [];
+        // Prefer the per-viewer Surface registry (multi-viewer mode).
+        var subjReg = this.subjects || subjects;
         for (var i = 0; i < this.active.data.length; i++) {
-            defers.push(subjects[this.active.data[i].subject].loaded)
+            defers.push(subjReg[this.active.data[i].subject].loaded)
         }
         $.when.apply(null, defers).done(function() {
             // $(this.object).find("#vrange").slider("option", {min: this.active.data[0].min, max:this.active.data[0].max});
@@ -574,21 +620,21 @@ var mriview = (function(module) {
 
             this.setupStim();
 
-            $(this.object).find("#datasets li").each(function() {
+            this.$id("datasets").find("li").each(function() {
                 if ($(this).text() == name)
                     $(this).addClass("ui-selected");
                 else
                     $(this).removeClass("ui-selected");
             })
 
-            $(this.object).find("#datasets").val(name);
+            this.$id("datasets").val(name);
             if (typeof(this.active.description) == "string") {
                 var html = name+"<div class='datadesc'>"+this.active.description+"</div>";
-                $("#dataname").html(html);
-                $("#dataopts").show();
+                this.$id("dataname").html(html);
+                this.$id("dataopts").show();
             } else {
-                $("#dataname").text(name);
-                $("#dataopts").show();
+                this.$id("dataname").text(name);
+                this.$id("dataopts").show();
             }
             this.schedule();
             this.loaded.resolve();
@@ -603,7 +649,7 @@ var mriview = (function(module) {
     module.Viewer.prototype.nextData = function(dir) {
         var i = 0, found = false;
         var datasets = [];
-        $(this.object).find("#datasets li").each(function() {
+        this.$id("datasets").find("li").each(function() {
             if (!found) {
                 if (this.className.indexOf("ui-selected") > 0)
                     found = true;
@@ -621,14 +667,17 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype.rmData = function(name) {
         delete this.datasets[name];
-        $(this.object).find("#datasets li").each(function() {
+        this.$id("datasets").find("li").each(function() {
             if ($(this).text() == name)
                 $(this).remove();
         })
     };
     module.Viewer.prototype.addSurf = function(surftype, opts) {
         //Sets the slicing surface used to visualize the data
-        var surf = new surftype(this.active, opts);
+        // Pass viewer reference so the Surface can scope DOM lookups to this viewer.
+        var passedOpts = Object.assign({}, opts || {}, {viewer: this});
+        var surf = new surftype(this.active, passedOpts);
+        surf.viewer = this;
         surf.addEventListener("mix", this._mix);
         surf.addEventListener("allowTilt", this._allowTilt);
 
@@ -643,11 +692,11 @@ var mriview = (function(module) {
             this.ui.addFolder("surface", true, surf.ui);
         }
 
-        $("#brain").on('mousemove',
+        this.canvas.on('mousemove',
             function (event) {
                 // only implemented for 1d volume datasets or vertex datasets
                 if (this.active.data.length != 1 || this.active.data[0].raw) {
-                    $('#mouseover_value').css('display', 'none')
+                    this.$id('mouseover_value').css('display', 'none')
                     return
                 }
                 // We need to use a different logic if we have a VolumeData or a VertexData object
@@ -662,7 +711,7 @@ var mriview = (function(module) {
                         // Now we need to map back with the index map
                         // First figure out the subject, then get the index map
                         subject = this.active.data[0].subject
-                        indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                        indexMap = (this.subjects || subjects)[subject].hemis[coords.hemi].indexMap
                         // console.log("vertex before: " + vertex);
                         vertex = indexMap[vertex]
                         // console.log("vertex after: " + vertex);
@@ -678,10 +727,10 @@ var mriview = (function(module) {
                 }
                 // console.log("Value on mouseover: " + value);
                 if (value !== null) {
-                    $('#mouseover_value').text(parseFloat(value).toPrecision(3))
-                    $('#mouseover_value').css('display', 'block')
+                    this.$id('mouseover_value').text(parseFloat(value).toPrecision(3))
+                    this.$id('mouseover_value').css('display', 'block')
                 } else {
-                    $('#mouseover_value').css('display', 'none')
+                    this.$id('mouseover_value').css('display', 'none')
                 }
             }.bind(this)
         )
@@ -825,7 +874,7 @@ var mriview = (function(module) {
         // set the picked value display
         // only implemented for 1d volume datasets or vertex datasets
         if (this.active.data.length != 1 || this.active.data[0].raw) {
-            $('#picked_value').css('display', 'none')
+            this.$id('picked_value').css('display', 'none')
             return
         }
 
@@ -838,7 +887,7 @@ var mriview = (function(module) {
                 // Now we need to map back with the index map
                 // First figure out the subject, then get the index map
                 subject = this.active.data[0].subject
-                indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                indexMap = (this.subjects || subjects)[subject].hemis[coords.hemi].indexMap
                 vertex = indexMap[vertex]
                 // Now access the data
                 value = this.active.data[0].verts[0][hemiIdx].array[vertex]
@@ -854,10 +903,10 @@ var mriview = (function(module) {
         }
         console.log("Value on click: " + value);
         if (value !== null) {
-            $('#picked_value').text(parseFloat(value).toPrecision(3))
-            $('#picked_value').css('display', 'block')
+            this.$id('picked_value').text(parseFloat(value).toPrecision(3))
+            this.$id('picked_value').css('display', 'block')
         } else {
-            $('#picked_value').css('display', 'none')
+            this.$id('picked_value').css('display', 'none')
         }
     }
 

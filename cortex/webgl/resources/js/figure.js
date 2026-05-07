@@ -226,21 +226,25 @@ var jsplot = (function (module) {
             this.figure.addEventListener("resize", this.resize.bind(this));
         }
 
-        // color legend
+        // color legend (scoped to this Axes' container so multiple viewers
+        // on one page don't bind to each other's elements)
         function formatState (state) {
             if (!state.id) { return state.text; }
             var $state = $('<span class="colorlegend-option"><img class="colorlegend-option-image" src="' + colormaps[state.text].image.currentSrc + '" class="img-flag" />' + state.text + '</span>');
             return $state;
         };
+        var self = this;
         $(document).ready(function() {
-            var selector = $(".colorlegend-select").select2({
+            var $root = $(self.object);
+            var selector = $root.find(".colorlegend-select").select2({
                 templateResult: formatState
             });
-            $("#colorlegend-colorbar").on('click', function() {
+            $root.find("[id$='colorlegend-colorbar']").on('click', function() {
                 selector.show();
                 selector.select2('open');
             });
-            $('#brain').on('click', function () { selector.select2("close"); })
+            // The brain canvas is the only <canvas> inside an mriview Axes.
+            $root.find("canvas").on('click', function () { selector.select2("close"); })
         });
 
     }

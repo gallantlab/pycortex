@@ -3,6 +3,19 @@ Number.prototype.mod = function(n) {
 }
 
 var mriview = (function(module) {
+    // Stamp a <script type='text/html'> template into a target element, optionally
+    // rewriting `id` and `for` attribute values with a prefix so multiple instances
+    // can coexist on one page without ID collisions.
+    module.stampTemplate = function(targetEl, templateSelector, prefix) {
+        var html = $(templateSelector).html();
+        if (prefix) {
+            html = html
+                .replace(/\bid=(['"])([\w-]+)\1/g, "id=$1" + prefix + "$2$1")
+                .replace(/\bfor=(['"])([\w-]+)\1/g, "for=$1" + prefix + "$2$1");
+        }
+        $(targetEl).html(html);
+    };
+
     module.MultiView = function(parent, nrows, ncols, dataviews) {
         jsplot.GridFigure.call(this, parent, nrows, ncols);
 
