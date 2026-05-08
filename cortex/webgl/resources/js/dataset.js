@@ -275,6 +275,31 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
+        // Combine per-dim NaN masks into the single shared nanmask
+        // attribute. Vertex2D dispatches each dim's data separately
+        // (data0/1 vs data2/3) but shares one nanmask attribute in the
+        // shader; if either dim's value is NaN at a vertex, that vertex
+        // must be discarded.
+        if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
+            var dim0 = this.data[0].nanmasks[fframe];
+            var combined;
+            if (this.data.length === 1) {
+                combined = dim0;
+            } else {
+                combined = [0, 1].map(function(side) {
+                    var a = dim0[side].array;
+                    var b = this.data[1].nanmasks[fframe][side].array;
+                    var out = new Float32Array(a.length);
+                    for (var i = 0; i < a.length; i++) {
+                        out[i] = (a[i] < 0.5 || b[i] < 0.5) ? 0.0 : 1.0;
+                    }
+                    var attr = new THREE.BufferAttribute(out, 1);
+                    attr.needsUpdate = true;
+                    return attr;
+                }.bind(this));
+            }
+            this._dispatch({type:"attribute", name:"nanmask", value:combined});
+        }
     }
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
@@ -470,13 +495,8 @@ var dataset = (function(module) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
         dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
-        if (this.nanmasks.length > 0) {
-            // For 2D vertex views, dim 0 and dim 1 are independent datasets
-            // that share the surface_vertex shader; each gets its own NaN
-            // mask attribute so neither can clobber the other.
-            var maskname = dim == 0 ? "nanmask" : "nanmask2";
-            dispatch({type:"attribute", name:maskname, value:this.nanmasks[fframe]});
-        }
+        // The combined nanmask is dispatched by DataView.setFrame after
+        // every dim's data has been set, so we don't dispatch it here.
     }
 
     return module;

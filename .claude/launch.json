@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pycortex-viewer-test",
+      "runtimeExecutable": "/Users/mvdoc/bin/miniconda3/envs/pycortex/bin/python",
+      "runtimeArgs": [
+        "/Users/mvdoc/Documents/04Archive/repos/pycortex/.claude/worktrees/stoic-snyder-f92c2a/.claude/launch_viewer.py"
+      ],
+      "env": { "PCX_MODE": "plain" },
+      "port": 27583
+    }
+  ]
+}
