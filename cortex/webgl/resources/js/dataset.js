@@ -127,8 +127,8 @@ var dataset = (function(module) {
 
                     //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
                     var test = true;
-                    for (var i = 0; i < allready.length; i++)
-                        test = test && allready[i];
+                    for (var j = 0; j < allready.length; j++)
+                        test = test && allready[j];
                     if (test)
                         this.loaded.resolve();
                 }
