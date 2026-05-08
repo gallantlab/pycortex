@@ -719,6 +719,9 @@ var Shaderlib = (function() {
             "attribute float data2;",
             "attribute float data3;",
             "attribute float nanmask;",
+        "#ifdef TWOD",
+            "attribute float nanmask2;",
+        "#endif",
     "#endif",
 
             "attribute vec4 wm;",
@@ -755,7 +758,12 @@ var Shaderlib = (function() {
                 "vColor = texture2D(colormap, cuv);",
                 // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
                 // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
+                // For 2D vertex views, dim 0 sets nanmask and dim 1 sets
+                // nanmask2; a vertex is discarded if either is NaN.
                 "if (nanmask < 0.5) vColor = vec4(0.);",
+            "#ifdef TWOD",
+                "if (nanmask2 < 0.5) vColor = vec4(0.);",
+            "#endif",
         "#endif",
 
         "#ifdef CORTSHEET",
@@ -870,8 +878,11 @@ var Shaderlib = (function() {
             for (var i = 0; i < 4; i++)
                 attributes['data'+i] = {type:opts.rgb ? 'v4':'f', value:null};
 
-            if (!opts.rgb)
+            if (!opts.rgb) {
                 attributes['nanmask'] = {type:'f', value:null};
+                if (opts.twod)
+                    attributes['nanmask2'] = {type:'f', value:null};
+            }
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null };

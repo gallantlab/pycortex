@@ -471,7 +471,11 @@ var dataset = (function(module) {
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
         dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
         if (this.nanmasks.length > 0) {
-            dispatch({type:"attribute", name:"nanmask", value:this.nanmasks[fframe]});
+            // For 2D vertex views, dim 0 and dim 1 are independent datasets
+            // that share the surface_vertex shader; each gets its own NaN
+            // mask attribute so neither can clobber the other.
+            var maskname = dim == 0 ? "nanmask" : "nanmask2";
+            dispatch({type:"attribute", name:maskname, value:this.nanmasks[fframe]});
         }
     }
 
