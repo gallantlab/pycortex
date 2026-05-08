@@ -419,31 +419,30 @@ var dataset = (function(module) {
 			}
 
                     } else {
-                        // Remap indices and detect NaN in a single pass.
-                        // WebGL drivers may sanitize NaN in vertex attributes,
-                        // so we build a mask and replace NaN with 0 here.
-                        var hasNaN = false;
+                        // Remap indices into sleft/sright. WebGL drivers may
+                        // sanitize NaN in vertex attributes, so we always
+                        // build a mask attribute (1=valid, 0=NaN) and replace
+                        // NaN with 0 in the data. The shader uses the mask to
+                        // discard NaN vertices. We always push a mask (all 1s
+                        // when there are no NaNs) so per-frame indexing in
+                        // VertexData.set stays aligned with this.verts.
                         for (var i = 0; i < sleft.length; i++) {
                             sleft[i] = left[hemis.left.reverseIndexMap[i]];
-                            if (isNaN(sleft[i])) hasNaN = true;
                         }
                         for (var i = 0; i < sright.length; i++) {
                             sright[i] = right[hemis.right.reverseIndexMap[i]];
-                            if (isNaN(sright[i])) hasNaN = true;
                         }
-                        if (hasNaN) {
-                            var masks = [sleft, sright].map(function(arr) {
-                                var mask = new Float32Array(arr.length);
-                                for (var i = 0; i < arr.length; i++) {
-                                    if (isNaN(arr[i])) { mask[i] = 0.0; arr[i] = 0.0; }
-                                    else { mask[i] = 1.0; }
-                                }
-                                var attr = new THREE.BufferAttribute(mask, 1);
-                                attr.needsUpdate = true;
-                                return attr;
-                            });
-                            this.nanmasks.push(masks);
-                        }
+                        var masks = [sleft, sright].map(function(arr) {
+                            var mask = new Float32Array(arr.length);
+                            for (var i = 0; i < arr.length; i++) {
+                                if (isNaN(arr[i])) { mask[i] = 0.0; arr[i] = 0.0; }
+                                else { mask[i] = 1.0; }
+                            }
+                            var attr = new THREE.BufferAttribute(mask, 1);
+                            attr.needsUpdate = true;
+                            return attr;
+                        });
+                        this.nanmasks.push(masks);
                     }
                     var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
                     var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
