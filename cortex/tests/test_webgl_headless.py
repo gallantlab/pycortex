@@ -266,7 +266,99 @@ def test_overlay_visibility_changes_image(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Group 7: addData dataset switching
+# Group 7: Vertex NaN-mask regression tests (#612, #626)
+# ---------------------------------------------------------------------------
+
+
+def _count_red_pixels(png_path):
+    """Count strongly red-dominant pixels (R - max(G, B) > 50)."""
+    from PIL import Image
+
+    rgb = np.array(Image.open(png_path))[..., :3].astype(int)
+    return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+
+
+def test_vertex_no_nan_renders_data(tmp_path):
+    """A NaN-free Vertex must render visibly, not fall through to transparent.
+
+    Regression test for #626: prior to the fix, the surface_vertex shader's
+    nanmask attribute defaulted to zeros when the Python data had no NaNs,
+    causing every vertex to be discarded and the brain to render with only
+    the grayscale curvature underlay.
+    """
+    np.random.seed(0)
+    # Constant high values + chromatic colormap so colored pixels are
+    # easily distinguishable from the grayscale curvature underlay.
+    data = np.full(nverts, 5.0)
+    vtx = cortex.Vertex(data, subj, vmin=0, vmax=1, cmap="Reds")
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    with cortex.export.headless_viewer(vtx, viewer_params={}) as handle:
+        time.sleep(10)
+        handle._set_view(**view)
+        time.sleep(1)
+        outfile = str(tmp_path / "vtx.png")
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+
+        n_red = _count_red_pixels(outfile)
+        assert n_red > 1000, (
+            f"Vertex data does not appear to be rendering "
+            f"(only {n_red} red-dominant pixels). "
+            "Surface may be falling through to grayscale curvature (#626)."
+        )
+
+
+def test_vertex_with_nan_renders_partial(tmp_path):
+    """A Vertex with some NaN values still renders the non-NaN portion (#612).
+
+    Sanity check that the per-vertex NaN mask path keeps working: half-NaN
+    data should render strictly fewer red pixels than fully-valid data, but
+    still meaningfully more than zero.
+    """
+    np.random.seed(0)
+
+    full = np.full(nverts, 5.0)
+    half_nan = full.copy()
+    half_nan[: nverts // 2] = np.nan
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    def render(data, name):
+        vtx = cortex.Vertex(data, subj, vmin=0, vmax=1, cmap="Reds")
+        with cortex.export.headless_viewer(vtx, viewer_params={}) as handle:
+            time.sleep(10)
+            handle._set_view(**view)
+            time.sleep(1)
+            outfile = str(tmp_path / f"{name}.png")
+            handle.getImage(outfile, (512, 384))
+            _wait_for_file(outfile)
+            return _count_red_pixels(outfile)
+
+    n_full = render(full, "full")
+    n_half = render(half_nan, "half_nan")
+
+    assert n_full > 1000, "Fully-valid Vertex should render visibly"
+    assert (
+        n_half > 100
+    ), "Half-NaN Vertex should still render the non-NaN half (#612 regression)"
+    assert n_half < n_full, (
+        f"Expected half-NaN render ({n_half} red px) to have fewer red "
+        f"pixels than fully-valid render ({n_full} red px)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Group 8: addData dataset switching
 # ---------------------------------------------------------------------------
 
 
