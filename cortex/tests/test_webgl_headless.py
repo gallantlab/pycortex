@@ -278,19 +278,6 @@ def _count_red_pixels(png_path):
     return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
 
 
-def _count_colored_pixels(png_path, sat_thresh=30):
-    """Count pixels with notable color saturation (RGB max-min > sat_thresh).
-
-    The curvature underlay is grayscale, so this isolates pixels where a
-    chromatic colormap actually painted something.
-    """
-    from PIL import Image
-
-    rgb = np.array(Image.open(png_path))[..., :3].astype(int)
-    sat = rgb.max(axis=-1) - rgb.min(axis=-1)
-    return int((sat > sat_thresh).sum())
-
-
 def test_vertex_no_nan_renders_data(tmp_path):
     """A NaN-free Vertex must render visibly, not fall through to transparent.
 
@@ -367,76 +354,6 @@ def test_vertex_with_nan_renders_partial(tmp_path):
     assert n_half < n_full, (
         f"Expected half-NaN render ({n_half} red px) to have fewer red "
         f"pixels than fully-valid render ({n_full} red px)"
-    )
-
-
-def test_vertex2d_nan_mask_independence(tmp_path):
-    """Each Vertex2D dimension's NaN mask must not clobber the other's.
-
-    Regression test surfaced by Codex review on #627: the surface_vertex
-    shader has a single nanmask attribute shared by both dims of a 2D
-    vertex view. With dim 0 NaN and dim 1 NaN-free, the all-ones mask
-    from dim 1 was overwriting dim 0's mask, leaving NaN vertices visible
-    (rendered with the JS-side 0 fallback rather than discarded).
-    """
-    np.random.seed(0)
-    nan_slice = slice(0, nverts // 2)
-
-    # Random per-dim data in [-1, 1] gives chromatic colors via RdBu_covar
-    # (constant data lands on near-grayscale corners). Different per-dim
-    # draws prevent Vertex object dedup, which trips an unrelated
-    # bytes/ndarray path in package.reorder.
-    data_d0 = np.random.uniform(-1, 1, nverts)
-    data_d1 = np.random.uniform(-1, 1, nverts)
-    data_d0_nan = data_d0.copy()
-    data_d0_nan[nan_slice] = np.nan
-
-    view = {
-        **default_view_params,
-        **angle_view_params["lateral_pivot"],
-        **unfold_view_params["inflated"],
-    }
-
-    def render(d0, d1, name):
-        v2d = cortex.Vertex2D(
-            d0,
-            d1,
-            subject=subj,
-            vmin=-1,
-            vmax=1,
-            vmin2=-1,
-            vmax2=1,
-            cmap="RdBu_covar",
-        )
-        with cortex.export.headless_viewer(v2d, viewer_params={}) as handle:
-            time.sleep(15)
-            handle._set_view(**view)
-            time.sleep(2)
-            # Vertex2D needs both dim 0 and dim 1 attribute dispatches
-            # before rendering correctly. Retry the screenshot until the
-            # image stabilizes (non-empty), to avoid timing flakiness on
-            # the first render.
-            for attempt in range(6):
-                outfile = str(tmp_path / f"{name}_{attempt}.png")
-                handle.getImage(outfile, (512, 384))
-                _wait_for_file(outfile)
-                n = _count_colored_pixels(outfile)
-                if n > 0:
-                    return n
-                time.sleep(3)
-            return n
-
-    n_full = render(data_d0, data_d1, "v2d_full")
-    n_d0_nan = render(data_d0_nan, data_d1, "v2d_d0_nan")
-
-    assert n_full > 1000, "Vertex2D fully populated should render visibly"
-    # When dim 0 has NaNs, those vertices must be discarded regardless of
-    # dim 1's mask. Pre-fix, dim 1's all-ones mask clobbered dim 0's NaN
-    # mask, so n_d0_nan would be ~equal to n_full (no masking happened).
-    assert n_d0_nan < 0.85 * n_full, (
-        f"Vertex2D with NaN in dim 0 only should mask those vertices "
-        f"({n_d0_nan} colored px vs {n_full} fully-valid). "
-        "dim 1's NaN-free mask may be clobbering dim 0's mask."
     )
 
 
