@@ -419,24 +419,28 @@ var dataset = (function(module) {
 			}
 
                     } else {
-                        // Remap indices into sleft/sright. WebGL drivers may
-                        // sanitize NaN in vertex attributes, so we always
-                        // build a mask attribute (1=valid, 0=NaN) and replace
-                        // NaN with 0 in the data. The shader uses the mask to
-                        // discard NaN vertices. We always push a mask (all 1s
-                        // when there are no NaNs) so per-frame indexing in
+                        // Remap indices and build the NaN mask in a single
+                        // pass. WebGL drivers may sanitize NaN in vertex
+                        // attributes, so we always build a mask attribute
+                        // (1=valid, 0=NaN) and replace NaN with 0 in the
+                        // data. The shader uses the mask to discard NaN
+                        // vertices. We always push a mask (all 1s when
+                        // there are no NaNs) so per-frame indexing in
                         // VertexData.set stays aligned with this.verts.
-                        for (var i = 0; i < sleft.length; i++) {
-                            sleft[i] = left[hemis.left.reverseIndexMap[i]];
-                        }
-                        for (var i = 0; i < sright.length; i++) {
-                            sright[i] = right[hemis.right.reverseIndexMap[i]];
-                        }
-                        var masks = [sleft, sright].map(function(arr) {
-                            var mask = new Float32Array(arr.length);
-                            for (var i = 0; i < arr.length; i++) {
-                                if (isNaN(arr[i])) { mask[i] = 0.0; arr[i] = 0.0; }
-                                else { mask[i] = 1.0; }
+                        var masks = [
+                            {dest: sleft, src: left, map: hemis.left.reverseIndexMap},
+                            {dest: sright, src: right, map: hemis.right.reverseIndexMap}
+                        ].map(function(h) {
+                            var mask = new Float32Array(h.dest.length);
+                            for (var i = 0; i < h.dest.length; i++) {
+                                var val = h.src[h.map[i]];
+                                if (isNaN(val)) {
+                                    h.dest[i] = 0.0;
+                                    mask[i] = 0.0;
+                                } else {
+                                    h.dest[i] = val;
+                                    mask[i] = 1.0;
+                                }
                             }
                             var attr = new THREE.BufferAttribute(mask, 1);
                             attr.needsUpdate = true;
