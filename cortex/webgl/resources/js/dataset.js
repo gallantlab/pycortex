@@ -127,8 +127,8 @@ var dataset = (function(module) {
 
                     //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
                     var test = true;
-                    for (var i = 0; i < allready.length; i++)
-                        test = test && allready[i];
+                    for (var j = 0; j < allready.length; j++)
+                        test = test && allready[j];
                     if (test)
                         this.loaded.resolve();
                 }
@@ -275,6 +275,31 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
+        // Combine per-dim NaN masks into the single shared nanmask
+        // attribute. Vertex2D dispatches each dim's data separately
+        // (data0/1 vs data2/3) but shares one nanmask attribute in the
+        // shader; if either dim's value is NaN at a vertex, that vertex
+        // must be discarded.
+        if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
+            var dim0 = this.data[0].nanmasks[fframe];
+            var combined;
+            if (this.data.length === 1) {
+                combined = dim0;
+            } else {
+                combined = [0, 1].map(function(side) {
+                    var a = dim0[side].array;
+                    var b = this.data[1].nanmasks[fframe][side].array;
+                    var out = new Float32Array(a.length);
+                    for (var i = 0; i < a.length; i++) {
+                        out[i] = (a[i] < 0.5 || b[i] < 0.5) ? 0.0 : 1.0;
+                    }
+                    var attr = new THREE.BufferAttribute(out, 1);
+                    attr.needsUpdate = true;
+                    return attr;
+                }.bind(this));
+            }
+            this._dispatch({type:"attribute", name:"nanmask", value:combined});
+        }
     }
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
@@ -419,31 +444,34 @@ var dataset = (function(module) {
 			}
 
                     } else {
-                        // Remap indices and detect NaN in a single pass.
-                        // WebGL drivers may sanitize NaN in vertex attributes,
-                        // so we build a mask and replace NaN with 0 here.
-                        var hasNaN = false;
-                        for (var i = 0; i < sleft.length; i++) {
-                            sleft[i] = left[hemis.left.reverseIndexMap[i]];
-                            if (isNaN(sleft[i])) hasNaN = true;
-                        }
-                        for (var i = 0; i < sright.length; i++) {
-                            sright[i] = right[hemis.right.reverseIndexMap[i]];
-                            if (isNaN(sright[i])) hasNaN = true;
-                        }
-                        if (hasNaN) {
-                            var masks = [sleft, sright].map(function(arr) {
-                                var mask = new Float32Array(arr.length);
-                                for (var i = 0; i < arr.length; i++) {
-                                    if (isNaN(arr[i])) { mask[i] = 0.0; arr[i] = 0.0; }
-                                    else { mask[i] = 1.0; }
+                        // Remap indices and build the NaN mask in a single
+                        // pass. WebGL drivers may sanitize NaN in vertex
+                        // attributes, so we always build a mask attribute
+                        // (1=valid, 0=NaN) and replace NaN with 0 in the
+                        // data. The shader uses the mask to discard NaN
+                        // vertices. We always push a mask (all 1s when
+                        // there are no NaNs) so per-frame indexing in
+                        // VertexData.set stays aligned with this.verts.
+                        var masks = [
+                            {dest: sleft, src: left, map: hemis.left.reverseIndexMap},
+                            {dest: sright, src: right, map: hemis.right.reverseIndexMap}
+                        ].map(function(h) {
+                            var mask = new Float32Array(h.dest.length);
+                            for (var i = 0; i < h.dest.length; i++) {
+                                var val = h.src[h.map[i]];
+                                if (isNaN(val)) {
+                                    h.dest[i] = 0.0;
+                                    mask[i] = 0.0;
+                                } else {
+                                    h.dest[i] = val;
+                                    mask[i] = 1.0;
                                 }
-                                var attr = new THREE.BufferAttribute(mask, 1);
-                                attr.needsUpdate = true;
-                                return attr;
-                            });
-                            this.nanmasks.push(masks);
-                        }
+                            }
+                            var attr = new THREE.BufferAttribute(mask, 1);
+                            attr.needsUpdate = true;
+                            return attr;
+                        });
+                        this.nanmasks.push(masks);
                     }
                     var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
                     var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
@@ -467,9 +495,8 @@ var dataset = (function(module) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
         dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
-        if (this.nanmasks.length > 0) {
-            dispatch({type:"attribute", name:"nanmask", value:this.nanmasks[fframe]});
-        }
+        // The combined nanmask is dispatched by DataView.setFrame after
+        // every dim's data has been set, so we don't dispatch it here.
     }
 
     return module;

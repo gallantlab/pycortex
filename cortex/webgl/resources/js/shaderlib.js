@@ -755,6 +755,8 @@ var Shaderlib = (function() {
                 "vColor = texture2D(colormap, cuv);",
                 // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
                 // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
+                // For 2D vertex views the JS layer combines per-dim masks
+                // before dispatch, so a single shared attribute is enough.
                 "if (nanmask < 0.5) vColor = vec4(0.);",
         "#endif",
 
