@@ -229,6 +229,18 @@ var mriview = (function(module) {
         this.setData(data[0].name);
     };
 
+    module.Viewer.prototype.fitDataname = function() {
+        var dn = document.getElementById("dataname");
+        if (!dn || !dn.offsetWidth) return;
+        dn.style.fontSize = "";
+        var available = Math.floor(window.innerWidth * 0.9) - 60;
+        var width = dn.scrollWidth;
+        if (width <= available) return;
+        var maxPx = 32, minPx = 14;
+        var fitted = Math.max(minPx, Math.floor(maxPx * available / width));
+        dn.style.fontSize = fitted + "px";
+    };
+
     module.Viewer.prototype.setData = function(name) {
 
         // blur any selected input elements
@@ -590,6 +602,7 @@ var mriview = (function(module) {
                 $("#dataname").text(name);
                 $("#dataopts").show();
             }
+            this.fitDataname();
             this.schedule();
             this.loaded.resolve();
 
@@ -1000,7 +1013,7 @@ var mriview = (function(module) {
     var _bound = false;
     module.Viewer.prototype._bindUI = function() {
         $(window).scrollTop(0);
-        $(window).resize(function() { this.resize(); }.bind(this));
+        $(window).resize(function() { this.resize(); this.fitDataname(); }.bind(this));
         this.canvas.resize(function() { this.resize(); }.bind(this));
 
         var cam_ui = this.ui.addFolder("camera", true);
