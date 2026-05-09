@@ -3,7 +3,6 @@ import warnings
 from copy import deepcopy
 import sys
 from typing import Generic, Optional, TypeVar, Union, cast
-
 if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
@@ -23,23 +22,21 @@ class BrainData(object):
     Parameters
     ----------
     data : ndarray or str
-        The data array (size depends on specific use case) or path to file
+        The data array (size depends on specific use case) or path to file 
         readable by nibabel.
     subject : str
         Subject identifier. Must exist in the pycortex database.
     """
-
     def __init__(self, data: Union[npt.NDArray, str], subject: str, **kwargs):
         if isinstance(data, str):
             import nibabel
-
             nib = nibabel.load(data)
             data = cast(npt.NDArray, nib.get_fdata().T)
         self._data = data
         try:
             basestring
         except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode("utf-8")
+            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         super(BrainData, self).__init__(**kwargs)
 
@@ -58,14 +55,16 @@ class BrainData(object):
         """Name of this BrainData, computed from hash of data.
         TODO:WHAT IS THIS USEFUL FOR
         """
-        return "__%s" % _hash(self.data)[:16]
+        return "__%s"%_hash(self.data)[:16]
 
     def exp(self):
-        """Return copy of this brain data with data exponentiated."""
+        """Return copy of this brain data with data exponentiated.
+        """
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
-        """TODO: WHAT IS THIS"""
+        """TODO: WHAT IS THIS
+        """
         yield self
 
     def __hash__(self):
@@ -75,27 +74,25 @@ class BrainData(object):
         if name is None:
             name = self.name
         dgrp = h5.require_group("/data")
-
+        
         if name in dgrp and "__%s" % _hash(dgrp[name][()])[:16] == name:
-            # don't need to update anything, since it's the same data
-            return h5.get("/data/%s" % name)
+            #don't need to update anything, since it's the same data
+            return h5.get("/data/%s"%name)
 
         node = _hdf_write(h5, self.data, name=name)
-        node.attrs["subject"] = self.subject
+        node.attrs['subject'] = self.subject
         return node
 
     def to_json(self, simple=False):
-        """Creates JSON description of this brain data."""
+        """Creates JSON description of this brain data.
+        """
         sdict = super(BrainData, self).to_json(simple=simple)
         if simple:
-            sdict.update(
-                dict(
-                    name=self.name,
-                    subject=self.subject,
-                    min=float(np.nan_to_num(self.data).min()),
-                    max=float(np.nan_to_num(self.data).max()),
-                )
-            )
+            sdict.update(dict(name=self.name,
+                subject=self.subject,
+                min=float(np.nan_to_num(self.data).min()), 
+                max=float(np.nan_to_num(self.data).max()),
+                ))
         return sdict
 
     @classmethod
@@ -106,22 +103,12 @@ class BrainData(object):
         v ** 2 # Returns new VolumeData with data squared
         """
         # Binary operations
-        npops = [
-            "__add__",
-            "__sub__",
-            "__mul__",
-            "__floordiv__",
-            "__truediv__",
-            "__div__",
-            "__pow__",
-            "__neg__",
-            "__abs__",
-        ]
+        npops = ["__add__", "__sub__", "__mul__", "__floordiv__", "__truediv__",
+                 "__div__", "__pow__", "__neg__", "__abs__"]
 
-        def make_opfun(op):  # function nesting creates closure containing op
+        def make_opfun(op): # function nesting creates closure containing op
             def opfun(self, *args):
                 return self.copy(getattr(self.data, op)(*args))
-
             return opfun
 
         for op in npops:
@@ -129,9 +116,7 @@ class BrainData(object):
             opfun.__name__ = op
             setattr(cls, opfun.__name__, opfun)
 
-
 BrainData._add_numpy_methods()
-
 
 class VolumeData(BrainData):
     """
@@ -143,7 +128,7 @@ class VolumeData(BrainData):
         The data. Can be 3D with shape (z,y,x), 1D with shape (v,) for masked data,
         4D with shape (t,z,y,x), or 2D with shape (t,v). For masked data, if the
         size of the given array matches any of the existing masks in the database,
-        that mask will automatically be loaded. If it does not, an error will be
+        that mask will automatically be loaded. If it does not, an error will be 
         raised.
     subject : str
         Subject identifier. Must exist in the pycortex database.
@@ -151,46 +136,39 @@ class VolumeData(BrainData):
         Transform name. Must exist in the pycortex database.
     mask : ndarray, optional
         Binary 3D array with shape (z,y,x) showing which voxels are selected.
-        If masked data is given, the mask will automatically be loaded if it
+        If masked data is given, the mask will automatically be loaded if it 
         exists in the pycortex database.
     **kwargs
         Other keyword arguments are passed to superclass inits.
     """
-
-    def __init__(
-        self,
-        data: npt.NDArray,
-        subject: str,
-        xfmname: str,
-        mask: Optional[npt.NDArray] = None,
-        **kwargs,
-    ):
+    def __init__(self, data: npt.NDArray, subject: str, xfmname: str, mask: Optional[npt.NDArray]=None, **kwargs):
         if self.__class__ == VolumeData:
-            raise TypeError("Cannot directly instantiate VolumeData objects")
+            raise TypeError('Cannot directly instantiate VolumeData objects')
         super(VolumeData, self).__init__(data, subject, **kwargs)
         try:
             basestring
         except NameError:
-            xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode("utf-8")
+            xfmname = xfmname if isinstance(xfmname, str) else xfmname.decode('utf-8')
         self.xfmname = xfmname
 
         self._check_size(mask)
         self.masked = _masker(self)
 
-    def to_json(self, simple: bool = False):
-        """Creates JSON description of this brain data."""
+    def to_json(self, simple: bool=False):
+        """Creates JSON description of this brain data.
+        """
         if simple:
             sdict = super(VolumeData, self).to_json(simple=simple)
             sdict["shape"] = self.shape
             return sdict
-
-        xfm = db.get_xfm(self.subject, self.xfmname, "coord").xfm
+        
+        xfm = db.get_xfm(self.subject, self.xfmname, 'coord').xfm
         sdict = dict(xfm=[list(np.array(xfm).ravel())], data=[self.name])
         sdict.update(super(VolumeData, self).to_json())
         return sdict
 
     @classmethod
-    def empty(cls, subject: str, xfmname: str, value: float = 0, **kwargs):
+    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs):
         """
         Create a constant-valued VolumeData for the given subject and xfmname.
         Often useful for testing purposes.
@@ -204,7 +182,7 @@ class VolumeData(BrainData):
         value : float, optional
             Value that the VolumeData will be filled with.
         **kwargs
-            Other keyword arguments are passed to the init function for this
+            Other keyword arguments are passed to the init function for this 
             class.
 
         Returns
@@ -214,7 +192,7 @@ class VolumeData(BrainData):
         """
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
-        return cls(np.ones(shape) * value, subject, xfmname, **kwargs)
+        return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
     def random(cls, subject: str, xfmname: str, **kwargs):
@@ -230,7 +208,7 @@ class VolumeData(BrainData):
         xfmname : str
             Transform name. Must exist in the pycortex database.
         **kwargs
-            Other keyword arguments are passed to the init function for this
+            Other keyword arguments are passed to the init function for this 
             class.
 
         Returns
@@ -245,12 +223,12 @@ class VolumeData(BrainData):
     def _check_size(self, mask: Union[npt.NDArray, str, None]) -> None:
         if self.data.ndim not in (1, 2, 3, 4):
             raise ValueError("Invalid data shape")
-
+        
         self.linear = self.data.ndim in (1, 2)
         self.movie = self.data.ndim in (2, 4)
 
         if self.linear:
-            # Guess the mask
+            #Guess the mask
             if mask is None:
                 nvox: int = self.data.shape[-1]
                 self._mask, self.mask = _find_mask(nvox, self.subject, self.xfmname)
@@ -269,14 +247,11 @@ class VolumeData(BrainData):
                 shape = shape[1:]
             xfm = db.get_xfm(self.subject, self.xfmname)
             if xfm.shape != shape:
-                raise ValueError(
-                    "Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)"
-                    % (str(shape), str(xfm.shape))
-                )
+                raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
     def map(self, projection="nearest"):
-        """Convert this VolumeData into VertexData using the given projection
+        """Convert this VolumeData into VertexData using the given projection 
         method.
 
         Parameters
@@ -290,7 +265,6 @@ class VolumeData(BrainData):
             Vertex valued version of this VolumeData.
         """
         from cortex import utils
-
         mapper = utils.get_mapper(self.subject, self.xfmname, projection)
         data = mapper(self)
         # Note: this is OK, because VolumeRGB and Volume2D objects (which
@@ -307,16 +281,14 @@ class VolumeData(BrainData):
             name = self._mask
             if isinstance(self._mask, np.ndarray):
                 name = "custom"
-            maskstr = "%s masked" % name
+            maskstr = "%s masked"%name
         if self.movie:
             maskstr += " movie"
-        maskstr = maskstr[0].upper() + maskstr[1:]
-        return "<%s data for (%s, %s)>" % (maskstr, self.subject, self.xfmname)
+        maskstr = maskstr[0].upper()+maskstr[1:]
+        return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
     def copy(self, data):
-        return super(VolumeData, self).copy(
-            data, self.subject, self.xfmname, mask=self._mask
-        )
+        return super(VolumeData, self).copy(data, self.subject, self.xfmname, mask=self._mask)
 
     @property
     def volume(self):
@@ -324,7 +296,6 @@ class VolumeData(BrainData):
         masked data.
         """
         from cortex import volume
-
         if self.linear:
             data = volume.unmask(self.mask, self.data[:])
         else:
@@ -336,24 +307,24 @@ class VolumeData(BrainData):
         return data
 
     def save(self, filename, name=None):
-        """Save the dataset into the hdf file `filename` with the provided name."""
+        """Save the dataset into the hdf file `filename` with the provided name.
+        """
         import os
-
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
-            if ext in (".hdf", ".h5", ".hf5"):
+            if ext in (".hdf", ".h5",".hf5"):
                 h5 = h5py.File(filename, "a")
                 self._write_hdf(h5, name=name)
                 h5.close()
             else:
-                raise TypeError("Unknown file type")
+                raise TypeError('Unknown file type')
         elif isinstance(filename, h5py.Group):
             self._write_hdf(filename, name=name)
 
     def _write_hdf(self, h5, name=None):
         node = super(VolumeData, self)._write_hdf(h5, name=name)
-
-        # write the mask into the file, as necessary
+        
+        #write the mask into the file, as necessary
         if self._mask is not None:
             mask = self._mask
             if isinstance(self._mask, np.ndarray):
@@ -363,7 +334,7 @@ class VolumeData(BrainData):
                 _hdf_write(h5, self._mask, name=mname, group=mgrp)
                 mask = mname
 
-            node.attrs["mask"] = mask
+            node.attrs['mask'] = mask
 
         return node
 
@@ -374,10 +345,8 @@ class VolumeData(BrainData):
         xfm = db.get_xfm(self.subject, self.xfmname)
         affine = xfm.reference.affine
         import nibabel
-
         new_nii = nibabel.Nifti1Image(self.volume.T, affine)
         nibabel.save(new_nii, filename)
-
 
 class VertexData(BrainData):
     """
@@ -388,17 +357,16 @@ class VertexData(BrainData):
     data : ndarray
         The data. Can be 1D with shape (v,), or 2D with shape (t,v). Here, v can
         be the number of vertices in both hemispheres, or the number of vertices
-        in either one of the hemispheres. In that case, the data for the other
+        in either one of the hemispheres. In that case, the data for the other 
         hemisphere will be filled with zeros.
     subject : str
         Subject identifier. Must exist in the pycortex database.
     **kwargs
         Other keyword arguments are passed to the superclass init function.
     """
-
     def __init__(self, data: npt.NDArray, subject: str, **kwargs):
         if self.__class__ == VertexData:
-            raise TypeError("Cannot directly instantiate VertexData objects")
+            raise TypeError('Cannot directly instantiate VertexData objects')
         super(VertexData, self).__init__(data, subject, **kwargs)
         try:
             left, right = db.get_surf(self.subject, "wm")
@@ -421,7 +389,7 @@ class VertexData(BrainData):
         value : float, optional
             Value that the VertexData will be filled with.
         **kwargs
-            Other keyword arguments are passed to the init function for this
+            Other keyword arguments are passed to the init function for this 
             class.
 
         Returns
@@ -434,7 +402,7 @@ class VertexData(BrainData):
         except IOError:
             left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
-        return cls(np.ones((nverts,)) * value, subject, **kwargs)
+        return cls(np.ones((nverts,))*value, subject, **kwargs)
 
     @classmethod
     def random(cls, subject: str, **kwargs):
@@ -448,7 +416,7 @@ class VertexData(BrainData):
         subject : str
             Subject identifier. Must exist in the pycortex database.
         **kwargs
-            Other keyword arguments are passed to the init function for this
+            Other keyword arguments are passed to the init function for this 
             class.
 
         Returns
@@ -470,7 +438,7 @@ class VertexData(BrainData):
         """
         if data is None:
             data = np.zeros((self.llen + self.rlen,))
-
+        
         self._data = data
         self.movie = self.data.ndim > 1
         self.nverts = self.data.shape[-1]
@@ -490,23 +458,20 @@ class VertexData(BrainData):
             # Data for both hemispheres
             self.hem = "both"
         else:
-            raise ValueError(
-                "Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)"
-                % (self.nverts, self.llen, self.rlen, self.llen + self.rlen)
-            )
+            raise ValueError('Invalid number of vertices for subject (given %d, should be %d for left hem, %d for right hem, or %d for both)' % (self.nverts, self.llen, self.rlen, self.llen+self.rlen))
 
     def copy(self, data: npt.NDArray) -> Self:
         """
         Return a new VertexData object for the same subject but with data
-        replaced by the given `data`.
+        replaced by the given `data`. 
 
-        This is useful for efficiently creating many VertexData objects, since
-        it doesn't require reloading the surfaces from the database to check
+        This is useful for efficiently creating many VertexData objects, since 
+        it doesn't require reloading the surfaces from the database to check 
         numbers of vertices, etc.
         """
         return super(VertexData, self).copy(data, self.subject)
 
-    def volume(self, xfmname, projection="nearest", **kwargs):
+    def volume(self, xfmname, projection='nearest', **kwargs):
         """
         Map this VertexData back to volume space, creating a VolumeData object.
         This uses the `mapper.backwards` function, which is not particularly
@@ -515,12 +480,12 @@ class VertexData(BrainData):
         Parameters
         ----------
         xfmname : str
-            Transform name for the volume space that this vertex data will be
+            Transform name for the volume space that this vertex data will be 
             projected into. Must exist in the pycortex database.
         projection : str, optional
             The type of projection method to use. See the docs for `mapper` for
             possibilities. Default: nearest.
-        **kwargs
+        **kwargs 
             Other keyword args are passed to the `mapper.backwards` function.
 
         Returns
@@ -529,10 +494,8 @@ class VertexData(BrainData):
             Volume containing the back-projected vertex data.
         """
         import warnings
-
-        warnings.warn("Inverse mapping cannot be accurate")
+        warnings.warn('Inverse mapping cannot be accurate')
         from cortex import utils
-
         mapper = utils.get_mapper(self.subject, xfmname, projection)
         return mapper.backwards(self, **kwargs)
 
@@ -540,7 +503,7 @@ class VertexData(BrainData):
         maskstr = ""
         if self.movie:
             maskstr = "movie "
-        return "<Vertex %sdata for %s>" % (maskstr, self.subject)
+        return "<Vertex %sdata for %s>"%(maskstr, self.subject)
 
     def __getitem__(self, idx):
         """Get the VertexData for the given time index. Only works for movie (2D)
@@ -548,8 +511,8 @@ class VertexData(BrainData):
         """
         if not self.movie:
             raise TypeError("Cannot index non-movie data")
-
-        # return VertexData(self.data[idx], self.subject, **self.attrs)
+        
+        #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
 
     def to_json(self, simple: bool = False):
@@ -557,7 +520,7 @@ class VertexData(BrainData):
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super(VertexData, self).to_json(simple=simple))
             return sdict
-
+            
         sdict = dict(data=[self.name])
         sdict.update(super(VertexData, self).to_json())
         return sdict
@@ -571,23 +534,24 @@ class VertexData(BrainData):
 
     @property
     def left(self):
-        """Data for only the left hemisphere vertices."""
+        """Data for only the left hemisphere vertices.
+        """
         if self.movie:
-            return self.data[:, : self.llen]
+            return self.data[:,:self.llen]
         else:
-            return self.data[: self.llen]
+            return self.data[:self.llen]
 
     @property
     def right(self):
-        """Data for only the right hemisphere vertices."""
+        """Data for only the right hemisphere vertices.
+        """
         if self.movie:
-            return self.data[:, self.llen :]
+            return self.data[:,self.llen:]
         else:
-            return self.data[self.llen :]
+            return self.data[self.llen:]
 
-    def blend_curvature(
-        self, alpha, threshold=0, brightness=0.5, contrast=0.25, smooth=20
-    ):
+    def blend_curvature(self, alpha, threshold=0, brightness=0.5,
+                        contrast=0.25, smooth=20):
         """Blend the data with a curvature map depending on a transparency map.
 
         .. deprecated::
@@ -634,7 +598,7 @@ class VertexData(BrainData):
             Contrast of the curvature map.
         smooth : float
             Smoothness of the curvature map.
-
+        
         Returns
         -------
         blended : VertexRGB object
@@ -655,30 +619,22 @@ class VertexData(BrainData):
         )
         from .views import Vertex
         from .viewRGB import VertexRGB
-
         # prepare curvature map
         curvature = db.get_surfinfo(self.subject, smooth=smooth).data
         curvature = (curvature > threshold).astype("float")
         curvature = curvature * contrast + brightness
-        curvature_raw = Vertex(curvature, self.subject, vmin=0, vmax=1, cmap="gray").raw
+        curvature_raw = Vertex(curvature, self.subject, vmin=0, vmax=1,
+                               cmap="gray").raw
 
         # prepare alpha map
         alpha = np.clip(alpha.astype("float"), 0, 1)
 
         # blend original map with curvature map
         # self.raw comes from the implementation of Dataview (e.g. Vertex, Volume, etc.)
-        blended = cast(
-            VertexRGB, deepcopy(self.raw)
-        )  # copy because VertexRGB.raw returns self
-        blended.red.data = (
-            blended.red.data * alpha + (1 - alpha) * curvature_raw.red.data
-        )
-        blended.green.data = (
-            blended.green.data * alpha + (1 - alpha) * curvature_raw.green.data
-        )
-        blended.blue.data = (
-            blended.blue.data * alpha + (1 - alpha) * curvature_raw.blue.data
-        )
+        blended = cast(VertexRGB, deepcopy(self.raw))  # copy because VertexRGB.raw returns self
+        blended.red.data = blended.red.data * alpha + (1 - alpha) * curvature_raw.red.data
+        blended.green.data = blended.green.data * alpha + (1 - alpha) * curvature_raw.green.data
+        blended.blue.data = blended.blue.data * alpha + (1 - alpha) * curvature_raw.blue.data
         blended.red.data = blended.red.data.astype("uint8")
         blended.green.data = blended.green.data.astype("uint8")
         blended.blue.data = blended.blue.data.astype("uint8")
@@ -692,25 +648,22 @@ def _find_mask(nvox: int, subject: str, xfmname: str):
     import re
 
     import nibabel
-
-    files = db.get_paths(subject)["masks"].format(xfmname=xfmname, type="*")
+    files = db.get_paths(subject)['masks'].format(xfmname=xfmname, type="*")
     for fname in glob.glob(files):
         nib = nibabel.load(fname)
         mask = cast(npt.NDArray[np.bool_], nib.get_fdata().T != 0)
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
-            name = re.compile(r"mask_(.+).nii.gz").search(fname)
+            name = re.compile(r'mask_(.+).nii.gz').search(fname)
             return name.group(1), mask
 
-    raise ValueError("Cannot find a valid mask")
+    raise ValueError('Cannot find a valid mask')
 
 
 # Generic allows us to return Volume instead of VolumeData
-T_masker = TypeVar("T_masker", bound=VolumeData)
-
-
+T_masker = TypeVar('T_masker', bound=VolumeData)
 class _masker(Generic[T_masker]):
-    def __init__(self, dv: T_masker):  # should be braindata + dataview
+    def __init__(self, dv: T_masker): # should be braindata + dataview
         self.dv = dv
 
         self.data = None
@@ -719,25 +672,19 @@ class _masker(Generic[T_masker]):
 
     def __getitem__(self, masktype: str) -> T_masker:
         mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
-        return self.dv.copy(self.dv.volume[:, mask].squeeze())
-
+        return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
 def _hash(array):
-    """A simple numpy hash function"""
+    '''A simple numpy hash function'''
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
 
-
 def _hdf_write(h5, data, name="data", group="/data"):
     try:
-        node = h5.require_dataset(
-            "%s/%s" % (group, name), data.shape, data.dtype, exact=True
-        )
+        node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
     except TypeError:
         del h5[group][name]
-        node = h5.create_dataset(
-            "%s/%s" % (group, name), data.shape, data.dtype, exact=True
-        )
+        node = h5.create_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
 
     node[:] = data
     return node
