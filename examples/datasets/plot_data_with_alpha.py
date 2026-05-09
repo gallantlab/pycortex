@@ -3,13 +3,13 @@
 Plot Data with Alpha Values
 ==========================
 
-It is often useful to plot a primary map (the "data" you care about)
+It is often useful to plot a primary map (the "data" you are interested in)
 masked or attenuated by a secondary map (a "confidence" or "weight"
-map). For example, a model's tuning maps are typically only
-interpretable where the model fits well, so it is conventional to plot
-them with opacity proportional to the per-voxel/per-vertex prediction
-accuracy. Vertices/voxels where the model fits poorly fade into the
-gray curvature underlay; vertices/voxels where the model fits well are
+map). For example, an encoding model's tuning maps are 
+interpretable where the model fits well, so one could plot
+tuning maps with opacity proportional to the per-voxel/per-vertex prediction
+accuracy. Voxels/vertices where the model fits poorly fade into the
+gray curvature underlay; voxels/vertices where the model fits well are
 fully opaque.
 
 pycortex supports two patterns for this:
@@ -112,8 +112,7 @@ accuracy_vtx = np.hstack(
 #
 # Other 2D alpha colormaps shipped with pycortex include ``"fire_alpha"``
 # (sequential, perceptually uniform), ``"PU_RdBu_covar_alpha"`` (diverging,
-# perceptually uniform), ``"plasma_alpha"``, and ``"autumn_alpha"``. Pick
-# one that matches the sign/structure of your data.
+# perceptually uniform), ``"plasma_alpha"``, and ``"autumn_alpha"``.
 v2d = cortex.Volume2D(
     data_vol,
     accuracy_vol,
