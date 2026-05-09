@@ -435,14 +435,24 @@ var mriview = (function(module) {
     // };
 
     module.Surface.prototype.apply = function(dataview) {
-        this.loaded.done(function() {
+        // In multi-viewer mode the SVG overlay's "update" handler resolves
+        // `this.loaded` more than once per Surface, which leaves jQuery's
+        // resolve-Callbacks memory in a state where new `.done()` adds become
+        // no-ops while `state()` still reports "resolved". Run synchronously
+        // when already resolved so the per-frame `apply()` from drawView can
+        // actually swap the mesh material to our ShaderMaterial.
+        var run = function () {
             for (var i = 0; i < this.sheets.length; i++) {
                 this.sheets[i].left.material = this.shaders[dataview.uuid];
                 this.sheets[i].right.material = this.shaders[dataview.uuid];
             }
-
-            this.picker.apply(dataview)
-        }.bind(this));
+            this.picker.apply(dataview);
+        }.bind(this);
+        if (this.loaded.state() === "resolved") {
+            run();
+        } else {
+            this.loaded.done(run);
+        }
     };
 
     module.Surface.prototype.resetShaders = function() {
@@ -515,7 +525,7 @@ var mriview = (function(module) {
         var factor = 1 - Math.abs(smix - (this.names.length-1));
         let clipped = 0 <= factor ? (factor <= 1 ? factor : 1) : 0;
         this.dispatchEvent({type:'mix', flat:clipped, mix:mix, thickmix:this.uniforms.thickmix.value});
-        viewer.schedule()
+        if (this.viewer) this.viewer.schedule()
 
         var gui = this.ui._gui
         for (var i in gui.__controllers) {
@@ -555,7 +565,7 @@ var mriview = (function(module) {
         let newVal = this.uniforms.surfmix.value + inc;
         if (0.0 <= newVal && newVal <= 1.0) {
             this.setMix(newVal);
-            viewer.schedule();
+            if (this.viewer) this.viewer.schedule();
         }
     }
     module.Surface.prototype.setPivot = function(val) {
@@ -599,11 +609,12 @@ var mriview = (function(module) {
         this.pivots.left.front.visible = val;
     };
     module.Surface.prototype.toggleColorbar = function(val) {
+        var $cl = this.viewer ? this.viewer.$id('colorlegend') : $('#colorlegend');
         if (val === true || val === undefined) {
-            $('#colorlegend').css('display', 'block')
+            $cl.css('display', 'block')
             return true
         } else {
-            $('#colorlegend').css('display', 'none')
+            $cl.css('display', 'none')
             return false
         }
 
@@ -612,7 +623,7 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleLeftVis = function() {
         this.setLeftVis(!this._leftvis);
-        viewer.schedule();
+        if (this.viewer) this.viewer.schedule();
     };
     module.Surface.prototype.setRightVis = function(val) {
         if (val === undefined)
@@ -623,13 +634,15 @@ var mriview = (function(module) {
     };
     module.Surface.prototype.toggleRightVis = function() {
         this.setRightVis(!this._rightvis);
-        viewer.schedule();
+        if (this.viewer) this.viewer.schedule();
     };
     module.Surface.prototype.toggleOpacity = function() {
+        if (!this.viewer) return;
         let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
-        surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
-        viewer.ui.set('surface.' + surface + '.opacity', newValue)
-        viewer.schedule();
+        var v = this.viewer;
+        var surface = Object.keys(v.ui._desc.surface).filter((key) => key[0] != '_')[0]
+        v.ui.set('surface.' + surface + '.opacity', newValue)
+        v.schedule();
     };
     module.Surface.prototype.setLayers = function(val) {
         if (val === undefined)
@@ -644,7 +657,7 @@ var mriview = (function(module) {
             this._layers = 1;
         }
         this.resetShaders();
-        viewer.schedule();
+        if (this.viewer) this.viewer.schedule();
         var gui = this.ui._gui
         for (var i in gui.__controllers) {
             gui.__controllers[i].updateDisplay();
@@ -706,7 +719,12 @@ var mriview = (function(module) {
         return {pos:flat, norms:norms};
     };
 
-    module.SurfDelegate = function(dataview) {
+    module.SurfDelegate = function(dataview, opts) {
+        opts = opts || {};
+        // Owning viewer - used to look up per-viewer Surface instances so that
+        // multiple viewers don't reparent the same THREE.Group into different
+        // scenes (Three.js objects can have only one parent).
+        this.viewer = opts.viewer || null;
         this.object = new THREE.Group();
         this.object.name = "SurfDelegate";
 
@@ -727,7 +745,10 @@ var mriview = (function(module) {
             this.ui.remove(this.surf.ui);
         }
         var subj = dataview.data[0].subject;
-        this.surf = subjects[subj];
+        // Prefer the per-viewer Surface registry (multi-viewer mode); fall back
+        // to the global single-viewer `subjects` dict for back-compat.
+        var subjReg = (this.viewer && this.viewer.subjects) ? this.viewer.subjects : subjects;
+        this.surf = subjReg[subj];
         this.surf.init(dataview);
         this.object.add(this.surf.object);
         

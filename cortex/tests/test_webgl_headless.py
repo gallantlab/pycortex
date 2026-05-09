@@ -377,3 +377,136 @@ def test_addData_no_crash():
         time.sleep(2)
         pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+
+
+# ---------------------------------------------------------------------------
+# Group 8: show_multi (multi-viewer page)
+# ---------------------------------------------------------------------------
+
+
+def _free_port():
+    import socket
+
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+class _MultiViewerHandle:
+    """Spin up a show_multi server + Playwright page; clean up on exit."""
+
+    def __init__(self, views, layout, yoke):
+        self.views = views
+        self.layout = layout
+        self.yoke = yoke
+        self.errors = []
+
+    def __enter__(self):
+        from playwright.sync_api import sync_playwright
+
+        port = _free_port()
+        # autoclose=False so the server outlives the client disconnect when
+        # Playwright reloads or navigates away during the test.
+        self.server = cortex.webgl.show_multi(
+            self.views,
+            layout=self.layout,
+            yoke=self.yoke,
+            port=port,
+            open_browser=False,
+            autoclose=False,
+            display_url=False,
+            title="pytest multi viewer",
+        )
+        # Give the surface CTM endpoints a moment to come up.
+        time.sleep(2)
+        self._pw = sync_playwright().start()
+        # swiftshader gives us a software WebGL context that survives multiple
+        # contexts on a single headless process.
+        self._browser = self._pw.chromium.launch(
+            headless=True, args=["--no-sandbox", "--use-gl=swiftshader"]
+        )
+        self.page = self._browser.new_page(viewport={"width": 1200, "height": 700})
+        self.page.on("pageerror", lambda e: self.errors.append(str(e)))
+        self.page.goto(
+            "http://localhost:%d/" % port,
+            wait_until="networkidle",
+            timeout=45000,
+        )
+        # Wait for the JS-side viewers array to populate and CTMs to load.
+        self.page.wait_for_function(
+            "() => window.viewers && window.viewers.length === %d" % len(self.views),
+            timeout=30000,
+        )
+        time.sleep(4)
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            self._browser.close()
+        finally:
+            self._pw.stop()
+            self.server.stop()
+
+
+def test_show_multi_smoke():
+    """show_multi(2 vols) renders two viewers, two canvases, no JS errors."""
+    np.random.seed(0)
+    v1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    v2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with _MultiViewerHandle([v1, v2], layout=(1, 2), yoke=False) as h:
+        canvases = h.page.evaluate("document.querySelectorAll('canvas').length")
+        n_viewers = h.page.evaluate("window.viewers.length")
+        assert n_viewers == 2
+        assert canvases >= 2  # at least one per viewer
+        # No uncaught JS errors during construction.
+        assert h.errors == [], f"JS pageerrors: {h.errors}"
+
+
+def test_show_multi_yoke_lockstep():
+    """With yoke ON, dispatching change on viewer 0 syncs viewer 1 azimuth + mix."""
+    np.random.seed(0)
+    v1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    v2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with _MultiViewerHandle([v1, v2], layout=(1, 2), yoke=True) as h:
+        result = h.page.evaluate(
+            """() => {
+                window.viewers[1].controls.setAzimuth(45);
+                window.viewers[0].controls.setAzimuth(200);
+                window.viewers[0].controls.dispatchEvent({type:'change'});
+                window.viewers[0].controls.setMix(0.5);
+                window.viewers[0].controls.dispatchEvent({type:'change'});
+                return {
+                    az0: window.viewers[0].controls.azimuth,
+                    az1: window.viewers[1].controls.azimuth,
+                    mix0: window.viewers[0].controls.mix,
+                    mix1: window.viewers[1].controls.mix,
+                };
+            }"""
+        )
+        assert result["az0"] == result["az1"]
+        assert result["mix0"] == result["mix1"]
+        assert h.errors == [], f"JS pageerrors: {h.errors}"
+
+
+def test_show_multi_unyoked_independent():
+    """With yoke OFF, change on viewer 0 does not affect viewer 1."""
+    np.random.seed(0)
+    v1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    v2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with _MultiViewerHandle([v1, v2], layout=(1, 2), yoke=False) as h:
+        result = h.page.evaluate(
+            """() => {
+                window.viewers[1].controls.setAzimuth(45);
+                window.viewers[0].controls.setAzimuth(200);
+                window.viewers[0].controls.dispatchEvent({type:'change'});
+                return {
+                    az0: window.viewers[0].controls.azimuth,
+                    az1: window.viewers[1].controls.azimuth,
+                };
+            }"""
+        )
+        assert result["az0"] == 200
+        assert result["az1"] == 45
+        assert h.errors == [], f"JS pageerrors: {h.errors}"

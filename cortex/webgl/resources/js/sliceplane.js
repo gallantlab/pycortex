@@ -11,7 +11,7 @@ var sliceplane = (function(module) {
 	if (this.viewer.active.vertex) {
 	    return;
 	}
-        this.scene = viewer.views[0].scene;
+        this.scene = this.viewer.views[0].scene;
 
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
