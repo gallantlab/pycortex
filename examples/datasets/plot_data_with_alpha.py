@@ -94,14 +94,16 @@ surfs = [cortex.polyutils.Surface(*d) for d in cortex.db.get_surf(subject, "fidu
 num_verts = [s.pts.shape[0] for s in surfs]
 total_verts = sum(num_verts)
 
-# Data: noisy gradient across each hemisphere.
+# Data: a smooth anterior-posterior gradient. Encoding by spatial
+# coordinate (rather than by vertex index) is important on the surface
+# because vertex indices are not arranged by spatial neighborhood -- a
+# vertex-index ramp would render as visual noise. Here we use the
+# y-axis (A-P), centered at zero so the diverging RdBu_r colormap reads
+# naturally.
 rng = np.random.default_rng(0)
-data_vtx = np.hstack(
-    [
-        np.linspace(-1, 1, num_verts[0]) + 0.1 * rng.standard_normal(num_verts[0]),
-        np.linspace(-1, 1, num_verts[1]) + 0.1 * rng.standard_normal(num_verts[1]),
-    ]
-)
+pts = np.vstack([surfs[0].pts, surfs[1].pts])  # (total_verts, 3)
+y = pts[:, 1] - pts[:, 1].mean()
+data_vtx = y / np.abs(y).max()  # in [-1, 1]
 
 
 # Accuracy: a soft bump centered at a particular vertex in each hemi.
@@ -152,13 +154,11 @@ plt.show()
 # Pattern 2b: RGB Vertex + alpha via VertexRGB(alpha=...)
 # -------------------------------------------------------
 #
-# Per-vertex random RGB would just look like salt-and-pepper noise on
-# the flatmap because vertex indices are not arranged by spatial
-# neighborhood. Instead, encode each channel as a normalized spatial
-# coordinate: R = x, G = y, B = z (in anatomical space), so the three
-# channels vary smoothly across cortex and produce an interpretable
-# position map.
-pts = np.vstack([surfs[0].pts, surfs[1].pts])  # (total_verts, 3)
+# As in Pattern 1b, encoding each channel by a normalized spatial
+# coordinate (R = x, G = y, B = z in anatomical space) yields smoothly
+# varying maps -- per-vertex random RGB would just look like
+# salt-and-pepper noise because vertex indices are not arranged by
+# spatial neighborhood.
 xyz_norm = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
 red_v = cortex.Vertex(xyz_norm[:, 0], subject, vmin=0, vmax=1)
 green_v = cortex.Vertex(xyz_norm[:, 1], subject, vmin=0, vmax=1)
