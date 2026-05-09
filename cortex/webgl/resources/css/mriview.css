@@ -116,7 +116,9 @@ a:visited { color:white; }
     margin:20px;
     border-radius:10px;
     background:rgba(255,255,255,.2);
-    max-width:400px;
+    width:max-content;
+    min-width:200px;
+    max-width:90vw;
     display:none;
     /*width:320px;
     height:58px;
@@ -486,12 +488,13 @@ input.vlim {
 
 /* datasets */
 ul#datasets {
-    max-width: 400px;
     list-style: none;
     margin: 0;
     padding: 0;
-    overflow:auto;
+    overflow-y: auto;
     max-height:70vh;
+    width: max-content;
+    max-width: 100%;
 }
 ul#datasets li {
     background: white;
@@ -501,6 +504,7 @@ ul#datasets li {
     border: 1px solid black;
     list-style: none;
     padding-left: 42px;
+    white-space: nowrap;
 }
 ul#datasets li .handle {
     background: #CCC;
