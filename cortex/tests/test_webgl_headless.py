@@ -387,7 +387,10 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
     alpha = np.zeros(nverts, dtype=np.float32)
 
     vrgb = cortex.VertexRGB(
-        r, g, b, subj,
+        r,
+        g,
+        b,
+        subj,
         alpha=cortex.Vertex(alpha, subj, vmin=0, vmax=1),
     )
 
@@ -414,6 +417,74 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
             f"VertexRGB with α=0 produced {n_red} red-dominant pixels; "
             "expected near-zero. The shader composite is consuming "
             "un-premultiplied RGB (issue #631)."
+        )
+
+
+def test_volumergb_alpha_half_renders_correct_blend(tmp_path):
+    """VolumeRGB with α=0.5 must blend halfway, not double-attenuate.
+
+    Companion regression to test_vertexrgb_alpha_zero_renders_curvature_only
+    (#631). VolumeRGB ships through the PNG texture path: Three.js sets
+    ``tex.premultiplyAlpha = true`` on upload, so the texture is premultiplied
+    once by WebGL itself. Package therefore must NOT premultiply on the
+    Python side -- if it does, the shader sees double-attenuated RGB.
+
+    α=0 won't catch that bug (0·anything = 0), so we use α=0.5 with bright
+    uniform red. With curvature contribution included, observed shader
+    output for the brain region is:
+      - correct (single premult by JS): median R ≈ 145-160
+      - bug (double premult: Py + JS):  median R ≈ 90-105
+    Threshold at 125 sits in the middle of the gap and tolerates 20+ LSB
+    of boundary/interpolation noise on either side.
+    """
+    from PIL import Image
+
+    # Uniform saturated red over the whole volume, half transparent. Wrap in
+    # explicit Volume(vmin=0, vmax=1) so the .volume property doesn't
+    # auto-normalize a constant array to NaN.
+    r = cortex.Volume(
+        np.full(volshape, 1.0, dtype=np.float32), subj, xfmname, vmin=0, vmax=1
+    )
+    g = cortex.Volume(
+        np.full(volshape, 0.0, dtype=np.float32), subj, xfmname, vmin=0, vmax=1
+    )
+    b = cortex.Volume(
+        np.full(volshape, 0.0, dtype=np.float32), subj, xfmname, vmin=0, vmax=1
+    )
+    alpha = cortex.Volume(
+        np.full(volshape, 0.5, dtype=np.float32), subj, xfmname, vmin=0, vmax=1
+    )
+    vrgb = cortex.VolumeRGB(r, g, b, subj, xfmname, alpha=alpha)
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+    with cortex.export.headless_viewer(vrgb, viewer_params={}) as handle:
+        time.sleep(10)
+        handle._set_view(**view)
+        time.sleep(1)
+        outfile = str(tmp_path / "volumergb_alpha_half.png")
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+
+        rgb = np.array(Image.open(outfile))[..., :3].astype(int)
+        # Brain-region pixels are red-dominant under both correct and buggy
+        # paths, but their R intensity differs. Pick the strongly red
+        # pixels (R clearly > G,B) and check median R.
+        red_mask = rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 30
+        assert red_mask.sum() > 1000, (
+            "Expected a large red-dominant region for half-transparent red "
+            f"VolumeRGB; got only {red_mask.sum()} pixels. Did the brain render?"
+        )
+        median_r = float(np.median(rgb[red_mask, 0]))
+        # Discriminator: correct path produces ~145-160, double-premult
+        # produces ~90-105. Threshold at 125 sits in the middle.
+        assert median_r > 125, (
+            f"VolumeRGB α=0.5 brain pixels have median R={median_r:.0f}; "
+            "expected ~150. R<125 indicates Package is double-premultiplying "
+            "VolumeRGB (issue #631 regression)."
         )
 
 

@@ -43,7 +43,10 @@ def test_vertexrgb_alpha_is_premultiplied_in_package():
     alpha = rng.uniform(0, 1, nverts).astype(np.float32)
 
     vrgb = cortex.VertexRGB(
-        r, g, b, subj,
+        r,
+        g,
+        b,
+        subj,
         alpha=cortex.Vertex(alpha, subj, vmin=0, vmax=1),
     )
 
@@ -61,9 +64,15 @@ def test_vertexrgb_alpha_is_premultiplied_in_package():
     naive_premult = np.round(
         raw[0, :, 0].astype(np.float32) * raw[0, :, 3].astype(np.float32) / 255.0
     ).astype(np.uint8)
-    assert np.mean(np.abs(
-        raw[0, nontrivial, 0].astype(int) - naive_premult[nontrivial].astype(int)
-    )) > 5, "vertices property looks already-premultiplied; quickshow would break"
+    assert (
+        np.mean(
+            np.abs(
+                raw[0, nontrivial, 0].astype(int)
+                - naive_premult[nontrivial].astype(int)
+            )
+        )
+        > 5
+    ), "vertices property looks already-premultiplied; quickshow would break"
 
     # Now check what Package serializes for the WebGL viewer.
     packaged = _packaged_rgba(vrgb)
@@ -105,7 +114,10 @@ def test_vertexrgb_alpha_zero_zeros_rgb():
     alpha = np.zeros(nverts, dtype=np.float32)
 
     vrgb = cortex.VertexRGB(
-        r, g, b, subj,
+        r,
+        g,
+        b,
+        subj,
         alpha=cortex.Vertex(alpha, subj, vmin=0, vmax=1),
     )
     packaged = _packaged_rgba(vrgb)
@@ -113,9 +125,16 @@ def test_vertexrgb_alpha_zero_zeros_rgb():
     assert np.array_equal(packaged[..., :3], np.zeros_like(packaged[..., :3]))
 
 
-def test_volumergb_alpha_is_premultiplied_in_package():
-    """VolumeRGB shares the same shader path -- check the same premultiplication."""
-    # Smaller volume to keep the test fast.
+def test_volumergb_alpha_is_NOT_premultiplied_in_package():
+    """VolumeRGB must ship straight-alpha bytes -- Three.js premultiplies on upload.
+
+    Three.js sets ``tex.premultiplyAlpha = true`` for raw VolumeRGB textures
+    (cortex/webgl/resources/js/dataset.js:335-338), which makes WebGL apply
+    UNPACK_PREMULTIPLY_ALPHA_WEBGL on texture upload. So the shader sees
+    premultiplied RGB by the time vColor is sampled, but ONLY because the
+    texture-upload pipeline does it for us. If Package also premultiplied
+    here, partial-alpha VolumeRGB would render double-attenuated (too dark).
+    """
     rng = np.random.default_rng(3)
     shape = volshape
     r = rng.uniform(0, 1, shape).astype(np.float32)
@@ -124,7 +143,11 @@ def test_volumergb_alpha_is_premultiplied_in_package():
     alpha = rng.uniform(0, 1, shape).astype(np.float32)
 
     vrgb = cortex.VolumeRGB(
-        r, g, b, subj, xfmname,
+        r,
+        g,
+        b,
+        subj,
+        xfmname,
         alpha=cortex.Volume(alpha, subj, xfmname, vmin=0, vmax=1),
     )
 
@@ -132,8 +155,9 @@ def test_volumergb_alpha_is_premultiplied_in_package():
     assert raw.dtype == np.uint8
 
     # Spy on the Package internals: monkey-patch volume.mosaic to capture the
-    # premultiplied array before it gets PNG-encoded.
+    # array Package actually ships before it gets PNG-encoded.
     from cortex.webgl import data as webgl_data
+
     captured = {}
     real_mosaic = webgl_data.volume.mosaic
 
@@ -147,11 +171,23 @@ def test_volumergb_alpha_is_premultiplied_in_package():
     finally:
         webgl_data.volume.mosaic = real_mosaic
 
-    # One frame per timepoint; VolumeRGB here has t=1.
     assert len(captured["frames"]) == 1
     packaged_frame = captured["frames"][0]
-    expected_frame = _expected_premultiplied(raw[0])  # raw shape (t,z,y,x,4)
 
-    assert packaged_frame.shape == expected_frame.shape
-    assert np.array_equal(packaged_frame[..., 3], expected_frame[..., 3])
-    assert np.array_equal(packaged_frame[..., :3], expected_frame[..., :3])
+    # Bytes shipped to the browser must equal the raw .volume bytes verbatim
+    # (NOT premultiplied) -- Three.js will premultiply once on texture upload.
+    assert packaged_frame.shape == raw[0].shape
+    assert np.array_equal(packaged_frame, raw[0])
+
+    # And specifically, RGB should NOT have been premultiplied by alpha.
+    naive_premult = _expected_premultiplied(raw[0])
+    nontrivial = (raw[0, ..., 3] < 200) & (raw[0, ..., 0] > 50)
+    assert (
+        np.mean(
+            np.abs(
+                packaged_frame[nontrivial][..., 0].astype(int)
+                - naive_premult[nontrivial][..., 0].astype(int)
+            )
+        )
+        > 5
+    ), "VolumeRGB Package output looks premultiplied; Three.js will then double-attenuate"
