@@ -21,7 +21,16 @@ var mriview = (function(module) {
             var tex = new THREE.Texture(this);
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
-            tex.premultiplyAlpha = false;
+            // Premultiply alpha on upload so the shader's premultiplied-over
+            // composite (gl_FragColor = vColor + (1-α)·cColor in shaderlib.js)
+            // produces the correct α·rgb + (1-α)·bg result when sampling
+            // alpha-bearing colormaps (e.g. RdBu_r_alpha, fire_alpha). For
+            // non-alpha cmaps every row has α=255, so premultiplication is a
+            // no-op. Without this, alpha-cmap-rendered Vertex2D/Volume2D
+            // foregrounds clip toward white instead of fading to the
+            // curvature underlay (companion fix to issue #631 for the LUT
+            // texture path).
+            tex.premultiplyAlpha = true;
             tex.flipY = true;
             tex.needsUpdate = true;
             colormaps[this.parentNode.id] = tex;
