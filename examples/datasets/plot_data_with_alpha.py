@@ -75,7 +75,7 @@ v2d = cortex.Volume2D(
     vmin2=0,
     vmax2=1,  # range for the alpha (dim2)
 )
-cortex.quickshow(v2d, with_colorbar=True)
+cortex.quickshow(v2d, with_colorbar=True, with_curvature=True)
 plt.suptitle("Volume2D + RdBu_r_alpha: data masked by 'accuracy'")
 plt.show()
 
@@ -127,7 +127,7 @@ vtx2d = cortex.Vertex2D(
     vmin2=0,
     vmax2=1,
 )
-cortex.quickshow(vtx2d, with_colorbar=True)
+cortex.quickshow(vtx2d, with_colorbar=True, with_curvature=True)
 plt.suptitle("Vertex2D + RdBu_r_alpha: data masked by 'accuracy'")
 plt.show()
 
@@ -143,7 +143,7 @@ blue = cortex.Volume(np.clip((zz / 30.0), 0, 1), subject, xfm, vmin=0, vmax=1)
 alpha_vol = cortex.Volume(accuracy_vol, subject, xfm, vmin=0, vmax=1)
 
 vrgb = cortex.VolumeRGB(red, green, blue, subject, alpha=alpha_vol)
-cortex.quickshow(vrgb, with_colorbar=False)
+cortex.quickshow(vrgb, with_colorbar=False, with_curvature=True)
 plt.suptitle("VolumeRGB(alpha=accuracy): RGB tuning masked by 'accuracy'")
 plt.show()
 
@@ -156,7 +156,7 @@ blue_v = cortex.Vertex(rng.uniform(0, 1, total_verts), subject, vmin=0, vmax=1)
 alpha_v = cortex.Vertex(accuracy_vtx, subject, vmin=0, vmax=1)
 
 vrgb_vtx = cortex.VertexRGB(red_v, green_v, blue_v, subject, alpha=alpha_v)
-cortex.quickshow(vrgb_vtx, with_colorbar=False)
+cortex.quickshow(vrgb_vtx, with_colorbar=False, with_curvature=True)
 plt.suptitle("VertexRGB(alpha=accuracy): RGB channels masked by 'accuracy'")
 plt.show()
 
