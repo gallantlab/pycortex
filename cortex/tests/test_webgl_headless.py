@@ -358,7 +358,67 @@ def test_vertex_with_nan_renders_partial(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Group 8: addData dataset switching
+# Group 8: VertexRGB alpha attenuation regression test (#631)
+# ---------------------------------------------------------------------------
+
+
+def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
+    """VertexRGB with α=0 must render the curvature underlay, not bright color.
+
+    Regression test for #631: prior to the fix, the WebGL fragment shader's
+    premultiplied-alpha composite formula (gl_FragColor = vColor + (1-α)·bg)
+    consumed un-premultiplied RGB bytes from VertexRGB.vertices, so α=0 left
+    the foreground color fully opaque and clipped toward white instead of
+    falling through to the gray curvature.
+
+    With the fix, RGB is premultiplied at the WebGL serialization step
+    (cortex/webgl/data.py), so packaged vColor.rgb=0 when α=0, and the
+    shader produces pure curvature gray.
+    """
+    from PIL import Image
+
+    rng = np.random.default_rng(631)
+    # Bright, saturated colors -- if the bug returns these will leak through
+    # as red/green/blue pixels. With the fix and α=0, only neutral (curvature)
+    # gray pixels should remain in the brain region.
+    r = rng.uniform(0.7, 1.0, nverts).astype(np.float32)
+    g = rng.uniform(0.0, 0.3, nverts).astype(np.float32)
+    b = rng.uniform(0.0, 0.3, nverts).astype(np.float32)
+    alpha = np.zeros(nverts, dtype=np.float32)
+
+    vrgb = cortex.VertexRGB(
+        r, g, b, subj,
+        alpha=cortex.Vertex(alpha, subj, vmin=0, vmax=1),
+    )
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+    with cortex.export.headless_viewer(vrgb, viewer_params={}) as handle:
+        time.sleep(10)
+        handle._set_view(**view)
+        time.sleep(1)
+        outfile = str(tmp_path / "alpha_zero.png")
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+
+        rgb = np.array(Image.open(outfile))[..., :3].astype(int)
+        # Count strongly red-dominant pixels: with the bug, α=0 lets the
+        # bright reds through and we'd see thousands of them. With the fix,
+        # the brain renders curvature gray (R≈G≈B) and red-dominant pixels
+        # fall to near zero (a handful from anti-aliased ROI overlays).
+        n_red = int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+        assert n_red < 500, (
+            f"VertexRGB with α=0 produced {n_red} red-dominant pixels; "
+            "expected near-zero. The shader composite is consuming "
+            "un-premultiplied RGB (issue #631)."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Group 9: addData dataset switching
 # ---------------------------------------------------------------------------
 
 

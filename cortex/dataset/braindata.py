@@ -1,4 +1,5 @@
 import hashlib
+import warnings
 from copy import deepcopy
 import sys
 from typing import Generic, Optional, TypeVar, Union, cast
@@ -552,7 +553,13 @@ class VertexData(BrainData):
     def blend_curvature(self, alpha, threshold=0, brightness=0.5,
                         contrast=0.25, smooth=20):
         """Blend the data with a curvature map depending on a transparency map.
-        
+
+        .. deprecated::
+            Per-vertex alpha is now honored directly by both the WebGL viewer
+            and ``cortex.quickshow``. Pass ``alpha=`` to ``VertexRGB`` (or set
+            ``.alpha`` on an existing instance) and the curvature underlay will
+            be blended through automatically.
+
         Vertex objects cannot use transparency as Volume objects. This method
         is a hack to mimic the transparency of Volume objects, blending the
         Vertex data with a curvature map. This method returns a VertexRGB
@@ -577,6 +584,15 @@ class VertexData(BrainData):
         blended : VertexRGB object
             The original map blended with a curvature map.
         """
+        warnings.warn(
+            "blend_curvature is deprecated and will be removed in a future "
+            "release. Per-vertex alpha is now honored directly by both the "
+            "WebGL viewer and quickshow -- pass `alpha=` to VertexRGB (or set "
+            "`.alpha` on an existing instance) and the curvature underlay "
+            "will be blended through automatically.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         from .views import Vertex
         from .viewRGB import VertexRGB
         # prepare curvature map

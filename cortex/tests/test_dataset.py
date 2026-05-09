@@ -312,23 +312,27 @@ def test_blend_curvature():
     view = cortex.Vertex.empty(subj)
     alpha = np.linspace(0, 1, view.data.size).reshape(view.data.shape)
 
-    # test alpha with float
-    view_rgb = view.blend_curvature(alpha)
-    # test alpha with bool
-    view_rgb = view.blend_curvature(alpha > 0.3)
+    # blend_curvature is deprecated; the warning should fire on every call.
+    with pytest.warns(DeprecationWarning, match="blend_curvature is deprecated"):
+        view_rgb = view.blend_curvature(alpha)
+    with pytest.warns(DeprecationWarning):
+        view_rgb = view.blend_curvature(alpha > 0.3)
     # test that it returns a VertexRGB
     assert isinstance(view_rgb, cortex.VertexRGB)
 
     # test on Vertex2D
     view_2d = cortex.Vertex2D(view_rgb.red.data, view_rgb.green.data, subj)
-    view_rgb = view_2d.blend_curvature(alpha)
+    with pytest.warns(DeprecationWarning):
+        view_rgb = view_2d.blend_curvature(alpha)
 
     # test on VertexRGB
-    view_rgb_new = view_rgb.blend_curvature(alpha)
+    with pytest.warns(DeprecationWarning):
+        view_rgb_new = view_rgb.blend_curvature(alpha)
     # test that it returns a different VertexRGB
     assert not np.allclose(view_rgb.red.data, view_rgb_new.red.data)
     # test that it returns a VertexRGB with same values when alpha is ones
-    view_rgb_new = view_rgb.blend_curvature(np.ones_like(alpha))
+    with pytest.warns(DeprecationWarning):
+        view_rgb_new = view_rgb.blend_curvature(np.ones_like(alpha))
     assert np.allclose(view_rgb.red.data, view_rgb_new.red.data)
 
 

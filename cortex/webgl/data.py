@@ -36,6 +36,17 @@ class Package(object):
                 encdata = brain.volume
             if isinstance(brain, (dataset.VolumeRGB, dataset.VertexRGB)):
                 encdata = encdata.astype(np.uint8)
+                # The WebGL fragment shader (shaderlib.js) composites with a
+                # premultiplied-alpha "over" formula
+                # (gl_FragColor = vColor + (1-α)·bg), so premultiply RGB by α
+                # here before serialization. The .vertices/.volume properties
+                # stay non-premultiplied so the matplotlib (quickshow) path keeps
+                # using matplotlib's straight-alpha imshow compositor.
+                a = encdata[..., 3:4].astype(np.float32) / 255.0
+                encdata = encdata.copy()
+                encdata[..., :3] = np.round(
+                    encdata[..., :3].astype(np.float32) * a
+                ).astype(np.uint8)
                 self.brains[name]['raw'] = True
             else:
                 encdata = encdata.astype(np.float32)
