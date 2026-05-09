@@ -152,9 +152,17 @@ plt.show()
 # Pattern 2b: RGB Vertex + alpha via VertexRGB(alpha=...)
 # -------------------------------------------------------
 #
-red_v = cortex.Vertex(rng.uniform(0, 1, total_verts), subject, vmin=0, vmax=1)
-green_v = cortex.Vertex(rng.uniform(0, 1, total_verts), subject, vmin=0, vmax=1)
-blue_v = cortex.Vertex(rng.uniform(0, 1, total_verts), subject, vmin=0, vmax=1)
+# Per-vertex random RGB would just look like salt-and-pepper noise on
+# the flatmap because vertex indices are not arranged by spatial
+# neighborhood. Instead, encode each channel as a normalized spatial
+# coordinate: R = x, G = y, B = z (in anatomical space), so the three
+# channels vary smoothly across cortex and produce an interpretable
+# position map.
+pts = np.vstack([surfs[0].pts, surfs[1].pts])  # (total_verts, 3)
+xyz_norm = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
+red_v = cortex.Vertex(xyz_norm[:, 0], subject, vmin=0, vmax=1)
+green_v = cortex.Vertex(xyz_norm[:, 1], subject, vmin=0, vmax=1)
+blue_v = cortex.Vertex(xyz_norm[:, 2], subject, vmin=0, vmax=1)
 alpha_v = cortex.Vertex(accuracy_vtx, subject, vmin=0, vmax=1)
 
 vrgb_vtx = cortex.VertexRGB(red_v, green_v, blue_v, subject, alpha=alpha_v)
