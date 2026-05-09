@@ -475,6 +475,7 @@ ul#datasets {
     margin: 0;
     padding: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     max-height:70vh;
     width: max-content;
     max-width: 100%;
@@ -488,6 +489,8 @@ ul#datasets li {
     list-style: none;
     padding-left: 42px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 ul#datasets li .handle {
     background: #CCC;
