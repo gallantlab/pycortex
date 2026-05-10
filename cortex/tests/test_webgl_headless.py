@@ -622,3 +622,208 @@ def test_addData_no_crash():
         time.sleep(2)
         pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+
+
+# ---------------------------------------------------------------------------
+# Group 10: Manual visual A/B comparison across all alpha-bearing dataviews
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not os.environ.get("RUN_VISUAL_COMPARISON"),
+    reason="Manual visual comparison; set RUN_VISUAL_COMPARISON=1 to run.",
+)
+def test_visual_comparison_alpha_dataviews(tmp_path):
+    """Render all 6 dataview types via quickshow + webgl, side-by-side.
+
+    Skipped by default — set ``RUN_VISUAL_COMPARISON=1`` to run. Builds a
+    grid where each row is one dataview type (Volume, Vertex, Volume2D,
+    Vertex2D, VolumeRGB, VertexRGB) and the two columns are the matplotlib
+    (``cortex.quickshow``) reference vs the headless WebGL flatmap render.
+    Used as a manual smoke check that the alpha-blend fix
+    (``Package``-side premultiply for VertexRGB + cmap-LUT
+    ``premultiplyAlpha=true`` for the 2D-cmap path) keeps both viewers in
+    visual agreement across every alpha-encoding pattern.
+
+    Plain Volume / Vertex have no native per-element alpha (pycortex's
+    bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
+    dataview types), so those two rows act as a no-alpha baseline. The
+    other four rows exercise alpha: Volume2D / Vertex2D via the 2D-alpha
+    cmap ``RdBu_r_alpha``, VolumeRGB / VertexRGB via the ``alpha=`` kwarg.
+
+    Renders are intentionally low-resolution (quickshow ``height=256``,
+    webgl ``size=(512, 384)``) so the final composite PNG stays small.
+    Both viewers run with no labels, no ROIs, and curvature underlay on.
+
+    The composite PNG is written under ``tmp_path`` and the absolute path
+    is printed at the end of the test so the file is easy to open.
+    """
+    import matplotlib.pyplot as plt
+
+    import cortex.polyutils
+
+    # ------- Synthesize data and alpha maps (mirrors plot_data_with_alpha.py) -
+
+    # Volumetric
+    zz, yy, xx = np.mgrid[0:31, 0:100, 0:100]
+    data_vol = (xx - 50) / 50.0  # ~ [-1, 1]
+    center = np.array([15, 50, 50])
+    sigma_v = 25.0
+    dist2 = (
+        (zz - center[0]) ** 2 + (yy - center[1]) ** 2 + (xx - center[2]) ** 2
+    )
+    accuracy_vol = np.exp(-dist2 / (2 * sigma_v**2))  # [0, 1] bump
+    red_vol = np.clip(xx / 99.0, 0, 1)
+    green_vol = np.clip(yy / 99.0, 0, 1)
+    blue_vol = np.clip(zz / 30.0, 0, 1)
+
+    # Surface (vertex) — encode by spatial coordinate, not vertex index
+    surfs = [
+        cortex.polyutils.Surface(*d)
+        for d in cortex.db.get_surf(subj, "fiducial")
+    ]
+    num_verts = [s.pts.shape[0] for s in surfs]
+    pts = np.vstack([surfs[0].pts, surfs[1].pts])
+    y_centered = pts[:, 1] - pts[:, 1].mean()
+    data_vtx = y_centered / np.abs(y_centered).max()  # [-1, 1]
+    xyz_norm = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
+
+    def _bump(surf, seed, sigma):
+        d = np.linalg.norm(surf.pts - surf.pts[seed], axis=1)
+        return np.exp(-(d**2) / (2 * sigma**2))
+
+    accuracy_vtx = np.hstack(
+        [
+            _bump(surfs[0], num_verts[0] // 2, sigma=40.0),
+            _bump(surfs[1], num_verts[1] // 2, sigma=40.0),
+        ]
+    )
+
+    # ------- Build the six dataviews ----------------------------------------
+    # Volume / Vertex have no native per-element alpha — pycortex's bundled
+    # `*_alpha` colormaps are all 2D LUTs and only apply to Volume2D /
+    # Vertex2D. So plain Volume / Vertex use a non-alpha cmap (`viridis`)
+    # and serve as the no-alpha baseline; Volume2D / Vertex2D pair data
+    # against accuracy via the 2D-alpha cmap `RdBu_r_alpha`; VolumeRGB /
+    # VertexRGB use the native `alpha=` kwarg.
+
+    cmap_plain = "viridis"
+    cmap_2d = "RdBu_r_alpha"
+
+    dataviews = [
+        (
+            "Volume",
+            cortex.Volume(
+                data_vol, subj, xfmname,
+                cmap=cmap_plain, vmin=-1, vmax=1,
+            ),
+        ),
+        (
+            "Vertex",
+            cortex.Vertex(
+                data_vtx, subj,
+                cmap=cmap_plain, vmin=-1, vmax=1,
+            ),
+        ),
+        (
+            "Volume2D",
+            cortex.Volume2D(
+                data_vol, accuracy_vol, subj, xfmname,
+                cmap=cmap_2d,
+                vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            ),
+        ),
+        (
+            "Vertex2D",
+            cortex.Vertex2D(
+                data_vtx, accuracy_vtx, subj,
+                cmap=cmap_2d,
+                vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            ),
+        ),
+        (
+            "VolumeRGB",
+            cortex.VolumeRGB(
+                cortex.Volume(red_vol, subj, xfmname, vmin=0, vmax=1),
+                cortex.Volume(green_vol, subj, xfmname, vmin=0, vmax=1),
+                cortex.Volume(blue_vol, subj, xfmname, vmin=0, vmax=1),
+                subj, xfmname,
+                alpha=cortex.Volume(accuracy_vol, subj, xfmname, vmin=0, vmax=1),
+            ),
+        ),
+        (
+            "VertexRGB",
+            cortex.VertexRGB(
+                cortex.Vertex(xyz_norm[:, 0], subj, vmin=0, vmax=1),
+                cortex.Vertex(xyz_norm[:, 1], subj, vmin=0, vmax=1),
+                cortex.Vertex(xyz_norm[:, 2], subj, vmin=0, vmax=1),
+                subj,
+                alpha=cortex.Vertex(accuracy_vtx, subj, vmin=0, vmax=1),
+            ),
+        ),
+    ]
+
+    # ------- Render each dataview through both paths ------------------------
+    # Each WebGL render spins up its own headless browser via plot_panels;
+    # six sequential launches × ~15s sleep = ~90s+ end to end. That's fine
+    # for a manual A/B and avoids the broken `addData` path on headless.
+
+    n = len(dataviews)
+    fig, axes = plt.subplots(n, 2, figsize=(7, 2.2 * n))
+
+    flatmap_panel = [
+        {
+            "extent": [0.0, 0.0, 1.0, 1.0],
+            "view": {"angle": "flatmap", "surface": "flatmap"},
+        }
+    ]
+
+    for row, (name, view) in enumerate(dataviews):
+        # quickshow → low-res PNG
+        qs_path = tmp_path / f"qs_{name}.png"
+        qs_fig = cortex.quickshow(
+            view,
+            with_curvature=True,
+            with_rois=False,
+            with_labels=False,
+            with_colorbar=False,
+            with_sulci=False,
+            with_borders=False,
+            height=256,
+        )
+        qs_fig.savefig(qs_path, bbox_inches="tight", pad_inches=0, dpi=80)
+        plt.close(qs_fig)
+
+        # webgl → trimmed flatmap PNG via plot_panels (single flatmap panel)
+        wg_path = str(tmp_path / f"wg_{name}.png")
+        wg_fig = cortex.export.plot_panels(
+            view,
+            panels=flatmap_panel,
+            figsize=(6, 3),
+            windowsize=(512, 384),
+            save_name=wg_path,
+            sleep=10,
+            viewer_params=dict(labels_visible=[], overlays_visible=[]),
+            headless=True,
+        )
+        plt.close(wg_fig)
+
+        ax_qs, ax_wg = axes[row]
+        ax_qs.imshow(plt.imread(qs_path))
+        ax_qs.set_title(f"{name} — quickshow", fontsize=9)
+        ax_qs.axis("off")
+        ax_wg.imshow(plt.imread(wg_path))
+        ax_wg.set_title(f"{name} — webgl (flatmap)", fontsize=9)
+        ax_wg.axis("off")
+
+    fig.suptitle(
+        "Alpha-bearing dataviews: quickshow vs WebGL", fontsize=11,
+    )
+    fig.tight_layout()
+    out_path = tmp_path / "alpha_dataview_comparison.png"
+    fig.savefig(out_path, dpi=100, bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"\nVisual comparison saved to:\n  {out_path}\n")
+    assert out_path.exists()
+    assert out_path.stat().st_size > 0
