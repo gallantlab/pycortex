@@ -736,11 +736,13 @@ var mriview = (function(module) {
                 // hover indicator for the newly-active dataset at the same
                 // screen coordinate.
                 this._lastHoverEvent = event;
-                // Skip RGB views (no underlying scalars), unsupported lengths,
-                // or dataviews whose buffers haven't finished populating yet
-                // (the setData refire can briefly precede buffer fill).
-                if (this.active.data[0].raw ||
-                    (this.active.data.length !== 1 && this.active.data.length !== 2) ||
+                // Length check first so the short-circuit guards us against
+                // an empty data array before we read data[0]. Then skip RGB
+                // (no underlying scalars), then ensure all child buffers
+                // have populated (the setData refire can briefly precede
+                // buffer fill).
+                if ((this.active.data.length !== 1 && this.active.data.length !== 2) ||
+                    this.active.data[0].raw ||
                     !module.dataBuffersReady(this.active.data)) {
                     $('#mouseover_value').css('display', 'none')
                     return
@@ -748,16 +750,14 @@ var mriview = (function(module) {
                 // We need to use a different logic if we have a VolumeData or a VertexData object
                 let values = null;
                 if (this.active.vertex) {
-                    coords = this.getCoords(event)
+                    let coords = this.getCoords(event)
                     if (coords !== -1) {
-                        hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                        vertex = coords.vertex
-                        // Now we need to map back with the index map
-                        // First figure out the subject, then get the index map
-                        // (dim1 and dim2 share subject for 2D views, enforced server-side)
-                        subject = this.active.data[0].subject
-                        indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                        vertex = indexMap[vertex]
+                        let hemiIdx = (coords.hemi == 'left') ? 0 : 1
+                        // Map the picked vertex through the subject's indexMap.
+                        // dim1 and dim2 share subject for 2D views (server-side).
+                        let subject = this.active.data[0].subject
+                        let indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                        let vertex = indexMap[coords.vertex]
                         // Now access the data for each channel (1 for 1D, 2 for 2D)
                         values = this.active.data.map(function (d) {
                             return d.verts[0][hemiIdx].array[vertex]
@@ -775,7 +775,7 @@ var mriview = (function(module) {
                         $('#mouseover_value').css('display', 'none')
                         return
                     }
-                    mouse_index = this.getMouseIndex(event)
+                    let mouse_index = this.getMouseIndex(event)
                     if (mouse_index !== -1) {
                         values = this.active.data.map(function (d) {
                             return d.textures[0].image.data[mouse_index]
@@ -937,9 +937,10 @@ var mriview = (function(module) {
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
         }
         // set the picked value display
-        // Skip RGB, unsupported lengths, or unloaded buffers (see hover note).
-        if (this.active.data[0].raw ||
-            (this.active.data.length !== 1 && this.active.data.length !== 2) ||
+        // Length check first so we don't index data[0] on an empty array.
+        // Skip RGB, then ensure all child buffers have populated.
+        if ((this.active.data.length !== 1 && this.active.data.length !== 2) ||
+            this.active.data[0].raw ||
             !module.dataBuffersReady(this.active.data)) {
             $('#picked_value').css('display', 'none')
             return
@@ -949,14 +950,12 @@ var mriview = (function(module) {
         let values = null;
         if (this.active.vertex) {
             if (coords !== -1) {
-                hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                vertex = coords.vertex
-                // Now we need to map back with the index map
-                // First figure out the subject, then get the index map
-                // (dim1 and dim2 share subject for 2D views, enforced server-side)
-                subject = this.active.data[0].subject
-                indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                vertex = indexMap[vertex]
+                let hemiIdx = (coords.hemi == 'left') ? 0 : 1
+                // Map the picked vertex through the subject's indexMap.
+                // dim1 and dim2 share subject for 2D views (server-side).
+                let subject = this.active.data[0].subject
+                let indexMap = subjects[subject].hemis[coords.hemi].indexMap
+                let vertex = indexMap[coords.vertex]
                 // Now access the data for each channel (1 for 1D, 2 for 2D)
                 values = this.active.data.map(function (d) {
                     return d.verts[0][hemiIdx].array[vertex]
