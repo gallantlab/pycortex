@@ -488,6 +488,120 @@ def test_volumergb_alpha_half_renders_correct_blend(tmp_path):
         )
 
 
+def test_vertex2d_alpha_half_renders_correct_blend(tmp_path):
+    """Vertex2D with α=0.5 must blend halfway, not over-attenuate the bg.
+
+    Companion regression to the issue #631 fix on the colormap-texture
+    path. The 2D dataview ships dim1 / dim2 as separate scalar maps and
+    the LUT lookup happens on the GPU via
+    ``texture2D(colormap, vec2(dim1_norm, dim2_norm))``. The shader's
+    composite (shaderlib.js:851) uses the premultiplied-over formula
+    ``vColor + (1-α)·bg``, so the colormap texture itself must be
+    premultiplied on upload (``tex.premultiplyAlpha = true`` in
+    mriview.js). Without that, alpha-bearing colormaps like
+    ``RdBu_r_alpha`` produce ``R + (1-α)·bg`` -- where the foreground
+    is added on top of a partially-attenuated curvature -- instead of
+    the correct ``α·R + (1-α)·bg``.
+
+    α=0 doesn't catch this bug because most alpha colormaps store
+    ``(0, 0, 0, 0)`` at the transparent end of the LUT (so neither the
+    buggy nor the correct shader produces foreground there). At α=0.5
+    the LUT stores its full RGB with α=127, and the difference between
+    buggy and correct composites is maximal in the brain region.
+
+    Empirical pixel stats for RdBu_r_alpha at data=+1, alpha=0.5,
+    inflated lateral_pivot view, default viewer params (S1):
+
+      - correct (premultiplied): red_dom median R ≈ 93 (25/50/75 = 80/93/110)
+      - buggy (un-premultiplied): red_dom median R ≈ 129 (25/50/75 = 105/129/149)
+
+    Threshold at 115 sits between the two distributions.
+    """
+    from PIL import Image
+
+    # data=+1 puts every vertex at the deep red end of RdBu_r_alpha,
+    # alpha=0.5 puts every vertex at mid-α (LUT row ~128).
+    data = np.full(nverts, 1.0, dtype=np.float32)
+    alpha = np.full(nverts, 0.5, dtype=np.float32)
+
+    vtx2d = cortex.Vertex2D(
+        data, alpha, subj,
+        cmap="RdBu_r_alpha",
+        vmin=-1, vmax=1,
+        vmin2=0, vmax2=1,
+    )
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+    # The cmap <img> elements decode asynchronously in Chromium. If the first
+    # render frame happens before the LUT image has decoded, three.js skips
+    # the texImage2D upload and the data layer renders against a 1×1 black
+    # texture (R==G==B everywhere -- looks like the curvature underlay).
+    # Retry _set_view + getImage until we observe a colored data layer
+    # (some pixels with R clearly > G or B, or vice-versa). We then run the
+    # premultiplication discriminator on that frame.
+    with cortex.export.headless_viewer(vtx2d, viewer_params={}) as handle:
+        time.sleep(15)
+        rgb = None
+        outfile = None
+        for attempt in range(6):
+            handle._set_view(**view)
+            time.sleep(3)
+            # Use a fresh filename each retry so we never read a partial PNG
+            # left over from a prior iteration (getImage writes async).
+            outfile = str(tmp_path / f"vertex2d_alpha_half_{attempt}.png")
+            handle.getImage(outfile, (512, 384))
+            _wait_for_file(outfile)
+            # Give the PNG writer a moment to finish flushing.
+            time.sleep(1)
+            try:
+                rgb = np.array(Image.open(outfile))[..., :3].astype(int)
+            except Exception:
+                continue
+            # "Colored" = at least some pixels deviate strongly from R==G==B.
+            # In a curvature-only (cmap-unbound) frame all brain pixels have
+            # R==G==B exactly; any non-zero count of channel-divergent pixels
+            # means the cmap texture is bound.
+            channel_spread = np.abs(rgb[..., 0] - rgb[..., 1]) + np.abs(
+                rgb[..., 1] - rgb[..., 2]
+            )
+            if (channel_spread > 5).sum() > 1000:
+                break
+        else:
+            pytest.skip(
+                "Cmap texture never bound in headless Chromium across 6 "
+                "render retries; can't discriminate fix vs bug."
+            )
+
+        # Both fix and bug produce a red-dominant brain region (the bug
+        # doesn't zero the foreground, just over-brightens it). The
+        # discriminator is the *median R intensity* of those red-dominant
+        # pixels: the buggy un-premultiplied path adds the full R on top of
+        # half the curvature, biasing R upward; the correct premultiplied
+        # path attenuates R by α before adding curvature.
+        #
+        # First, the brain must render as a red-dominant region (this is
+        # also satisfied by the bug, but if even this fails the cmap is
+        # unbound and we can't discriminate).
+        red_mask = rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 20
+        assert red_mask.sum() > 1000, (
+            f"Vertex2D α=0.5 deep-red rendered only {red_mask.sum()} "
+            "red-dominant pixels. Check that the cmap LUT bound and the "
+            "data layer rendered at all."
+        )
+        median_r = float(np.median(rgb[red_mask, 0]))
+        assert median_r < 115, (
+            f"Vertex2D α=0.5 brain pixels have median R={median_r:.0f}; "
+            "expected ≈93 (correct), saw ≥115 which is in the buggy range "
+            "(~129). The colormap texture is being sampled straight-alpha "
+            "while the shader applies a premultiplied composite -- check "
+            "mriview.js cmap texture premultiplyAlpha."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Group 9: addData dataset switching
 # ---------------------------------------------------------------------------
