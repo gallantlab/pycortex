@@ -154,25 +154,26 @@ def test_volumergb_alpha_is_NOT_premultiplied_in_package():
     raw = vrgb.volume
     assert raw.dtype == np.uint8
 
-    # Spy on the Package internals: monkey-patch volume.mosaic to capture the
-    # array Package actually ships before it gets PNG-encoded.
+    # Spy on the Package internals: wrap volume.mosaic to capture the array
+    # Package actually ships before it gets PNG-encoded. mock.patch handles
+    # restoration even if the patched call raises before reaching the
+    # assertions below.
+    from unittest import mock
+
     from cortex.webgl import data as webgl_data
 
-    captured = {}
+    captured = []
     real_mosaic = webgl_data.volume.mosaic
 
     def spy_mosaic(arr, show=False):
-        captured.setdefault("frames", []).append(arr.copy())
+        captured.append(arr.copy())
         return real_mosaic(arr, show=show)
 
-    webgl_data.volume.mosaic = spy_mosaic
-    try:
+    with mock.patch.object(webgl_data.volume, "mosaic", side_effect=spy_mosaic):
         Package(dataset.Dataset(view=vrgb))
-    finally:
-        webgl_data.volume.mosaic = real_mosaic
 
-    assert len(captured["frames"]) == 1
-    packaged_frame = captured["frames"][0]
+    assert len(captured) == 1
+    packaged_frame = captured[0]
 
     # Bytes shipped to the browser must equal the raw .volume bytes verbatim
     # (NOT premultiplied) -- Three.js will premultiply once on texture upload.

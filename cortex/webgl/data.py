@@ -52,11 +52,14 @@ class Package(object):
                 # non-premultiplied so the matplotlib (quickshow) path keeps
                 # using matplotlib's straight-alpha imshow compositor.
                 if isinstance(brain, dataset.VertexRGB):
+                    # Note: encdata is already a fresh uint8 copy from the
+                    # .astype(np.uint8) call above, so we can write into it
+                    # in place. The assignment to a uint8 slice handles the
+                    # float→uint8 cast for us.
                     a = encdata[..., 3:4].astype(np.float32) / 255.0
-                    encdata = encdata.copy()
                     encdata[..., :3] = np.round(
                         encdata[..., :3].astype(np.float32) * a
-                    ).astype(np.uint8)
+                    )
                 self.brains[name]["raw"] = True
             else:
                 encdata = encdata.astype(np.float32)
