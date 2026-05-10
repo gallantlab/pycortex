@@ -1,5 +1,41 @@
 var mriview = (function(module) {
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
+
+    // Returns true iff every VolumeData entry in `data` shares the same
+    // shape, mosaic, and numslices as data[0]. The hover/click value
+    // readout for 2D volume views reuses data[0]'s mouse_index across
+    // all dims and is only correct under that condition.
+    module.volumeGeomsMatch = function (data) {
+        if (!data || data.length < 2) return true;
+        var d0 = data[0];
+        for (var i = 1; i < data.length; i++) {
+            var di = data[i];
+            if (!d0.shape || !di.shape || !d0.mosaic || !di.mosaic) return false;
+            if (d0.shape[0] !== di.shape[0] || d0.shape[1] !== di.shape[1]) return false;
+            if (d0.mosaic[0] !== di.mosaic[0] || d0.mosaic[1] !== di.mosaic[1]) return false;
+            if (d0.numslices !== di.numslices) return false;
+        }
+        return true;
+    };
+
+    // Returns true iff every entry in `data` has the per-frame buffers the
+    // hover/click handlers need (verts for vertex data, textures for
+    // volume data). Loading is async — the dataview's `loaded` deferred
+    // can resolve a tick before all child VertexData/VolumeData buffers
+    // are populated, and the setData refire fires inside that window.
+    module.dataBuffersReady = function (data) {
+        if (!data || data.length === 0) return false;
+        for (var i = 0; i < data.length; i++) {
+            var d = data[i];
+            if (d.mosaic !== undefined) {
+                if (!d.textures || d.textures.length === 0) return false;
+            } else {
+                if (!d.verts || d.verts.length === 0) return false;
+            }
+        }
+        return true;
+    };
+
     module.Viewer = function(figure) {
         jsplot.Axes.call(this, figure);
 
@@ -252,6 +288,14 @@ var mriview = (function(module) {
 
     module.Viewer.prototype.setData = function(name) {
 
+        // Hide any previously displayed hover/click values immediately. They
+        // refer to the OLD dataview; we will re-fire them against the NEW
+        // dataview once it has loaded (see this.active.loaded.done() below).
+        // Without this transient hide, a stale number is briefly visible
+        // during the (sometimes slow) load of the new dataset.
+        $('#mouseover_value').css('display', 'none')
+        $('#picked_value').css('display', 'none')
+
         // blur any selected input elements
         let ids = [
             ['#vmin', '#vmin-input'],
@@ -312,7 +356,28 @@ var mriview = (function(module) {
         this.active.loaded.done(function() {
             this.active.set();
             // Register event for dataset switching
-            this.dispatchEvent({type:"setData", name:this.active.name});            
+            this.dispatchEvent({type:"setData", name:this.active.name});
+            // Push the new dataview into each surface (shaders + picker xfm)
+            // before re-firing hover/click. drawView normally does this on
+            // the next render frame, but pick() needs the picker's xfm to
+            // already match the new dataview — otherwise a vertex→volume
+            // switch picks with the prior (vertex-view, NaN) transform.
+            for (var i = 0; i < this.surfs.length; i++) {
+                if (this.surfs[i].apply !== undefined)
+                    this.surfs[i].apply(this.active);
+            }
+            // Re-fire hover and click indicators so the displayed values
+            // reflect the newly-active dataview at the same screen positions
+            // (see _lastHoverEvent / _lastPickEvt cached by the handlers).
+            if (this._lastHoverEvent) {
+                $("#brain").trigger($.Event('mousemove', {
+                    clientX: this._lastHoverEvent.clientX,
+                    clientY: this._lastHoverEvent.clientY,
+                }));
+            }
+            if (this._lastPickEvt) {
+                this.pick({x: this._lastPickEvt.x, y: this._lastPickEvt.y});
+            }
         }.bind(this));
 
         // var surf, scene, grid = grid_shapes[this.active.data.length];
@@ -667,40 +732,64 @@ var mriview = (function(module) {
 
         $("#brain").on('mousemove',
             function (event) {
-                // only implemented for 1d volume datasets or vertex datasets
-                if (this.active.data.length != 1 || this.active.data[0].raw) {
+                // Cache last mouse position so setData() can recompute the
+                // hover indicator for the newly-active dataset at the same
+                // screen coordinate.
+                this._lastHoverEvent = event;
+                // Skip RGB views (no underlying scalars), unsupported lengths,
+                // or dataviews whose buffers haven't finished populating yet
+                // (the setData refire can briefly precede buffer fill).
+                if (this.active.data[0].raw ||
+                    (this.active.data.length !== 1 && this.active.data.length !== 2) ||
+                    !module.dataBuffersReady(this.active.data)) {
                     $('#mouseover_value').css('display', 'none')
                     return
                 }
                 // We need to use a different logic if we have a VolumeData or a VertexData object
-                let value = null;
+                let values = null;
                 if (this.active.vertex) {
                     coords = this.getCoords(event)
                     if (coords !== -1) {
                         hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                        // console.log('hemiIdx: ', hemiIdx)
                         vertex = coords.vertex
-                        // console.log('vertex: ', vertex)
                         // Now we need to map back with the index map
                         // First figure out the subject, then get the index map
+                        // (dim1 and dim2 share subject for 2D views, enforced server-side)
                         subject = this.active.data[0].subject
                         indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                        // console.log("vertex before: " + vertex);
                         vertex = indexMap[vertex]
-                        // console.log("vertex after: " + vertex);
-                        // Now access the data
-                        value = this.active.data[0].verts[0][hemiIdx].array[vertex]
+                        // Now access the data for each channel (1 for 1D, 2 for 2D)
+                        values = this.active.data.map(function (d) {
+                            return d.verts[0][hemiIdx].array[vertex]
+                        })
                     }
                 } else {
-                    // Get index of the mosaic to get the value
+                    // Volume branch. For 2D views we reuse data[0]'s mouse_index
+                    // across all dims; that is safe iff every dim shares the
+                    // same shape/mosaic/numslices. Python-side Volume2D enforces
+                    // matching xfmname → matching geometry. Client-side
+                    // dataset.makeFrom (mriview.js:283) can pair arbitrary 1D
+                    // volumes; if their geometries diverge, hide the readout
+                    // rather than display a wrong-but-plausible value.
+                    if (!module.volumeGeomsMatch(this.active.data)) {
+                        $('#mouseover_value').css('display', 'none')
+                        return
+                    }
                     mouse_index = this.getMouseIndex(event)
                     if (mouse_index !== -1) {
-                        value = this.active.data[0].textures[0].image.data[mouse_index]
+                        values = this.active.data.map(function (d) {
+                            return d.textures[0].image.data[mouse_index]
+                        })
                     }
                 }
-                // console.log("Value on mouseover: " + value);
-                if (value !== null) {
-                    $('#mouseover_value').text(parseFloat(value).toPrecision(3))
+                if (values !== null) {
+                    let formatted = values.map(function (v) {
+                        return parseFloat(v).toPrecision(3)
+                    }).join(', ')
+                    if (values.length > 1) {
+                        formatted = '(' + formatted + ')'
+                    }
+                    $('#mouseover_value').text(formatted)
                     $('#mouseover_value').css('display', 'block')
                 } else {
                     $('#mouseover_value').css('display', 'none')
@@ -839,44 +928,64 @@ var mriview = (function(module) {
     }
 
     module.Viewer.prototype.pick = function(evt) {
+        // Cache last pick position so setData() can refresh the picked
+        // indicator for the newly-active dataset at the same screen point.
+        this._lastPickEvt = {x: evt.x, y: evt.y};
         let coords
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].pick)
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
         }
         // set the picked value display
-        // only implemented for 1d volume datasets or vertex datasets
-        if (this.active.data.length != 1 || this.active.data[0].raw) {
+        // Skip RGB, unsupported lengths, or unloaded buffers (see hover note).
+        if (this.active.data[0].raw ||
+            (this.active.data.length !== 1 && this.active.data.length !== 2) ||
+            !module.dataBuffersReady(this.active.data)) {
             $('#picked_value').css('display', 'none')
             return
         }
 
         // We need to use a different logic if we have a VolumeData or a VertexData object
-        let value = null;
+        let values = null;
         if (this.active.vertex) {
             if (coords !== -1) {
                 hemiIdx = (coords.hemi == 'left') ? 0 : 1
                 vertex = coords.vertex
                 // Now we need to map back with the index map
                 // First figure out the subject, then get the index map
+                // (dim1 and dim2 share subject for 2D views, enforced server-side)
                 subject = this.active.data[0].subject
                 indexMap = subjects[subject].hemis[coords.hemi].indexMap
                 vertex = indexMap[vertex]
-                // Now access the data
-                value = this.active.data[0].verts[0][hemiIdx].array[vertex]
+                // Now access the data for each channel (1 for 1D, 2 for 2D)
+                values = this.active.data.map(function (d) {
+                    return d.verts[0][hemiIdx].array[vertex]
+                })
             }
         } else {
             if (coords !== -1) {
-                // Get index of the mosaic to get the value
+                // Volume branch. See the matching note in the mousemove handler
+                // for why we hide on geometry mismatch.
+                if (!module.volumeGeomsMatch(this.active.data)) {
+                    $('#picked_value').css('display', 'none')
+                    return
+                }
                 let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
                 if (mouse_index !== -1) {
-                    value = this.active.data[0].textures[0].image.data[mouse_index]
+                    values = this.active.data.map(function (d) {
+                        return d.textures[0].image.data[mouse_index]
+                    })
                 }
             }
         }
-        console.log("Value on click: " + value);
-        if (value !== null) {
-            $('#picked_value').text(parseFloat(value).toPrecision(3))
+        if (values !== null) {
+            let formatted = values.map(function (v) {
+                return parseFloat(v).toPrecision(3)
+            }).join(', ')
+            if (values.length > 1) {
+                formatted = '(' + formatted + ')'
+            }
+            $('#picked_value').text(formatted)
             $('#picked_value').css('display', 'block')
         } else {
             $('#picked_value').css('display', 'none')
