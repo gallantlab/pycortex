@@ -1,4 +1,5 @@
 import hashlib
+import warnings
 from copy import deepcopy
 import sys
 from typing import Generic, Optional, TypeVar, Union, cast
@@ -552,7 +553,33 @@ class VertexData(BrainData):
     def blend_curvature(self, alpha, threshold=0, brightness=0.5,
                         contrast=0.25, smooth=20):
         """Blend the data with a curvature map depending on a transparency map.
-        
+
+        .. deprecated::
+            Per-vertex/voxel alpha is now honored directly by both the WebGL
+            viewer and ``cortex.quickshow``, so this curvature-blending hack
+            is no longer needed. The recommended replacement for scalar data
+            with a transparency map is :class:`Vertex2D` (or
+            :class:`Volume2D`) with a 2D colormap whose second axis encodes
+            alpha (e.g. ``"fire_alpha"``, ``"PU_RdBu_covar_alpha"``)::
+
+                # Was:
+                #   blended = vtx.blend_curvature(alpha)
+                #   cortex.quickshow(blended)
+                # Now:
+                v2d = cortex.Vertex2D(vtx.data, alpha, subject,
+                                      cmap="fire_alpha",
+                                      vmin=vtx.vmin, vmax=vtx.vmax,
+                                      vmin2=0, vmax2=1)
+                cortex.quickshow(v2d)         # or cortex.webgl.show(v2d)
+
+            The 2D colormap path keeps colormap parameters (``cmap``,
+            ``vmin``, ``vmax``) editable on the resulting object, and the
+            curvature underlay is composited through automatically by both
+            the matplotlib and WebGL renderers.
+
+            For data that is already RGB, pass ``alpha=`` to
+            :class:`VertexRGB` / :class:`VolumeRGB` directly instead.
+
         Vertex objects cannot use transparency as Volume objects. This method
         is a hack to mimic the transparency of Volume objects, blending the
         Vertex data with a curvature map. This method returns a VertexRGB
@@ -577,6 +604,19 @@ class VertexData(BrainData):
         blended : VertexRGB object
             The original map blended with a curvature map.
         """
+        warnings.warn(
+            "blend_curvature is deprecated and will be removed in a future "
+            "release. Per-vertex/voxel alpha is now honored directly by both "
+            "the WebGL viewer and quickshow, so this curvature-blending hack "
+            "is no longer needed. For scalar data with a transparency map, "
+            "use Vertex2D / Volume2D with a 2D colormap whose second axis "
+            "encodes alpha (e.g. 'fire_alpha', 'PU_RdBu_covar_alpha'), e.g. "
+            "`Vertex2D(data, alpha, subject, cmap='fire_alpha', vmin=..., "
+            "vmax=..., vmin2=0, vmax2=1)`. For data that is already RGB, "
+            "pass `alpha=` to VertexRGB / VolumeRGB directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         from .views import Vertex
         from .viewRGB import VertexRGB
         # prepare curvature map
