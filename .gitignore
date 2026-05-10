@@ -69,3 +69,7 @@ docs/colormaps.rst
 
 # Git worktrees
 .worktrees
+
+# Claude Code working directory (per-worktree scratch: launchers, verify
+# scripts, plans). Not part of the project.
+.claude
