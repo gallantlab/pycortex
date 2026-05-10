@@ -1,11 +1,16 @@
 var mriview = (function(module) {
     var grid_shapes = [null, [1,1], [2, 1], [3, 1], [2, 2], [2, 2], [3, 2], [3, 2]];
 
-    // Returns true iff every VolumeData entry in `data` shares the same
-    // shape, mosaic, and numslices as data[0]. The hover/click value
-    // readout for 2D volume views reuses data[0]'s mouse_index across
-    // all dims and is only correct under that condition.
-    module.volumeGeomsMatch = function (data) {
+    // Returns true iff every VolumeData entry in `dataview.data` shares the
+    // same shape, mosaic, and numslices, AND every dim's transform matches
+    // dim0's. The hover/click value readout for 2D volume views computes
+    // mouse_index from dim0's voxel coordinate (via picker.xfm = dim0 xfm)
+    // and reuses it across all dims; that is only correct when both shape/
+    // mosaic AND the transforms match. Python-side Volume2D enforces matching
+    // xfmname (so xfms agree); dataset.makeFrom can pair volumes with
+    // matching shape but different transforms — bail out in that case.
+    module.volumeGeomsMatch = function (dataview) {
+        var data = dataview && dataview.data;
         if (!data || data.length < 2) return true;
         var d0 = data[0];
         for (var i = 1; i < data.length; i++) {
@@ -14,6 +19,21 @@ var mriview = (function(module) {
             if (d0.shape[0] !== di.shape[0] || d0.shape[1] !== di.shape[1]) return false;
             if (d0.mosaic[0] !== di.mosaic[0] || d0.mosaic[1] !== di.mosaic[1]) return false;
             if (d0.numslices !== di.numslices) return false;
+        }
+        // For 2D volume dataviews, dataview.xfm is [xfm_dim0, xfm_dim1, ...];
+        // each entry is a flat 16-element array. (For 1D the xfm is itself a
+        // flat 16-element array, no per-dim entries to compare — handled by
+        // the early return above.)
+        var xfm = dataview.xfm;
+        if (Array.isArray(xfm) && xfm.length === data.length && Array.isArray(xfm[0])) {
+            var x0 = xfm[0];
+            for (var j = 1; j < xfm.length; j++) {
+                var xj = xfm[j];
+                if (!Array.isArray(xj) || xj.length !== x0.length) return false;
+                for (var k = 0; k < x0.length; k++) {
+                    if (x0[k] !== xj[k]) return false;
+                }
+            }
         }
         return true;
     };
@@ -771,7 +791,7 @@ var mriview = (function(module) {
                     // dataset.makeFrom (mriview.js:283) can pair arbitrary 1D
                     // volumes; if their geometries diverge, hide the readout
                     // rather than display a wrong-but-plausible value.
-                    if (!module.volumeGeomsMatch(this.active.data)) {
+                    if (!module.volumeGeomsMatch(this.active)) {
                         $('#mouseover_value').css('display', 'none')
                         return
                     }
@@ -965,7 +985,7 @@ var mriview = (function(module) {
             if (coords !== -1) {
                 // Volume branch. See the matching note in the mousemove handler
                 // for why we hide on geometry mismatch.
-                if (!module.volumeGeomsMatch(this.active.data)) {
+                if (!module.volumeGeomsMatch(this.active)) {
                     $('#picked_value').css('display', 'none')
                     return
                 }
