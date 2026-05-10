@@ -9,6 +9,10 @@ Examples demonstrating how to get started with pycortex.
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 

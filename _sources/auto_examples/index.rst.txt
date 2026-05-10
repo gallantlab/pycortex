@@ -10,6 +10,10 @@ Example Gallery
    :depth: 2
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -29,6 +33,10 @@ Datasets Examples
 Examples demonstrating how to create, manipulate, plot datasets.
 
 
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html
@@ -173,6 +181,23 @@ Examples demonstrating how to create, manipulate, plot datasets.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are  interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque.">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_data_with_alpha_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/datasets/plot_data_with_alpha`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot Data with Alpha Values</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -183,6 +208,10 @@ Examples with fsaverage
 ------------------------------
 
 Examples showing how to use PyCortex to visualize data on fsaverage.
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html
@@ -222,6 +251,10 @@ FreeSurfer, fmriprep).
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -258,6 +291,10 @@ Quickflat Examples
 Examples demonstrating how to create flatmaps.
 
 
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html
@@ -483,6 +520,10 @@ Examples demonstrating how to get started with pycortex.
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -553,6 +594,10 @@ Surface Analysis Examples
 Examples demonstrating operations and analyses done on brain surfaces.
 
 
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html
@@ -675,6 +720,10 @@ Utility Examples
 Examples demonstrating how to do all sorts of beautiful things using pycortex. 
 
 
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html
@@ -831,6 +880,10 @@ WebGL Examples
 Examples demonstrating how to make beautiful interactive 3-D viewers
 
 
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
 
 
 .. raw:: html

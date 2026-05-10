@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:50.631** total execution time for 8 files **from auto_examples/datasets**:
+**01:00.681** total execution time for 9 files **from auto_examples/datasets**:
 
 .. container::
 
@@ -33,26 +33,29 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volumeRGB.py` (``plot_volumeRGB.py``)
-     - 00:15.563
+     - 00:15.930
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_dataset_arithmetic.py` (``plot_dataset_arithmetic.py``)
-     - 00:15.146
+     - 00:14.538
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_datasets_plot_data_with_alpha.py` (``plot_data_with_alpha.py``)
+     - 00:10.736
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volume_to_vertex.py` (``plot_volume_to_vertex.py``)
-     - 00:05.136
+     - 00:04.996
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volume.py` (``plot_volume.py``)
-     - 00:04.573
+     - 00:04.459
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_volume2D.py` (``plot_volume2D.py``)
-     - 00:04.341
+     - 00:04.259
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_vertex.py` (``plot_vertex.py``)
-     - 00:03.145
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py` (``plot_vertexRGB.py``)
-     - 00:01.371
+     - 00:03.089
      - 0.0
    * - :ref:`sphx_glr_auto_examples_datasets_plot_vertex2D.py` (``plot_vertex2D.py``)
-     - 00:01.355
+     - 00:01.341
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_datasets_plot_vertexRGB.py` (``plot_vertexRGB.py``)
+     - 00:01.332
      - 0.0

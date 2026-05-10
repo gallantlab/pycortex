@@ -75,7 +75,7 @@ connecting lines.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 55.027 seconds)
+   **Total running time of the script:** (0 minutes 55.390 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_connected_vertices.py:

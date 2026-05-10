@@ -7,6 +7,10 @@ Examples with fsaverage
 
 Examples showing how to use PyCortex to visualize data on fsaverage.
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Plot Data with Alpha Values &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Examples with fsaverage" href="../fsaverage/index.html" />
+    <link rel="prev" title="Plot RGB Volume Data" href="plot_volumeRGB.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-datasets-plot-data-with-alpha-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="plot-data-with-alpha-values">
+<span id="sphx-glr-auto-examples-datasets-plot-data-with-alpha-py"></span><h1>Plot Data with Alpha Values<a class="headerlink" href="#plot-data-with-alpha-values" title="Link to this heading">¶</a></h1>
+<p>It is often useful to plot a primary map (the “data” you are interested in)
+masked or attenuated by a secondary map (a “confidence” or “weight”
+map). For example, an encoding model’s tuning maps are
+interpretable where the model fits well, so one could plot
+tuning maps with opacity proportional to the per-voxel/per-vertex prediction
+accuracy. Voxels/vertices where the model fits poorly fade into the
+gray curvature underlay; voxels/vertices where the model fits well are
+fully opaque.</p>
+<p>pycortex supports two patterns for this:</p>
+<ol class="arabic simple">
+<li><p><strong>Scalar data with an alpha map</strong> – use <code class="xref py py-class docutils literal notranslate"><span class="pre">Volume2D</span></code> /
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code> with a 2D colormap whose second axis encodes alpha
+(the colormap LUT itself goes from transparent to opaque along
+<code class="docutils literal notranslate"><span class="pre">dim2</span></code>). No extra arithmetic is needed; the alpha channel is
+composited correctly by both the matplotlib (<code class="docutils literal notranslate"><span class="pre">quickshow</span></code>) and the
+WebGL renderers.</p></li>
+<li><p><strong>RGB data with an alpha map</strong> – pass <code class="docutils literal notranslate"><span class="pre">alpha=</span></code> directly to
+<code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code> / <code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code>. The alpha can be any
+per-voxel/per-vertex array (or a <code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code>/<code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex</span></code>)
+in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>.</p></li>
+</ol>
+<p>Below, we illustrate both patterns with a synthetic “model accuracy”
+mask – a 3D Gaussian bump for the volume case and a vertex-distance
+falloff for the surface case – so cortex near the bump centre stays
+opaque while the periphery fades into the curvature.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cortex.polyutils</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;S1&quot;</span>
+<span class="n">xfm</span> <span class="o">=</span> <span class="s2">&quot;fullhead&quot;</span>
+</pre></div>
+</div>
+<section id="synthesize-the-data-and-alpha-maps">
+<h2>Synthesize the data and alpha maps<a class="headerlink" href="#synthesize-the-data-and-alpha-maps" title="Link to this heading">¶</a></h2>
+<p>All four patterns below reuse the same synthetic inputs, so we set
+everything up once here and only show the <em>plotting</em> call in each
+pattern’s cell. In a real analysis these would come from your model
+fits (e.g. <code class="docutils literal notranslate"><span class="pre">data</span></code> = regression coefficients, <code class="docutils literal notranslate"><span class="pre">accuracy</span></code> =
+cross-validated prediction r^2).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># --- Volumetric data + alpha -------------------------------------------------</span>
+<span class="c1"># Signed gradient across the brain stands in for a regression coefficient</span>
+<span class="c1"># or tuning preference.</span>
+<span class="n">zz</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">31</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">100</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">100</span><span class="p">]</span>
+<span class="n">data_vol</span> <span class="o">=</span> <span class="p">(</span><span class="n">xx</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span> <span class="o">/</span> <span class="mf">50.0</span>  <span class="c1"># range ~ [-1, 1]</span>
+
+<span class="c1"># A 3D Gaussian bump centered in the volume stands in for a per-voxel</span>
+<span class="c1"># model accuracy / prediction r in [0, 1].</span>
+<span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">15</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span><span class="p">])</span>
+<span class="n">sigma</span> <span class="o">=</span> <span class="mf">25.0</span>
+<span class="n">dist2</span> <span class="o">=</span> <span class="p">(</span><span class="n">zz</span> <span class="o">-</span> <span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">yy</span> <span class="o">-</span> <span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">xx</span> <span class="o">-</span> <span class="n">center</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span>
+<span class="n">accuracy_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">dist2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>  <span class="c1"># in [0, 1]</span>
+
+<span class="c1"># RGB volumetric channels: anatomical x/y/z normalized to [0, 1]. Three</span>
+<span class="c1"># smoothly-varying volumetric channels stand in for, e.g., three latent</span>
+<span class="c1"># RGB tuning axes from a model.</span>
+<span class="n">red_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">xx</span> <span class="o">/</span> <span class="mf">99.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">green_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">yy</span> <span class="o">/</span> <span class="mf">99.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">blue_vol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">zz</span> <span class="o">/</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># --- Surface (vertex) data + alpha -------------------------------------------</span>
+<span class="c1"># Encode by *spatial coordinate*, not vertex index: vertex indices on the</span>
+<span class="c1"># cortical surface are not arranged by spatial neighborhood, so a</span>
+<span class="c1"># vertex-index ramp would render as visual noise.</span>
+<span class="n">surfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">cortex</span><span class="o">.</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="o">*</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)]</span>
+<span class="n">num_verts</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">surfs</span><span class="p">]</span>
+<span class="n">total_verts</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">num_verts</span><span class="p">)</span>
+<span class="n">pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">surfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">pts</span><span class="p">,</span> <span class="n">surfs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">pts</span><span class="p">])</span>  <span class="c1"># (total_verts, 3)</span>
+
+<span class="c1"># Scalar surface data: anterior-posterior gradient (anatomical y),</span>
+<span class="c1"># centered at zero so a diverging colormap reads naturally.</span>
+<span class="n">y_centered</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+<span class="n">data_vtx</span> <span class="o">=</span> <span class="n">y_centered</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_centered</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>  <span class="c1"># in [-1, 1]</span>
+
+<span class="c1"># RGB surface channels: anatomical x/y/z normalized to [0, 1].</span>
+<span class="n">xyz_norm</span> <span class="o">=</span> <span class="p">(</span><span class="n">pts</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+
+<span class="c1"># Surface alpha: a soft bump centered at a particular vertex in each hemi.</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_bump</span><span class="p">(</span><span class="n">surf</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">surf</span><span class="o">.</span><span class="n">pts</span> <span class="o">-</span> <span class="n">surf</span><span class="o">.</span><span class="n">pts</span><span class="p">[</span><span class="n">seed</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">d</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+
+<span class="n">accuracy_vtx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="n">_bump</span><span class="p">(</span><span class="n">surfs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">num_verts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">40.0</span><span class="p">),</span>
+        <span class="n">_bump</span><span class="p">(</span><span class="n">surfs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">num_verts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">40.0</span><span class="p">),</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pattern-1a-scalar-volume-alpha-via-volume2d-2d-alpha-colormap">
+<h2>Pattern 1a: scalar Volume + alpha via Volume2D + 2D alpha colormap<a class="headerlink" href="#pattern-1a-scalar-volume-alpha-via-volume2d-2d-alpha-colormap" title="Link to this heading">¶</a></h2>
+<p>The 2D colormap <code class="docutils literal notranslate"><span class="pre">&quot;RdBu_r_alpha&quot;</span></code> maps <code class="docutils literal notranslate"><span class="pre">(data,</span> <span class="pre">alpha)</span> <span class="pre">-&gt;</span> <span class="pre">RGBA</span></code>: along
+the first axis, blue-white-red diverging; along the second axis,
+transparent-to-opaque. So passing the data as <code class="docutils literal notranslate"><span class="pre">dim1</span></code> and the accuracy
+as <code class="docutils literal notranslate"><span class="pre">dim2</span></code> yields exactly “diverging colormap, opacity = accuracy”.</p>
+<p>Other 2D alpha colormaps shipped with pycortex include <code class="docutils literal notranslate"><span class="pre">&quot;fire_alpha&quot;</span></code>
+(sequential, perceptually uniform), <code class="docutils literal notranslate"><span class="pre">&quot;PU_RdBu_covar_alpha&quot;</span></code> (diverging,
+perceptually uniform), <code class="docutils literal notranslate"><span class="pre">&quot;plasma_alpha&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;autumn_alpha&quot;</span></code>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">v2d</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">(</span>
+    <span class="n">data_vol</span><span class="p">,</span>
+    <span class="n">accuracy_vol</span><span class="p">,</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">xfm</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r_alpha&quot;</span><span class="p">,</span>
+    <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># range for the data (dim1)</span>
+    <span class="n">vmin2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">vmax2</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># range for the alpha (dim2)</span>
+<span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">v2d</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Volume2D + RdBu_r_alpha: data masked by &#39;accuracy&#39;&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_plot_data_with_alpha_001.png" srcset="../../_images/sphx_glr_plot_data_with_alpha_001.png" alt="Volume2D + RdBu_r_alpha: data masked by 'accuracy'" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Generating curvature surface info...
+</pre></div>
+</div>
+</section>
+<section id="pattern-1b-scalar-vertex-alpha-via-vertex2d-2d-alpha-colormap">
+<h2>Pattern 1b: scalar Vertex + alpha via Vertex2D + 2D alpha colormap<a class="headerlink" href="#pattern-1b-scalar-vertex-alpha-via-vertex2d-2d-alpha-colormap" title="Link to this heading">¶</a></h2>
+<p>Same idea on the surface.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">vtx2d</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex2D</span><span class="p">(</span>
+    <span class="n">data_vtx</span><span class="p">,</span>
+    <span class="n">accuracy_vtx</span><span class="p">,</span>
+    <span class="n">subject</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r_alpha&quot;</span><span class="p">,</span>
+    <span class="n">vmin</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">vmin2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">vmax2</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vtx2d</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Vertex2D + RdBu_r_alpha: data masked by &#39;accuracy&#39;&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_plot_data_with_alpha_002.png" srcset="../../_images/sphx_glr_plot_data_with_alpha_002.png" alt="Vertex2D + RdBu_r_alpha: data masked by 'accuracy'" class = "sphx-glr-single-img"/></section>
+<section id="pattern-2a-rgb-volume-alpha-via-volumergb-alpha">
+<h2>Pattern 2a: RGB Volume + alpha via VolumeRGB(alpha=…)<a class="headerlink" href="#pattern-2a-rgb-volume-alpha-via-volumergb-alpha" title="Link to this heading">¶</a></h2>
+<p>When the “data” is itself three independent channels, use
+<code class="xref py py-class docutils literal notranslate"><span class="pre">VolumeRGB</span></code> and pass the accuracy as the <code class="docutils literal notranslate"><span class="pre">alpha=</span></code> argument.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">red</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">red_vol</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">green</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">green_vol</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">blue</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">blue_vol</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">alpha_vol</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="p">(</span><span class="n">accuracy_vol</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">vrgb</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VolumeRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha_vol</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vrgb</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;VolumeRGB(alpha=accuracy): RGB tuning masked by &#39;accuracy&#39;&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_plot_data_with_alpha_003.png" srcset="../../_images/sphx_glr_plot_data_with_alpha_003.png" alt="VolumeRGB(alpha=accuracy): RGB tuning masked by 'accuracy'" class = "sphx-glr-single-img"/></section>
+<section id="pattern-2b-rgb-vertex-alpha-via-vertexrgb-alpha">
+<h2>Pattern 2b: RGB Vertex + alpha via VertexRGB(alpha=…)<a class="headerlink" href="#pattern-2b-rgb-vertex-alpha-via-vertexrgb-alpha" title="Link to this heading">¶</a></h2>
+<p>Same idea on the surface.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">red_v</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">xyz_norm</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">green_v</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">xyz_norm</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">blue_v</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">xyz_norm</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">alpha_v</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">accuracy_vtx</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">vrgb_vtx</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VertexRGB</span><span class="p">(</span><span class="n">red_v</span><span class="p">,</span> <span class="n">green_v</span><span class="p">,</span> <span class="n">blue_v</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha_v</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">vrgb_vtx</span><span class="p">,</span> <span class="n">with_colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;VertexRGB(alpha=accuracy): RGB channels masked by &#39;accuracy&#39;&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_plot_data_with_alpha_004.png" srcset="../../_images/sphx_glr_plot_data_with_alpha_004.png" alt="VertexRGB(alpha=accuracy): RGB channels masked by 'accuracy'" class = "sphx-glr-single-img"/></section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Both patterns produce the same composite formula at the pixel level:
+<code class="docutils literal notranslate"><span class="pre">out</span> <span class="pre">=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">data</span> <span class="pre">+</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">alpha)</span> <span class="pre">*</span> <span class="pre">curvature_underlay</span></code>. Choose
+based on what the “data” is: scalar (use Pattern 1) or RGB (use
+Pattern 2).</p></li>
+<li><p>The same objects work in the WebGL viewer:
+<code class="docutils literal notranslate"><span class="pre">cortex.webgl.show(v2d)</span></code> etc.; opacity is honored identically.</p></li>
+<li><p>The deprecated <code class="docutils literal notranslate"><span class="pre">Vertex.blend_curvature(alpha)</span></code> helper produced a
+pre-blended <code class="xref py py-class docutils literal notranslate"><span class="pre">VertexRGB</span></code> that lost <code class="docutils literal notranslate"><span class="pre">cmap</span></code>/<code class="docutils literal notranslate"><span class="pre">vmin</span></code>/<code class="docutils literal notranslate"><span class="pre">vmax</span></code>
+editability. The Pattern 1 <code class="xref py py-class docutils literal notranslate"><span class="pre">Vertex2D</span></code> route above is the
+recommended replacement: it keeps the colormap parameters editable
+on the resulting object and renders identically.</p></li>
+</ul>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 10.736 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-datasets-plot-data-with-alpha-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/dc0e232e16c78c2c321ab8b59e1129e4/plot_data_with_alpha.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_data_with_alpha.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/2eabd74b21f448c9976f2a70861c2b69/plot_data_with_alpha.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_data_with_alpha.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/b898c9af9f353b14a000857b2b140923/plot_data_with_alpha.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">plot_data_with_alpha.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="index.html">Datasets Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+  <li><a href="index.html">Datasets Examples</a><ul>
+      <li>Previous: <a href="plot_volumeRGB.html" title="previous chapter">Plot RGB Volume Data</a></li>
+      <li>Next: <a href="../fsaverage/index.html" title="next chapter">Examples with fsaverage</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/auto_examples/datasets/plot_data_with_alpha.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

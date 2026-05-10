@@ -9,13 +9,14 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <script src="../_static/documentation_options.js?v=e5de4b90"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
    
@@ -72,63 +73,66 @@
 <td><p>inflate brain to surface cuts</p></td>
 </tr>
 <tr class="row-odd"><td><p>r</p></td>
-<td><p>fold brain into original coordinates</p></td>
+<td><p>fold brain into original coordinates (without moving camera)</p></td>
 </tr>
-<tr class="row-even"><td><p>shift + wheel</p></td>
+<tr class="row-even"><td><p>t</p></td>
+<td><p>reset entire view (fold brain, reset camera position, rotation, and zoom)</p></td>
+</tr>
+<tr class="row-odd"><td><p>shift + wheel</p></td>
 <td><p>change inflation level</p></td>
 </tr>
-<tr class="row-odd"><td><p>p</p></td>
+<tr class="row-even"><td><p>p</p></td>
 <td><p>show pial surface</p></td>
 </tr>
-<tr class="row-even"><td><p>u</p></td>
+<tr class="row-odd"><td><p>u</p></td>
 <td><p>show fiducial surface</p></td>
 </tr>
-<tr class="row-odd"><td><p>y</p></td>
+<tr class="row-even"><td><p>y</p></td>
 <td><p>show white matter surface</p></td>
 </tr>
-<tr class="row-even"><td><p>l</p></td>
+<tr class="row-odd"><td><p>l</p></td>
 <td><p>toggle labels</p></td>
 </tr>
-<tr class="row-odd"><td><p>h</p></td>
+<tr class="row-even"><td><p>h</p></td>
 <td><p>toggle keyboard shortcut overview</p></td>
 </tr>
-<tr class="row-even"><td><p>+/-</p></td>
+<tr class="row-odd"><td><p>+/-</p></td>
 <td><p>switch between datasets</p></td>
 </tr>
-<tr class="row-odd"><td><p>e</p></td>
+<tr class="row-even"><td><p>e</p></td>
 <td><p>toggle X slice</p></td>
 </tr>
-<tr class="row-even"><td><p>d</p></td>
+<tr class="row-odd"><td><p>d</p></td>
 <td><p>toggle Y slice</p></td>
 </tr>
-<tr class="row-odd"><td><p>c</p></td>
+<tr class="row-even"><td><p>c</p></td>
 <td><p>toggle Z slice</p></td>
 </tr>
-<tr class="row-even"><td><p>q/w</p></td>
+<tr class="row-odd"><td><p>q/w</p></td>
 <td><p>switch between X slices</p></td>
 </tr>
-<tr class="row-odd"><td><p>a/s</p></td>
+<tr class="row-even"><td><p>a/s</p></td>
 <td><p>switch between Y slices</p></td>
 </tr>
-<tr class="row-even"><td><p>z/x</p></td>
+<tr class="row-odd"><td><p>z/x</p></td>
 <td><p>switch between Z slices</p></td>
 </tr>
-<tr class="row-odd"><td><p>o</p></td>
+<tr class="row-even"><td><p>o</p></td>
 <td><p>toggle data opacity</p></td>
 </tr>
-<tr class="row-even"><td><p>m</p></td>
+<tr class="row-odd"><td><p>m</p></td>
 <td><p>toggle multiple layers</p></td>
 </tr>
-<tr class="row-odd"><td><p>alt + wheel</p></td>
+<tr class="row-even"><td><p>alt + wheel</p></td>
 <td><p>change cortical depth</p></td>
 </tr>
-<tr class="row-even"><td><p>shift + l</p></td>
+<tr class="row-odd"><td><p>shift + l</p></td>
 <td><p>toggle left hemisphere</p></td>
 </tr>
-<tr class="row-odd"><td><p>shift + r</p></td>
+<tr class="row-even"><td><p>shift + r</p></td>
 <td><p>toggle right hemisphere</p></td>
 </tr>
-<tr class="row-even"><td><p>shift + s</p></td>
+<tr class="row-odd"><td><p>shift + s</p></td>
 <td><p>save current view as png</p></td>
 </tr>
 </tbody>
@@ -155,13 +159,16 @@
 <tr class="row-even"><td><p>radius</p></td>
 <td><p>zoom level</p></td>
 </tr>
-<tr class="row-odd"><td><p>reset</p></td>
-<td><p>reset view to original position</p></td>
+<tr class="row-odd"><td><p>fold</p></td>
+<td><p>fold brain into original coordinates</p></td>
 </tr>
-<tr class="row-even"><td><p>inflate</p></td>
+<tr class="row-even"><td><p>reset</p></td>
+<td><p>reset entire view (position, rotation, zoom, fold)</p></td>
+</tr>
+<tr class="row-odd"><td><p>inflate</p></td>
 <td><p>inflate cortical surface</p></td>
 </tr>
-<tr class="row-odd"><td><p>flatten</p></td>
+<tr class="row-even"><td><p>flatten</p></td>
 <td><p>flatten cortical surface</p></td>
 </tr>
 </tbody>
@@ -301,7 +308,7 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &#169;2012, James Gao.
+      &#169;2012–2026, Gallant Lab.
       
       |
       Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>

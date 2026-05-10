@@ -9,6 +9,10 @@ Examples demonstrating how to make beautiful interactive 3-D viewers
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 

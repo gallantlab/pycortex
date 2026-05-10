@@ -9,6 +9,10 @@ Examples demonstrating how to do all sorts of beautiful things using pycortex.
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 

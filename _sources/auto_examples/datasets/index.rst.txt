@@ -9,6 +9,10 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 
 
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
 
 .. raw:: html
 
@@ -152,6 +156,23 @@ Examples demonstrating how to create, manipulate, plot datasets.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are  interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque.">
+
+.. only:: html
+
+  .. image:: /auto_examples/datasets/images/thumb/sphx_glr_plot_data_with_alpha_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/datasets/plot_data_with_alpha`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Plot Data with Alpha Values</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -170,4 +191,5 @@ Examples demonstrating how to create, manipulate, plot datasets.
    /auto_examples/datasets/plot_volume2D
    /auto_examples/datasets/plot_vertexRGB
    /auto_examples/datasets/plot_volumeRGB
+   /auto_examples/datasets/plot_data_with_alpha
 
