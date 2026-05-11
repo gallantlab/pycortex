@@ -83,7 +83,6 @@ def test_datatype_renders(dtype_name, tmp_path):
     """Each data type should render in the headless viewer without errors."""
     vol = make_dataview(dtype_name)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        time.sleep(10)
         outfile = str(tmp_path / "test.png")
         handle.getImage(outfile, (512, 384))
         _wait_for_file(outfile)
@@ -111,7 +110,6 @@ class TestAllAngles:
         cls = type(self)
         cls.tmp_dir = tmp_path_factory.mktemp("angles")
         with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-            time.sleep(10)
             cls.handle = handle
             yield
 
@@ -149,7 +147,6 @@ class TestAllSurfaces:
         cls = type(self)
         cls.tmp_dir = tmp_path_factory.mktemp("surfaces")
         with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-            time.sleep(10)
             cls.handle = handle
             yield
 
@@ -208,7 +205,6 @@ def test_capture_view_roundtrip():
     """Setting view parameters and capturing them back should match."""
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        time.sleep(10)
         target_params = {
             "camera.azimuth": 90,
             "camera.altitude": 90,
@@ -243,7 +239,6 @@ def test_overlay_visibility_changes_image(tmp_path):
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(overlays_visible=["rois"])
     ) as handle:
-        time.sleep(10)
         handle._set_view(**view)
         time.sleep(1)
         handle.getImage(f1, (512, 384))
@@ -254,7 +249,6 @@ def test_overlay_visibility_changes_image(tmp_path):
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(overlays_visible=[])
     ) as handle:
-        time.sleep(10)
         handle._set_view(**view)
         time.sleep(1)
         handle.getImage(f2, (512, 384))
@@ -299,7 +293,6 @@ def test_vertex_no_nan_renders_data(tmp_path):
     }
 
     with cortex.export.headless_viewer(vtx, viewer_params={}) as handle:
-        time.sleep(10)
         handle._set_view(**view)
         time.sleep(1)
         outfile = str(tmp_path / "vtx.png")
@@ -336,7 +329,6 @@ def test_vertex_with_nan_renders_partial(tmp_path):
     def render(data, name):
         vtx = cortex.Vertex(data, subj, vmin=0, vmax=1, cmap="Reds")
         with cortex.export.headless_viewer(vtx, viewer_params={}) as handle:
-            time.sleep(10)
             handle._set_view(**view)
             time.sleep(1)
             outfile = str(tmp_path / f"{name}.png")
@@ -400,7 +392,6 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
         **unfold_view_params["inflated"],
     }
     with cortex.export.headless_viewer(vrgb, viewer_params={}) as handle:
-        time.sleep(10)
         handle._set_view(**view)
         time.sleep(1)
         outfile = str(tmp_path / "alpha_zero.png")
@@ -462,7 +453,6 @@ def test_volumergb_alpha_half_renders_correct_blend(tmp_path):
         **unfold_view_params["inflated"],
     }
     with cortex.export.headless_viewer(vrgb, viewer_params={}) as handle:
-        time.sleep(10)
         handle._set_view(**view)
         time.sleep(1)
         outfile = str(tmp_path / "volumergb_alpha_half.png")
@@ -544,7 +534,10 @@ def test_vertex2d_alpha_half_renders_correct_blend(tmp_path):
     # (some pixels with R clearly > G or B, or vice-versa). We then run the
     # premultiplication discriminator on that frame.
     with cortex.export.headless_viewer(vtx2d, viewer_params={}) as handle:
-        time.sleep(15)
+        # viewer.loaded already resolved by the context manager; a short
+        # extra pause covers the gap before the cmap <img> decodes. The
+        # retry loop below is the real guard for slow decodes.
+        time.sleep(2)
         rgb = None
         outfile = None
         for attempt in range(6):
@@ -617,7 +610,6 @@ def test_addData_no_crash():
     vol1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     vol2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol1, viewer_params={}) as handle:
-        time.sleep(10)
         handle.addData(second=vol2)
         time.sleep(2)
         pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]

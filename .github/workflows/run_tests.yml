@@ -58,7 +58,7 @@ jobs:
       run: playwright install --with-deps --only-shell chromium
 
     - name: Test with pytest
-      timeout-minutes: 20  # in case webviewer tests hang
+      timeout-minutes: 25  # in case webviewer tests hang
       run: pytest --cov=./
 
     - name: Upload coverage to Codecov
