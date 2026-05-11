@@ -109,34 +109,37 @@ var dataset = (function(module) {
 
         this._dispatch = this.dispatchEvent.bind(this);
 
-        //Aggregate all Volume/VertexData deferreds to determine when to resolve
+        // Aggregate all child Volume/VertexData deferreds to determine when
+        // to resolve. Each child is tracked separately by registering on its
+        // own .loaded — using $.when().progress and looping over data.length
+        // would mark every child ready on a single child's notify, since
+        // $.when's combined progress event doesn't say which source fired.
+        // That ordering bug caused setData → active.set() to dispatch
+        // verts/textures for a sibling that hadn't pushed yet.
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
             allready.push(false);
         }
-
-        var deferred = this.data.length == 1 ?
-            $.when(this.data[0].loaded) :
-            $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred
-        .progress(function(available) {
-            for (var i = 0; i < this.data.length; i++) {
-                //TODO: fix this load order
-                if (available > this.delay && !allready[i]) {
-                    allready[i] = true;
-
-                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
-                    var test = true;
-                    for (var j = 0; j < allready.length; j++)
-                        test = test && allready[j];
-                    if (test)
-                        this.loaded.resolve();
-                }
-            }
-        }.bind(this))
-        .done(function() {
+        var checkResolve = function() {
+            for (var j = 0; j < allready.length; j++)
+                if (!allready[j]) return;
             this.loaded.resolve();
-        }.bind(this));
+        }.bind(this);
+        var markReady = function(idx) {
+            if (!allready[idx]) {
+                allready[idx] = true;
+                checkResolve();
+            }
+        };
+        for (var i = 0; i < this.data.length; i++) {
+            (function(idx) {
+                this.data[idx].loaded
+                    .progress(function(available) {
+                        if (available > this.delay) markReady(idx);
+                    }.bind(this))
+                    .done(function() { markReady(idx); });
+            }.bind(this))(i);
+        }
 
         this.ui = new jsplot.Menu();
 
@@ -481,15 +484,7 @@ var dataset = (function(module) {
                     this.loaded.notify(available);
                 }.bind(this));
             }.bind(this)).done(function(){
-                // Wait for subjects[this.subject].loaded before resolving so
-                // anyone awaiting VertexData.loaded actually sees populated
-                // this.verts / this.nanmasks: the progress-queued callbacks
-                // above push to those arrays from inside the same
-                // subjects.loaded.done chain, and jQuery dispatches done
-                // callbacks in registration order.
-                subjects[this.subject].loaded.done(function() {
-                    this.loaded.resolve();
-                }.bind(this));
+                this.loaded.resolve();
             }.bind(this))
         }.bind(this));
     }
