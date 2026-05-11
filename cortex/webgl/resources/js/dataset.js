@@ -140,6 +140,9 @@ var dataset = (function(module) {
                     .done(function() { markReady(idx); });
             }.bind(this))(i);
         }
+        // Handle the empty-data edge case so this.loaded still resolves
+        // (matches the pre-refactor $.when() semantics for no arguments).
+        checkResolve();
 
         this.ui = new jsplot.Menu();
 
