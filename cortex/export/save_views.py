@@ -114,8 +114,12 @@ def save_3d_views(
         cm = contextlib.nullcontext(cortex.webshow(volume, **viewer_params))
 
     with cm as handle:
-        # Wait for the viewer to be loaded
-        time.sleep(sleep)
+        # Wait for the viewer to be loaded. The headless context manager
+        # already blocks on ``viewer.loaded`` before yielding, so we only
+        # need this fixed sleep for the interactive (real-browser) path
+        # where the user is opening the page manually.
+        if not headless:
+            time.sleep(sleep)
 
         # Add interpolation and layers params only if we have a volume
         if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
