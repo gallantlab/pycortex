@@ -481,7 +481,15 @@ var dataset = (function(module) {
                     this.loaded.notify(available);
                 }.bind(this));
             }.bind(this)).done(function(){
-                this.loaded.resolve();
+                // Wait for subjects[this.subject].loaded before resolving so
+                // anyone awaiting VertexData.loaded actually sees populated
+                // this.verts / this.nanmasks: the progress-queued callbacks
+                // above push to those arrays from inside the same
+                // subjects.loaded.done chain, and jQuery dispatches done
+                // callbacks in registration order.
+                subjects[this.subject].loaded.done(function() {
+                    this.loaded.resolve();
+                }.bind(this));
             }.bind(this))
         }.bind(this));
     }
