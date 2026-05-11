@@ -1,7 +1,7 @@
 import cortex
 import pytest
 
-@pytest.mark.timeout(600)
+@pytest.mark.timeout(300)
 def test_download_subject():
     # Test that newly downloaded subjects are added to the current database.
 
