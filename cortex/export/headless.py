@@ -76,10 +76,16 @@ def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
         except Exception as exc:
             last_err = repr(exc)
             result = None
-        if isinstance(result, list) and result and result[0] == "resolved":
+        # WebApp.send always wraps its single per-client response in a list;
+        # unpack the leaf so the "resolved"/"pending"/error-dict check below
+        # is straightforward and last_err carries the actual value seen.
+        val = result[0] if isinstance(result, list) and result else result
+        if val == "resolved":
             return
-        if isinstance(result, list) and result and isinstance(result[0], dict):
-            last_err = str(result[0].get("error", result[0]))
+        if val is not None:
+            last_err = (
+                str(val.get("error", val)) if isinstance(val, dict) else str(val)
+            )
         time.sleep(poll_interval)
     raise RuntimeError(
         f"Viewer's .loaded deferred did not resolve within {timeout:.0f}s "
