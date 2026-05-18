@@ -117,8 +117,8 @@ class ROIpack(object):
                 # Find polys
                 allbpolys = np.unique(surf.connected[inbound+exbound].indices)
                 selbpolys = surf.polys[allbpolys]
-                inpolys = np.in1d(selbpolys, inbound).reshape(selbpolys.shape)
-                expolys = np.in1d(selbpolys, exbound).reshape(selbpolys.shape)
+                inpolys = np.isin(selbpolys, inbound).reshape(selbpolys.shape)
+                expolys = np.isin(selbpolys, exbound).reshape(selbpolys.shape)
                 badpolys = np.logical_or(inpolys.all(1), expolys.all(1))
                 boundpolys = np.logical_and(np.logical_or(inpolys, expolys).all(1), ~badpolys)
 

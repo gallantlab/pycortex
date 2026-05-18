@@ -186,7 +186,7 @@ def flat_border(outfile, subject):
     mwallset = set.union(*(set(g[v]) for v in fog.nodes())) & set(allbounds)
     #cutset = (set(g.nodes()) - mwallset) & set(allbounds)
 
-    mwallbounds = [np.in1d(b, mwallset) for b in bounds]
+    mwallbounds = [np.isin(b, mwallset) for b in bounds]
     changes = [np.nonzero(np.diff(b.astype(float))!=0)[0]+1 for b in mwallbounds]
     
     #splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]
