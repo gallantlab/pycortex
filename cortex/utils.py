@@ -811,12 +811,12 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
             vert_in_scan = np.hstack([np.array((m>0).sum(1)).flatten() for m in mapper.masks])
             vert_in_scan = vert_in_scan[roi_verts[roi]]
         elif use_cortex_mask:
-            vox_in_roi = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(vox_idx.shape)
+            vox_in_roi = np.isin(vox_idx, roi_verts[roi])
             roi_voxels[roi] = vox_in_roi & cortex_mask
             # This is not accurate... because vox_idx only contains the indices of the *nearest*
             # vertex to each voxel, it excludes many vertices. I can't think of a way to compute
             # this accurately for non-mapper gm_samplers for now... ML 2017.07.14
-            vert_in_scan = np.in1d(roi_verts[roi], vox_idx[cortex_mask])
+            vert_in_scan = np.isin(roi_verts[roi], vox_idx[cortex_mask])
         # Compute ROI coverage
         pct_coverage[roi] = vert_in_scan.mean() * 100
         if use_mapper:

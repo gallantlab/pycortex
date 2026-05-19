@@ -384,7 +384,7 @@ def flatten_slim(
     )
     # Cull pts that are not in manifold
     pi = np.arange(len(pts))
-    pii = np.in1d(pi, polys.flatten())
+    pii = np.isin(pi, polys.flatten())
     idx = np.nonzero(pii)[0]
     pts_new = pts[idx]
     # Match indices in polys to new index for pts
