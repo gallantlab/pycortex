@@ -30,8 +30,13 @@ Example Gallery
 ---------------
 .. toctree::
     :maxdepth: 3
-    
+
     auto_examples/index
+
+.. toctree::
+    :maxdepth: 1
+
+    notebooks/index
 
 API Reference
 -------------

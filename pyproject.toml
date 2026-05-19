@@ -22,6 +22,15 @@ test = [
     "pytest-cov",
     "pytest-timeout",
 ]
+docs = [
+    "sphinx",
+    "numpydoc",
+    "sphinx-gallery",
+    "alabaster",
+    "nbsphinx",
+    "pandoc",
+    "ipykernel",
+]
 
 [project.optional-dependencies]
 headless = [
