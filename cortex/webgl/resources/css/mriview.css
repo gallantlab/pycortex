@@ -131,8 +131,8 @@ a:visited { color:white; }
     position:absolute;
     z-index:8;
     top: 50%;
-    left: 0%;
-    transform: translate(0%, -50%);
+    left: 50%;
+    transform: translate(-50%, -50%);
     padding:15px;
     margin:20px;
     border-radius:10px;
@@ -140,6 +140,7 @@ a:visited { color:white; }
     max-width:400px;
     display:none;
     font-size:12pt;
+    font-family:Helvetica, Arial, sans-serif;
     color:white;
     transition:all .3s;
     transition-timing-function:ease;
