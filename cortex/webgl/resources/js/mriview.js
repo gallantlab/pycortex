@@ -1242,16 +1242,16 @@ var mriview = (function(module) {
                             new_html += '<tr><td style="text-align: center;">'
                             if ('modKeys' in list[i][name]){
                                 let modKeys = list[i][name]['modKeys'];
-                                modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3));
+                                modKeys = modKeys.map((modKey) => modKey.charAt(0).toUpperCase() + modKey.substring(1, modKey.length - 3));
                                 modKeys = modKeys.join(' + ');
                                 new_html += modKeys + ' + ';
                             }
-                            new_html += list[i][name]['key'].toUpperCase() + '</td><td>' + diplay_name + '</td></tr>'
+                            new_html += list[i][name]['key'] + '</td><td>' + diplay_name + '</td></tr>'
                         }
                         if ('wheel' in list[i][name]){
                             new_html += '<tr><td style="text-align: center;">'
                             var modKeys = list[i][name]['modKeys']
-                            modKeys = modKeys.map((modKey) => modKey.substring(0, modKey.length - 3))
+                            modKeys = modKeys.map((modKey) => modKey.charAt(0).toUpperCase() + modKey.substring(1, modKey.length - 3))
                             modKeys = modKeys.join(' + ')
                             new_html += modKeys + ' + wheel  </td><td>' + diplay_name + '</td></tr>'
                         }
