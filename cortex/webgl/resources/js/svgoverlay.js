@@ -114,17 +114,11 @@ var svgoverlay = (function(module) {
         this.svg.setAttribute("height", this.height);
     }, 
     module.SVGOverlay.prototype.update = function() {
-        // Re-bake the SVG overlay into a GPU texture asynchronously (toDataURL -> Image.onload).
-        // Rapid layer toggles (ROIs / sulci / labels) can kick off several bakes that finish out
-        // of order, leaving a stale texture on the surface that disagrees with the switch state.
-        // Tag each bake with a generation id and commit only the most recent one.
-        var gen = (this._updateGen = (this._updateGen || 0) + 1);
+	console.log("Updating overlay!");
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
             //img.src = dataurl;
 	    img.onload = function () {
-		if (gen !== this._updateGen)
-		    return;  // superseded by a newer toggle -- discard this stale bake
 		var tex = new THREE.Texture(img);
 		tex.needsUpdate = true;
 		//tex.anisotropy = 16;
