@@ -321,11 +321,7 @@ class WebApp(threading.Thread):
         return num
 
     def run(self):
-        ioloop: tornado.ioloop.IOLoop = (
-            tornado.ioloop.IOLoop()
-        )  # why is annotation necessary?
-        ioloop.clear_current()
-        ioloop.make_current()
+        ioloop: tornado.ioloop.IOLoop = tornado.ioloop.IOLoop.current()
         self.ioloop = ioloop
         application = tornado.web.Application(self.handlers, gzip=True)
         # If tornado version is 5.0 or greater, io_loop arg does not exist
