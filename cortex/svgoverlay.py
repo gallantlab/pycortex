@@ -138,7 +138,7 @@ class SVGOverlay:
         return etree.tostring(self.svg, pretty_print=pretty)
 
     # TODO: with_ims?
-    def get_svg(self, filename: Optional[str]=None, layers: Sequence[str]=['rois'], labels: bool=True, with_ims=None) -> None:
+    def get_svg(self, filename: Optional[str]=None, layers: Sequence[str]=['rois'], labels: bool=True, with_ims: Optional[Sequence[bytes]]=None) -> None:
         """Saves a new SVG file with images embedded
 
         Parameters
