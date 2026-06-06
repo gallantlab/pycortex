@@ -1,4 +1,6 @@
 
+from typing import Iterator, Literal
+
 import numpy as np
 
 
@@ -15,13 +17,13 @@ class Distortion(object):
     polys : 2D ndarray, shape (total_polys, 3)
         Triangle vertex indices in both `flat` and `ref`.
     """
-    def __init__(self, flat, ref, polys):
+    def __init__(self, flat: np.ndarray[tuple[int, Literal[3]], np.dtype[np.floating]], ref: np.ndarray[tuple[int, Literal[3]], np.dtype[np.floating]], polys: np.ndarray[tuple[int, Literal[3]], np.dtype[np.integer]]):
         self.flat = flat
         self.ref = ref
         self.polys = polys
 
     @property
-    def areal(self):
+    def areal(self) -> np.ndarray[tuple[int], np.dtype[np.floating]]:
         """Compute areal distortion of the flatmap.
 
         Areal distortion is calculated at each triangle as the log2 ratio of
@@ -41,7 +43,7 @@ class Distortion(object):
         vertratios : 1D ndarray, shape (total_verts,)
             Areal distortion at each vertex.
         """
-        def area(pts, polys):
+        def area(pts: np.ndarray[tuple[int, Literal[3]], np.dtype[np.floating]], polys: np.ndarray[tuple[int, Literal[3]], np.dtype[np.integer]]) -> np.ndarray[tuple[int], np.dtype[np.floating]]:
             ppts = pts[polys]
             cross = np.cross(ppts[:,1] - ppts[:,0], ppts[:,2] - ppts[:,0])
             return np.sqrt((cross**2).sum(-1))
@@ -50,7 +52,7 @@ class Distortion(object):
         flatarea = area(self.flat, self.polys)
         tridists = np.log2(flatarea/refarea)
         
-        vertratios = np.zeros((len(self.ref),))
+        vertratios: np.ndarray[tuple[int], np.dtype[np.floating]] = np.zeros((len(self.ref),))
         vertratios[self.polys[:,0]] += tridists
         vertratios[self.polys[:,1]] += tridists
         vertratios[self.polys[:,2]] += tridists
@@ -60,7 +62,7 @@ class Distortion(object):
         return vertratios
 
     @property
-    def metric(self):
+    def metric(self) -> np.ndarray[tuple[int], np.dtype[np.floating]]:
         """Compute metric distortion of the flatmap.
 
         Metric distortion is calculated as the difference in squared distance
@@ -78,13 +80,13 @@ class Distortion(object):
             Metric distortion at each vertex.
         """
         import networkx as nx
-        def iter_surfedges(tris):
+        def iter_surfedges(tris: np.ndarray[tuple[int, Literal[3]], np.dtype[np.integer]]) -> Iterator[tuple[int, int]]:
             for a,b,c in tris:
                 yield a,b
                 yield b,c
                 yield a,c
 
-        def make_surface_graph(tris):
+        def make_surface_graph(tris: np.ndarray[tuple[int, Literal[3]], np.dtype[np.integer]]) -> nx.Graph:
             graph = nx.Graph()
             graph.add_edges_from(iter_surfedges(tris))
             return graph

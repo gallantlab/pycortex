@@ -40,8 +40,8 @@ class SubsurfaceMixin(object):
     """
     #pts: npt.NDArray[np.floating]
     #polys: npt.NDArray[np.integer]
-    pts: np.ndarray[tuple[int, int], np.dtype[np.floating]]
-    polys: np.ndarray[tuple[int, int], np.dtype[np.intp]]
+    pts: np.ndarray[tuple[int, Literal[3]], np.dtype[np.floating]]
+    polys: np.ndarray[tuple[int, Literal[3]], np.dtype[np.intp]]
 
     def create_subsurface(self, vertex_mask: Optional[npt.NDArray[np.bool_]]=None, polygon_mask: Optional[npt.NDArray[np.bool_]]=None) -> 'Surface':
         """Create subsurface for efficient operations on subset of Surface
