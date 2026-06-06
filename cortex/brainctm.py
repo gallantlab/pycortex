@@ -304,13 +304,13 @@ def make_pack(outfile: str, subj: str, types: Sequence[str]=("inflated",), metho
                     external_svg=external_svg,
                     overlays_available=overlays_available)
 
-def read_pack(ctmfile):
+def read_pack(ctmfile: str):
     fname = os.path.splitext(ctmfile)[0]
     with open(fname + ".json") as fp:
         jsfile = json.load(fp)
     offset = jsfile['offsets']
 
-    meshes = []
+    meshes: list[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]] = []
 
     with open(ctmfile, 'rb') as ctmfp:
         ctmfp.seek(0, 2)
