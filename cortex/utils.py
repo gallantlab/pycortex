@@ -180,8 +180,8 @@ def get_ctmmap(subject: str, **kwargs):
     ctm_left, ctm_right = brainctm.read_pack(ctmfile)
     # Find the closest vertex in the freesurfer surface for each vertex in the CTM
     # surface. The result is a mapping from CTM vertices to freesurfer vertices.
-    ctm2fs_left = lmap.query(ctm_left[0])[1]
-    ctm2fs_right = rmap.query(ctm_right[0])[1]
+    ctm2fs_left = cast(np.intp, lmap.query(ctm_left[0])[1])
+    ctm2fs_right = cast(np.intp, rmap.query(ctm_right[0])[1])
     return ctm2fs_left, ctm2fs_right
 
 
@@ -978,7 +978,7 @@ def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
     return all_verts
 
 
-def _set_edge_distance_graph_attribute(graph, pts, polys):
+def _set_edge_distance_graph_attribute(graph, pts: npt.NDArray[np.floating], polys: npt.NDArray[np.integer]):
     '''
     adds the attribute 'edge distance' to a graph
     '''
@@ -987,8 +987,12 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
     l2_distance = lambda v1, v2: np.linalg.norm(pts[v1] - pts[v2])
     heuristic = l2_distance # A* heuristic
 
+    graph = cast(nx.Graph, graph) # cast needed b/c lazy import
     if not nx.get_edge_attributes(graph, 'distance'): # Add edge distances as an attribute to this graph if it isn't there
-        edge_distances = dict()
+        edge_distances: dict[tuple[int, int], np.floating] = dict()
+        x: int
+        y: int
+        z: int
         for x,y,z in polys:
             edge_distances[(x,y)] = heuristic(x,y)
             edge_distances[(y,x)] = heuristic(y,x)
@@ -999,7 +1003,19 @@ def _set_edge_distance_graph_attribute(graph, pts, polys):
         nx.set_edge_attributes(graph, edge_distances, name='distance')
 
 
-def get_shared_voxels(subject: str, xfmname: str, hemi: Literal['lh', 'rh', 'both']="both", merge: bool=True, use_astar: bool=True):
+@overload
+def get_shared_voxels(subject: str, xfmname: str, *, hemi: Literal['lh', 'rh', 'both']="both", merge: Literal[True]=True, use_astar: bool=True) -> npt.NDArray[np.integer]:
+    ...
+
+@overload
+def get_shared_voxels(subject: str, xfmname: str, *, hemi: Literal['lh', 'rh', 'both']="both", merge: Literal[False], use_astar: bool=True) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.integer]]:
+    ...
+
+@overload
+def get_shared_voxels(subject: str, xfmname: str, *, hemi: Literal['lh', 'rh', 'both']="both", merge: bool, use_astar: bool=True) -> Union[npt.NDArray[np.integer], tuple[npt.NDArray[np.integer], npt.NDArray[np.integer]]]:
+    ...
+
+def get_shared_voxels(subject: str, xfmname: str, *, hemi: Literal['lh', 'rh', 'both']="both", merge: bool=True, use_astar: bool=True) -> Union[npt.NDArray[np.integer], tuple[npt.NDArray[np.integer], npt.NDArray[np.integer]]]:
     '''Return voxels that are shared by multiple vertices, and for each such voxel,
        also returns the mutually farthest pair of vertices mapping to the voxel
     Parameters
@@ -1138,7 +1154,7 @@ def save_sparse_array(fname: str, data, varname: str, mode: str='a'):
         hf.create_dataset(varname + '_shape', data=data_.shape, compression='gzip')
 
 
-def get_cmap(name):
+def get_cmap(name: str):
     """Gets a colormaps
 
     Parameters

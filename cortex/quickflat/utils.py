@@ -4,7 +4,7 @@ import os
 import string
 import warnings
 from functools import reduce
-from typing import Optional, Union, cast
+from typing import Literal, Optional, Union, cast
 
 import numpy as np
 import numpy.typing as npt
