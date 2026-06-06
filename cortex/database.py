@@ -154,7 +154,7 @@ class MaskSet:
 
     def __getitem__(self, item: str) -> npt.NDArray:
         import nibabel
-        return nibabel.load(self._masks[item]).get_fdata().T
+        return cast(nibabel.Nifti1Image, nibabel.load(self._masks[item])).get_fdata().T
 
     def __repr__(self):
         return "Masks: [{types}]".format(types=', '.join(self._masks.keys()))
@@ -239,7 +239,7 @@ class Database:
             getattr(anat, type)(anatfile, subject, **kwargs)
 
         import nibabel
-        anatnib = nibabel.load(anatfile)
+        anatnib = cast(nibabel.Nifti1Image, nibabel.load(anatfile))
 
         if xfmname is None:
             return anatnib
@@ -430,7 +430,7 @@ class Database:
             if reference is None:
                 raise ValueError("Please specify a reference")
             fpath = os.path.join(path, "reference.nii.gz")
-            nib = nibabel.load(reference)
+            nib = cast(nibabel.Nifti1Image, nibabel.load(reference))
             data = nib.get_fdata()
             if len(data.shape) > 3:
                 import warnings
@@ -591,8 +591,7 @@ class Database:
         fname = self.get_paths(subject)['masks'].format(xfmname=xfmname, type=type)
         try:
             import nibabel
-            nib = nibabel.load(fname)
-            #reveal_type(nib.get_fdata().T != 0)
+            nib = cast(nibabel.Nifti1Image, nibabel.load(fname))
             return nib.get_fdata().T != 0
         except IOError:
             print('Mask not found, generating...')
