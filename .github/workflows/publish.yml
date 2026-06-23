@@ -12,7 +12,7 @@ jobs:
       contents: read  # Required to checkout the repository
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0  # Required for setuptools-scm to get version from tags
 
