@@ -738,6 +738,11 @@ var mriview = (function(module) {
         var surf = new surftype(this.active, opts);
         surf.addEventListener("mix", this._mix);
         surf.addEventListener("allowTilt", this._allowTilt);
+        // The SVG overlay (ROIs/sulci/labels) re-bakes its texture asynchronously, then dispatches
+        // "update" on the surface once the new texture is committed. Redraw when that lands --
+        // otherwise a toggle (or a freshly-loaded label texture) is not visible until the next
+        // interaction, because the menu's immediate schedule() races and beats the async bake.
+        surf.addEventListener("update", this.schedule.bind(this));
 
         this.surfs.push(surf);
         this.root.add(surf.object);

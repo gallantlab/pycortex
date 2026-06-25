@@ -79,6 +79,14 @@ var svgoverlay = (function(module) {
             this.layers[name] = this[name];
             this.labels.left.add(this[name].labels.meshes.left);
             this.labels.right.add(this[name].labels.meshes.right);
+            // A label's glyph texture bakes asynchronously (Labels.set_tex). When it finishes,
+            // ask the surface to redraw so the freshly-loaded labels are actually drawn -- without
+            // this they stay blank/black until the next interaction. Routed through the surface's
+            // own "update" (-> Viewer.schedule) rather than the overlay-texture path, so it does
+            // not clobber uniforms.overlay.value.
+            this[name].labels.addEventListener("update", function() {
+                this.surf.dispatchEvent({type:"update"});
+            }.bind(this));
             this.layers[name].addEventListener("update", this.update.bind(this));
 
             var labels = this.layers[name].labels;
@@ -114,11 +122,17 @@ var svgoverlay = (function(module) {
         this.svg.setAttribute("height", this.height);
     }, 
     module.SVGOverlay.prototype.update = function() {
-	console.log("Updating overlay!");
+        // Re-bake the SVG overlay into a GPU texture asynchronously (toDataURL -> Image.onload).
+        // Rapid layer toggles (ROIs / sulci / labels) can kick off several bakes that finish out
+        // of order, leaving a stale texture on the surface that disagrees with the switch state.
+        // Tag each bake with a generation id and commit only the most recent one.
+        var gen = (this._updateGen = (this._updateGen || 0) + 1);
         this.svg.toDataURL("image/png", {renderer:"native", callback:function(dataurl) {
             var img = new Image();
             //img.src = dataurl;
 	    img.onload = function () {
+		if (gen !== this._updateGen)
+		    return;  // superseded by a newer toggle -- discard this stale bake
 		var tex = new THREE.Texture(img);
 		tex.needsUpdate = true;
 		//tex.anisotropy = 16;
@@ -340,6 +354,7 @@ var svgoverlay = (function(module) {
             this.hide();
         this.update();
     }
+    THREE.EventDispatcher.prototype.apply(module.Labels.prototype);
 
     module.Labels.prototype._make_object = function() {
         this.geometry = {left:new THREE.BufferGeometry(), right:new THREE.BufferGeometry()};
@@ -471,16 +486,23 @@ var svgoverlay = (function(module) {
         // }
 
         var set_tex = function(dataurl) {
+            // Build the glyph texture only AFTER the image has loaded. Creating the THREE.Texture
+            // from a not-yet-loaded image uploaded an empty texture to the GPU (the persistent
+            // black label squares); waiting for onload gives the shader real glyph data. Then
+            // dispatch "update" so the surface redraws now that the texture is ready.
             var img = new Image();
+            img.onload = function() {
+                var tex = new THREE.Texture(img);
+                tex.needsUpdate = true;
+                tex.premultiplyAlpha = true;
+                tex.flipY = false;
+                //delete old texture
+                if (this.shader.uniforms.text.value && this.shader.uniforms.text.value.dispose)
+                    this.shader.uniforms.text.value.dispose();
+                this.shader.uniforms.text.value = tex;
+                this.dispatchEvent({type:"update"});
+            }.bind(this);
             img.src = dataurl;
-            var tex = new THREE.Texture(img);
-            tex.needsUpdate = true;
-            tex.premultiplyAlpha = true;
-            tex.flipY = false;
-            //delete old texture
-            if (this.shader.uniforms.text.value && this.shader.uniforms.text.value.dispose)
-                this.shader.uniforms.text.value.dispose();
-            this.shader.uniforms.text.value = tex;
         }.bind(this);
 
         // $.when(defs).done(function() {
