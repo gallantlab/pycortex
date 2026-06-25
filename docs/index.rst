@@ -23,6 +23,7 @@ User Guide
    align
    .. dataset
    rois
+   roidraw
    transforms
    colormaps
 
