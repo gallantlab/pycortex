@@ -41,15 +41,15 @@ Drawing and editing ROIs
 A **Display / Draw** toggle is added at the top of the viewer. Switch to **Draw** and the brain
 flattens and an ROI panel appears.
 
-============== ==========================================================================
+============== ============================================================================
 Gesture        Action
-============== ==========================================================================
+============== ============================================================================
 drag           Lasso a region, name it, and fit it to a smooth bezier drawn on the surface
 scroll wheel   Zoom (to draw fine detail)
 shift + drag   Pan the surface
 shift + click  Inspect the voxel under the cursor
 esc            Cancel the current lasso (or finish editing)
-============== ==========================================================================
+============== ============================================================================
 
 Click **✎ edit** next to an ROI in the panel to reveal its bezier anchors and tangent handles:
 drag anchors and handles to reshape the curve, double-click the curve to insert an anchor,
