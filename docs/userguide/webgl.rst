@@ -17,6 +17,11 @@ Pycortex can also display temporally varying time-series data on the cortical su
 It is simple to post pycortex visualizations to a web page for public viewing. These static visualizations are generated using a simple command that generates a single web page with most resources embedded directly. The surface structure, data, and the webpage can then be posted to any public facing web site. For example, the online Neurovault data repository (http://neurovault.org) now makes use of pycortex, and any fMRI data uploaded to Neurovault can be visualized automatically in pycortex. These visualizations are visible at a static web address that can be referenced in papers and shared with anyone with a web browser.
 
 
+.. seealso::
+
+   You can draw, edit, and export ROIs directly in the WebGL viewer with the
+   :doc:`pycortex-roidraw </roidraw>` add-on.
+
 Using the WebGL Viewer
 ----------------------
 
