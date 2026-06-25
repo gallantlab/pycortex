@@ -16,7 +16,7 @@ from tempfile import NamedTemporaryFile
 import nibabel
 import numpy as np
 from nibabel import gifti
-from scipy.sparse import coo_matrix, diags
+from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
 
 from . import anat, database
@@ -788,9 +788,11 @@ def _surf2surf_nnfr_matrix(src_sphere, trg_sphere):
     matrix.sum_duplicates()
 
     # Renormalize each row so the target value is the mean of its sources.
+    # Done in place on the CSR data array (which is laid out row by row) to
+    # avoid building a diagonal matrix and a sparse matmul.
     row_sums = np.asarray(matrix.sum(axis=1)).ravel()
     row_sums[row_sums == 0] = 1.0
-    matrix = (diags(1.0 / row_sums) @ matrix).tocsr()
+    matrix.data /= np.repeat(row_sums, np.diff(matrix.indptr))
     return matrix
 
 
