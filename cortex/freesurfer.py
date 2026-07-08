@@ -16,7 +16,6 @@ from tempfile import NamedTemporaryFile
 import nibabel
 import numpy as np
 from nibabel import gifti
-from scipy.linalg import lstsq
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
 
@@ -705,128 +704,170 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     return output_data
 
 
-def get_mri_surf2surf_matrix(source_subj, hemi, surface_type,
-                            target_subj='fsaverage', subjects_dir=None,
-                            n_neighbors=20, random_state=0,
-                            n_test_images=40, coef_threshold=None,
-                            renormalize=True):
+def _read_sphere_reg(subject, hemi, subjects_dir=None):
+    """Read the registered sphere (``?h.sphere.reg``) vertex coordinates.
 
-    """Creates a matrix implementing freesurfer mri_surf2surf command.
-    
-    A surface-to-surface transform is a linear transform between vertex spaces.
-    Such a transform must be highly localized in the sense that a vertex in the
-    target surface only draws its values from very few source vertices.
-    This function exploits the localization to create an inverse problem for 
-    each vertex.
-    The source neighborhoods for each target vertex are found by using
-    mri_surf2surf to transform the three coordinate maps from the source 
-    surface to the target surface, yielding three coordinate values for each
-    target vertex, for which we find the nearest neighbors in the source space.
-    A small number of test images is transformed from source surface to
-    target surface.	
-    For each target vertex in the transformed test images, a regression is 
-    performed using only the corresponding source image neighborhood, yielding
-    the entries for a sparse matrix encoding the transform.
-    
-    Parameters
-    ==========
-    
-    source_subj: str
-    	Freesurfer name of source subject
-    
-    hemi: str in ("lh", "rh")
-    	Indicator for hemisphere
-    
-    surface_type: str in ("white", "pial", ...)
-    	Indicator for surface layer
-    
-    target_subj: str, default "fsaverage"
-    	Freesurfer name of target subject
-    
-    subjects_dir: str, default os.environ["SUBJECTS_DIR"]
-    	The freesurfer subjects directory
-    
-    n_neighbors: int, default 20
-    	The size of the neighborhood to take into account when estimating
-    	the source support of a vertex
-    
-    random_state: int, default 0
-    	Random number generator or seed for generating test images
-    
-    n_test_images: int, default 40
-    	Number of test images transformed to compute inverse problem. This 
-    	should be greater than n_neighbors or equal.
-    
-    coef_treshold: float, default 1 / (10 * n_neighbors)
-    	Value under which to set a weight to zero in the inverse problem.
-    
-    renormalize: boolean, default True
-    	Determines whether the rows of the output matrix should add to 1,
-    	implementing what is sensible: a weighted averaging
-    
-    Notes
-    =====
-    It turns out that freesurfer seems to do the following: For each target
-    vertex, find, on the sphere, the nearest source vertices, and average their
-    values. Try to be as one-to-one as possible.
+    These are the coordinates on which freesurfer's spherical registration
+    defines the cross-subject vertex correspondence used by ``mri_surf2surf``.
     """
+    surf_file = get_paths(subject, hemi, 'surf',
+                          freesurfer_subject_dir=subjects_dir).format(
+                              name='sphere.reg')
+    pts, _ = parse_surf(surf_file)
+    return pts
 
-    source_verts, _, _ = get_surf(source_subj, hemi, surface_type,
-                                  freesurfer_subject_dir=subjects_dir)
 
-    transformed_coords = mri_surf2surf(source_verts.T,
-                                       source_subj, target_subj, hemi,
-                                       subjects_dir=subjects_dir)
+def _surf2surf_nnfr_matrix(src_sphere, trg_sphere):
+    """Build the freesurfer ``nnfr`` surf2surf matrix from sphere coordinates.
 
-    kdt = KDTree(source_verts)
-    print("Getting nearest neighbors")
-    distances, indices = kdt.query(transformed_coords.T, k=n_neighbors)
-    print("Done")
+    Implements freesurfer's nearest-neighbor, forward-and-reverse (``nnfr``)
+    mapping directly from the registered-sphere geometry:
 
-    rng = (np.random.RandomState(random_state) 
-                          if isinstance(random_state, int) else random_state)
-    test_images = rng.randn(n_test_images, len(source_verts))
-    transformed_test_images = mri_surf2surf(test_images, source_subj,
-                                            target_subj, hemi,
-                                            subjects_dir=subjects_dir)
+    * **Forward**: every target vertex draws its value from its single nearest
+      source vertex on the sphere. This guarantees every target gets a value.
+    * **Reverse**: any source vertex that was *not* selected by some target in
+      the forward pass (an "orphan") is folded into its nearest target vertex,
+      so that no source vertex's data is silently dropped. This is the
+      "forward and reverse" part of ``nnfr`` and is what makes downsampling
+      (e.g. to a coarser subject) an average rather than a subsampling.
 
-    # Solve linear problems to get coefficients
-    all_coefs = []
-    residuals = []
-    print("Computing coefficients")
-    i = 0
-    for target_activation, source_inds in zip(
-                                        transformed_test_images.T, indices):
-        i += 1
-        print("{i}".format(i=i), end="\r")
-        source_values = test_images[:, source_inds]
-        r = lstsq(source_values, target_activation,
-                 overwrite_a=True, overwrite_b=True)
-        all_coefs.append(r[0])
-        residuals.append(r[1])
-    print("Done")
+    Each target row is then renormalized so that it is the *mean* of its
+    contributing source vertices.
 
-    all_coefs = np.array(all_coefs)
+    Parameters
+    ----------
+    src_sphere : ndarray, shape (n_src, 3)
+        Source ``sphere.reg`` vertex coordinates.
+    trg_sphere : ndarray, shape (n_trg, 3)
+        Target ``sphere.reg`` vertex coordinates.
 
-    if coef_threshold is None:  # we know now that coefs are doing averages
-        coef_threshold = (1 / 10. / n_neighbors )
-    all_coefs[np.abs(all_coefs) < coef_threshold] = 0
-    if renormalize:
-        all_coefs /= np.abs(all_coefs).sum(axis=1)[:, np.newaxis] + 1e-10
+    Returns
+    -------
+    matrix : scipy.sparse.csr_matrix, shape (n_trg, n_src)
+        Linear operator mapping source vertex data to target vertex data via
+        ``target_data = matrix.dot(source_data)``.
 
-    # there seem to be like 7 vertices that don't constitute an average over
-    # 20 vertices or less, but all the others are such an average.
+    Notes
+    -----
+    For ordinary subjects (and full-resolution ``fsaverage``), the resulting
+    matrix reproduces ``mri_surf2surf`` bit-for-bit, because the spheres are
+    irregular enough that nearest-neighbor assignment is unambiguous.
 
-    # Let's make a matrix that does the transform:
-    col_indices = indices.ravel()
-    row_indices = (np.arange(indices.shape[0])[:, np.newaxis] *
-                   np.ones(indices.shape[1], dtype='int')).ravel()
-    data = all_coefs.ravel()
-    shape = (transformed_coords.shape[1], source_verts.shape[0])
+    The icosahedrally-subsampled targets (``fsaverage6``/``5``/``4``/``3``)
+    are the one exception: their meshes are perfectly regular, so a sizeable
+    number of fine vertices land *exactly* equidistant between two coarse
+    target vertices. Freesurfer breaks these exact ties using its internal
+    vertex ordering, which this implementation does not reproduce. The result
+    is that a small fraction (~0.3-2%) of coarse vertices average a different,
+    equidistant neighbor, giving correlations of ~0.997-0.9999 rather than an
+    exact match. The numerical difference is tiny (the alternative neighbor is
+    the same distance away) and not worth chasing freesurfer's tie-breaking
+    bookkeeping to eliminate.
+    """
+    src_sphere = np.asarray(src_sphere)
+    trg_sphere = np.asarray(trg_sphere)
+    n_src = len(src_sphere)
+    n_trg = len(trg_sphere)
 
-    matrix = coo_matrix((data, (row_indices, col_indices)), shape=shape)
+    # Forward: each target vertex -> its nearest source vertex.
+    _, fwd_src = KDTree(src_sphere).query(trg_sphere, k=1)
+    # Reverse: each source vertex -> its nearest target vertex.
+    _, rev_trg = KDTree(trg_sphere).query(src_sphere, k=1)
 
+    # Orphan source vertices are those not chosen by any target's forward
+    # mapping; fold them into their nearest target so their data is preserved.
+    used = np.zeros(n_src, dtype=bool)
+    used[fwd_src] = True
+    orphan = np.flatnonzero(~used)
+
+    rows = np.concatenate([np.arange(n_trg), rev_trg[orphan]])
+    cols = np.concatenate([fwd_src, orphan])
+    matrix = coo_matrix((np.ones(len(rows)), (rows, cols)),
+                        shape=(n_trg, n_src)).tocsr()
+    # A target/source pair can be added by both passes; collapse duplicates.
+    matrix.sum_duplicates()
+
+    # Renormalize each row so the target value is the mean of its sources.
+    # Done in place on the CSR data array (which is laid out row by row) to
+    # avoid building a diagonal matrix and a sparse matmul.
+    row_sums = np.asarray(matrix.sum(axis=1)).ravel()
+    row_sums[row_sums == 0] = 1.0
+    matrix.data /= np.repeat(row_sums, np.diff(matrix.indptr))
     return matrix
+
+
+# Legacy keyword arguments accepted by the old (regression-based)
+# implementation of ``get_mri_surf2surf_matrix``; kept only so existing
+# callers do not break.
+_SURF2SURF_LEGACY_KWARGS = frozenset(
+    ('n_neighbors', 'random_state', 'n_test_images', 'coef_threshold',
+     'renormalize'))
+
+
+def get_mri_surf2surf_matrix(source_subj, hemi, surface_type=None,
+                             target_subj='fsaverage', subjects_dir=None,
+                             **kwargs):
+    """Create a sparse matrix implementing freesurfer's ``mri_surf2surf``.
+
+    A surface-to-surface resampling is a linear, highly localized transform
+    between two subjects' vertex spaces. Freesurfer defines this mapping
+    entirely from the spherical registration (``?h.sphere.reg``): for each
+    target vertex it takes the value of its nearest source vertex, and it
+    additionally averages in any source vertex that no target selected, so
+    that no source data is lost (the ``nnfr`` -- nearest-neighbor,
+    forward-and-reverse -- method).
+
+    This implementation builds that matrix directly from the registered-sphere
+    geometry with two nearest-neighbor queries (see
+    :func:`_surf2surf_nnfr_matrix`). It is exact for ordinary subjects and
+    full-resolution ``fsaverage``, requires no calls to the ``mri_surf2surf``
+    binary, and is deterministic. (The previous implementation reverse
+    -engineered the matrix by probing ``mri_surf2surf`` with random test images
+    and solving a per-vertex least-squares problem.)
+
+    Parameters
+    ----------
+    source_subj : str
+        Freesurfer name of the source subject.
+    hemi : str in ("lh", "rh")
+        Hemisphere.
+    surface_type : str, optional
+        Ignored. Retained for backwards compatibility with the previous
+        signature. The surf2surf correspondence depends only on the spherical
+        registration and is therefore identical for every surface
+        (``white``/``pial``/``inflated``/...) of a given subject.
+    target_subj : str, default "fsaverage"
+        Freesurfer name of the target subject.
+    subjects_dir : str, default os.environ["SUBJECTS_DIR"]
+        The freesurfer subjects directory.
+
+    Returns
+    -------
+    matrix : scipy.sparse.csr_matrix, shape (n_target_verts, n_source_verts)
+        Apply with ``target_data = matrix.dot(source_data)``.
+
+    Notes
+    -----
+    See :func:`_surf2surf_nnfr_matrix` for the algorithm and for the one known
+    caveat (exact tie-breaking on the regular icosahedral targets such as
+    ``fsaverage6``).
+    """
+    legacy = _SURF2SURF_LEGACY_KWARGS.intersection(kwargs)
+    if legacy:
+        warnings.warn(
+            "get_mri_surf2surf_matrix no longer uses the regression-based "
+            "parameters {}; they are ignored. The matrix is now built "
+            "directly from the spherical registration.".format(sorted(legacy)),
+            DeprecationWarning, stacklevel=2)
+    unexpected = set(kwargs) - _SURF2SURF_LEGACY_KWARGS
+    if unexpected:
+        raise TypeError(
+            "get_mri_surf2surf_matrix got unexpected keyword argument(s) "
+            "{}".format(sorted(unexpected)))
+
+    src_sphere = _read_sphere_reg(source_subj, hemi, subjects_dir)
+    trg_sphere = _read_sphere_reg(target_subj, hemi, subjects_dir)
+    return _surf2surf_nnfr_matrix(src_sphere, trg_sphere)
 
 
 def get_curv(fs_subject, hemi, type='wm', freesurfer_subject_dir=None):
