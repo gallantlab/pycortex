@@ -22,11 +22,14 @@ test = [
     "pytest-cov",
     "pytest-timeout",
 ]
+# Note: the cortex.hcp barycentric-resampling validation test additionally
+# needs the external Connectome Workbench ``wb_command`` binary on PATH (not a
+# Python package). That test is skipped automatically when it is absent.
+
 types = [
     "mypy",
     "scipy-stubs",
 ]
-
 
 [project.optional-dependencies]
 headless = [

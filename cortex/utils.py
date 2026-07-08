@@ -1165,7 +1165,7 @@ def get_cmap(name):
         try:
             cmap = plt.cm.get_cmap(name)
         except:
-            raise Exception('Unkown color map!')
+            raise Exception('Unknown color map!')
     return cmap
 
 def add_cmap(cmap, name, cmapdir=None):
@@ -1229,6 +1229,10 @@ def download_subject(subject_id='fsaverage', url=None, pycortex_store=None,
     # Map codes to URLs; more coming eventually
     id_to_url = dict(
         fsaverage='https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758',
+        # HCP fs_LR 32k pycortex subject (derived from HCP S1200 group-average
+        # Open Access surfaces; see cortex.hcp). The tarball contains a
+        # top-level ``32k_fs_LR/`` directory.
+        **{'32k_fs_LR': 'https://ndownloader.figshare.com/files/66442049'},
     )
     if url is None:
         if subject_id not in id_to_url:

@@ -120,7 +120,8 @@ setup(name=DISTNAME,
             'cortex': [
                 'svgbase.xml',
                 'defaults.cfg',
-                'bbr.sch'
+                'bbr.sch',
+                'data/*.npz'
             ],
             'cortex.webgl': [
                 '*.html',
