@@ -1,12 +1,10 @@
-# emacs: -*- coding: utf-8; mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
-# vi: set fileencoding=utf-8 ft=python sts=4 ts=4 sw=4 et:
 """Interfacing with HCP fs_LR 32k data.
 
 This module lets you visualize HCP data with pycortex, both natively on the
 fs_LR 32k mesh (via the ``32k_fs_LR`` pycortex subject) and projected to
 ``fsaverage``.
 
-It provides three things:
+It provides three functions:
 
 1. :func:`download_fs_lr` -- fetch the prebuilt ``32k_fs_LR`` pycortex subject
    into the filestore (a thin wrapper around :func:`cortex.download_subject`),
@@ -15,11 +13,12 @@ It provides three things:
 2. :func:`cifti_to_surface` -- expand CIFTI grayordinate data (59412 cortical
    vertices, no medial wall) to the full 64984-vertex fs_LR 32k surface, filling
    the medial wall with NaN.
-3. Resampling fs_LR 32k data to ``fsaverage`` (:func:`project_fslr_to_fsaverage`,
-   :func:`to_fsaverage`). The projection matrix is built directly from the HCP
-   standard-mesh spheres using spherical barycentric interpolation -- the same
-   interpolation ``wb_command -metric-resample ... BARYCENTRIC`` performs -- so
-   no Connectome Workbench installation is required at runtime.
+3. :func:`to_fsaverage` -- resample fs_LR 32k data to ``fsaverage`` (the
+   lower-level :func:`project_fslr_to_fsaverage` does the surface-to-surface
+   step). The projection matrix is built directly from the HCP standard-mesh
+   spheres using spherical barycentric interpolation -- the same interpolation
+   ``wb_command -metric-resample ... BARYCENTRIC`` performs -- so no Connectome
+   Workbench installation is required at runtime.
 
 Notes
 -----

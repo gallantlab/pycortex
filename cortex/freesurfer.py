@@ -2,6 +2,7 @@
 """
 
 import copy
+import functools
 import os
 import shlex
 import shutil
@@ -1164,11 +1165,17 @@ def _n_vertices_ico(icoorder):
 
 
 # Precomputed upsampling neighbor arrays bundled with pycortex (see
-# ``_get_upsample_neighbors``). Lazily loaded ``NpzFile`` keyed by
-# ``"{hemi}_ico{order}"``.
+# ``_get_upsample_neighbors``). ``NpzFile`` keyed by ``"{hemi}_ico{order}"``.
 _UPSAMPLE_NEIGHBORS_FILE = os.path.join(
     os.path.dirname(__file__), "data", "upsample_fsaverage_neighbors.npz")
-_upsample_neighbors_bundle = None
+
+
+@functools.lru_cache(maxsize=1)
+def _load_upsample_neighbors_bundle():
+    """Load (once) the neighbor arrays bundled with pycortex, or {} if absent."""
+    if os.path.exists(_UPSAMPLE_NEIGHBORS_FILE):
+        return np.load(_UPSAMPLE_NEIGHBORS_FILE)
+    return {}
 
 
 def _get_upsample_neighbors(hemi, ico_order, freesurfer_subjects_dir=None):
@@ -1188,19 +1195,13 @@ def _get_upsample_neighbors(hemi, ico_order, freesurfer_subjects_dir=None):
     3. otherwise it is computed from the fsaverage ``?h.sphere.reg`` (which needs
        ``freesurfer_subjects_dir``/``$SUBJECTS_DIR``) and cached for next time.
     """
-    global _upsample_neighbors_bundle
     key = f"{hemi}_ico{ico_order}"
 
     # 1. Bundled with the package.
-    if _upsample_neighbors_bundle is None:
-        if os.path.exists(_UPSAMPLE_NEIGHBORS_FILE):
-            _upsample_neighbors_bundle = np.load(_UPSAMPLE_NEIGHBORS_FILE)
-        else:
-            _upsample_neighbors_bundle = {}
-    bundle_keys = getattr(_upsample_neighbors_bundle, "files",
-                          list(_upsample_neighbors_bundle))
+    bundle = _load_upsample_neighbors_bundle()
+    bundle_keys = getattr(bundle, "files", list(bundle))
     if key in bundle_keys:
-        return np.asarray(_upsample_neighbors_bundle[key])
+        return np.asarray(bundle[key])
 
     # 2. User cache.
     cache_dir = os.path.join(appdirs.user_cache_dir("pycortex"),
