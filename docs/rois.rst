@@ -5,6 +5,6 @@ pycortex supports a method of defining surface ROIs using Inkscape. The ROIs are
 
 .. seealso::
 
-   To draw ROIs interactively in the WebGL viewer (without Inkscape), see
-   :doc:`In-browser ROI drawing <roidraw>`.
+   To draw ROIs and sulci interactively in the WebGL viewer (without Inkscape), see
+   :doc:`In-browser ROI and sulcus drawing <roidraw>`.
 
