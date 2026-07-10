@@ -930,7 +930,10 @@ def show(
             return JSMixer(self.srvsend, "window.viewer")
 
     if port is None:
-        port = random.randint(1024, 65536)
+        # Let the OS assign a guaranteed-free ephemeral port (WebApp binds
+        # port 0 and reads the real port back). This avoids the random-port
+        # collisions that made headless/CI runs intermittently hang.
+        port = 0
 
     server = WebApp([(r'/ctm/(.*)', CTMHandler),
                      (r'/data/(.*)', DataHandler),
