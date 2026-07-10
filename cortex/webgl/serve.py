@@ -28,6 +28,7 @@ import tornado.web
 import tornado.ioloop
 import tornado.httpserver
 from tornado import websocket
+from tornado.netutil import bind_sockets
 from tornado.web import HTTPError
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
@@ -310,7 +311,25 @@ class WebApp(threading.Thread):
             (r"/wsconnect/", ClientSocket, dict(parent=self)),
             (r"/(.*)", tornado.web.StaticFileHandler, dict(path=cwd)),
         ]
-        self.port = port
+        # Bind the listening socket(s) here, synchronously, in the calling
+        # thread -- rather than picking a random port and calling
+        # ``server.listen(port)`` later on the server thread. This fixes two
+        # long-standing sources of intermittent headless/CI hangs:
+        #   * ``port=0`` asks the OS for a guaranteed-free ephemeral port, so
+        #     we never collide with a lingering server (the old code used
+        #     ``random.randint`` and hoped for the best).
+        #   * a bind failure now raises *here*, visibly, in the caller. The old
+        #     ``listen()`` ran on the server thread, so an
+        #     "Address already in use" died silently and left callers to hang
+        #     for the full timeout waiting to connect to a server that had
+        #     never actually come up.
+        # The socket is bound immediately, so the OS accepts and queues client
+        # connections in the backlog even before the IOLoop starts serving --
+        # eliminating the connect race too.
+        self._sockets = bind_sockets(port if port is not None else 0)
+        # When port==0 the OS assigns the port; read the real value back so
+        # callers can build a correct URL.
+        self.port = self._sockets[0].getsockname()[1]
         self.response: Queue[Union[str, bytes]] = Queue()
         self.connect = threading.Event()
         self.sockets: list[websocket.WebSocketHandler] = []
@@ -333,7 +352,9 @@ class WebApp(threading.Thread):
             self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)
         else:
             self.server = tornado.httpserver.HTTPServer(application)
-        self.server.listen(self.port)
+        # The socket(s) were already bound in __init__; just start serving on
+        # them. This cannot raise "Address already in use" on the server thread.
+        self.server.add_sockets(self._sockets)
         ioloop.start()
 
     def stop(self):
