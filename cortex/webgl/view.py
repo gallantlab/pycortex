@@ -55,6 +55,7 @@ def make_static(
     html_embed=True,
     copy_ctmfiles=True,
     title="Brain",
+    tour=False,
     layout=None,
     overlay_file=None,
     curvature_brightness=None,
@@ -113,6 +114,10 @@ def make_static(
     title : str, optional
         The title that is displayed on the viewer website when it is loaded in
         a browser.
+    tour : bool, optional
+        If True, bake in pycortex's built-in generic guided tour: a small,
+        dataset-agnostic stepper the user can page through, collapse with its
+        on-screen link, or fully toggle with the 'o' key. Default False.
     layout : None or list of (int, int)
         The layout of the viewer subwindows for showing multiple subjects, passed to
         the template generator.
@@ -262,6 +267,7 @@ def make_static(
     for sec in options.config.sections():
         if "paths" in sec or "labels" in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
+    my_viewopts["tour"] = bool(tour)
 
     html = tpl.generate(
         data=json.dumps(metadata),
@@ -269,6 +275,7 @@ def make_static(
         default_cmap="RdBu_r",
         python_interface=False,
         leapmotion=True,
+        tour=bool(tour),
         layout=layout,
         subjects=json.dumps(ctms),
         viewopts=json.dumps(my_viewopts),
