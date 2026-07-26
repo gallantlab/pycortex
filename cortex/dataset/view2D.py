@@ -57,8 +57,10 @@ class Dataview2D(Dataview):
         d1js = self.dim1.to_json()
         d2js = self.dim2.to_json()
         sdict.update(dict(
-            vmin = [[self.vmin or d1js['vmin'][0], self.vmin2 or d2js['vmin'][0]]],
-            vmax = [[self.vmax or d1js['vmax'][0], self.vmax2 or d2js['vmax'][0]]],
+            vmin = [[d1js['vmin'][0] if self.vmin is None else self.vmin,
+                     d2js['vmin'][0] if self.vmin2 is None else self.vmin2]],
+            vmax = [[d1js['vmax'][0] if self.vmax is None else self.vmax,
+                     d2js['vmax'][0] if self.vmax2 is None else self.vmax2]],
             ))
 
         if "xfm" in d1js:

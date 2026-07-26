@@ -154,6 +154,36 @@ def test_2D():
     twod.to_json()
 
 
+def test_2D_to_json_keeps_explicit_zero_limits():
+    """to_json must keep an explicitly requested limit of 0 for all four bounds.
+
+    0 is falsy, so a fallback written with ``or`` silently replaces it with the
+    data range taken from the underlying dim.
+    """
+    d1 = cortex.Volume.random(subj, xfmname)
+    d2 = cortex.Volume.random(subj, xfmname)
+
+    # Control: nonzero limits are already passed through untouched.
+    control = cortex.Volume2D(d1, d2, vmin=1, vmax=3, vmin2=2, vmax2=4)
+    assert control.to_json()["vmin"] == [[1, 2]]
+    assert control.to_json()["vmax"] == [[3, 4]]
+
+    view = cortex.Volume2D(d1, d2, vmin=0, vmax=0, vmin2=0, vmax2=0)
+    assert view.to_json()["vmin"] == [[0, 0]]
+    assert view.to_json()["vmax"] == [[0, 0]]
+
+    v1 = cortex.Vertex.random(subj)
+    v2 = cortex.Vertex.random(subj)
+
+    control = cortex.Vertex2D(v1, v2, vmin=1, vmax=3, vmin2=2, vmax2=4)
+    assert control.to_json()["vmin"] == [[1, 2]]
+    assert control.to_json()["vmax"] == [[3, 4]]
+
+    view = cortex.Vertex2D(v1, v2, vmin=0, vmax=0, vmin2=0, vmax2=0)
+    assert view.to_json()["vmin"] == [[0, 0]]
+    assert view.to_json()["vmax"] == [[0, 0]]
+
+
 def test_braindata_hash():
     d = cortex.Volume.random(subj, xfmname)
     hash(d)
