@@ -1,7 +1,7 @@
 """Contains functions for working with volume data
 """
 import os
-from typing import Optional, TypeVar, Union
+from typing import Literal, Optional, TypeVar, Union
 import numpy as np
 import numpy.typing as npt
 
@@ -118,7 +118,7 @@ def mosaic(data: npt.NDArray[DType], dim: int=0, show: bool=True, **kwargs) -> t
     else:
         output = (np.nan*np.ones(shape)).astype(data.dtype)
 
-    sl = [slice(None), slice(None), slice(None)]
+    sl: list[Union[int, slice]] = [slice(None), slice(None), slice(None)]
     for h in range(ntall):
         for w in range(nwide):
             sl[dim] = h*nwide+w
@@ -227,7 +227,7 @@ def epi2anatspace(volumedata, order=1):
     anatspace : ndarray
         The ND array of the anatomy space data
     """
-    from scipy.ndimage.interpolation import affine_transform
+    from scipy.ndimage import affine_transform
     ds = dataset.normalize(volumedata)
     volumedata = ds#.data
 
@@ -243,7 +243,7 @@ def epi2anatspace(volumedata, order=1):
                             offset=transpart, output_shape=anat.shape[::-1],
                             cval=np.nan, order=order).T
 
-def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: int=1) -> npt.NDArray:
+def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: Literal[0, 1, 2, 3, 4, 5]=1) -> npt.NDArray:
     """Resamples data from anatomical space into epi space
     
     Parameters
@@ -262,7 +262,7 @@ def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: int=
     epidata : ndarray
         data in EPI space
     """
-    from scipy.ndimage.interpolation import affine_transform
+    from scipy.ndimage import affine_transform
     anatref = db.get_anat(subject)
     target = db.get_xfm(subject, xfmname, "coord")
 
