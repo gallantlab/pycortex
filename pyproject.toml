@@ -11,7 +11,7 @@ dynamic = ["authors", "license", "readme", "version", "classifiers", "dependenci
 [dependency-groups]
 dev = [
     {include-group = "test"},
-    "mypy",
+    {include-group = "types"},
 ]
 test = [
     "pycortex[headless]",
@@ -22,6 +22,11 @@ test = [
     "pytest-cov",
     "pytest-timeout",
 ]
+types = [
+    "mypy",
+    "scipy-stubs",
+]
+
 
 [project.optional-dependencies]
 headless = [
