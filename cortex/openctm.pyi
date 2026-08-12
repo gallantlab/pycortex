@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import cython
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 
-from . import openctm
-
 
 class CTMfile:
+    filename: bytes
+    mode: str
+    attribs: dict[int, bytes]
+    uvs: dict[int, bytes]
 
     def __init__(self, filename: bytes, mode: str='r'):
         ...
@@ -32,14 +33,13 @@ class CTMfile:
     def addUV(self, uv: npt.NDArray[np.floating], name: Optional[str]=None, filename: Optional[str]=None) -> None:
         ...
 
-    @cython.boundscheck(False)
     def getMesh(self) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer], None]:
         ...
 
     def save(self, method='mg2', level: int=9) -> None:
         ...
-uvmaps = [openctm.CTM_UV_MAP_1, openctm.CTM_UV_MAP_2, openctm.CTM_UV_MAP_3, openctm.CTM_UV_MAP_4, openctm.CTM_UV_MAP_5, openctm.CTM_UV_MAP_6, openctm.CTM_UV_MAP_7, openctm.CTM_UV_MAP_8]
-attrmaps = [openctm.CTM_ATTRIB_MAP_1, openctm.CTM_ATTRIB_MAP_2, openctm.CTM_ATTRIB_MAP_3, openctm.CTM_ATTRIB_MAP_4, openctm.CTM_ATTRIB_MAP_5, openctm.CTM_ATTRIB_MAP_6, openctm.CTM_ATTRIB_MAP_7, openctm.CTM_ATTRIB_MAP_8]
+uvmaps: list[int]
+attrmaps: list[int]
 
 def to_bytes(s):
     ...
