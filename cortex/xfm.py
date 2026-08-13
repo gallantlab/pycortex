@@ -1,10 +1,13 @@
 """Affine transformation class
 """
 import os
-from typing import Optional, Union, cast
+from typing import Optional, Union, cast, TYPE_CHECKING
 import numpy as np
 import numpy.typing as npt
 import subprocess
+
+if TYPE_CHECKING:
+    import nibabel
 
 class Transform:
     '''
@@ -12,8 +15,9 @@ class Transform:
     magnet space to epi file space.
     '''
     shape: tuple[int, int, int]
+    reference: Optional[Union[str, "nibabel.Nifti1Image", npt.NDArray]]
 
-    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple[int, int, int], npt.NDArray]):
+    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple[int, int, int], npt.NDArray, "nibabel.Nifti1Image"]):
         self.xfm = xfm
         self.reference = None
 
@@ -29,6 +33,15 @@ class Transform:
         else:
             self.reference = reference
             self.shape = self.reference.shape[:3][::-1] # type: ignore
+
+    @property
+    def reference_nifti(self) -> "nibabel.Nifti1Image":
+        """The reference as a loaded nifti image, for callers that need its
+        affine/header. Raises if the reference is absent or never loaded."""
+        import nibabel
+        if not isinstance(self.reference, nibabel.Nifti1Image):
+            raise ValueError('Transform has no loaded reference image')
+        return self.reference
 
     def __call__(self, pts: npt.NDArray) -> npt.NDArray:
         return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
@@ -324,10 +337,10 @@ class Transform:
         anat_tkrvox2ras = _vox2ras_tkr(anat.get_filename())
 
         # Read tkvox2ras transform for the functional volume
-        func_tkrvox2ras = _vox2ras_tkr(self.reference.get_filename())
+        func_tkrvox2ras = _vox2ras_tkr(self.reference_nifti.get_filename())
 
         # Read voxel resolution of the functional volume
-        func_voxres = self.reference.header.get_zooms()
+        func_voxres = self.reference_nifti.header.get_zooms()
 
         # Calculate FreeSurfer transform
         fs_anat2func = np.dot(func_tkrvox2ras, np.dot(self.xfm, np.dot(anat_vox2ras, inv(anat_tkrvox2ras))))

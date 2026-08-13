@@ -201,7 +201,9 @@ def manual(
 
         if reference is None:
             # Load load extant transform-relevant things
-            reference = sub_xfm.reference.get_filename()
+            if sub_xfm.reference is None:
+                raise ValueError('Cannot inspect reference-free transform')
+            reference = sub_xfm.reference_nifti.get_filename()
             _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
             # Command for FreeView and run
             cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
