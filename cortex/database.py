@@ -627,7 +627,7 @@ class Database:
             voxels = np.load(shared_voxel_file)
             return voxels
 
-    def get_coords(self, subject, xfmname, hemisphere="both", magnet=None):
+    def get_coords(self, subject: str, xfmname: str, hemisphere: Literal['lh', 'rh', 'both']="both", magnet: Optional[npt.NDArray]=None):
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
 
         Parameters
