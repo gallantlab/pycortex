@@ -207,7 +207,7 @@ class Database:
         self._subjects = None
         self.subjects
 
-    def get_anat(self, subject: str, type: Literal['raw', 'brainmask', 'whitematter', 'voxelize'] ='raw', xfmname: Optional[str]=None, recache: bool=False, order: int=1, **kwargs):
+    def get_anat(self, subject: str, type: Literal['raw', 'brainmask', 'whitematter', 'voxelize'] ='raw', xfmname: Optional[str]=None, recache: bool=False, order: Literal[0, 1, 2, 3, 4, 5]=1, **kwargs):
         """Return anatomical information from the filestore. Anatomical information is defined as
         any volume-space anatomical information pertaining to the subject, such as T1 image,
         white matter masks, etc. Volumes not found in the database will be automatically generated.
@@ -277,7 +277,7 @@ class Database:
         if len(kwargs) > 0:
             opts = "[%s]"%','.join(["%s=%s"%i for i in kwargs.items()])
         try:
-            self.auxfile.get_surf(subject, "fiducial")
+            self.auxfile.get_surf(subject, "fiducial")  # type: ignore[union-attr]
             surfifile = os.path.join(self.get_cache(subject),"%s%s.npz"%(type, opts)) 
         except (AttributeError, IOError):
             surfiform = self.get_paths(subject)['surfinfo']
@@ -441,7 +441,7 @@ class Database:
 
             jsdict = dict()
 
-        nib = nibabel.load(os.path.join(path, "reference.nii.gz"))
+        nib = cast(nibabel.Nifti1Image, nibabel.load(os.path.join(path, "reference.nii.gz")))
         if xfmtype == "magnet":
             jsdict['magnet'] = np.array(xfm).tolist()
             jsdict['coord'] = np.dot(np.linalg.inv(nib.affine), xfm).tolist()
@@ -470,7 +470,7 @@ class Database:
         """
         if xfmtype == 'coord':
             try:
-                return self.auxfile.get_xfm(subject, name)
+                return self.auxfile.get_xfm(subject, name)  # type: ignore[union-attr]
             except (AttributeError, IOError):
                 pass
 
@@ -529,7 +529,7 @@ class Database:
             For single hemisphere
         '''
         try:
-            return self.auxfile.get_surf(subject, type, hemisphere, merge=merge, nudge=nudge)
+            return self.auxfile.get_surf(subject, type, hemisphere, merge=merge, nudge=nudge)  # type: ignore[union-attr, arg-type]
         except (AttributeError, IOError):
             pass
 
@@ -547,7 +547,8 @@ class Database:
                 return pts, polys
 
             return left, right
-        elif hemisphere.lower() in ("lh", "left"):
+        hemi: Literal['lh', 'rh']
+        if hemisphere.lower() in ("lh", "left"):
             hemi = "lh"
         elif hemisphere.lower() in ("rh", "right"):
             hemi = "rh"
@@ -584,7 +585,7 @@ class Database:
             type = type.decode('utf8')        
 
         try:
-            self.auxfile.get_mask(subject, xfmname, type)
+            self.auxfile.get_mask(subject, xfmname, type)  # type: ignore[union-attr]
         except (AttributeError, IOError):
             pass
 
@@ -610,7 +611,7 @@ class Database:
         """
         # Test for packed subjects
         try:
-            voxels = self.auxfile.get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)
+            voxels = self.auxfile.get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)  # type: ignore[union-attr]
             return voxels
         except (AttributeError, IOError):
             pass
@@ -619,7 +620,7 @@ class Database:
         if not os.path.exists(shared_voxel_file) or recache:
             print('Shared voxel array not found, generating...')
             from .utils import get_shared_voxels as _get_shared_voxels
-            voxels = _get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)
+            voxels = _get_shared_voxels(subject, xfmname, hemi=hemi, merge=merge, use_astar=use_astar)  # type: ignore[call-overload]
             np.save(shared_voxel_file, voxels)
             return voxels
         else:
@@ -661,10 +662,10 @@ class Database:
 
     def get_cache(self, subject: str) -> str:
         try:
-            self.auxfile.get_surf(subject, "fiducial")
+            self.auxfile.get_surf(subject, "fiducial")  # type: ignore[union-attr]
             #generate the hashed name of the filename and subject as the directory name
             import hashlib
-            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
+            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]  # type: ignore[union-attr]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
         except (AttributeError, IOError):
             try:
