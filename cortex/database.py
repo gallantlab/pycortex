@@ -55,8 +55,8 @@ class SubjectDB:
     def __init__(self, subj: str, filestore: str = default_filestore):
         self.subject = subj
         self._warning = None
-        self._transforms = None
-        self._surfaces = None
+        self._transforms: Optional[XfmDB] = None
+        self._surfaces: Optional[SurfaceDB] = None
         self.filestore = filestore
 
         try:
@@ -66,14 +66,14 @@ class SubjectDB:
             pass
 
     @property
-    def transforms(self):
+    def transforms(self) -> XfmDB:
         if self._transforms is not None:
             return self._transforms
         self._transforms = XfmDB(self.subject, filestore=self.filestore)
         return self._transforms
 
     @property
-    def surfaces(self):
+    def surfaces(self) -> SurfaceDB:
         if self._surfaces is not None:
             return self._surfaces
         self._surfaces = SurfaceDB(self.subject, filestore=self.filestore)
@@ -627,7 +627,7 @@ class Database:
             voxels = np.load(shared_voxel_file)
             return voxels
 
-    def get_coords(self, subject: str, xfmname: str, hemisphere: Literal['lh', 'rh', 'both']="both", magnet: Optional[npt.NDArray]=None):
+    def get_coords(self, subject: str, xfmname: str, hemisphere: Literal['lh', 'rh', 'both']="both", magnet: Optional[npt.NDArray]=None) -> list[npt.NDArray[np.floating]]:
         """Calculate the coordinates of each vertex in the epi space by transforming the fiducial to the coordinate space
 
         Parameters
@@ -648,10 +648,12 @@ class Database:
             xfm = self.get_xfm(subject, xfmname, xfmtype="magnet")
             xfm = np.linalg.inv(magnet) * xfm
 
-        coords = []
+        coords: list[npt.NDArray[np.floating]] = []
         vtkTmp = self.get_surf(subject, "fiducial", hemisphere=hemisphere, nudge=False)
         if not isinstance(vtkTmp,(tuple,list)):
             vtkTmp = [vtkTmp]
+        pts: npt.NDArray[np.floating]
+        polys: npt.NDArray[np.integer]
         for pts, polys in vtkTmp:
             wpts = np.vstack([pts.T, np.ones(len(pts))])
             coords.append(np.dot(xfm.xfm, wpts)[:3].round().astype(int).T)
