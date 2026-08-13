@@ -180,8 +180,9 @@ class Database:
     
     def __getattr__(self, attr: str):
         if attr in self.subjects:
-            if self.subjects[attr]._warning is not None:
-                warnings.warn(self.subjects[attr]._warning)
+            _warning = self.subjects[attr]._warning
+            if _warning is not None:
+                warnings.warn(_warning)
             return self.subjects[attr]
         else:
             raise AttributeError
