@@ -264,7 +264,7 @@ class Transform:
         # Read vox2ras transform for the anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = decode(subprocess.check_output(cmd)).splitlines()
+            L = subprocess.check_output(cmd).decode().splitlines()
             anat_vox2ras = np.array([[np.float64(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occurred while executing:\n{}".format(' '.join(cmd)))
@@ -344,13 +344,6 @@ class Transform:
 
         return fs_anat2func
 
-def isstr(obj: Any) -> bool:
-    """Check for stringy-ness in python 2.7 or 3"""
-    try:
-        return isinstance(obj, basestring)
-    except NameError:
-        return isinstance(obj, str)
-    
 def decode(obj):
     if isinstance(obj, bytes):
         obj = obj.decode()
@@ -369,7 +362,7 @@ def _vox2ras_tkr(image):
     output affine"""
     try:
         cmd = ('mri_info', '--vox2ras-tkr', image)
-        L = decode(subprocess.check_output(cmd)).splitlines()
+        L = subprocess.check_output(cmd).decode().splitlines()
         # Skip headers/additional information. Example output of
         # mri_info --vox2ras-tkr
         #
