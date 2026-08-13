@@ -781,7 +781,7 @@ def get_roi_masks(subject, xfmname, roi_list=None, gm_sampler='cortical', split_
                 raise KeyError("Requested ROI {} not found in overlays.svg!".format(key))
             else:
                 roi_verts = get_roi_verts(subject, roi=None, mask=use_mapper, overlay_file=overlay_file)
-                missing = [r for r in roi_list if not r in roi_verts.keys()+['Cortex']]
+                missing = [r for r in roi_list if not r in list(roi_verts.keys())+['Cortex']]
                 roi_verts = {roi: verts for roi, verts in roi_verts.items() if roi in roi_list}
                 roi_list = list(set(roi_list)-set(missing))
                 print('Requested ROI(s) {} not found in overlays.svg!'.format(missing))
