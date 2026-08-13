@@ -11,6 +11,8 @@ class Transform:
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
     '''
+    shape: tuple[int, int, int]
+
     def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple[int, int, int], npt.NDArray]):
         self.xfm = xfm
         self.reference = None
@@ -26,7 +28,7 @@ class Transform:
             self.shape = reference
         else:
             self.reference = reference
-            self.shape = self.reference.shape[:3][::-1]
+            self.shape = self.reference.shape[:3][::-1] # type: ignore
 
     def __call__(self, pts: npt.NDArray) -> npt.NDArray:
         return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
