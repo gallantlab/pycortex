@@ -575,7 +575,7 @@ class Database:
         xfm = self.get_xfm(subject, xfmname)
         if xfm.shape != mask.shape:
             raise ValueError("Invalid mask shape: must match shape of reference image")
-        affine = xfm.reference.affine
+        affine = xfm.reference_nifti.affine
         nib = nibabel.Nifti1Image(mask.astype(np.uint8).T, affine)
         nib.to_filename(fname)
 
