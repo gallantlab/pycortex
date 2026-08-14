@@ -1,3 +1,5 @@
+from __future__ import annotations # needed for `type`?
+
 import os
 
 import numpy as np
@@ -7,11 +9,11 @@ from .mapper import Mapper, _savecache
 from .utils import nanproject, vol2surf
 
 
-def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
+def get_mapper(subject: str, xfmname: str, maptype: str='nearest', recache: bool=False, **kwargs) -> Mapper:
     from ..database import db
     from . import point, patch, line
 
-    mapcls = dict(
+    mapcls: dict[str, type[Mapper]] = dict(
         nearest=point.PointNN,
         trilinear=point.PointTrilin,
         gaussian=point.PointGauss,
@@ -22,7 +24,7 @@ def get_mapper(subject, xfmname, type='nearest', recache=False, **kwargs):
         line_nearest=line.LineNN,
         line_trilinear=line.LineTrilin,
         line_lanczos=line.LineLanczos)
-    Map = mapcls[type]
+    Map = mapcls[maptype]
     ptype = Map.__name__.lower()
     kwds ='_'.join(['%s%s'%(k,str(v)) for k, v in list(kwargs.items())])
     if len(kwds) > 0:

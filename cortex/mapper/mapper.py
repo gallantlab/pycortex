@@ -1,14 +1,27 @@
+import abc
+from typing import Union, overload
+
 import numpy as np
+import numpy.typing as npt
 from scipy import sparse
 
 from .. import dataset
 
+import sys
+if sys.version_info < (3, 11):
+    from typing_extensions import Self
+else:
+    from typing import Self
+
 import warnings
+
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-class Mapper:
+MapperShape = Union[npt.NDArray[np.integer], tuple[int, int, int]]
+
+class Mapper(abc.ABC):
     '''Maps data from epi volume onto surface using various projections'''
-    def __init__(self, left, right, shape, subject, xfmname):
+    def __init__(self, left: sparse.csr_matrix, right: sparse.csr_matrix, shape: MapperShape, subject: str, xfmname: str):
         self.idxmap = None
         self.masks = [left, right]
         self.nverts = left.shape[0] + right.shape[0]
@@ -17,7 +30,7 @@ class Mapper:
         self.xfmname = xfmname
 
     @classmethod
-    def from_cache(cls, cachefile, subject, xfmname):
+    def from_cache(cls, cachefile: str, subject: str, xfmname: str) -> Self:
         npz = np.load(cachefile)
         left = (npz['left_data'], npz['left_indices'], npz['left_indptr'])
         right = (npz['right_data'], npz['right_indices'], npz['right_indptr'])
@@ -26,12 +39,12 @@ class Mapper:
         return cls(lsparse, rsparse, npz['shape'], subject, xfmname)
 
     @property
-    def mask(self):
+    def mask(self) -> npt.NDArray[np.bool_]:
         mask = np.array(self.masks[0].sum(0) + self.masks[1].sum(0))
         return (mask.squeeze() != 0).reshape(self.shape)
 
     @property
-    def hemimasks(self):
+    def hemimasks(self) -> list[npt.NDArray[np.bool_]]:
         func = lambda m: (np.array(m.sum(0)).squeeze() != 0).reshape(self.shape)
         return [func(x) for x in self.masks]
 
@@ -39,7 +52,13 @@ class Mapper:
         ptype = self.__class__.__name__
         return '<%s mapper with %d vertices>'%(ptype, self.nverts)
 
-    def __call__(self, data):
+    @overload
+    def __call__(self, data: Union[dataset.Volume, tuple]) -> dataset.Vertex: ...
+
+    @overload
+    def __call__(self, data: dataset.Vertex) -> tuple[npt.NDArray, npt.NDArray]: ...
+
+    def __call__(self, data: Union[dataset.Vertex, dataset.Volume, tuple]) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
         if isinstance(data, tuple):
             data = dataset.Volume(*data)
 
@@ -61,9 +80,9 @@ class Mapper:
         volume.shape = len(volume), -1
         volume = volume.T
 
-        mapped = []
+        mapped: list[npt.NDArray] = []
         for mask in self.masks:
-            mapped.append(np.array(mask * volume).T)
+            mapped.append(np.array(mask * volume).T) # change to @ matmul
 
         if self.idxmap is not None:
             mapped[0] = mapped[0][:, self.idxmap[0]]
@@ -71,7 +90,13 @@ class Mapper:
 
         return dataset.Vertex(np.hstack(mapped).squeeze(), data.subject)
 
-    def backwards(self, vertexdata):
+    @overload
+    def backwards(self, vertexdata: dataset.Vertex) -> dataset.Volume: ...
+
+    @overload
+    def backwards(self, vertexdata: npt.NDArray) -> npt.NDArray: ...
+
+    def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]) -> Union[dataset.Volume, npt.NDArray]:
         '''Projects vertex data back into volume space.
 
         Parameters
@@ -81,8 +106,7 @@ class Mapper:
             If Vertex object is provided, a Volume object is returned
             If an array is provided, an array is returned
         '''
-        Vert2Vol = isinstance(vertexdata, dataset.Vertex)
-        if Vert2Vol:
+        if isinstance(vertexdata, dataset.Vertex):
             to_map = vertexdata.data
         else:
             to_map = vertexdata
@@ -91,8 +115,8 @@ class Mapper:
         # dot the vertex data with the stacked mappers
         partial_vertex = bothmappers.T.dot(to_map)
         # solve the inverse mapping problem
-        voxeldata = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
-        if Vert2Vol:
+        voxeldata: npt.NDArray = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
+        if isinstance(vertexdata, dataset.Vertex):
             # construct a volume object with the new data
             return dataset.Volume(voxeldata, self.subject, self.xfmname)
         else:
@@ -112,10 +136,10 @@ class Mapper:
         return self._backmapper
 
     @classmethod
-    def _cache(cls, filename, subject, xfmname, **kwargs):
+    def _cache(cls, filename: str, subject: str, xfmname: str, **kwargs) -> Self:
         print('Caching mapper...')
         from ..database import db
-        masks = []
+        masks: list[sparse.csr_matrix] = []
         xfm = db.get_xfm(subject, xfmname, xfmtype='coord')
         fid = db.get_surf(subject, 'fiducial', merge=False, nudge=False)
 
@@ -130,7 +154,19 @@ class Mapper:
         _savecache(filename, masks[0], masks[1], xfm.shape)
         return cls(masks[0], masks[1], xfm.shape, subject, xfmname)
 
-def _savecache(filename, left, right, shape):
+    @classmethod
+    @abc.abstractmethod
+    def _getmask(cls, coords: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], shape: tuple[int, int, int], **kwargs) -> sparse.csr_matrix:
+        '''Generates a sparse matrix mapping from volume to surface vertices'''
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def sampler(coords: npt.NDArray[np.floating], shape: tuple[int, int, int], **kwargs) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.floating]]:
+        '''Generates a sparse matrix mapping from volume to surface vertices'''
+        pass
+
+def _savecache(filename: str, left: sparse.csr_matrix, right: sparse.csr_matrix, shape: MapperShape) -> None:
     np.savez(filename,
              left_data=left.data,
              left_indices=left.indices,

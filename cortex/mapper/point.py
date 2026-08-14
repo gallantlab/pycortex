@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from scipy import sparse
 
 from . import Mapper
@@ -6,7 +7,7 @@ from . import samplers
 
 class PointMapper(Mapper):
     @classmethod
-    def _getmask(cls, coords, polys, shape, **kwargs):
+    def _getmask(cls, coords: npt.NDArray[np.floating], polys: npt.NDArray[np.integer], shape: tuple[int, int, int], **kwargs) -> sparse.csr_matrix:
         valid = np.unique(polys)
         mcoords = np.nan * np.ones_like(coords)
         mcoords[valid] = coords[valid]
