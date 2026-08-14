@@ -238,13 +238,21 @@ def test_with_dropout():
 
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
+@pytest.mark.timeout(600)
 def test_with_connected_vertices():
     """Test with_connected_vertices parameter"""
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
-    
+
     fig = cortex.quickflat.make_figure(view, with_connected_vertices=False)
-    
-    # Note: with_connected_vertices=True is more computationally expensive
+
+    # Note: with_connected_vertices=True is more computationally expensive:
+    # db.get_shared_voxels() runs an A* search per crossing vertex pair to build
+    # its cache (cortex/utils.py's get_shared_voxels/shortest_path), and that
+    # cache doesn't exist yet on a clean CI checkout. The default 240s suite-wide
+    # timeout (pytest.ini) isn't enough on CI hardware for this first-run,
+    # cold-cache computation, even though it reliably completes (~1 minute
+    # locally with a warm mapper cache). Override with a longer budget rather
+    # than skip real coverage of this code path.
     fig = cortex.quickflat.make_figure(view, with_connected_vertices=True)
 
 
