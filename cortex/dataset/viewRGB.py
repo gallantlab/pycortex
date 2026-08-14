@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import colorsys
-from typing import Optional, TypeVar, Union
+from typing import Literal, Optional, TypeVar, Union, cast
 import warnings
 
 import numpy as np
@@ -112,7 +112,7 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
-    def _apply_nan_mask(self, alpha):
+    def _apply_nan_mask(self, alpha: BrainData):
         """Apply stored NaN mask to alpha, enforcing transparency for NaN
         positions even when the user overrides the alpha channel. uint8 RGB
         channels cannot hold NaN, so the mask is captured before conversion
@@ -162,19 +162,19 @@ class DataviewRGB(Dataview):
 
     @staticmethod
     def color_voxels(
-        channel1,
-        channel2,
-        channel3,
-        channel1color,
-        channel2color,
-        channel3Color,
-        value_max,
-        saturation_max,
-        vmin,
-        vmax,
-        autorange,
-        alpha=None,
-    ):
+        channel1: Union[npt.NDArray, VolumeData, VertexData],
+        channel2: Union[npt.NDArray, VolumeData, VertexData],
+        channel3: Union[npt.NDArray, VolumeData, VertexData],
+        channel1color: Color[int],
+        channel2color: Color[int],
+        channel3Color: Color[int],
+        value_max: Optional[float],
+        saturation_max: float,
+        vmin: Optional[Union[float, tuple[float, float, float]]],
+        vmax: Optional[Union[float, tuple[float, float, float]]],
+        autorange: Literal['shared', 'individual'] = 'individual',
+        alpha: Optional[Union[npt.NDArray, VolumeData, VertexData]] = None,
+    ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.uint8], npt.NDArray[np.uint8], npt.NDArray[np.uint8]]:
         """
         Colors voxels in 3 color dimensions but not necessarily canonical red, green, and blue
         Parameters
@@ -340,7 +340,7 @@ class DataviewRGB(Dataview):
                     saturation = 1.0
                 if value > 1:
                     value = 1.0
-                this_color = HSV2RGB([hue, saturation, value])
+                this_color = HSV2RGB((hue, saturation, value))
             red.flat[i] = this_color[0]
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
@@ -348,7 +348,7 @@ class DataviewRGB(Dataview):
         # Now make an alpha volume
         if alpha is None:
             alpha = np.ones_like(red, np.uint8) * 255
-        alpha[mask] = 0
+        alpha[mask] = 0 # TODO: this seems like an actual issue
 
         return red, green, blue, alpha
 
@@ -440,14 +440,14 @@ class VolumeRGB(DataviewRGB):
         alpha: Optional[Union[npt.NDArray, Volume]] = None,
         description: str = "",
         state=None,
-        channel1color: Color = Colors.Red,
-        channel2color: Color = Colors.Green,
-        channel3color: Color = Colors.Blue,
+        channel1color: Color[int] = Colors.Red,
+        channel2color: Color[int] = Colors.Green,
+        channel3color: Color[int] = Colors.Blue,
         max_color_value: Optional[float] = None,
         max_color_saturation: float = 1.0,
         vmin: Optional[Union[float, tuple]] = None,
         vmax: Optional[Union[float, tuple]] = None,
-        autorange: str = "individual",
+        autorange: Literal['shared', 'individual'] = "individual",
         priority: int = 1,
     ):
         channel1color = tuple(channel1color)
@@ -563,7 +563,7 @@ class VolumeRGB(DataviewRGB):
         )
 
     @property
-    def alpha(self):
+    def alpha(self) -> Volume:
         """Compute alpha transparency"""
         alpha = self._alpha
         if alpha is None:
@@ -606,7 +606,7 @@ class VolumeRGB(DataviewRGB):
         return sdict
 
     @property
-    def volume(self):
+    def volume(self) -> np.ndarray[tuple[int, int, int, int, int], np.dtype[np.uint8]]:
         """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
@@ -650,7 +650,7 @@ class VolumeRGB(DataviewRGB):
         return super()._write_hdf(h5, name=name, xfmname=[self.xfmname])
 
     @property
-    def raw(self):
+    def raw(self) -> VolumeRGB:
         return self
 
 
@@ -738,15 +738,15 @@ class VertexRGB(DataviewRGB):
         alpha: Optional[Union[npt.NDArray, Vertex]] = None,
         description: str = "",
         state=None,
-        channel1color=Colors.Red,
-        channel2color=Colors.Green,
-        channel3color=Colors.Blue,
-        max_color_value=None,
-        max_color_saturation=1.0,
-        vmin=None,
-        vmax=None,
-        autorange="individual",
-        priority=1,
+        channel1color: Color[int] = Colors.Red,
+        channel2color: Color[int] = Colors.Green,
+        channel3color: Color[int] = Colors.Blue,
+        max_color_value: Optional[float] = None,
+        max_color_saturation: float = 1.0,
+        vmin: Optional[Union[float, tuple[float, float, float]]] = None,
+        vmax: Optional[Union[float, tuple[float, float, float]]] = None,
+        autorange: Literal['shared', 'individual'] = "individual",
+        priority: int = 1,
     ):
         channel1color = tuple(channel1color)
         channel2color = tuple(channel2color)
@@ -839,7 +839,7 @@ class VertexRGB(DataviewRGB):
         )
 
     @property
-    def alpha(self):
+    def alpha(self) -> Vertex:
         """Compute alpha transparency"""
         alpha = self._alpha
         if alpha is None:
@@ -867,14 +867,14 @@ class VertexRGB(DataviewRGB):
         self._alpha = alpha
 
     @property
-    def vertices(self):
+    def vertices(self) -> npt.NDArray[np.uint8]:
         """3-dimensional volume (t, v, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
         verts = []
         for dv in (self.red, self.green, self.blue, self.alpha):
             if dv.vertices.dtype != np.uint8:
-                vert = dv.vertices.astype("float32", copy=True)
+                vert = dv.vertices.astype(np.float32, copy=True)
                 if dv.vmin is None:
                     if vert.min() < 0:
                         vert -= vert.min()
@@ -902,11 +902,11 @@ class VertexRGB(DataviewRGB):
         return sdict
 
     @property
-    def left(self):
+    def left(self) -> npt.NDArray[np.uint8]:
         return self.vertices[:, : self.red.llen]
 
     @property
-    def right(self):
+    def right(self) -> npt.NDArray[np.uint8]:
         return self.vertices[:, self.red.llen :]
 
     def __repr__(self):
@@ -920,5 +920,5 @@ class VertexRGB(DataviewRGB):
         return "__%s" % _hash(self.vertices)[:16]
 
     @property
-    def raw(self):
+    def raw(self) -> VertexRGB:
         return self

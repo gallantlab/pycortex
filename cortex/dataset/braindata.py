@@ -34,10 +34,7 @@ class BrainData:
             nib = nibabel.load(data)
             data = cast(npt.NDArray, nib.get_fdata().T)
         self._data = data
-        try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         super().__init__(**kwargs)
 
@@ -108,7 +105,7 @@ class BrainData:
                  "__div__", "__pow__", "__neg__", "__abs__"]
 
         def make_opfun(op): # function nesting creates closure containing op
-            def opfun(self, *args):
+            def opfun(self: Self, *args):
                 return self.copy(getattr(self.data, op)(*args))
             return opfun
 
@@ -288,8 +285,9 @@ class VolumeData(BrainData):
     def copy(self, data: npt.NDArray) -> Self:
         return super().copy(data, self.subject, self.xfmname, mask=self._mask)
 
+    # TODO: need to include np.ma.MaskedArra in return type?
     @property
-    def volume(self):
+    def volume(self) -> npt.NDArray:
         """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
         masked data.
         """
@@ -340,7 +338,7 @@ class VolumeData(BrainData):
         copied from the reference image for this VolumeData's transform.
         """
         xfm = db.get_xfm(self.subject, self.xfmname)
-        affine = xfm.reference.affine
+        affine = xfm.reference_nifti.affine
         import nibabel
         new_nii = nibabel.Nifti1Image(self.volume.T, affine)
         nibabel.save(new_nii, filename)
@@ -548,7 +546,7 @@ class VertexData(BrainData):
         else:
             return self.data[self.llen:]
 
-    def blend_curvature(self, alpha: npt.NDArray, threshold: float=0, brightness: float=0.5,
+    def blend_curvature(self, alpha: npt.NDArray[np.floating], threshold: float=0, brightness: float=0.5,
                         contrast: float=0.25, smooth: float=20):
         """Blend the data with a curvature map depending on a transparency map.
 
@@ -677,7 +675,7 @@ def _hash(array: npt.ArrayLike) -> str:
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
 
-def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.ArrayLike, name: str="data", group: str="/data") -> h5py.Dataset:
+def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="data", group: str="/data") -> h5py.Dataset:
     try:
         node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
     except TypeError:
