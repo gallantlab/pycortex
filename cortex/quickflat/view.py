@@ -12,7 +12,11 @@ from matplotlib.typing import ColorType
 
 from . import composite
 from .. import dataset, utils
-from ..dataset._typing import as_builtin_view, is_colormapped, is_volume_view
+from ..dataset._typing import (
+    SupportsColormap,
+    VolumetricRenderable,
+    as_renderable,
+)
 from .utils import make_flatmap_image
 
 
@@ -130,9 +134,11 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
     normalized = dataset.normalize(braindata)
     if not isinstance(normalized, dataset.Dataview):
         raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
-    # One boundary between "some view" and "a view this renderer understands".
-    # Everything below is typed against the six built-in views.
-    dataview = as_builtin_view(normalized)
+    # Stay on the nominal Dataview here. isinstance against a protocol
+    # synthesizes an intersection ("subclass of Dataview and
+    # VolumetricRenderable"), so the forks below get the structural members
+    # without giving up the Dataview ones the composite helpers need.
+    dataview = normalized
     if fig is None:
         fig_resize = True
         fig = plt.figure()
@@ -174,7 +180,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
             # Dropout is computed from a transform, so it is volumetric-only.
             # This used to read dataview.xfmname unguarded and raise
             # AttributeError on surface data.
-            if not is_volume_view(dataview):
+            if not isinstance(dataview, VolumetricRenderable):
                 raise TypeError(
                     "with_dropout needs volumetric data to compute dropout from a "
                     "transform; %s is surface data. Pass a precomputed dropout "
@@ -214,7 +220,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
-        if not is_volume_view(dataview):
+        if not isinstance(dataview, VolumetricRenderable):
             raise TypeError(
                 "with_connected_vertices needs volumetric data; %s is surface data"
                 % type(dataview).__name__
@@ -358,15 +364,14 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
     fp = io.BytesIO()
     from matplotlib.pyplot import imsave
 
-    view = as_builtin_view(braindata)
     ## Render PNG file & retrieve image data
-    arr, extents = make_flatmap_image(view, height=height, **kwargs)
+    arr, extents = make_flatmap_image(as_renderable(braindata), height=height, **kwargs)
     # Set nans to alpha = 0. to enable transparency when saving as PNG
     mask_nans = np.isnan(arr[..., 3])
     arr[mask_nans, 3] = 0.
 
-    if is_colormapped(view):
-        imsave(fp, arr, cmap=view.cmap, vmin=view.vmin, vmax=view.vmax)
+    if isinstance(braindata, SupportsColormap):
+        imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
     else:
         imsave(fp, arr)
     fp.seek(0)
@@ -377,7 +382,7 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
         # no options. learn to love it.
         from cortex import db
         fpc = io.BytesIO()
-        curv_vertices = db.get_surfinfo(view.subject)
+        curv_vertices = db.get_surfinfo(braindata.subject)
         curv_arr, _ = make_flatmap_image(curv_vertices, height=height)
         mask = np.isnan(curv_arr)
         curv_arr = np.where(curv_arr > 0, 0.5, 0.25)
@@ -395,13 +400,13 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
         else:
             # Dropout comes from a transform, so it is volumetric-only. This read
             # `dataview.xfmname` unguarded and raised AttributeError on surface data.
-            if not is_volume_view(view):
+            if not isinstance(braindata, VolumetricRenderable):
                 raise TypeError(
                     "with_dropout needs volumetric data to compute dropout from a "
                     "transform; %s is surface data. Pass a precomputed dropout "
-                    "view as with_dropout= instead." % type(view).__name__
+                    "view as with_dropout= instead." % type(braindata).__name__
                 )
-            hatch_data = utils.get_dropout(view.subject, view.xfmname)
+            hatch_data = utils.get_dropout(braindata.subject, braindata.xfmname)
         sampler = kwargs.get("sampler", "nearest")
         recache = kwargs.get("recache", False)
         hatch_space = 4

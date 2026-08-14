@@ -582,18 +582,14 @@ def test_vertex2d_survives_an_hdf_round_trip():
             loaded.h5.close()
 
 
-def test_narrowing_helpers_truth_table():
-    """The ``_typing`` predicates must agree with the attributes they stand for."""
-    from cortex.dataset._typing import (
-        is_2d_view,
-        is_colormapped,
-        is_rgb_view,
-        is_scalar_view,
-        is_vertex_view,
-        is_volume_view,
-        space_of,
-    )
-    from cortex.dataset._space import SurfaceSpace, VolumeSpace
+def test_each_view_satisfies_exactly_one_renderable_protocol():
+    """The renderers fork on volumetric-vs-surface; the fork must be total.
+
+    ``Volume2D`` used to satisfy neither, because it had no ``.volume`` -- every
+    consumer special-cased it and reached for ``.raw.volume`` itself, while
+    ``Vertex2D`` already had the symmetric delegating property.
+    """
+    from cortex.dataset._typing import SurfaceRenderable, VolumetricRenderable
 
     ones_v, ones_x = np.ones(volshape), np.ones(nverts)
     views = {
@@ -605,29 +601,63 @@ def test_narrowing_helpers_truth_table():
         "VertexRGB": cortex.VertexRGB(ones_x, ones_x, ones_x, subj),
     }
     for name, view in views.items():
-        volumetric = name.startswith("Volume")
-        assert is_volume_view(view) is volumetric, name
-        assert is_vertex_view(view) is (not volumetric), name
-        assert is_scalar_view(view) is (name in ("Volume", "Vertex")), name
-        assert is_2d_view(view) is name.endswith("2D"), name
-        assert is_rgb_view(view) is name.endswith("RGB"), name
-        # is_colormapped replaces hasattr(view, "cmap"); it must match exactly,
-        # including for the 2D views, which do have a cmap.
-        assert is_colormapped(view) == hasattr(view, "cmap"), name
-        # the open test: works for spaces registered later, unlike the unions
-        expected_space = VolumeSpace if volumetric else SurfaceSpace
-        assert isinstance(space_of(view), expected_space), name
+        volumetric = isinstance(view, VolumetricRenderable)
+        surface = isinstance(view, SurfaceRenderable)
+        assert volumetric != surface, (
+            "%s satisfies %s renderable protocol"
+            % (name, "both" if volumetric else "neither")
+        )
+        assert volumetric is name.startswith("Volume"), name
+        # and the interface each claims actually works
+        if volumetric:
+            assert view.volume.ndim >= 4, name
+            assert isinstance(view.xfmname, str), name
+        else:
+            assert view.vertices.ndim >= 2, name
 
 
-def test_as_builtin_view_rejects_an_unregistered_space():
-    """``as_builtin_view`` is the one boundary; it must reject, not defer."""
-    from cortex.dataset._typing import as_builtin_view
+def test_supports_colormap_matches_the_hasattr_it_replaces():
+    from cortex.dataset._typing import SupportsColormap
+
+    ones_v, ones_x = np.ones(volshape), np.ones(nverts)
+    for name, view in {
+        "Volume": cortex.Volume(ones_v, subj, xfmname),
+        "Vertex": cortex.Vertex(ones_x, subj),
+        "Volume2D": cortex.Volume2D(ones_v, ones_v * 2, subj, xfmname),
+        "Vertex2D": cortex.Vertex2D(ones_x, ones_x * 2, subj),
+        "VolumeRGB": cortex.VolumeRGB(ones_v, ones_v, ones_v, subj, xfmname),
+        "VertexRGB": cortex.VertexRGB(ones_x, ones_x, ones_x, subj),
+    }.items():
+        # The RGB views have no cmap at all; the 2D ones do, which is why a
+        # scalar-only test would not be equivalent to the old hasattr.
+        assert isinstance(view, SupportsColormap) == hasattr(view, "cmap"), name
+        assert isinstance(view, SupportsColormap) is not name.endswith("RGB"), name
+
+
+def test_volume2d_volume_mirrors_vertex2d_vertices():
+    """The property added to make the volumetric/surface fork total."""
+    v2d = cortex.Volume2D(np.zeros(volshape), np.ones(volshape), subj, xfmname)
+    x2d = cortex.Vertex2D(np.zeros(nverts), np.ones(nverts), subj)
+    assert np.array_equal(v2d.volume, v2d.raw.volume)
+    assert np.array_equal(x2d.vertices, x2d.raw.vertices)
+    # uint8 RGBA, like VolumeRGB.volume rather than Volume.volume
+    assert v2d.volume.dtype == np.uint8
+    assert v2d.volume.shape[-1] == 4
+
+
+def test_as_renderable_rejects_a_view_with_neither_interface():
+    """``as_renderable`` is the one boundary; it must reject, not defer.
+
+    Unlike an enumeration of known classes it accepts a view in *any* space, so
+    long as it exposes the interface.
+    """
+    from cortex.dataset._typing import as_renderable
 
     vol = cortex.Volume(np.ones(volshape), subj, xfmname)
-    assert as_builtin_view(vol) is vol
+    assert as_renderable(vol) is vol
 
-    class Foreign(dataset.Dataview):
-        """A view in a space this renderer has never heard of."""
+    class Unrenderable(dataset.Dataview):
+        """A view exposing neither a volume nor vertices."""
 
         @property
         def space(self):
@@ -643,5 +673,41 @@ def test_as_builtin_view_rejects_an_unregistered_space():
         def _write_hdf(self, h5, name="data"):
             raise NotImplementedError
 
-    with pytest.raises(TypeError, match="not one of the six built-in views"):
-        as_builtin_view(Foreign())
+    with pytest.raises(TypeError, match="is not renderable"):
+        as_renderable(Unrenderable())
+
+
+def test_as_renderable_accepts_an_unknown_space_that_conforms():
+    """The openness the closed unions could not have.
+
+    A view in a space this package has never heard of is renderable if it exposes
+    the interface -- no registry entry, no union to edit.
+    """
+    from cortex.dataset._typing import SurfaceRenderable, as_renderable
+
+    class ThirdPartyView(dataset.Dataview):
+        @property
+        def space(self):
+            raise NotImplementedError
+
+        @property
+        def subject(self):
+            return subj
+
+        @property
+        def vertices(self):
+            return np.zeros((1, 10))
+
+        @property
+        def raw(self):
+            raise NotImplementedError
+
+        def uniques(self, collapse=False):
+            raise NotImplementedError
+
+        def _write_hdf(self, h5, name="data"):
+            raise NotImplementedError
+
+    view = ThirdPartyView()
+    assert as_renderable(view) is view
+    assert isinstance(view, SurfaceRenderable)

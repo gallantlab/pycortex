@@ -177,7 +177,7 @@ Source locations:
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| union aliases and `TypeIs` helpers | `_typing.py` |
+| renderable `Protocol`s and `as_renderable` | `_typing.py` |
 
 `braindata.py` is a compatibility shim: `BrainData`, `VolumeData` and `VertexData`
 are aliases for `ScalarView`, `Volume` and `Vertex`. The aliases preserve
@@ -271,51 +271,63 @@ mask a flattened array matches, which hemisphere a half-length array covered), s
 
 ## Narrowing the grid
 
-`_typing.py` gives consumers both a closed and an open test.
+There is no class meaning "any volumetric view", so `_typing.py` describes the
+*interface* a renderer consumes instead of enumerating the classes that satisfy
+it today:
+
+- `VolumetricRenderable` — `subject`, `xfmname`, `volume`
+- `SurfaceRenderable` — `subject`, `vertices`
+
+Each of the six built-in views satisfies **exactly one**, which is what makes the
+volumetric/surface fork total. `isinstance` against a union member subtracts it
+from the `else` branch, so this is all the narrowing machinery needed:
 
 ```python
-from cortex.dataset import is_volume_view, is_colormapped, space_of, VolumeSpace
-
-if is_volume_view(view):                       # narrows to Volume|Volume2D|VolumeRGB
-    ...
-if isinstance(space_of(view), VolumeSpace):    # also true for spaces added later
-    ...
+def make_flatmap_image(braindata: Renderable, ...):
+    if isinstance(braindata, SurfaceRenderable):
+        data = braindata.vertices          # SurfaceRenderable
+    else:
+        data = braindata.volume            # VolumetricRenderable
 ```
 
-The unions are closed over the built-ins and cannot cover a space that did not
-exist when they were written; `view.space` can.
+No `TypeGuard`, no `TypeIs`, no predicate helpers, and no `typing_extensions`.
+An earlier version of this module had six `TypeIs` predicates over closed unions;
+it turned out an inline `isinstance` against a union narrows both branches by
+itself, and `TypeIs` is only needed to carry that narrowing *across a
+function-call boundary*.
 
-`TypeIs` (PEP 742), not `TypeGuard` (PEP 647). `TypeGuard` narrows the positive
-branch only, so the `else` of a volume/surface fork kept the full six-member union
-and every attribute access in it had to be re-guarded. `TypeIs` subtracts, which
-is what these predicates want -- each narrows to a subtype of its parameter, which
-is exactly `TypeIs`'s domain. Measured on the real fork in `make_flatmap_image`:
+Being structural, this is also open: a view in a space registered by third-party
+code conforms with no union to edit and no registry entry to add.
 
-| | mypy errors |
-| --- | --- |
-| loose signature + `TypeGuard` | 3 |
-| tightened signature + `TypeGuard` | 5 (worse -- the union stops collapsing into `Dataview`) |
-| tightened signature + `TypeIs` | 0 |
+**Protocols are structural; `Dataview` is nominal.** Do not convert a `Dataview`
+to `Renderable` and carry it around — that discards the nominal type, and
+everything downstream expecting a `Dataview` (`get_cmapdict`, `add_curvature`,
+`add_rois`, …) then fails. Instead keep the `Dataview` and apply the protocol
+`isinstance` *inline at the fork*: mypy synthesizes an intersection,
+`<subclass of "Dataview" and "VolumetricRenderable">`, so both the structural and
+the nominal members stay available. `as_renderable()` is applied only at the one
+call that genuinely needs nothing but the interface.
 
-The two only pay off together: `TypeIs` with an `Any` parameter gains nothing,
-since subtracting from `Any` yields `Any`.
+Two limits:
 
-That is why the predicates take `BuiltinView` rather than `Any`, and why code
-holding a bare `Dataview` converts once with `as_builtin_view()`. `TypeIs` is
-imported under `TYPE_CHECKING`: it only reached the standard library in 3.13 and
-this package supports 3.10, but `from __future__ import annotations` means the
-annotation is never evaluated at runtime, so `typing_extensions` stays a
-`python_version < '3.11'` dependency instead of becoming unconditional. The one
-consequence is that `typing.get_type_hints()` on these predicates raises
-`NameError`; nothing in pycortex or its docs build calls it on them.
+- `runtime_checkable` checks only for the *presence* of the named attributes. It
+  cannot tell a property from a method, so the runtime check is exactly as strong
+  as the `hasattr` it replaces — the static check carries the weight. Statically
+  mypy does compare types, and correctly rejects `Vertex` from
+  `VolumetricRenderable` because its `volume` is a *method*.
+- Protocol members must be declared as the classes declare them. `subject` is a
+  read-only property, so `subject: str` in a protocol fails with *"expected
+  settable variable, got read-only attribute"*. `SupportsColormap` declares
+  `cmap`/`vmin`/`vmax` as mutable attributes, which is what they are.
 
-`is_colormapped` exists rather than just `is_scalar_view` because the test it
-replaced, `hasattr(braindata, "cmap")`, matched 2D views as well as scalar ones.
+`SupportsColormap` covers what was `hasattr(braindata, "cmap")` — true for the
+scalar *and* 2D views, false for RGB, so a scalar-only test is not equivalent.
 
-Only the *rows* of the grid get union aliases (`VolumeLike`, `VertexLike`, and
-`BuiltinView` for both). The columns are already classes -- `ScalarView`,
-`Dataview2D[Any]`, `DataviewRGB[Any]` -- so the predicates spell their column
-unions inline rather than naming them twice.
+`Volume2D.volume` exists to make the fork total. It mirrors `Vertex2D.vertices`,
+which always had it; without it `Volume2D` satisfied neither protocol and every
+consumer special-cased it to reach `.raw.volume`. Like `VolumeRGB.volume` it
+returns uint8 RGBA, not the scalar array `Volume.volume` returns — the same split
+`vertices` already had across `Vertex` and `Vertex2D`.
 
 ## The wire format is a hard interface
 

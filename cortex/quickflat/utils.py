@@ -11,12 +11,12 @@ import numpy.typing as npt
 from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
-from ..dataset._typing import BuiltinView, is_vertex_view
+from ..dataset._typing import Renderable, SurfaceRenderable
 from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata: BuiltinView, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
+def make_flatmap_image(braindata: Renderable, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -46,30 +46,25 @@ def make_flatmap_image(braindata: BuiltinView, height: int=1024, recache: bool=F
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
     
-    # Was `not hasattr(braindata, "xfmname")`, which no checker can narrow. For
-    # code that must survive a newly registered space, test the space instead:
-    # isinstance(braindata.space, VolumeSpace).
-    if is_vertex_view(braindata):
+    # Was `not hasattr(braindata, "xfmname")`, which no checker can narrow.
+    # isinstance against a union member subtracts it from the else branch, so
+    # `braindata` is VolumetricRenderable there with no further guarding. Being a
+    # protocol rather than a class union, this also accepts views in spaces
+    # registered by third-party code.
+    if isinstance(braindata, SurfaceRenderable):
         pixmap = get_flatcache(braindata.subject,
                                None,
                                height=height,
                                recache=recache,
                                **kwargs)
-        
-        if isinstance(braindata, dataset.Vertex2D):
-            data = braindata.raw.vertices
-        else:
-            data = braindata.vertices
+        data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject,
                                braindata.xfmname,
                                height=height,
                                recache=recache,
                                **kwargs)
-        if isinstance(braindata, dataset.Volume2D):
-            data = braindata.raw.volume
-        else:
-            data = braindata.volume
+        data = braindata.volume
 
     if data.shape[0] > 1:
         raise ValueError("Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data")

@@ -310,6 +310,20 @@ class Volume2D(Dataview2D[Volume]):
     def xfmname(self) -> str:
         return self.dim1.xfmname
 
+    @property
+    def volume(self) -> npt.NDArray[np.uint8]:
+        """5-dimensional volume (t, z, y, x, rgba) of colormapped data.
+
+        Mirrors :attr:`Vertex2D.vertices`, which has always done this. Its
+        absence was an asymmetry that forced every consumer to special-case
+        ``Volume2D`` and reach for ``.raw.volume`` itself.
+
+        Note the uint8 RGBA result matches :attr:`VolumeRGB.volume` rather than
+        :attr:`Volume.volume`, which is scalar -- the same split ``vertices``
+        already has across :class:`Vertex` and :class:`Vertex2D`.
+        """
+        return self.raw.volume
+
     def __repr__(self) -> str:
         return "<2D volumetric data for (%s, %s)>" % (
             self.dim1.subject,

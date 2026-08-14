@@ -40,16 +40,11 @@ from ._space import (
     registered_spaces,
 )
 from ._typing import (
-    BuiltinView,
-    VertexLike,
-    VolumeLike,
-    as_builtin_view,
-    is_2d_view,
-    is_colormapped,
-    is_rgb_view,
-    is_scalar_view,
-    is_vertex_view,
-    is_volume_view,
+    Renderable,
+    SupportsColormap,
+    SurfaceRenderable,
+    VolumetricRenderable,
+    as_renderable,
     space_of,
 )
 from .braindata import BrainData, VertexData, VolumeData
@@ -85,16 +80,11 @@ __all__ = [
     "SurfaceSpace",
     "register_space",
     "registered_spaces",
-    # narrowing helpers for the 2x3 grid
-    "VolumeLike",
-    "VertexLike",
-    "BuiltinView",
-    "as_builtin_view",
-    "is_volume_view",
-    "is_vertex_view",
-    "is_scalar_view",
-    "is_colormapped",
-    "is_2d_view",
-    "is_rgb_view",
+    # structural types describing what renderers need from a view
+    "VolumetricRenderable",
+    "SurfaceRenderable",
+    "Renderable",
+    "SupportsColormap",
+    "as_renderable",
     "space_of",
 ]
