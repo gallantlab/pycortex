@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import tempfile
-from typing import Iterator, Optional, Union, overload, Literal
+from typing import Iterator, Literal, Optional, Union, overload
+
+import h5py
 import numpy as np
 import numpy.typing as npt
-import h5py
+from h5py._hl.files import File
 
 from ..database import db
 from ..xfm import Transform
-
-from .braindata import _hdf_write
+from ._hdf import _hdf_write
+from .views import Dataview, Vertex, Volume, VolumeRGB, _from_hdf_data
 from .views import normalize as _vnorm
-from .views import Dataview, Vertex, Volume, _from_hdf_data
-from h5py._hl.files import File
 
 class Dataset:
     """
@@ -26,6 +28,12 @@ class Dataset:
         self.views: dict[str, Dataview] = {}
 
         self.append(**kwargs)
+
+    def _require_h5(self) -> h5py.File:
+        """The backing file, or a clear error instead of a ``None`` subscript."""
+        if self.h5 is None:
+            raise IOError("This Dataset is not backed by a file")
+        return self.h5
 
     def append(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> "Dataset":
         """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
@@ -90,7 +98,7 @@ class Dataset:
         ds = cls()
         ds.h5 = h5py.File(filename, 'r')
 
-        db.auxfile = ds
+        db.auxfile = ds  # side channel: see Database.auxfile
 
         #detect stray datasets which were not written by pycortex
         for name, node in ds.h5.items():
@@ -147,8 +155,8 @@ class Dataset:
                         xfms.add((data.subject, data.xfmname))
                         #custom masks are already packaged by default
                         #only string masks need to be packed
-                        if isinstance(data._mask, str):
-                            masks.add((data.subject, data.xfmname, data._mask))
+                        if data.mask_name is not None:
+                            masks.add((data.subject, data.xfmname, data.mask_name))
 
             _pack_subjs(self.h5, subjs)
             _pack_xfms(self.h5, xfms)
@@ -165,6 +173,12 @@ class Dataset:
 
     @overload
     def get_surf(self, subject: str, type: str, hemi: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+
+    # Fallback for callers whose `hemi` and `merge` are both dynamic (e.g.
+    # Database.get_surf forwarding to an auxfile); the return type collapses to
+    # the union because neither branch can be selected statically.
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh'], merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
 
     def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         pts: npt.NDArray[np.floating]
@@ -184,7 +198,7 @@ class Dataset:
                 ppts, _     = self.get_surf(subject, 'pia', hemi)
                 return (wpts + ppts) / 2, polys
 
-            group = self.h5['subjects'][subject]['surfaces'][type][hemi]
+            group = self._require_h5()['subjects'][subject]['surfaces'][type][hemi]
             pts, polys = group['pts'][:].copy(), group['polys'][:].copy()
             if nudge:
                 if hemi == 'lh':
@@ -197,21 +211,21 @@ class Dataset:
 
     def get_xfm(self, subject: str, xfmname: str) -> Transform:
         try:
-            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]
+            group: h5py.Group = self._require_h5()['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
     def get_mask(self, subject: str, xfmname: str, maskname: str):
         try:
-            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
+            group: h5py.Group = self._require_h5()['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
         except (KeyError, TypeError):
             raise IOError('Mask not found in package')
 
     def get_overlay(self, subject: str, type: str='rois', **kwargs) -> tempfile._TemporaryFileWrapper:
         try:
-            group: h5py.Group = self.h5['subjects'][subject]
+            group: h5py.Group = self._require_h5()['subjects'][subject]
             if type == "rois":
                 tf = tempfile.NamedTemporaryFile()
                 tf.write(group['rois'][0])
@@ -241,9 +255,11 @@ def normalize(data: Dataview) -> Dataview: ...
 def normalize(data: Union[Dataset, dict, str]) -> Dataset: ...
 
 @overload
-def normalize(data: tuple) -> Union[Vertex, Volume]: ...
+def normalize(data: tuple) -> Union[Vertex, Volume, VolumeRGB]: ...
 
-def normalize(data: Union[DatasetLike, Dataview, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
+def normalize(
+    data: Union[DatasetLike, Dataview, tuple],
+) -> Union[Dataset, Dataview, Vertex, Volume, VolumeRGB]:
     if isinstance(data, (Dataset, Dataview)):
         return data
     elif isinstance(data, dict):
