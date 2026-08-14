@@ -34,7 +34,7 @@ JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
 
 
 @overload
-def normalize(data: tuple[Any, Any, Any]) -> Volume: ...
+def normalize(data: tuple[Any, Any, Any]) -> Union[Volume, VolumeRGB]: ...
 
 
 @overload
@@ -45,7 +45,7 @@ def normalize(data: tuple[Any, Any]) -> Vertex: ...
 def normalize(data: Dataview) -> Dataview: ...
 
 
-def normalize(data: Union[Dataview, tuple]) -> Union[Volume, Vertex, Dataview]:
+def normalize(data: Union[Dataview, tuple]) -> Union[Volume, VolumeRGB, Vertex, Dataview]:
     if isinstance(data, tuple):
         if len(data) == 3:
             if data[0].dtype == np.uint8:
@@ -224,7 +224,6 @@ class Dataview:
     def priority(self, value):
         self.attrs["priority"] = value
 
-    #def to_json(self, simple: bool=False) -> dict[str, JSON]:
     def to_json(self, simple: bool=False) -> DataviewJSON:
         if simple:
             return dict()

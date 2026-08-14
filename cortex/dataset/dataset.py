@@ -232,6 +232,8 @@ class Dataset:
 
         return Dataset(**ds)
 
+DatasetLike = Union[Dataset, dict, str]
+
 @overload
 def normalize(data: Dataview) -> Dataview: ...
 
@@ -241,7 +243,7 @@ def normalize(data: Union[Dataset, dict, str]) -> Dataset: ...
 @overload
 def normalize(data: tuple) -> Union[Vertex, Volume]: ...
 
-def normalize(data: Union[Dataset, Dataview, dict, str, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
+def normalize(data: Union[DatasetLike, Dataview, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
     if isinstance(data, (Dataset, Dataview)):
         return data
     elif isinstance(data, dict):
