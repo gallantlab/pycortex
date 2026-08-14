@@ -171,17 +171,29 @@ def add_cutdata(fname: str, braindata: Union[dataset.Dataset, dataset.Dataview],
         for view_name, data in braindata.views.items():
             add_cutdata(fname, data, name=view_name, projection=projection, mesh=mesh)
         return
-    braindata = dataset.normalize(braindata)
-    if not isinstance(braindata, dataset.braindata.VertexData):
-        mapped = braindata.map(projection)
+    view = dataset.normalize(braindata)
+    # This samples a single colormap per vertex, so it only ever worked for the
+    # scalar views: the 2D and RGB views have no `.map` and no single cmap.
+    if isinstance(view, dataset.Vertex):
+        mapped = view
+    elif isinstance(view, dataset.Volume):
+        mapped = view.map(projection)
     else:
-        mapped = braindata
+        raise TypeError(
+            "add_cutdata needs a Volume or Vertex, not %s: 2D and RGB views "
+            "carry no single colormap to sample vertex colours from"
+            % type(view).__name__
+        )
     left = mapped.left
     right = mapped.right
 
-    cmap = utils.get_cmap(braindata.cmap)
-    vmin = braindata.vmin
-    vmax = braindata.vmax
+    # Volume.map copies cmap/vmin/vmax onto the mapped Vertex, so reading them
+    # from `mapped` gives the same values the caller's view carried.
+    cmap = utils.get_cmap(mapped.cmap)
+    # Never None: Volume/Vertex resolve these from data percentiles at init.
+    assert mapped.vmin is not None and mapped.vmax is not None
+    vmin = mapped.vmin
+    vmax = mapped.vmax
     lcolor = cmap((left - vmin) / (vmax - vmin))[:,:3]
     rcolor = cmap((right - vmin) / (vmax - vmin))[:,:3]
 

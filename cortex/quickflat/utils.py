@@ -11,6 +11,7 @@ import numpy.typing as npt
 from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
+from ..dataset._typing import is_vertex_view
 from ..database import db
 from ..options import config
 
@@ -45,7 +46,10 @@ def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
     
-    if not hasattr(braindata, "xfmname"):
+    # Was `not hasattr(braindata, "xfmname")`, which no checker can narrow. For
+    # code that must survive a newly registered space, test the space instead:
+    # isinstance(braindata.space, VolumeSpace).
+    if is_vertex_view(braindata):
         pixmap = get_flatcache(braindata.subject,
                                None,
                                height=height,
