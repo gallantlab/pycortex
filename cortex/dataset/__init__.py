@@ -20,11 +20,11 @@ the restructuring options that were considered.
 
 from __future__ import annotations
 
-from .braindata import BrainData, VertexData, VolumeData
-from .dataset import Dataset, DatasetLike, normalize
-from .view2D import Dataview2D, Vertex2D, Volume2D
-from .viewRGB import Colors, DataviewRGB, VertexRGB, VolumeRGB
-from .views import (
+# Import order matters. `views` resolves the circular dependency on `viewRGB` and
+# `view2D` with deferred imports at the bottom of its own module, so it has to be
+# imported first -- anything that reaches `view2D`/`viewRGB` before then (such as
+# `_typing`) would see a partially initialised module.
+from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
     ScalarView,
@@ -32,6 +32,29 @@ from .views import (
     Volume,
     _from_hdf_data,
 )
+from ._space import (
+    BrainSpace,
+    SurfaceSpace,
+    VolumeSpace,
+    register_space,
+    registered_spaces,
+)
+from ._typing import (
+    ScalarLike,
+    VertexLike,
+    VolumeLike,
+    is_2d_view,
+    is_colormapped,
+    is_rgb_view,
+    is_scalar_view,
+    is_vertex_view,
+    is_volume_view,
+    space_of,
+)
+from .braindata import BrainData, VertexData, VolumeData
+from .dataset import Dataset, DatasetLike, normalize
+from .view2D import Dataview2D, Vertex2D, Volume2D
+from .viewRGB import Colors, DataviewRGB, VertexRGB, VolumeRGB
 
 __all__ = [
     # the six public view classes
@@ -55,4 +78,21 @@ __all__ = [
     "BrainData",
     "VolumeData",
     "VertexData",
+    # spaces -- the open axis
+    "BrainSpace",
+    "VolumeSpace",
+    "SurfaceSpace",
+    "register_space",
+    "registered_spaces",
+    # narrowing helpers for the 2x3 grid
+    "VolumeLike",
+    "VertexLike",
+    "ScalarLike",
+    "is_volume_view",
+    "is_vertex_view",
+    "is_scalar_view",
+    "is_colormapped",
+    "is_2d_view",
+    "is_rgb_view",
+    "space_of",
 ]

@@ -1,307 +1,345 @@
 # `cortex.dataset` class hierarchy
 
-Reference for the `Dataview` / `BrainData` object graph, written while adding type
-annotations to the package. See [TYPING_ALTERNATIVES.md](TYPING_ALTERNATIVES.md) for
-restructuring options that were considered and deferred.
+Reference for the `Dataview` object graph. See
+[TYPING_ALTERNATIVES.md](TYPING_ALTERNATIVES.md) for the restructuring options that
+were considered and why this one was chosen.
 
-## The class graph
+## Two axes, two mechanisms
 
-Two unrelated base classes, `BrainData` and `Dataview`, are joined only by multiple
-inheritance in the two concrete scalar views, `Volume` and `Vertex`.
+The six public classes are a 2x3 grid: two **spaces** crossed with three **channel
+layouts**. The two axes are deliberately given different mechanisms.
+
+|  | scalar (1 channel + 1D cmap) | 2D (2 channels + 2D cmap) | RGB (3 channels + alpha) |
+| --- | --- | --- | --- |
+| **volumetric** | `Volume` | `Volume2D` | `VolumeRGB` |
+| **surface** | `Vertex` | `Vertex2D` | `VertexRGB` |
+| *abstract base* | `ScalarView` | `Dataview2D` | `DataviewRGB` |
+
+- **Channel layout is the inheritance axis.** All the shared logic -- colormapping,
+  HDF, JSON, NaN handling, alpha -- lives in the three abstract bases.
+- **Space is a component**, `view.space`, described by a `BrainSpace`. This is the
+  open axis: adding a new kind of brain data means adding a space, not
+  reimplementing the three bases.
+
+There is no multiple inheritance anywhere. `BrainData` and `Dataview` used to be
+unrelated base classes joined only by MI in `Volume` and `Vertex`, and that MI was
+load-bearing: `BrainData.to_json` and `VolumeData.copy` called `super()` methods
+that existed nowhere in their own ancestry, resolving only because `Volume`'s MRO
+threaded through `Dataview`.
 
 ```mermaid
 classDiagram
     direction TB
 
-    class BrainData {
-        <<abstract>>
-        +data: NDArray
-        +subject: str
-        +name: str
-        +uniques()
-        +exp()
-        +to_json()
-        +_write_hdf()
-    }
-    class VolumeData {
-        <<abstract>>
-        +xfmname: str
-        +linear: bool
-        +movie: bool
-        +mask
-        +volume
-        +masked
-        +map()
-        +copy()
-    }
-    class VertexData {
-        <<abstract>>
-        +llen: int
-        +rlen: int
-        +hem: str
-        +vertices
-        +left
-        +right
-        +volume()
-        +copy()
-        +blend_curvature()
-    }
-
     class Dataview {
         <<abstract>>
-        +cmap
-        +vmin
-        +vmax
+        +space: BrainSpace
+        +subject
         +state
         +attrs
         +description
         +priority
-        +raw
-        +copy()
+        +raw()*
+        +uniques()*
         +to_json()
         +get_cmapdict()
+        +_write_view_node()
+        +_write_hdf()*
         +from_hdf()$
     }
-    class Multiview {
-        <<unimplemented>>
-    }
-    class Dataview2D {
+    class ScalarView {
         <<abstract>>
-        +dim1
-        +dim2
+        +data
+        +movie
+        +shape
+        +cmap
+        +vmin
+        +vmax
+        +name
+        +copy()*
+        +exp()
+        +_colormap_to_rgba()
+        +_write_data_hdf()
+        +__add__ __sub__ __neg__ ...
+    }
+    class Dataview2D~ScalarT~ {
+        <<abstract>>
+        +dim1: ScalarT
+        +dim2: ScalarT
+        +cmap
+        +vmin
+        +vmax
         +vmin2
         +vmax2
-        +_cls
+        +copy()
+        +_to_raw()
     }
-    class DataviewRGB {
+    class DataviewRGB~ScalarT~ {
         <<abstract>>
-        +red
-        +green
-        +blue
-        +alpha
-        +_cls
+        +red: ScalarT
+        +green: ScalarT
+        +blue: ScalarT
+        +alpha: ScalarT
+        +copy()
         +color_voxels()$
+        +_nan_mask
     }
 
-    class Volume
-    class Vertex
+    class Volume {
+        +xfmname
+        +linear
+        +mask
+        +mask_name
+        +volume
+        +masked
+        +map()
+        +save_nii()
+        +empty()$
+        +random()$
+    }
+    class Vertex {
+        +llen
+        +rlen
+        +nverts
+        +hem
+        +vertices
+        +left
+        +right
+        +volume()
+        +map()
+        +blend_curvature()
+        +empty()$
+        +random()$
+    }
     class Volume2D
     class Vertex2D
     class VolumeRGB
     class VertexRGB
+    class Multiview {
+        <<unimplemented>>
+    }
 
-    BrainData <|-- VolumeData
-    BrainData <|-- VertexData
-
-    Dataview <|-- Multiview
+    Dataview <|-- ScalarView
     Dataview <|-- Dataview2D
     Dataview <|-- DataviewRGB
+    Dataview <|-- Multiview
 
-    VolumeData <|-- Volume
-    Dataview   <|-- Volume
-    VertexData <|-- Vertex
-    Dataview   <|-- Vertex
-
+    ScalarView <|-- Volume
+    ScalarView <|-- Vertex
     Dataview2D <|-- Volume2D
     Dataview2D <|-- Vertex2D
     DataviewRGB <|-- VolumeRGB
     DataviewRGB <|-- VertexRGB
 ```
 
+```mermaid
+classDiagram
+    direction TB
+    class BrainSpace {
+        <<abstract>>
+        +subject
+        +hdf_key$
+        +coerce()*
+        +is_movie()*
+        +spatial_shape*
+        +wrap()*
+        +to_json()*
+        +write_hdf_attrs()*
+        +view_xfmname*
+        +from_hdf()$*
+        +views()$*
+    }
+    class VolumeSpace {
+        +xfmname
+        +mask
+        +mask_name
+        +mask_spec
+        +linear
+        +unmask()
+    }
+    class SurfaceSpace {
+        +llen
+        +rlen
+        +nverts
+        +hem
+    }
+    BrainSpace <|-- VolumeSpace
+    BrainSpace <|-- SurfaceSpace
+```
+
 Source locations:
 
-| Class | Location | Bases |
-| --- | --- | --- |
-| `BrainData` | `braindata.py:26` | — |
-| `VolumeData` | `braindata.py:136` | `BrainData` |
-| `VertexData` | `braindata.py:379` | `BrainData` |
-| `Dataview` | `views.py:203` | — |
-| `Multiview` | `views.py:408` | `Dataview` |
-| `Volume` | `views.py:422` | `VolumeData`, `Dataview` |
-| `Vertex` | `views.py:524` | `VertexData`, `Dataview` |
-| `Dataview2D` | `view2D.py:15` | `Dataview` |
-| `Volume2D` | `view2D.py:116` | `Dataview2D` |
-| `Vertex2D` | `view2D.py:214` | `Dataview2D` |
-| `DataviewRGB` | `viewRGB.py:79` | `Dataview` |
-| `VolumeRGB` | `viewRGB.py:370` | `DataviewRGB` |
-| `VertexRGB` | `viewRGB.py:673` | `DataviewRGB` |
-| `Dataset` | `dataset.py:17` | — |
-| `Colors` | `viewRGB.py:26` | — |
-| `_masker` | `braindata.py:705` | `Generic[T_masker]` |
+| Class | Location |
+| --- | --- |
+| `Dataview`, `ScalarView`, `Volume`, `Vertex`, `Multiview`, `_masker` | `views.py` |
+| `Dataview2D`, `Volume2D`, `Vertex2D` | `view2D.py` |
+| `DataviewRGB`, `VolumeRGB`, `VertexRGB`, `Colors` | `viewRGB.py` |
+| `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
+| `Dataset` | `dataset.py` |
+| `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
+| union aliases and `TypeGuard` helpers | `_typing.py` |
 
-`Multiview` is dead code: `Multiview.__init__` raises `NotImplementedError` before its only
-assignment (`views.py:413-414`).
+`braindata.py` is a compatibility shim: `BrainData`, `VolumeData` and `VertexData`
+are aliases for `ScalarView`, `Volume` and `Vertex`. The aliases preserve
+`isinstance` exactly -- `isinstance(x, VolumeData)` was only ever true for
+`Volume`, since `Volume2D` and `VolumeRGB` never inherited it. Two module paths are
+pinned by external code and still resolve: `cortex.dataset.views.Vertex`
+(`cortex/database.py`) and `dataset.braindata.VertexData` (`cortex/blender/`).
 
-## The MRO, and why it matters
+## Generics: one covariant TypeVar
 
-`BrainData` declares no base class, but `BrainData.__init__` calls `super().__init__(**kwargs)`
-(`braindata.py:53`) and `BrainData.to_json` calls `super().to_json(...)` (`braindata.py:103`).
-Those calls only resolve because of the multiple inheritance in `Volume`/`Vertex`:
+`Dataview2D` and `DataviewRGB` are generic in their channel type:
 
-```mermaid
-flowchart LR
-    Volume --> VolumeData --> BrainData --> Dataview --> object
+```python
+ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
+
+class Volume2D(Dataview2D[Volume]): ...
+class VolumeRGB(DataviewRGB[Volume]): ...
 ```
 
-So `BrainData.to_json`'s `super()` lands on `Dataview.to_json`. Read on its own, `BrainData`
-appears to call a method that does not exist anywhere in its ancestry. The same applies to
-`VolumeData.copy` (`braindata.py:311`) and `VertexData.copy` (`braindata.py:491`), whose
-`super().copy(...)` reaches `Dataview.copy` (`views.py:239`); and to `Volume.raw`
-(`views.py:509`) and `Vertex.raw` (`views.py:595`), whose `super().raw` reaches
-`Dataview.raw`.
+So `Volume2D.dim1` is a `Volume` and `VertexRGB.alpha` is a `Vertex` without either
+class re-declaring anything. That last one is why the TypeVar earns its keep: **a
+property's return type cannot be narrowed by re-annotation, only by re-implementing
+the property.** `alpha` used to exist twice, ~25 near-identical lines in each RGB
+class, purely because of that.
 
-This is the central difficulty for a static type checker. Before the annotation pass,
-`Dataview.raw` carried a TODO saying exactly this:
+Covariance is sound here because the channels are read-only properties backed by
+private fields, set once in `__init__`. It buys off the usual generics tax:
+`Dataview2D[ScalarView]` accepts a `Volume2D`, which an invariant parameter would
+reject.
 
-> `# TODO: self.data relies on BrainData. Would need common inheritance for this to work.`
+Two limits worth knowing rather than discovering:
 
-It has been replaced by a `cast` to `ScalarDataview` and an explanatory comment
-(`views.py:395-397`), but the underlying gap is unchanged -- see
-[TYPING_ALTERNATIVES.md](TYPING_ALTERNATIVES.md) option B for the "common inheritance" the
-TODO was asking for. Three other comments record the same gap: `dataset.py:23` (*"should be
-BrainData & Dataview, or just Dataview"*), `braindata.py:705` (*"should be braindata +
-dataview"*), and `views.py:196` (*"is this actually from BrainData?"*).
+- mypy allows a covariant TypeVar in `__init__` parameters and in return position,
+  but **not in ordinary method parameters**. The `alpha` setter therefore takes the
+  base `ChannelLike`, not `ScalarT`.
+- `isinstance(x, DataviewRGB[Volume])` is a runtime `TypeError`. Unsubscripted works
+  and narrows to `DataviewRGB[Any]`, which is what the back-compat aliases rely on.
 
-## The 2x3 grid the class names imply
+Narrowing a **bare annotation** in a subclass is accepted by mypy; narrowing an
+**assigned** ClassVar is not. That asymmetry is why `space` is exposed as a
+read-only property over a narrowed private `_space`, and it is exactly what made
+the old `_cls` untypeable.
 
-The concrete classes form a grid, but only its columns exist as classes. There is no type
-meaning "any volumetric view". Consumers used to fall back on duck-typing for this
-(`if not hasattr(braindata, "xfmname")` in `../quickflat/utils.py`), which no type checker
-can narrow; they now use the `TypeIs` helpers described below.
+One thing the type system cannot express here: nothing stops
+`DataviewRGB[Vertex]` from being declared with a `VolumeSpace`. Tying the space to
+the channel would need higher-kinded types, so it stays a runtime constructor
+check.
 
-```mermaid
-flowchart TB
-    subgraph scalar["scalar (has .data)"]
-        Volume
-        Vertex
-    end
-    subgraph twod["2D (two channels)"]
-        Volume2D
-        Vertex2D
-    end
-    subgraph rgb["RGB (three channels + alpha)"]
-        VolumeRGB
-        VertexRGB
-    end
+## Adding a new kind of brain data
 
-    Volume -.volumetric.- Volume2D -.- VolumeRGB
-    Vertex -.surface.- Vertex2D -.- VertexRGB
+Four declarations. The three bases supply everything else.
+
+```python
+@register_space
+class MySpace(BrainSpace):
+    hdf_key = "myspace"
+    def coerce(self, data): ...           # validate; record per-array geometry
+    def is_movie(self, data): ...         # does it have a leading time axis
+    @property
+    def spatial_shape(self): ...
+    def wrap(self, data, **kw): ...       # build a MyView over `data`
+    def to_json(self): ...
+    def write_hdf_attrs(self, h5, node): ...
+    @property
+    def view_xfmname(self): ...           # slot 7 of the /views record
+    @classmethod
+    def from_hdf(cls, attrs, *, subject, xfmname, mask): ...
+    @classmethod
+    def views(cls):
+        return SpaceViews(scalar=MyView, twod=MyView2D, rgb=MyViewRGB)
+
+class MyView(ScalarView): ...             # + space-specific accessors
+class MyView2D(Dataview2D[MyView]): ...   # + a constructor forwarding space kwargs
+class MyViewRGB(DataviewRGB[MyView]): ...
 ```
 
-|  | scalar | 2D | RGB |
-| --- | --- | --- | --- |
-| **volumetric** — has `xfmname`, `.volume` | `Volume` | `Volume2D` | `VolumeRGB` |
-| **surface** — has `.vertices`, `.left`/`.right` | `Vertex` | `Vertex2D` | `VertexRGB` |
-| | *base class* `Dataview` | `Dataview2D` | `DataviewRGB` |
+`register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
+and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
+matters: the registry is consulted in registration order and the first space whose
+`from_hdf` returns non-`None` wins. `SurfaceSpace` is deliberately last, because it
+accepts anything without a transform -- that is how legacy files, which carry no
+space discriminator, are detected. A new space should test for something it writes
+itself in `write_hdf_attrs`, and will be consulted ahead of the built-ins.
 
-The row axis is expressed in `_typing.py` as the `VolumeLike` / `VertexLike` unions plus the
-`is_volume_view` / `is_vertex_view` narrowing helpers.
+`space.wrap()` is the abstraction that keeps the rest space-agnostic: the channel
+resolvers in `view2D.py` and `viewRGB.py`, and all three HDF factories, build views
+through it and never name `Volume` or `Vertex`. A space is per-view, not shared:
+`coerce()` records facts that depend on the particular array bound to it (which
+mask a flattened array matches, which hemisphere a half-length array covered), so
+`wrap()` uses `self` only as a template of parameters.
 
-## Factories and runtime dispatch
+## Narrowing the grid
 
-Several functions return a class chosen at runtime. These are the hardest parts of the
-package to type precisely.
+`_typing.py` gives consumers both a closed and an open test.
 
-```mermaid
-flowchart TB
-    n["views.normalize(data)"] -->|"3-tuple, uint8"| VolumeRGB
-    n -->|"3-tuple"| Volume
-    n -->|"2-tuple"| Vertex
-    n -->|"Dataview"| passthrough["(passthrough)"]
+```python
+from cortex.dataset import is_volume_view, is_colormapped, space_of, VolumeSpace
 
-    dn["dataset.normalize(data)"] -->|"dict"| Dataset
-    dn -->|"str"| Dataset2["Dataset.from_file"]
-    dn -->|"otherwise"| n
-
-    fd["_from_hdf_data(node)"] -->|"uint8, trailing dim 3/4, no xfmname"| VertexRGB
-    fd -->|"uint8, trailing dim 3/4"| VolumeRGB2["VolumeRGB"]
-    fd -->|"no xfmname"| Vertex2["Vertex"]
-    fd -->|"otherwise"| Volume2["Volume"]
-
-    fv["_from_hdf_view(node)"] -->|"str"| fd
-    fv -->|"len 2"| c2["Vertex2D or Volume2D"]
-    fv -->|"len 4"| c4["VertexRGB or VolumeRGB"]
-
-    hdf["Dataview.from_hdf"] -->|"len(data) == 1"| fv
-    hdf -->|"otherwise"| ni["NotImplementedError"]
+if is_volume_view(view):                       # narrows to Volume|Volume2D|VolumeRGB
+    ...
+if isinstance(space_of(view), VolumeSpace):    # also true for spaces added later
+    ...
 ```
 
-| Factory | Location | Declared return | Notes |
-| --- | --- | --- | --- |
-| `views.normalize` | `views.py:42` | overloaded | The uint8 3-tuple branch (`views.py:58`) returns `VolumeRGB`; the overloads distinguish only by tuple length, so this branch is not expressible. |
-| `dataset.normalize` | `dataset.py:247` | overloaded | The `tuple` overload (`dataset.py:254`) says `Vertex | Volume` but delegates to `views.normalize`, which can also return `VolumeRGB`. |
-| `_from_hdf_data` | `views.py:72` | unannotated | Four possible classes. Filters kwargs to `description`/`state`/`priority` on the RGB path because RGB constructors take no `cmap`/`vmin`/`vmax`. |
-| `_from_hdf_view` | `views.py:133` | unannotated | Binds `cls` to a class object at runtime (`views.py:145`, `:164`) and calls it with kwargs that differ between the candidates. |
-| `Dataview.from_hdf` | `views.py:291` | unannotated | Builds `views` then unconditionally raises (`views.py:330-335`); that code is dead but still executed. |
-| `VolumeData.empty` / `.random` | `braindata.py:182` / `:209` | `Self` | Genuine `cls(...)` factories. |
-| `VertexData.empty` / `.random` | `braindata.py:408` / `:435` | unannotated | Same, unannotated. |
-| `Dataset.from_file` | `dataset.py:73` | `Dataset` | Populates `views` from both `_from_hdf_data` and `Dataview.from_hdf`; sets the global `db.auxfile` as a side channel (`dataset.py:95`, `:117`). |
+The unions are closed over the built-ins and cannot cover a space that did not
+exist when they were written; `view.space` can.
 
-## Conditional attributes
+`TypeGuard`, not `TypeIs`: `TypeIs` only reached the standard library in 3.13 and
+this package supports 3.10. The practical difference is that `TypeGuard` narrows
+the positive branch only. Adopting `TypeIs` would also force `typing_extensions`
+from a `python_version < '3.11'` marker to an unconditional runtime dependency.
 
-Members that exist only on some code paths. Each is a place where a checker cannot assume
-presence, and where `hasattr` / `try: ... except AttributeError` appears at runtime.
+`is_colormapped` exists rather than just `is_scalar_view` because the test it
+replaced, `hasattr(braindata, "cmap")`, matched 2D views as well as scalar ones.
 
-| Attribute | Present when | Set at |
-| --- | --- | --- |
-| `VolumeData.mask` | only when `self.linear` | `braindata.py:254`, `:259`; the `else` branch at `:238` never assigns it |
-| `VolumeData._mask` | always, but is `str` when auto-found or named, `NDArray[bool]` when passed as an array, `None` otherwise | `braindata.py:254-264` |
-| `Dataview._nan_mask` | only on RGB views built by `Volume.raw` / `Vertex.raw` | declared `views.py:204`, assigned only `views.py:517`, `:604`; read via `getattr(..., None)` at `viewRGB.py:123` |
-| `cmap`, `vmin`, `vmax` | **absent on all RGB views** — `DataviewRGB.__init__` never calls `Dataview.__init__` | `views.py:229-231`; the absence drives `except AttributeError` at `views.py:282` and `:345` |
-| `VertexData.hem` | always, one of `"left"`, `"right"`, `"both"` | `braindata.py:475`, `:481`, `:487` |
-| `attrs["priority"]` | defaulted only if absent | `views.py:234`, `view2D.py:36`, `viewRGB.py:94` |
-| `Dataset.h5` | `None` unless loaded from file | `dataset.py:26`, set at `dataset.py:73`; indexed without a `None` check at `dataset.py:190`, `:204`, `:212`, `:220` |
+## The wire format is a hard interface
 
-## Typing hazards
+`webgl/resources/js/dataset.js` dispatches **structurally**; no Python class name
+reaches the browser.
 
-Constructs in this package that static analysis cannot follow.
+| JS test | Meaning |
+| --- | --- |
+| `mosaic === undefined` | surface data |
+| `json.data[i] instanceof Array` | 2D view |
+| `json.raw` | RGB, 4-channel uint8 texture path |
+| `json.vmin[0] instanceof Array` | 2D ranges |
 
-- **Dynamic operator injection.** `BrainData._add_numpy_methods` (`braindata.py:113-132`),
-  invoked at import time (`braindata.py:134`), `setattr`s nine dunders
-  (`__add__`, `__sub__`, `__mul__`, `__floordiv__`, `__truediv__`, `__div__`, `__pow__`,
-  `__neg__`, `__abs__`). `vol + 1` is therefore unresolvable statically. Note also that
-  `__neg__` and `__abs__` are generated with the same binary `*args` signature as the rest.
-- **`Dataset.__getattr__`** (`dataset.py:48`) returns `self.views[attr]` for any name, so
-  every attribute access on a `Dataset` type-checks, including typos.
-- **`_cls` unbound dispatch.** `DataviewRGB._cls` (`viewRGB.py:82`) and the `Dataview2D`
-  subclasses' `_cls` (`view2D.py:152`, `:247`) hold a class object that is then called
-  unbound: `self._cls._write_hdf(self.red, h5)` (`viewRGB.py:132`), `view2D.py:45`. This is
-  deliberate — it calls the `VolumeData` implementation, skipping the `Dataview` half that
-  `Volume._write_hdf` would add. `Dataview2D` uses `_cls` without declaring it.
-- **`blend_curvature = VertexData.blend_curvature`** (`view2D.py:248`, `viewRGB.py:742`,
-  both commented *"hacky inheritance"*) copies an unbound `VertexData` method onto classes
-  that are not `VertexData`. These used to read `_cls.blend_curvature`; they now name
-  `VertexData` directly, since `_cls` is declared `type[BrainData]`, which has no such
-  method. Same object at runtime.
-- **`raw` has two incompatible meanings.** `Dataview.raw` (`views.py:382`) returns
-  `tuple[NDArray[uint8], NDArray[bool]]`, but all six concrete subclasses override it to
-  return an RGB *object*: `views.py:504`, `:591`, `view2D.py:190`, `:282`, `viewRGB.py:669`,
-  `:941`. The tuple form is really a private helper consumed via `super().raw`.
-- **`volume` is a property on one class and a method on another.** `VolumeData.volume`
-  (`braindata.py:319`) and `VolumeRGB.volume` (`viewRGB.py:624`) are properties;
-  `VertexData.volume(xfmname, ...)` (`braindata.py:503`) is a method.
-- **`left` / `right` mean different things.** `VertexData.left`/`right`
-  (`braindata.py:574`, `:583`) slice the raw data; `VertexRGB.left`/`right`
-  (`viewRGB.py:922`, `:926`) slice uint8 RGBA and have a different shape.
-- **`alpha` getter and setter disagree.** `VolumeRGB.alpha` returns `Volume`
-  (`viewRGB.py:581`) but accepts `Optional[NDArray | Volume]` (`viewRGB.py:605`); same for
-  `VertexRGB` (`viewRGB.py:859`, `:883`).
-- **Attribute narrowing in subclasses.** `dim1`/`dim2` are declared `Dataview`
-  (`view2D.py:22-23`) and narrowed to `Volume`/`Vertex` (`view2D.py:153`, `:249`);
-  `red`/`green`/`blue` likewise (`viewRGB.py:83-85` narrowed at `:442`, `:743`).
-- **`Dataview2D.__init__` does not call `super().__init__()`** — it duplicates the
-  `Dataview.__init__` body (`view2D.py:28-38`), which also means it skips the
-  direct-instantiation guard at `views.py:226`.
-- **`DataviewRGB.__init__` reads `self.red` before assigning it** (`viewRGB.py:93`); the
-  subclass constructors assign the channels first and then call `super().__init__()`
-  (`viewRGB.py:577`, `:855`).
-- **Circular imports resolved at the bottom of the file.** `views.py:664-665` imports
-  `viewRGB` and `view2D` after the class bodies that annotate with `VolumeRGB`/`VertexRGB`;
-  this works only because of `from __future__ import annotations` at `views.py:1`.
+`module.makeFrom(dvx, dvy)` also synthesizes a 2D view client-side. The eight-slot
+`/views` record and the `to_json` key shapes must therefore be preserved exactly,
+including the `"null"` written into slots 2-4 for RGB views. Any change here should
+be checked by diffing the saved HDF and `to_json()` output before and after: a
+shape change breaks the viewer silently rather than noisily.
 
-## Known bug: `mapper.py:65`
+Slot layout, written by `Dataview._write_view_node`:
 
-`Mapper.__call__` (`../mapper/mapper.py:60`) does:
+| Slot | Contents |
+| --- | --- |
+| 0 | data node name(s); a nested list means a 2D or RGB view |
+| 1 | description |
+| 2 | `[cmap]`, or `"null"` for RGB |
+| 3 | `[vmin]`, or `[[vmin, vmin2]]` for 2D, or `"null"` for RGB |
+| 4 | `[vmax]`, likewise |
+| 5 | state |
+| 6 | attrs |
+| 7 | `space.view_xfmname` -- `[xfmname]` for volumes, `null` for surfaces |
+
+An RGB view built with `alpha=None` writes `null` in the alpha position of slot 0
+rather than a synthesized fully-opaque channel, which is what makes
+`_from_hdf_view`'s `data[3] is not None` branch reachable.
+
+## Numerics note
+
+`ScalarView._resolve_percentiles` keeps `np.percentile`'s `np.float64` rather than
+converting to a Python `float`. Under NEP 50 a numpy scalar is a *strong* operand,
+so `float32_channel -= vmin` computes in float64 and rounds once, where a weak
+Python float computes in float32. The difference is a single LSB on a handful of
+voxels -- but channel names are content hashes, so it silently changes on-disk node
+identity. `np.float64` subclasses `float`, so the annotation still holds.
+
+## Known bug: `mapper.py`
+
+`Mapper.__call__` does:
 
 ```python
 if isinstance(data, dataset.Vertex):
@@ -312,30 +350,30 @@ if isinstance(data, dataset.Vertex):
         left, right = data[..., :llen], data[..., llen:]
 ```
 
-`Vertex.raw` (`views.py:591`) is a property that builds and returns a `VertexRGB`, so it is
-always truthy and the `else` branch is dead code. Every scalar `Vertex` takes the RGB path,
-which indexes as if the data had a trailing channel axis. This looks like a leftover from a
-time when `raw` was a boolean flag. Not fixed here, since correcting it changes runtime
-behaviour and needs a regression test.
+`Vertex.raw` is a property that builds and returns a `VertexRGB`, so it is always
+truthy and the `else` branch is dead. Every scalar `Vertex` takes the RGB path,
+which indexes as if the data had a trailing channel axis. This looks like a
+leftover from a time when `raw` was a boolean flag.
 
-## Changes made by the type-annotation pass
+Not fixed here, because correcting it changes runtime behaviour and needs a
+regression test. It is now visible to mypy: `Vertex.__getitem__` returns `Self`
+rather than `Any`, so the checker reports that the dead branch yields `Vertex`
+objects where arrays are expected.
 
-The annotations were added type-only: no class was added, removed or reparented, and the
-graph above is the current one. Four incidental code changes were made where an expression
-could not be typed as written, none of which alter behaviour on the paths they guard:
+## Other known issues, outside this package
 
-- `DataviewRGB._apply_nan_mask` used `hasattr(alpha, "volume")` to mean "is a volume".
-  Because `volume` is a property on `Volume` but a *method* on `Vertex`, that test was true
-  for both, and `alpha.volume.shape` would have raised `AttributeError` on a `Vertex`. It
-  now uses `isinstance(alpha, Volume)`.
-- `Volume2D.__init__` and `Vertex2D.__init__` tested `isinstance(dim1, self._cls)`. A
-  checker cannot narrow against a variable class, so these now name `VolumeData` /
-  `VertexData` directly -- which is what `Vertex2D` already did for its first argument.
-- `blend_curvature` is copied from `VertexData` by name rather than through `_cls`.
-- `_cls` is declared `ClassVar[type[BrainData]]`, including on `Dataview2D`, which used it
-  in `_write_hdf` without declaring it.
-
-`_typing.py` adds the `VolumeLike` / `VertexLike` / `ScalarDataview` aliases and the
-`is_volume_view` / `is_vertex_view` / `is_rgb_view` / `is_scalar_view` narrowing helpers.
-`ScalarDataview` (`Volume | Vertex`) is the stand-in for the `BrainData & Dataview`
-intersection that several comments in this package ask for.
+- `quickflat/composite.py` reads `dataview.xfmname` then tests `if xfmname is None`
+  to emit a "you seem to have provided vertex data" message -- but `Vertex` has no
+  `xfmname`, so it raises `AttributeError` before reaching the intended
+  `ValueError`.
+- `quickflat/view.py` reads `dataview.xfmname` unguarded on the `with_dropout` path.
+- `webgl/view.py`'s `JSMixer.addData` references `Dataset` and `_convert_dataset`,
+  neither of which exists; it is permanently broken and xfailed.
+- `volume.py`'s `epi2anatspace_fsl` calls `normalize(...).data` then `.subject` on
+  the resulting array. Unreachable -- the function raises `NotImplementedError`
+  first.
+- `Dataview2D.to_json` ignores its `simple` flag. Preserved deliberately: the webgl
+  packer only ever calls `to_json(simple=True)` on the scalar channels yielded by
+  `uniques()`, never on a 2D view.
+- `Database.get_cache` builds its hash from `auxfile.h5.filename`; `md5` needs
+  bytes, so this raised an uncaught `TypeError` until it was given an `.encode()`.

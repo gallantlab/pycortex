@@ -1,6 +1,10 @@
+import os
+import subprocess
+import sys
+import tempfile
+
 import cortex
 import numpy as np
-import tempfile
 import pytest
 
 from cortex import db, dataset
@@ -450,3 +454,129 @@ def test_nan_transparent_volume_raw_alpha_override():
     # Non-NaN positions should reflect the user's alpha
     assert not np.isnan(data[15, 50, 50])
     assert volume[0, 15, 50, 50, 3] > 0
+
+
+@pytest.mark.parametrize(
+    "submodule",
+    [
+        "cortex.dataset._hdf",
+        "cortex.dataset._space",
+        "cortex.dataset._typing",
+        "cortex.dataset.braindata",
+        "cortex.dataset.dataset",
+        "cortex.dataset.view2D",
+        "cortex.dataset.viewRGB",
+        "cortex.dataset.views",
+    ],
+)
+def test_submodule_can_be_imported_first(submodule):
+    """Importing any submodule before the package must not hit a partial module.
+
+    ``views`` breaks its circular dependency on ``viewRGB``/``view2D`` with
+    deferred imports at the bottom of its own module, so import order inside
+    ``cortex/dataset/__init__.py`` is load-bearing: anything reaching
+    ``view2D``/``viewRGB`` before ``views`` has finished sees a partially
+    initialised module. Cheap to get wrong, and invisible to a type checker.
+    """
+    code = "import %s; import cortex.dataset" % submodule
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True
+    )
+    assert result.returncode == 0, (
+        "importing %s first broke the package:\n%s" % (submodule, result.stderr)
+    )
+
+
+def test_alias_isinstance_semantics_are_unchanged():
+    """The pre-restructure names must narrow exactly as they used to.
+
+    ``BrainData``/``VolumeData``/``VertexData`` are now aliases for
+    ``ScalarView``/``Volume``/``Vertex``. That is only safe because
+    ``isinstance(x, VolumeData)`` was never true for ``Volume2D`` or
+    ``VolumeRGB`` -- they did not inherit it.
+    """
+    from cortex.dataset.braindata import BrainData, VertexData, VolumeData
+
+    vol = cortex.Volume(np.zeros(volshape), subj, xfmname)
+    vtx = cortex.Vertex(np.zeros(nverts), subj)
+    v2d = cortex.Volume2D(np.zeros(volshape), np.ones(volshape), subj, xfmname)
+    vrgb = cortex.VolumeRGB(
+        np.zeros(volshape), np.zeros(volshape), np.zeros(volshape), subj, xfmname
+    )
+
+    assert isinstance(vol, VolumeData) and isinstance(vol, BrainData)
+    assert isinstance(vtx, VertexData) and isinstance(vtx, BrainData)
+    assert not isinstance(vol, VertexData)
+    # the crux: the composites are not scalar data
+    assert not isinstance(v2d, VolumeData)
+    assert not isinstance(vrgb, VolumeData)
+    assert not isinstance(v2d, BrainData)
+    assert not isinstance(vrgb, BrainData)
+    # and the composite bases still narrow
+    assert isinstance(v2d, dataset.Dataview2D)
+    assert isinstance(vrgb, dataset.DataviewRGB)
+    assert isinstance(vol, dataset.Dataview)
+
+
+def test_alpha_read_does_not_mutate_the_caller():
+    """Reading ``.alpha`` used to write into a caller-supplied Volume/Vertex."""
+    alpha = cortex.Volume(np.ones(volshape), subj, xfmname, vmin=0, vmax=1)
+    before = alpha.data.copy()
+    view = cortex.VolumeRGB(
+        np.zeros(volshape),
+        np.zeros(volshape),
+        np.zeros(volshape),
+        subj,
+        xfmname,
+        alpha=alpha,
+    )
+    for _ in range(3):
+        view.alpha
+    view.volume
+    assert np.array_equal(alpha.data, before)
+    # and it is memoized, so repeated reads are the same object
+    assert view.alpha is view.alpha
+    # ...but the setter invalidates the memo
+    first = view.alpha
+    view.alpha = np.ones(volshape)
+    assert view.alpha is not first
+
+
+def test_composite_views_have_a_working_copy():
+    """The 2D and RGB families had no working ``copy()`` at all.
+
+    ``Dataview.copy`` splatted ``cmap=``/``vmin=``/``vmax=`` into
+    ``self.__class__(...)``, which their constructors do not accept.
+    """
+    v2d = cortex.Volume2D(np.zeros(volshape), np.ones(volshape), subj, xfmname)
+    vrgb = cortex.VolumeRGB(
+        np.zeros(volshape), np.zeros(volshape), np.zeros(volshape), subj, xfmname
+    )
+    assert isinstance(v2d.copy(), cortex.Volume2D)
+    assert isinstance(vrgb.copy(), cortex.VolumeRGB)
+
+
+def test_vertex2d_survives_an_hdf_round_trip():
+    """Vertex2D used to be silently dropped by Dataset.from_file.
+
+    ``_from_hdf_view`` indexed ``xfmname[0]`` unconditionally, but slot 7 of the
+    view record is null for surface data, and ``from_file`` swallows exceptions
+    via ``traceback.print_exc``.
+    """
+    import tempfile as _tempfile
+
+    ds = cortex.Dataset(
+        v2d=cortex.Vertex2D(np.zeros(nverts), np.ones(nverts), subj),
+        vol2d=cortex.Volume2D(np.zeros(volshape), np.ones(volshape), subj, xfmname),
+    )
+    with _tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, "roundtrip.hdf")
+        ds.save(path)
+        ds.h5.close()
+        loaded = cortex.Dataset.from_file(path)
+        try:
+            assert set(loaded.views) == {"v2d", "vol2d"}
+            assert isinstance(loaded.views["v2d"], cortex.Vertex2D)
+            assert isinstance(loaded.views["vol2d"], cortex.Volume2D)
+        finally:
+            loaded.h5.close()
