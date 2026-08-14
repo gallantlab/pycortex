@@ -20,6 +20,7 @@ import numpy.typing as npt
 from . import options
 from .xfm import Transform
 if TYPE_CHECKING:
+    from cortex.dataset.dataset import Dataset
     from cortex.dataset.views import Vertex
     from cortex.svgoverlay import SVGOverlay
 
@@ -172,7 +173,10 @@ class Database:
     def __init__(self, filestore: str=default_filestore):
         self.filestore = filestore
         self._subjects: Optional[dict[str, SubjectDB]] = None
-        self.auxfile: Optional[Database] = None
+        # Side channel set by Dataset.from_file and cortex.webgl.show: a Dataset
+        # standing in for the filestore, so views can resolve surfaces and
+        # transforms out of the .hdf they were loaded from.
+        self.auxfile: Optional["Dataset"] = None
     
     def __repr__(self) -> str:
         subjs = "\n   ".join(sorted(self.subjects.keys()))
@@ -664,7 +668,11 @@ class Database:
             self.auxfile.get_surf(subject, "fiducial")
             #generate the hashed name of the filename and subject as the directory name
             import hashlib
-            hashname = "pycx_%s"%hashlib.md5(self.auxfile.h5.filename).hexdigest()[-8:]
+            # _require_h5 raises IOError, which the handler below already covers.
+            # md5 needs bytes: passing the str filename raised an uncaught
+            # TypeError, so this path could never have completed.
+            filename = self.auxfile._require_h5().filename
+            hashname = "pycx_%s"%hashlib.md5(filename.encode()).hexdigest()[-8:]
             cachedir = os.path.join(tempfile.gettempdir(), hashname, subject)
         except (AttributeError, IOError):
             try:
