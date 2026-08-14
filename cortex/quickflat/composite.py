@@ -11,6 +11,7 @@ import numpy.typing as npt
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 from .. import dataset
+from ..dataset._typing import VolumeLike, as_builtin_view
 from ..database import db
 from ..options import config
 
@@ -162,11 +163,14 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
     extents : list
         Extents of image [left, right, top, bottom] in figure coordinates
     """
-    dataview = dataset.normalize(braindata)
-    if not isinstance(dataview, dataset.Dataview):
+    normalized = dataset.normalize(braindata)
+    if not isinstance(normalized, dataset.Dataview):
         # Unclear what this means. Clarify error in terms of pycortex classes
         # (please provide a [cortex.dataset.Dataview or whatever] instance)
         raise TypeError('Please provide a Dataview, not a Dataset')
+    # One boundary between "some view" and "a view this renderer understands".
+    # Everything below is typed against the six built-in views.
+    dataview = as_builtin_view(normalized)
     # Generate image (2D array, maybe 3D array)
     im, extents = make_flatmap_image(dataview, recache=recache, pixelwise=pixelwise, sampler=sampler,
                                      height=height, thick=thick, depth=depth, nanmean=nanmean)
@@ -392,7 +396,7 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, fl
 
     return cbar
 
-def add_custom(fig: Figure, dataview: dataset.Volume, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
+def add_custom(fig: Figure, dataview: dataset.Dataview, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
                shape_list: Optional[Sequence[str]]=None, **kwargs):
     """Add a custom data layer
 
@@ -456,7 +460,7 @@ def add_custom(fig: Figure, dataview: dataset.Volume, svgfile: str, layer: str, 
                     zorder=6)
     return img
 
-def add_connected_vertices(fig: Axes, dataview: dataset.Volume, exclude_border_width: Optional[int]=None,
+def add_connected_vertices(fig: Axes, dataview: VolumeLike, exclude_border_width: Optional[int]=None,
                            height: Optional[int]=None, extents: Optional[tuple[float, float, float, float]]=None, recache: bool=False,
                            color: tuple[float, float, float, float]=(1.0, 0.5, 0.1, 0.6), linewidth: float=0.75,
                            alpha: float=1.0, **kwargs) -> LineCollection:

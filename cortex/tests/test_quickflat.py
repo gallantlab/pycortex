@@ -390,3 +390,21 @@ def test_combined_parameters():
         colorbar_location='center',
         nanmean=False
     )
+
+
+def test_with_dropout_on_surface_data_raises_a_clear_error():
+    """Dropout is computed from a transform, so it is volumetric-only.
+
+    ``make_figure`` and ``make_svg`` both read ``dataview.xfmname`` unguarded on
+    this path, so surface data died with an ``AttributeError`` from deep inside
+    rather than a message saying what was wrong.
+    """
+    vtx = cortex.Vertex.random("S1")
+    with pytest.raises(TypeError, match="with_dropout needs volumetric data"):
+        cortex.quickflat.make_figure(vtx, with_dropout=True)
+
+
+def test_with_connected_vertices_on_surface_data_raises_a_clear_error():
+    vtx = cortex.Vertex.random("S1")
+    with pytest.raises(TypeError, match="with_connected_vertices needs volumetric"):
+        cortex.quickflat.make_figure(vtx, with_connected_vertices=True)

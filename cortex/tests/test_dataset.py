@@ -580,3 +580,68 @@ def test_vertex2d_survives_an_hdf_round_trip():
             assert isinstance(loaded.views["vol2d"], cortex.Volume2D)
         finally:
             loaded.h5.close()
+
+
+def test_narrowing_helpers_truth_table():
+    """The ``_typing`` predicates must agree with the attributes they stand for."""
+    from cortex.dataset._typing import (
+        is_2d_view,
+        is_colormapped,
+        is_rgb_view,
+        is_scalar_view,
+        is_vertex_view,
+        is_volume_view,
+        space_of,
+    )
+    from cortex.dataset._space import SurfaceSpace, VolumeSpace
+
+    ones_v, ones_x = np.ones(volshape), np.ones(nverts)
+    views = {
+        "Volume": cortex.Volume(ones_v, subj, xfmname),
+        "Vertex": cortex.Vertex(ones_x, subj),
+        "Volume2D": cortex.Volume2D(ones_v, ones_v * 2, subj, xfmname),
+        "Vertex2D": cortex.Vertex2D(ones_x, ones_x * 2, subj),
+        "VolumeRGB": cortex.VolumeRGB(ones_v, ones_v, ones_v, subj, xfmname),
+        "VertexRGB": cortex.VertexRGB(ones_x, ones_x, ones_x, subj),
+    }
+    for name, view in views.items():
+        volumetric = name.startswith("Volume")
+        assert is_volume_view(view) is volumetric, name
+        assert is_vertex_view(view) is (not volumetric), name
+        assert is_scalar_view(view) is (name in ("Volume", "Vertex")), name
+        assert is_2d_view(view) is name.endswith("2D"), name
+        assert is_rgb_view(view) is name.endswith("RGB"), name
+        # is_colormapped replaces hasattr(view, "cmap"); it must match exactly,
+        # including for the 2D views, which do have a cmap.
+        assert is_colormapped(view) == hasattr(view, "cmap"), name
+        # the open test: works for spaces registered later, unlike the unions
+        expected_space = VolumeSpace if volumetric else SurfaceSpace
+        assert isinstance(space_of(view), expected_space), name
+
+
+def test_as_builtin_view_rejects_an_unregistered_space():
+    """``as_builtin_view`` is the one boundary; it must reject, not defer."""
+    from cortex.dataset._typing import as_builtin_view
+
+    vol = cortex.Volume(np.ones(volshape), subj, xfmname)
+    assert as_builtin_view(vol) is vol
+
+    class Foreign(dataset.Dataview):
+        """A view in a space this renderer has never heard of."""
+
+        @property
+        def space(self):
+            raise NotImplementedError
+
+        @property
+        def raw(self):
+            raise NotImplementedError
+
+        def uniques(self, collapse=False):
+            raise NotImplementedError
+
+        def _write_hdf(self, h5, name="data"):
+            raise NotImplementedError
+
+    with pytest.raises(TypeError, match="not one of the six built-in views"):
+        as_builtin_view(Foreign())

@@ -40,9 +40,14 @@ from ._space import (
     registered_spaces,
 )
 from ._typing import (
+    BuiltinView,
+    ColormappedLike,
+    RGBLike,
     ScalarLike,
+    TwoDLike,
     VertexLike,
     VolumeLike,
+    as_builtin_view,
     is_2d_view,
     is_colormapped,
     is_rgb_view,
@@ -87,7 +92,12 @@ __all__ = [
     # narrowing helpers for the 2x3 grid
     "VolumeLike",
     "VertexLike",
+    "BuiltinView",
     "ScalarLike",
+    "TwoDLike",
+    "RGBLike",
+    "ColormappedLike",
+    "as_builtin_view",
     "is_volume_view",
     "is_vertex_view",
     "is_scalar_view",

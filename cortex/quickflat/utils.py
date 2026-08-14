@@ -11,12 +11,12 @@ import numpy.typing as npt
 from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
-from ..dataset._typing import is_vertex_view
+from ..dataset._typing import BuiltinView, is_vertex_view
 from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
+def make_flatmap_image(braindata: BuiltinView, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
     """Generate flatmap image from volumetric brain data
 
     This 
