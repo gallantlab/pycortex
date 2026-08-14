@@ -4,7 +4,18 @@ import colorsys
 import sys
 import warnings
 from abc import abstractmethod
-from typing import Any, Callable, Iterator, Literal, Optional, Sequence, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    cast,
+)
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -18,6 +29,7 @@ import numpy.typing as npt
 from .. import options
 from ..database import db
 from ._hdf import _hash
+from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .views import (
     Dataview,
     DataviewJSON,
@@ -36,7 +48,9 @@ Color = tuple[ColorDtype, ColorDtype, ColorDtype]  # RGB color
 #: A channel argument: either an array of values or an already-built scalar view.
 ChannelLike = Union[npt.NDArray, ScalarView]
 
-_ScalarT = TypeVar("_ScalarT", bound=ScalarView)
+#: Covariant: the channels are read-only properties, so `DataviewRGB[Volume]` is
+#: safely usable where `DataviewRGB[ScalarView]` is expected.
+ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
 
 
 class Colors:
@@ -107,7 +121,7 @@ def HSV2RGB(color: Union[Color[float], npt.NDArray]) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-class DataviewRGB(Dataview):
+class DataviewRGB(Dataview, Generic[ScalarT]):
     """Abstract base class for RGB data views.
 
     Three scalar channels plus an alpha channel, carrying their own colours
@@ -119,13 +133,19 @@ class DataviewRGB(Dataview):
     The channels are read-only. They are set once here, and keeping them
     read-only is what makes it sound to treat this class as covariant in its
     channel type.
+
+    Generic in the channel type, so ``VolumeRGB.red`` and ``VolumeRGB.alpha`` are
+    ``Volume`` and ``VertexRGB``'s are ``Vertex``, without either subclass
+    re-declaring them. That matters most for ``alpha``: a property's return type
+    cannot be narrowed by re-annotation, only by re-implementing the property,
+    which is why ``alpha`` used to exist twice.
     """
 
     def __init__(
         self,
-        red: ScalarView,
-        green: ScalarView,
-        blue: ScalarView,
+        red: ScalarT,
+        green: ScalarT,
+        blue: ScalarT,
         alpha: Optional[ChannelLike] = None,
         subject: Optional[str] = None,
         description: str = "",
@@ -152,27 +172,27 @@ class DataviewRGB(Dataview):
                 )
 
         self._alpha: Optional[ChannelLike] = alpha
-        self._alpha_cache: Optional[ScalarView] = None
+        self._alpha_cache: Optional[ScalarT] = None
         super().__init__(description=description, state=state, priority=priority)
 
     # ------------------------------------------------------------------
     # channels
     # ------------------------------------------------------------------
     @property
-    def red(self) -> ScalarView:
+    def red(self) -> ScalarT:
         return self._red
 
     @property
-    def green(self) -> ScalarView:
+    def green(self) -> ScalarT:
         return self._green
 
     @property
-    def blue(self) -> ScalarView:
+    def blue(self) -> ScalarT:
         return self._blue
 
     @property
-    def subject(self) -> str:
-        return self.red.subject
+    def space(self) -> BrainSpace:
+        return self.red.space
 
     @property
     def movie(self) -> bool:
@@ -215,15 +235,15 @@ class DataviewRGB(Dataview):
         """A fully-opaque alpha array shaped like this view's channels."""
 
     @abstractmethod
-    def _wrap_alpha(self, data: npt.NDArray) -> ScalarView:
-        """Wrap an alpha array as a scalar view in this view's space."""
-
-    @abstractmethod
     def _channel_stack(self) -> npt.NDArray:
         """The three channels stacked, for locating NaNs across them."""
 
+    def _wrap_alpha(self, data: npt.NDArray) -> ScalarT:
+        """Wrap an alpha array as a scalar view in this view's space."""
+        return cast(ScalarT, self.red.space.wrap(data, vmin=0, vmax=1))
+
     @property
-    def alpha(self) -> ScalarView:
+    def alpha(self) -> ScalarT:
         """Alpha transparency, as a scalar view in this view's space.
 
         Derived lazily and memoized. Unlike the previous implementation this
@@ -239,13 +259,16 @@ class DataviewRGB(Dataview):
         self._alpha = alpha
         self._alpha_cache = None
 
-    def _resolve_alpha(self) -> ScalarView:
+    def _resolve_alpha(self) -> ScalarT:
         spec = self._alpha
+        view: ScalarT
         if spec is None:
             view = self._wrap_alpha(self._default_alpha())
         elif isinstance(spec, ScalarView):
             # Copy so that reading `.alpha` never mutates the caller's object.
-            view = spec.copy(np.array(spec.data, copy=True))
+            # cast, not isinstance: ScalarT is a TypeVar, so there is nothing to
+            # test against at runtime. The space check below is the real guard.
+            view = cast(ScalarT, spec.copy(np.array(spec.data, copy=True)))
         else:
             arr = np.asarray(spec)
             if arr.dtype != np.uint8 and (arr.min() < 0 or arr.max() > 1):
@@ -522,6 +545,12 @@ class DataviewRGB(Dataview):
         return red, green, blue, alpha_out
 
 
+def _require(value: Optional[str], what: str) -> str:
+    if value is None:
+        raise TypeError("%s is required" % what)
+    return value
+
+
 def _channel_data(channel: ChannelLike) -> npt.NDArray:
     return channel.data if isinstance(channel, ScalarView) else np.asarray(channel)
 
@@ -540,8 +569,8 @@ def _expand_bounds(
 def _resolve_rgb_channels(
     channels: tuple[ChannelLike, ChannelLike, ChannelLike],
     *,
-    channel_cls: type[_ScalarT],
-    wrap: Callable[[npt.NDArray, Optional[_ScalarT]], _ScalarT],
+    channel_cls: type[ScalarT],
+    fallback_space: Callable[[], BrainSpace],
     subject: Optional[str],
     space_kwargs: dict[str, Any],
     colors: tuple[Color[int], Color[int], Color[int]],
@@ -551,7 +580,7 @@ def _resolve_rgb_channels(
     vmax: Optional[Union[float, tuple[float, float, float]]],
     autorange: Literal["shared", "individual"],
     alpha: Optional[ChannelLike],
-) -> tuple[_ScalarT, _ScalarT, _ScalarT, Optional[ChannelLike]]:
+) -> tuple[ScalarT, ScalarT, ScalarT, Optional[ChannelLike]]:
     """Turn three channel arguments into a matched triple of scalar views.
 
     Replaces the four-branch shape (channel-object vs ndarray, x, identity basis
@@ -561,7 +590,7 @@ def _resolve_rgb_channels(
     chan1, chan2, chan3 = channels
     kind = channel_cls.__name__
 
-    template: Optional[_ScalarT] = None
+    template: Optional[ScalarT] = None
     if isinstance(chan1, channel_cls):
         template = chan1
         for pos, chan in (("2", chan2), ("3", chan3)):
@@ -603,6 +632,13 @@ def _resolve_rgb_channels(
         and autorange == "individual"
     )
 
+    # Wrapping goes through the space, so this function never names a concrete
+    # view class -- which is what lets a new space reuse it unchanged.
+    space = template.space if template is not None else fallback_space()
+
+    def wrap(data: npt.NDArray) -> ScalarT:
+        return cast(ScalarT, space.wrap(data))
+
     if identity_basis:
         # R/G/B basis can be passed straight through.
         if template is not None:
@@ -610,9 +646,9 @@ def _resolve_rgb_channels(
             assert isinstance(chan3, channel_cls)
             return template, chan2, chan3, alpha
         return (
-            wrap(np.asarray(chan1), None),
-            wrap(np.asarray(chan2), None),
-            wrap(np.asarray(chan3), None),
+            wrap(np.asarray(chan1)),
+            wrap(np.asarray(chan2)),
+            wrap(np.asarray(chan3)),
             alpha,
         )
 
@@ -630,15 +666,10 @@ def _resolve_rgb_channels(
         autorange,
         alpha=alpha,
     )
-    return (
-        wrap(red, template),
-        wrap(green, template),
-        wrap(blue, template),
-        alpha_out,
-    )
+    return wrap(red), wrap(green), wrap(blue), alpha_out
 
 
-class VolumeRGB(DataviewRGB):
+class VolumeRGB(DataviewRGB[Volume]):
     """
     Contains RGB (or RGBA) colors for each voxel in a volumetric dataset.
     Includes information about the subject and transform for the data.
@@ -728,16 +759,12 @@ class VolumeRGB(DataviewRGB):
         autorange: Literal["shared", "individual"] = "individual",
         priority: int = 1,
     ) -> None:
-        def wrap(data: npt.NDArray, template: Optional[Volume]) -> Volume:
-            if template is not None:
-                return Volume(data, template.subject, template.xfmname)
-            assert subject is not None and xfmname is not None
-            return Volume(data, subject, xfmname)
-
         red, green, blue, resolved_alpha = _resolve_rgb_channels(
             (channel1, channel2, channel3),
             channel_cls=Volume,
-            wrap=wrap,
+            fallback_space=lambda: VolumeSpace(
+                _require(subject, "Subject"), _require(xfmname, "xfmname")
+            ),
             subject=subject,
             space_kwargs={"xfmname": xfmname},
             colors=(
@@ -769,44 +796,10 @@ class VolumeRGB(DataviewRGB):
         )
 
     # ------------------------------------------------------------------
-    # channels, narrowed
+    # alpha, in volume space
     # ------------------------------------------------------------------
-    @property
-    def red(self) -> Volume:
-        assert isinstance(self._red, Volume)
-        return self._red
-
-    @property
-    def green(self) -> Volume:
-        assert isinstance(self._green, Volume)
-        return self._green
-
-    @property
-    def blue(self) -> Volume:
-        assert isinstance(self._blue, Volume)
-        return self._blue
-
-    @property
-    def alpha(self) -> Volume:
-        alpha = super().alpha
-        assert isinstance(alpha, Volume)
-        return alpha
-
-    @alpha.setter
-    def alpha(self, alpha: Optional[ChannelLike]) -> None:
-        # Accepts the base type, not `NDArray | Volume`: a setter that narrowed
-        # its parameter would be unsound (and mypy rejects it). The getter's
-        # assertion is what enforces the space.
-        self._alpha = alpha
-        self._alpha_cache = None
-
     def _default_alpha(self) -> npt.NDArray:
         return np.ones(self.red.volume.shape)
-
-    def _wrap_alpha(self, data: npt.NDArray) -> Volume:
-        return Volume(
-            data, self.red.subject, self.red.xfmname, vmin=0, vmax=1
-        )
 
     def _channel_stack(self) -> npt.NDArray:
         return np.array([self.red.volume, self.green.volume, self.blue.volume])
@@ -859,7 +852,7 @@ class VolumeRGB(DataviewRGB):
         return self._write_rgb_hdf(h5, name=name, xfmname=[self.xfmname])
 
 
-class VertexRGB(DataviewRGB):
+class VertexRGB(DataviewRGB[Vertex]):
     """
     Contains RGB (or RGBA) colors for each vertex in a surface dataset.
     Includes information about the subject.
@@ -945,16 +938,10 @@ class VertexRGB(DataviewRGB):
         autorange: Literal["shared", "individual"] = "individual",
         priority: int = 1,
     ) -> None:
-        def wrap(data: npt.NDArray, template: Optional[Vertex]) -> Vertex:
-            if template is not None:
-                return Vertex(data, template.subject)
-            assert subject is not None
-            return Vertex(data, subject)
-
         r, g, b, resolved_alpha = _resolve_rgb_channels(
             (red, green, blue),
             channel_cls=Vertex,
-            wrap=wrap,
+            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject name")),
             subject=subject,
             space_kwargs={},
             colors=(
@@ -982,40 +969,10 @@ class VertexRGB(DataviewRGB):
         )
 
     # ------------------------------------------------------------------
-    # channels, narrowed
+    # alpha, in surface space
     # ------------------------------------------------------------------
-    @property
-    def red(self) -> Vertex:
-        assert isinstance(self._red, Vertex)
-        return self._red
-
-    @property
-    def green(self) -> Vertex:
-        assert isinstance(self._green, Vertex)
-        return self._green
-
-    @property
-    def blue(self) -> Vertex:
-        assert isinstance(self._blue, Vertex)
-        return self._blue
-
-    @property
-    def alpha(self) -> Vertex:
-        alpha = super().alpha
-        assert isinstance(alpha, Vertex)
-        return alpha
-
-    @alpha.setter
-    def alpha(self, alpha: Optional[ChannelLike]) -> None:
-        # See the note on VolumeRGB.alpha's setter.
-        self._alpha = alpha
-        self._alpha_cache = None
-
     def _default_alpha(self) -> npt.NDArray:
         return np.ones(self.red.vertices.shape[1])
-
-    def _wrap_alpha(self, data: npt.NDArray) -> Vertex:
-        return Vertex(data, self.red.subject, vmin=0, vmax=1)
 
     def _channel_stack(self) -> npt.NDArray:
         return np.array([self.red.data, self.green.data, self.blue.data])

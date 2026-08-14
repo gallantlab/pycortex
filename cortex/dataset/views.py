@@ -34,7 +34,14 @@ from matplotlib.colors import Colormap
 
 from .. import options
 from ..database import db
-from ._hdf import _find_mask, _hash, _hdf_write
+from ._hdf import _hash, _hdf_write
+from ._space import (
+    BrainSpace,
+    MaskSpec,
+    SurfaceSpace,
+    VolumeSpace,
+    registered_spaces,
+)
 
 default_cmap = options.config.get("basic", "default_cmap")
 
@@ -53,11 +60,6 @@ def register_cmap(cmap: Colormap) -> None:
 
 
 JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
-
-MaskSpec = Union[str, npt.NDArray[np.bool_], None]
-"""What the user passed as ``mask=``: a database mask name, an explicit boolean
-array, or nothing. Recorded verbatim so it can be round-tripped through HDF."""
-
 
 class ColormapDict(TypedDict):
     cmap: Colormap
@@ -157,8 +159,18 @@ class Dataview(ABC):
 
     @property
     @abstractmethod
+    def space(self) -> BrainSpace:
+        """Where this view's data lives.
+
+        The space is the *open* axis of the package: adding a new kind of brain
+        data means adding a :class:`~cortex.dataset._space.BrainSpace` subclass,
+        not reimplementing colormapping, HDF and JSON three more times.
+        """
+
+    @property
     def subject(self) -> str:
         """Subject identifier. Must exist in the pycortex database."""
+        return self.space.subject
 
     @property
     @abstractmethod
@@ -290,14 +302,10 @@ class ScalarView(Dataview):
     ``BrainData`` resolve to methods that were nowhere in its own ancestry.
     """
 
-    #: Whether the data array carries a leading time axis. Set by the concrete
-    #: subclass once it knows how to interpret the array's dimensionality.
-    movie: bool
-
     def __init__(
         self,
         data: Union[npt.NDArray, str, None],
-        subject: Union[str, bytes],
+        space: BrainSpace,
         cmap: Optional[str] = None,
         vmin: Optional[float] = None,
         vmax: Optional[float] = None,
@@ -310,19 +318,37 @@ class ScalarView(Dataview):
 
             nib = cast(nibabel.Nifti1Image, nibabel.load(data))
             data = cast(npt.NDArray, nib.get_fdata().T)
-        self._data = data
-        self._subject = subject if isinstance(subject, str) else subject.decode("utf-8")
+
+        self._space = space
+        # coerce() validates the array against the geometry and fills in the
+        # data-dependent parts of the space (which mask a flattened array
+        # matches, which hemisphere a half-length array covered).
+        self._data = space.coerce(data)
+        #: Whether the data array carries a leading time axis.
+        self.movie = space.is_movie(self._data)
+
         self.cmap = cmap if cmap is not None else default_cmap
         self.vmin = vmin
         self.vmax = vmax
         super().__init__(description=description, state=state, **kwargs)
 
+    #: Narrowing a *bare annotation* in a subclass is accepted by mypy, which is
+    #: what lets Volume and Vertex expose a precisely-typed `space` without an
+    #: assert. Narrowing an *assigned* ClassVar is not -- that asymmetry is
+    #: exactly what made the old `_cls` untypeable.
+    _space: BrainSpace
+
     # ------------------------------------------------------------------
     # data
     # ------------------------------------------------------------------
     @property
-    def subject(self) -> str:
-        return self._subject
+    def space(self) -> BrainSpace:
+        return self._space
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        """Shape of one frame's worth of data in this view's space."""
+        return self.space.spatial_shape
 
     @property
     def data(self) -> npt.NDArray:
@@ -496,7 +522,16 @@ class ScalarView(Dataview):
 
         node = _hdf_write(h5, self.data, name=name)
         node.attrs["subject"] = self.subject
+        self.space.write_hdf_attrs(h5, node)
         return node
+
+    def _write_hdf(
+        self, h5: Union[h5py.File, h5py.Group], name: str = "data"
+    ) -> h5py.Dataset:
+        self._write_data_hdf(h5)
+        return self._write_view_node(
+            h5, name=name, data=[self.name], xfmname=self.space.view_xfmname
+        )
 
     def save(
         self, filename: Union[str, h5py.Group], name: Optional[str] = None
@@ -521,7 +556,7 @@ class Multiview(Dataview):
         raise NotImplementedError
 
     @property
-    def subject(self) -> str:
+    def space(self) -> BrainSpace:
         raise NotImplementedError
 
     @property
@@ -588,7 +623,7 @@ class Volume(ScalarView):
     ) -> None:
         super().__init__(
             data,
-            subject,
+            VolumeSpace(subject, xfmname, mask=mask),
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
@@ -596,89 +631,59 @@ class Volume(ScalarView):
             state=state,
             **kwargs,
         )
-        self.xfmname = (
-            xfmname if isinstance(xfmname, str) else xfmname.decode("utf-8")
-        )
-        self._check_size(mask)
         self.masked: _masker[Volume] = _masker(self)
         self._resolve_percentiles()
 
+    _space: VolumeSpace
+
+    @property
+    def space(self) -> VolumeSpace:
+        return self._space
+
     # ------------------------------------------------------------------
-    # geometry
+    # geometry, delegated to the space
     # ------------------------------------------------------------------
-    def _check_size(self, mask: MaskSpec) -> None:
-        if self.data.ndim not in (1, 2, 3, 4):
-            raise ValueError("Invalid data shape")
+    @property
+    def xfmname(self) -> str:
+        return self.space.xfmname
 
-        self.linear = self.data.ndim in (1, 2)
-        self.movie = self.data.ndim in (2, 4)
+    @property
+    def linear(self) -> bool:
+        """Whether the data is flattened into mask space rather than a full volume."""
+        return self.space.linear
 
-        #: Verbatim record of what was passed as ``mask=``, for round-tripping.
-        self._mask_spec: MaskSpec = None
-        #: The resolved boolean mask, or None for unmasked (3D/4D) data.
-        self.mask: Optional[npt.NDArray[np.bool_]] = None
-        #: The database mask name, if the mask came from (or was found in) the db.
-        self.mask_name: Optional[str] = None
+    @property
+    def mask(self) -> Optional[npt.NDArray[np.bool_]]:
+        """The boolean mask for flattened data, or None for a full volume.
 
-        if self.linear:
-            if mask is None:
-                # Guess the mask
-                nvox: int = self.data.shape[-1]
-                found_name, found_mask = _find_mask(nvox, self.subject, self.xfmname)
-                self.mask_name = found_name
-                self.mask = found_mask
-                self._mask_spec = found_name
-            elif isinstance(mask, np.ndarray):
-                self.mask = mask > 0
-                self._mask_spec = mask > 0
-            else:
-                self.mask = db.get_mask(self.subject, self.xfmname, mask)
-                self.mask_name = mask
-                self._mask_spec = mask
+        Previously this attribute simply did not exist on unmasked volumes, so
+        every reader needed a ``linear`` guard or a ``hasattr``.
+        """
+        return self.space.mask
 
-            assert self.mask is not None
-            self.shape: tuple[int, ...] = self.mask.shape
-        else:
-            shape = self.data.shape
-            if self.movie:
-                shape = shape[1:]
-            xfm = db.get_xfm(self.subject, self.xfmname)
-            if xfm.shape != shape:
-                raise ValueError(
-                    "Volumetric data (shape %s) is not the same shape as reference "
-                    "for transform (shape %s)" % (str(shape), str(xfm.shape))
-                )
-            self.shape = shape
+    @property
+    def mask_name(self) -> Optional[str]:
+        """The database mask name, when the mask came from or was found in the db."""
+        return self.space.mask_name
 
     @property
     def _mask(self) -> MaskSpec:
         """Deprecated. Use :attr:`mask` for the array or :attr:`mask_name` for the name."""
-        return self._mask_spec
+        return self.space.mask_spec
 
     @property
     def volume(self) -> npt.NDArray:
         """Returns a 3D or 4D volume for this Volume, automatically unmasking
         masked data.
         """
-        from cortex import volume
-
-        if self.linear:
-            assert self.mask is not None
-            data = volume.unmask(self.mask, self.data[:])
-        else:
-            data = self.data[:]
-
-        if not self.movie:
-            data = data[np.newaxis]
-
-        return data
+        return self.space.unmask(self.data, self.movie)
 
     def copy(self, data: npt.NDArray) -> Self:
         new = self.__class__(
             data,
             self.subject,
             self.xfmname,
-            mask=self._mask_spec,
+            mask=self.space.mask_spec,
             cmap=self.cmap,
             vmin=self.vmin,
             vmax=self.vmax,
@@ -780,8 +785,8 @@ class Volume(ScalarView):
     def __repr__(self) -> str:
         maskstr = "volumetric"
         if self.linear:
-            name: Any = self._mask_spec
-            if isinstance(self._mask_spec, np.ndarray):
+            name: Any = self.space.mask_spec
+            if isinstance(self.space.mask_spec, np.ndarray):
                 name = "custom"
             maskstr = "%s masked" % name
         if self.movie:
@@ -798,39 +803,10 @@ class Volume(ScalarView):
             sdict["shape"] = self.shape
             return sdict
 
-        xfm = db.get_xfm(self.subject, self.xfmname, "coord").xfm
-        sdict = DataviewJSON(
-            xfm=[list(np.array(xfm).ravel())], data=[self.name]
-        )
+        sdict = DataviewJSON(data=[self.name])
+        sdict.update(self.space.to_json())
         sdict.update(super().to_json())
         return sdict
-
-    def _write_data_hdf(
-        self, h5: Union[h5py.File, h5py.Group], name: Optional[str] = None
-    ) -> h5py.Dataset:
-        node = super()._write_data_hdf(h5, name=name)
-
-        # write the mask into the file, as necessary
-        if self._mask_spec is not None:
-            mask: Any = self._mask_spec
-            if isinstance(self._mask_spec, np.ndarray):
-                mgrp = "/subjects/{subj}/transforms/{xfm}/masks/"
-                mgrp = mgrp.format(subj=self.subject, xfm=self.xfmname)
-                mname = "__%s" % _hash(self._mask_spec)[:8]
-                _hdf_write(h5, self._mask_spec, name=mname, group=mgrp)
-                mask = mname
-
-            node.attrs["mask"] = mask
-
-        return node
-
-    def _write_hdf(
-        self, h5: Union[h5py.File, h5py.Group], name: str = "data"
-    ) -> h5py.Dataset:
-        self._write_data_hdf(h5)
-        return self._write_view_node(
-            h5, name=name, data=[self.name], xfmname=[self.xfmname]
-        )
 
     @property
     def raw(self) -> VolumeRGB:
@@ -892,7 +868,7 @@ class Vertex(ScalarView):
     ) -> None:
         super().__init__(
             data,
-            subject,
+            SurfaceSpace(subject),
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
@@ -900,52 +876,40 @@ class Vertex(ScalarView):
             state=state,
             **kwargs,
         )
-        try:
-            left, right = db.get_surf(self.subject, "wm")
-        except IOError:
-            left, right = db.get_surf(self.subject, "fiducial")
-        self.llen = len(left[0])
-        self.rlen = len(right[0])
-        self._set_data(self._data)
         self._resolve_percentiles()
 
-    def _set_data(self, data: Optional[npt.NDArray]) -> None:
-        """
-        Stores data for this Vertex, filling the other hemisphere with zeros if
-        only one hemisphere's worth of data was given. See __init__ for `data`
-        shape possibilities.
-        """
-        if data is None:
-            data = np.zeros((self.llen + self.rlen,))
+    _space: SurfaceSpace
 
-        self._data = data
-        self.movie = self.data.ndim > 1
-        self.nverts = self.data.shape[-1]
-        if self.llen == self.nverts:
-            # Just data for left hemisphere
-            self.hem = "left"
-            rshape = list(self.data.shape)
-            rshape[1 if self.movie else 0] = self.rlen
-            self._data = np.hstack(
-                [self.data, np.zeros(rshape, dtype=self.data.dtype)]
-            )
-        elif self.rlen == self.nverts:
-            # Just data for right hemisphere
-            self.hem = "right"
-            lshape = list(self.data.shape)
-            lshape[1 if self.movie else 0] = self.llen
-            self._data = np.hstack(
-                [np.zeros(lshape, dtype=self.data.dtype), self.data]
-            )
-        elif self.llen + self.rlen == self.nverts:
-            # Data for both hemispheres
-            self.hem = "both"
-        else:
-            raise ValueError(
-                "Invalid number of vertices for subject (given %d, should be %d for "
-                "left hem, %d for right hem, or %d for both)"
-                % (self.nverts, self.llen, self.rlen, self.llen + self.rlen)
-            )
+    @property
+    def space(self) -> SurfaceSpace:
+        return self._space
+
+    # ------------------------------------------------------------------
+    # geometry, delegated to the space
+    # ------------------------------------------------------------------
+    @property
+    def llen(self) -> int:
+        """Number of vertices in the left hemisphere."""
+        return self.space.llen
+
+    @property
+    def rlen(self) -> int:
+        """Number of vertices in the right hemisphere."""
+        return self.space.rlen
+
+    @property
+    def nverts(self) -> int:
+        """Total number of vertices across both hemispheres."""
+        return self.space.nverts
+
+    @property
+    def hem(self) -> str:
+        """Which hemispheres the data covered: "left", "right" or "both".
+
+        Single-hemisphere data is padded with zeros for the other hemisphere, so
+        this records what was originally supplied.
+        """
+        return self.space.hem
 
     def copy(self, data: npt.NDArray) -> Self:
         """
@@ -1122,11 +1086,7 @@ class Vertex(ScalarView):
 
     @staticmethod
     def _count_verts(subject: str) -> int:
-        try:
-            left, right = db.get_surf(subject, "wm")
-        except IOError:
-            left, right = db.get_surf(subject, "fiducial")
-        return len(left[0]) + len(right[0])
+        return SurfaceSpace(subject).nverts
 
     def __getitem__(self, idx: Any) -> Self:
         """Get the Vertex for the given time index. Only works for movie (2D)
@@ -1155,12 +1115,6 @@ class Vertex(ScalarView):
         sdict = DataviewJSON(data=[self.name])
         sdict.update(super().to_json())
         return sdict
-
-    def _write_hdf(
-        self, h5: Union[h5py.File, h5py.Group], name: str = "data"
-    ) -> h5py.Dataset:
-        self._write_data_hdf(h5)
-        return self._write_view_node(h5, name=name, data=[self.name])
 
     @property
     def raw(self) -> VertexRGB:
@@ -1364,6 +1318,33 @@ def normalize(
 _RGB_KWARGS = ("description", "state", "priority")
 
 
+def _detect_space(
+    attrs: dict[str, Any],
+    *,
+    subject: str,
+    xfmname: Optional[str],
+    mask: MaskSpec,
+) -> BrainSpace:
+    """Pick the space an HDF data node belongs to.
+
+    Consults the registry in order and takes the first space that claims the
+    node. Legacy files carry no space discriminator, so the built-in spaces key
+    off whether a transform name is present, with ``SurfaceSpace`` last as the
+    catch-all; a new space registers ahead of them and tests for something it
+    writes itself.
+    """
+    for space_cls in registered_spaces():
+        space = space_cls.from_hdf(
+            attrs, subject=subject, xfmname=xfmname, mask=mask
+        )
+        if space is not None:
+            return space
+    raise ValueError(
+        "No registered brain space claims this data node (subject=%r, xfmname=%r)"
+        % (subject, xfmname)
+    )
+
+
 def _from_hdf_data(
     h5: h5py.File,
     name: str,
@@ -1371,8 +1352,7 @@ def _from_hdf_data(
     subject: Optional[str] = None,
     **kwargs: Any,
 ) -> Dataview:
-    """Decodes a __hash named node from an HDF file into the
-    constituent Vertex or Volume object.
+    """Decode a ``__hash``-named node from an HDF file into its view.
 
     Returns an RGB view rather than a scalar one for legacy uint8 nodes with a
     trailing channel axis, which is why the return type is the root and not
@@ -1388,7 +1368,7 @@ def _from_hdf_data(
     # support old style xfmname saving as attribute
     if xfmname is None and "xfmname" in attrs:
         xfmname = attrs["xfmname"]
-    mask = None
+    mask: MaskSpec = None
     if "mask" in attrs:
         if attrs["mask"].startswith("__"):
             mask = h5[
@@ -1398,38 +1378,28 @@ def _from_hdf_data(
         else:
             mask = attrs["mask"]
 
-    # support old style RGB volumes
+    space = _detect_space(attrs, subject=subject, xfmname=xfmname, mask=mask)
+
+    # support old style RGB volumes: uint8 with a trailing channel axis
     if dnode.dtype == np.uint8 and dnode.shape[-1] in (3, 4):
         alpha = None
         if dnode.shape[-1] == 4:
-            alpha = dnode[..., 3]
+            alpha = space.wrap(dnode[..., 3])
 
         rgb_kwargs = {k: v for k, v in kwargs.items() if k in _RGB_KWARGS}
-
-        if xfmname is None:
-            return VertexRGB(
-                dnode[..., 0],
-                dnode[..., 1],
-                dnode[..., 2],
-                subject,
+        rgb_cls = type(space).views().rgb
+        return cast(
+            Dataview,
+            rgb_cls(
+                space.wrap(dnode[..., 0]),
+                space.wrap(dnode[..., 1]),
+                space.wrap(dnode[..., 2]),
                 alpha=alpha,
                 **rgb_kwargs,
-            )
-
-        return VolumeRGB(
-            dnode[..., 0],
-            dnode[..., 1],
-            dnode[..., 2],
-            subject,
-            xfmname,
-            alpha=alpha,
-            **rgb_kwargs,
+            ),
         )
 
-    if xfmname is None:
-        return Vertex(dnode, subject, **kwargs)
-
-    return Volume(dnode, subject, xfmname, mask=mask, **kwargs)
+    return cast(Dataview, space.wrap(dnode, **kwargs))
 
 
 def _from_hdf_view(
@@ -1446,56 +1416,52 @@ def _from_hdf_view(
             h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, subject=subject, **kwargs
         )
 
-    # Surface views have no transform, so slot 7 of the view node is null and
-    # `xfmname` arrives as None rather than as a per-channel list.
+    # Surface views have no transform, so slot 7 of the view record is null and
+    # `xfmname` arrives as None rather than as a per-channel list. Indexing it
+    # unconditionally used to raise TypeError here, and Dataset.from_file
+    # swallows exceptions -- so a saved Vertex2D was silently dropped on reload.
     xfmnames = xfmname if isinstance(xfmname, (list, tuple)) else [xfmname] * len(data)
 
+    channels = [
+        _from_hdf_data(h5, node, xfmname=xfmnames[i if i < len(xfmnames) else 0],
+                       subject=subject)
+        if node is not None
+        else None
+        for i, node in enumerate(data)
+    ]
+    first = channels[0]
+    assert first is not None
+    space = first.space
+
     if len(data) == 2:
-        dim1 = _from_hdf_data(h5, data[0], xfmname=xfmnames[0], subject=subject)
-        dim2 = _from_hdf_data(h5, data[1], xfmname=xfmnames[1], subject=subject)
-        if isinstance(dim1, Vertex):
-            assert isinstance(dim2, Vertex)
-            return Vertex2D(
-                dim1,
-                dim2,
+        twod_cls = type(space).views().twod
+        return cast(
+            Dataview,
+            twod_cls(
+                channels[0],
+                channels[1],
                 vmin=vmin[0],
                 vmin2=vmin[1],
                 vmax=vmax[0],
                 vmax2=vmax[1],
                 subject=subject,
                 **kwargs,
-            )
-        assert isinstance(dim1, Volume) and isinstance(dim2, Volume)
-        return Volume2D(
-            dim1,
-            dim2,
-            vmin=vmin[0],
-            vmin2=vmin[1],
-            vmax=vmax[0],
-            vmax2=vmax[1],
-            subject=subject,
-            **kwargs,
+            ),
         )
     elif len(data) == 4:
-        red, green, blue = [
-            _from_hdf_data(h5, d, xfmname=xfmnames[0], subject=subject)
-            for d in data[:3]
-        ]
-        alpha = None
-        if data[3] is not None:
-            alpha = _from_hdf_data(h5, data[3], xfmname=xfmnames[0], subject=subject)
-
         rgb_kwargs = {k: v for k, v in kwargs.items() if k in _RGB_KWARGS}
-        if isinstance(red, Vertex):
-            assert isinstance(green, Vertex) and isinstance(blue, Vertex)
-            assert alpha is None or isinstance(alpha, Vertex)
-            return VertexRGB(
-                red, green, blue, alpha=alpha, subject=subject, **rgb_kwargs
-            )
-        assert isinstance(red, Volume)
-        assert isinstance(green, Volume) and isinstance(blue, Volume)
-        assert alpha is None or isinstance(alpha, Volume)
-        return VolumeRGB(red, green, blue, alpha=alpha, subject=subject, **rgb_kwargs)
+        rgb_cls = type(space).views().rgb
+        return cast(
+            Dataview,
+            rgb_cls(
+                channels[0],
+                channels[1],
+                channels[2],
+                alpha=channels[3],
+                subject=subject,
+                **rgb_kwargs,
+            ),
+        )
     else:
         raise ValueError("Invalid Dataview specification")
 

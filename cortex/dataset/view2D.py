@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import warnings
-from typing import Any, Callable, Iterator, Optional, TypeVar, Union
+from typing import Any, Callable, Generic, Iterator, Optional, TypeVar, Union, cast
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -16,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .. import options
+from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .views import (
     ColormapDict,
     Dataview,
@@ -31,22 +32,28 @@ from .views import (
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
 
-_ScalarT = TypeVar("_ScalarT", bound=ScalarView)
+#: Covariant: the channels are read-only properties, so `Dataview2D[Volume]` is
+#: safely usable where `Dataview2D[ScalarView]` is expected. An invariant
+#: parameter would reject that, which is the usual generics tax.
+ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
 
 
-class Dataview2D(Dataview):
+class Dataview2D(Dataview, Generic[ScalarT]):
     """Abstract base class for 2-dimensional data views.
 
     Holds two scalar channels displayed through a single 2D colormap. The
     channels are read-only: they are set once at construction, and keeping them
     read-only is what makes it sound to treat this class as covariant in its
     channel type.
+
+    Generic in the channel type, so ``Volume2D.dim1`` is a ``Volume`` and
+    ``Vertex2D.dim1`` is a ``Vertex`` without either class re-declaring them.
     """
 
     def __init__(
         self,
-        dim1: ScalarView,
-        dim2: ScalarView,
+        dim1: ScalarT,
+        dim2: ScalarT,
         description: str = "",
         cmap: Optional[str] = None,
         vmin: Optional[float] = None,
@@ -66,16 +73,16 @@ class Dataview2D(Dataview):
         super().__init__(description=description, state=state, **kwargs)
 
     @property
-    def dim1(self) -> ScalarView:
+    def dim1(self) -> ScalarT:
         return self._dim1
 
     @property
-    def dim2(self) -> ScalarView:
+    def dim2(self) -> ScalarT:
         return self._dim2
 
     @property
-    def subject(self) -> str:
-        return self.dim1.subject
+    def space(self) -> BrainSpace:
+        return self.dim1.space
 
     def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
         yield self.dim1
@@ -222,7 +229,7 @@ class Dataview2D(Dataview):
         return kws
 
 
-class Volume2D(Dataview2D):
+class Volume2D(Dataview2D[Volume]):
     """
     Contains two 3D volumes for simultaneous visualization. Includes information
     on how the volumes should be jointly colormapped.
@@ -279,9 +286,8 @@ class Volume2D(Dataview2D):
             dim1,
             dim2,
             channel_cls=Volume,
-            wrap=lambda data, lo, hi: Volume(
-                data, _require(subject, "subject"), _require(xfmname, "xfmname"),
-                vmin=lo, vmax=hi,
+            fallback_space=lambda: VolumeSpace(
+                _require(subject, "Subject"), _require(xfmname, "xfmname")
             ),
             subject=subject,
             space_kwargs={"xfmname": xfmname},
@@ -299,16 +305,6 @@ class Volume2D(Dataview2D):
             vmax2=chan2.vmax if vmax2 is None else vmax2,
             **kwargs,
         )
-
-    @property
-    def dim1(self) -> Volume:
-        assert isinstance(self._dim1, Volume)
-        return self._dim1
-
-    @property
-    def dim2(self) -> Volume:
-        assert isinstance(self._dim2, Volume)
-        return self._dim2
 
     @property
     def xfmname(self) -> str:
@@ -353,7 +349,7 @@ class Volume2D(Dataview2D):
         )
 
 
-class Vertex2D(Dataview2D):
+class Vertex2D(Dataview2D[Vertex]):
     """
     Contains two vertex maps for simultaneous visualization. Includes information
     on how the maps should be jointly colormapped.
@@ -406,9 +402,7 @@ class Vertex2D(Dataview2D):
             dim1,
             dim2,
             channel_cls=Vertex,
-            wrap=lambda data, lo, hi: Vertex(
-                data, _require(subject, "subject"), vmin=lo, vmax=hi
-            ),
+            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject")),
             subject=subject,
             space_kwargs={},
             ranges=((vmin, vmax), (vmin2, vmax2)),
@@ -425,16 +419,6 @@ class Vertex2D(Dataview2D):
             vmax2=chan2.vmax if vmax2 is None else vmax2,
             **kwargs,
         )
-
-    @property
-    def dim1(self) -> Vertex:
-        assert isinstance(self._dim1, Vertex)
-        return self._dim1
-
-    @property
-    def dim2(self) -> Vertex:
-        assert isinstance(self._dim2, Vertex)
-        return self._dim2
 
     def __repr__(self) -> str:
         return "<2D vertex data for (%s)>" % self.dim1.subject
@@ -478,18 +462,18 @@ def _require(value: Optional[str], what: str) -> str:
 
 
 def _resolve_2d_channels(
-    dim1: Union[npt.NDArray, _ScalarT],
-    dim2: Union[npt.NDArray, _ScalarT],
+    dim1: Union[npt.NDArray, ScalarT],
+    dim2: Union[npt.NDArray, ScalarT],
     *,
-    channel_cls: type[_ScalarT],
-    wrap: Callable[[npt.NDArray, Optional[float], Optional[float]], _ScalarT],
+    channel_cls: type[ScalarT],
+    fallback_space: Callable[[], BrainSpace],
     subject: Optional[str],
     space_kwargs: dict[str, Any],
     ranges: tuple[
         tuple[Optional[float], Optional[float]],
         tuple[Optional[float], Optional[float]],
     ],
-) -> tuple[_ScalarT, _ScalarT]:
+) -> tuple[ScalarT, ScalarT]:
     """Turn the two ``dim`` arguments into a matched pair of scalar views.
 
     Accepts either two already-built views or two raw arrays, and enforces that
@@ -519,8 +503,13 @@ def _resolve_2d_channels(
             "If dim2 is a %s, dim1 must be a %s as well" % (kind, kind)
         )
 
+    # Wrapping goes through the space, so this never names a concrete view class.
+    space = fallback_space()
     (vmin, vmax), (vmin2, vmax2) = ranges
-    return wrap(np.asarray(dim1), vmin, vmax), wrap(np.asarray(dim2), vmin2, vmax2)
+    return (
+        cast(ScalarT, space.wrap(np.asarray(dim1), vmin=vmin, vmax=vmax)),
+        cast(ScalarT, space.wrap(np.asarray(dim2), vmin=vmin2, vmax=vmax2)),
+    )
 
 
 def _warn_non_perceptually_uniform_colormap(cmap: Any) -> None:
