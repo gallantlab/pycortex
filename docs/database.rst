@@ -118,7 +118,7 @@ Reference volumes are typically in Nifti_ format (*.nii), but can be any format 
 
 
 Accessing transforms
-^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~
 Similar to the surfaces, transforms can be access through two methods: direct command access, and the tab interface.
 
 Command access looks like this::
@@ -150,7 +150,7 @@ Tab complete looks like this::
 
 
 Adding new transforms
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in ``{$FILESTORE}/transforms/``, or use this command::
 
     import cortex
@@ -159,7 +159,8 @@ Transforms from anatomical space to functional space are notoriously tricky. Aut
 .. _database-masks:
 
 Masks
-^^^^^
+~~~~~
+
 One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex's advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.
 
 Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the datasets page.
