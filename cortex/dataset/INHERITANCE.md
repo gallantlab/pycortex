@@ -177,7 +177,7 @@ Source locations:
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| union aliases and `TypeGuard` helpers | `_typing.py` |
+| union aliases and `TypeIs` helpers | `_typing.py` |
 
 `braindata.py` is a compatibility shim: `BrainData`, `VolumeData` and `VertexData`
 are aliases for `ScalarView`, `Volume` and `Vertex`. The aliases preserve
@@ -285,10 +285,29 @@ if isinstance(space_of(view), VolumeSpace):    # also true for spaces added late
 The unions are closed over the built-ins and cannot cover a space that did not
 exist when they were written; `view.space` can.
 
-`TypeGuard`, not `TypeIs`: `TypeIs` only reached the standard library in 3.13 and
-this package supports 3.10. The practical difference is that `TypeGuard` narrows
-the positive branch only. Adopting `TypeIs` would also force `typing_extensions`
-from a `python_version < '3.11'` marker to an unconditional runtime dependency.
+`TypeIs` (PEP 742), not `TypeGuard` (PEP 647). `TypeGuard` narrows the positive
+branch only, so the `else` of a volume/surface fork kept the full six-member union
+and every attribute access in it had to be re-guarded. `TypeIs` subtracts, which
+is what these predicates want -- each narrows to a subtype of its parameter, which
+is exactly `TypeIs`'s domain. Measured on the real fork in `make_flatmap_image`:
+
+| | mypy errors |
+| --- | --- |
+| loose signature + `TypeGuard` | 3 |
+| tightened signature + `TypeGuard` | 5 (worse -- the union stops collapsing into `Dataview`) |
+| tightened signature + `TypeIs` | 0 |
+
+The two only pay off together: `TypeIs` with an `Any` parameter gains nothing,
+since subtracting from `Any` yields `Any`.
+
+That is why the predicates take `BuiltinView` rather than `Any`, and why code
+holding a bare `Dataview` converts once with `as_builtin_view()`. `TypeIs` is
+imported under `TYPE_CHECKING`: it only reached the standard library in 3.13 and
+this package supports 3.10, but `from __future__ import annotations` means the
+annotation is never evaluated at runtime, so `typing_extensions` stays a
+`python_version < '3.11'` dependency instead of becoming unconditional. The one
+consequence is that `typing.get_type_hints()` on these predicates raises
+`NameError`; nothing in pycortex or its docs build calls it on them.
 
 `is_colormapped` exists rather than just `is_scalar_view` because the test it
 replaced, `hasattr(braindata, "cmap")`, matched 2D views as well as scalar ones.

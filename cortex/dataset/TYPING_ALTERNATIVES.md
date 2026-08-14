@@ -230,15 +230,26 @@ must respect:
 | --- | --- | --- |
 | PEP 695 `class C[T]:`, `type X = ...` | 3.12 | **unusable** — use `TypeVar` + `Generic[T]` |
 | PEP 696 TypeVar defaults | 3.13 | **unusable** |
-| `typing.TypeIs` | 3.13 | **unusable** — confirmed absent from both 3.10 and 3.12 |
-| `typing.TypeGuard` | 3.10 | usable |
+| `typing.TypeIs` | 3.13 | usable via `typing_extensions` under `TYPE_CHECKING` — see below |
+| `typing.TypeGuard` | 3.10 | usable, but `TypeIs` is preferred here |
 | `typing.Self` | 3.11 | usable via the `sys.version_info < (3, 11)` shim already in this package |
 | `ABC` + `Generic[T]` together | 3.7 | usable, no metaclass conflict |
 
-`TypeIs` is worth calling out because [INHERITANCE.md](INHERITANCE.md) proposes `is_volume_view` /
-`is_rgb_view` helpers built on it. Adopting `TypeIs` would force `typing_extensions` from its
-current `python_version < '3.11'` marker to an unconditional runtime dependency. `TypeGuard` is in
-3.10 stdlib and is sufficient here, at the cost of not narrowing the negative branch.
+`TypeIs` is worth calling out. It is preferred over `TypeGuard` for every predicate in
+`_typing.py`, because each narrows to a *subtype* of its parameter -- `TypeGuard`'s
+distinguishing ability, narrowing to an unrelated type, is not needed, and its failure to
+narrow the negative branch is a real cost. Measured on the volume/surface fork in
+`make_flatmap_image`: loose signature + `TypeGuard` = 3 errors, tightened signature +
+`TypeGuard` = 5, tightened signature + `TypeIs` = 0.
+
+`TypeIs` reached the standard library only in 3.13 (confirmed absent from 3.10 and 3.12),
+so it comes from `typing_extensions` (>= 4.10). Importing it under `if TYPE_CHECKING:`
+avoids widening the dependency at all: `from __future__ import annotations` means the
+annotation is never evaluated, and this was verified to import and run on 3.10 and 3.11
+with `typing_extensions` absent. The trade-off is that `typing.get_type_hints()` on those
+predicates raises `NameError`. If that mattered, the alternative is widening the
+`requirements.txt` marker from `python_version < '3.11'` to `< '3.13'` and importing at
+runtime.
 
 Three files in this package lack `from __future__ import annotations` (`braindata.py`,
 `dataset.py`, `view2D.py`) and need it for forward references and `X | Y` under 3.10. It must
