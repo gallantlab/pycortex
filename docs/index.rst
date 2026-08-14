@@ -21,7 +21,7 @@ User Guide
    segmentation_guide
    database
    align
-   .. dataset
+   dataset
    rois
    roidraw
    transforms
