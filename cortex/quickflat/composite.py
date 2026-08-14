@@ -1,18 +1,26 @@
 import copy
+from typing import Optional, Union
+
+from matplotlib.axes import Axes
+from matplotlib.collections import LineCollection
+from matplotlib.figure import Figure
+from matplotlib.image import AxesImage
 import numpy as np
+import numpy.typing as npt
+
+from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
+from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 from .. import dataset
 from ..database import db
 from ..options import config
-from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
-from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 
 
 """ --- Individual compositing functions --- """
 
 
-def add_curvature(fig, dataview, extents=None, height=None, threshold=True, contrast=None,
-                  brightness=None, smooth=None, cmap='gray', recache=False, curvature_lims=0.5,
-                  legacy_mode=False):
+def add_curvature(fig: Axes, dataview: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, threshold: Optional[bool]=True, contrast: Optional[float]=None,
+                  brightness: Optional[float]=None, smooth: Optional[float]=None, cmap: str='gray', recache: bool=False, curvature_lims: float=0.5,
+                  legacy_mode: bool=False) -> AxesImage:
     """Add curvature layer to figure
 
     Parameters
@@ -21,11 +29,12 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
         figure into which to plot image of curvature
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
-    extents : array-like
-        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
+    extents : tuple[float, float, float, float], optional
+        (left, right, top, bottom) extents of image plotted. None defaults to
         extents of images already present in figure.
-    height : scalar
-        Height of image. None defaults to height of images already present in figure. 
+    height : int, optional
+        Height, in pixels, of the output flatmap image. None defaults to the
+        height of images already present in figure.
     threshold : boolean
         Whether to apply a threshold to the curvature values to create a binary curvature image
         (one shade for positive curvature, one shade for negative). `None` defaults to value 
@@ -66,7 +75,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     if default_smoothing.lower()=='none':
         default_smoothing = None
     else:
-        default_smoothing = np.float_(default_smoothing)
+        default_smoothing = np.float64(default_smoothing)
     if smooth is None:
         # (Might still be None!)
         smooth = default_smoothing
@@ -120,15 +129,15 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
                       zorder=0)
     return cvimg
 
-def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
-             sampler='nearest', recache=False, nanmean=False):
+def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, thick: int=32, depth: float=0.5, pixelwise: bool=True,
+             sampler: str='nearest', recache: bool=False, nanmean: bool=False) -> tuple[AxesImage, npt.NDArray]:
     """Add data to quickflat plot
 
     Parameters
     ----------
     fig : figure or ax
         Figure into which to plot image of curvature
-    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
+    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}
         Object containing containing data to be plotted, subject (surface identifier),
         and transform.
     height : scalar
@@ -267,8 +276,8 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_
     return img
 
 
-def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
-              hatch_color=(0, 0, 0), sampler='nearest', recache=False):
+def add_hatch(fig: Axes, hatch_data: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, hatch_space: int=4,
+              hatch_color: tuple[int, int, int]=(0, 0, 0), sampler: str='nearest', recache: bool=False) -> AxesImage:
     """Add hatching to figure at locations specified in hatch_data
 
     Parameters
@@ -323,8 +332,8 @@ def add_hatch(fig, hatch_data, extents=None, height=None, hatch_space=4,
     return img
 
 
-def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0.2, 0.04), 
-                 orientation='horizontal'):
+def add_colorbar(fig: Figure, cimg: AxesImage, colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: tuple[float, float, float, float]=(0.4, 0.07, 0.2, 0.04),
+                 orientation: str='horizontal') -> Axes:
     """Add a colorbar to a flatmap plot
 
     Parameters
@@ -348,23 +357,18 @@ def add_colorbar(fig, cimg, colorbar_ticks=None, colorbar_location=(0.4, 0.07, 0
     return cbar
 
 
-def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
-                    colorbar_location=(0.425, 0.02, 0.15, 0.15), fontsize=12):
+def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, float, float, float],
+                    colorbar_location: tuple[float, float, float, float]=(0.425, 0.02, 0.15, 0.15), fontsize: int=12) -> AxesImage:
     """Add a 2D colorbar to a flatmap plot
 
     Parameters
     ----------
     fig : matplotlib Figure object
-    cimg : matplotlib.image.AxesImage object
-        Image for which to create colorbar. For reference, matplotlib.image.AxesImage 
-        is the output of imshow()
-    colorbar_ticks : array-like
-        values for colorbar ticks
+    colorbar_ticks : tuple[float, float, float, float]
+        Values for colorbar *extents*, in order [xmin, xmax, ymin, ymax]. The colorbar will be plotted with these values as the limits of the colorbar axes, and the ticks will be placed at the values specified in the first two and last two entries of this tuple.
     colorbar_location : array-like
-        Four-long list, tuple, or array that specifies location for colorbar axes 
+        Four-long list, tuple, or array that specifies location for colorbar axes
         [left, top, width, height] (?)
-    orientation : string
-        'vertical' or 'horizontal'
     """
     # a bit sketchy - lazy imports
     import matplotlib.pyplot as plt
@@ -375,9 +379,9 @@ def add_colorbar_2d(fig, cmap_name, colorbar_ticks,
     fig.add_axes(colorbar_location)
     cbar = plt.imshow(cim, extent=colorbar_ticks, interpolation='bilinear')
     cbar.axes.set_xticks(colorbar_ticks[:2])
-    cbar.axes.set_xticklabels(colorbar_ticks[:2], fontdict=dict(size=fontsize))
+    cbar.axes.set_xticklabels([str(t) for t in colorbar_ticks[:2]], fontdict=dict(size=fontsize))
     cbar.axes.set_yticks(colorbar_ticks[2:])
-    cbar.axes.set_yticklabels(colorbar_ticks[2:], fontdict=dict(size=fontsize))
+    cbar.axes.set_yticklabels([str(t) for t in colorbar_ticks[2:]], fontdict=dict(size=fontsize))
 
     return cbar
 
@@ -445,10 +449,10 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
                     zorder=6)
     return img
 
-def add_connected_vertices(fig, dataview, exclude_border_width=None,
-                           height=None, extents=None, recache=False,
-                           color=(1.0, 0.5, 0.1, 0.6), linewidth=0.75,
-                           alpha=1.0, **kwargs):
+def add_connected_vertices(fig: Axes, dataview: dataset.Volume, exclude_border_width: Optional[int]=None,
+                           height: Optional[int]=None, extents: Optional[tuple[float, float, float, float]]=None, recache: bool=False,
+                           color: tuple[float, float, float, float]=(1.0, 0.5, 0.1, 0.6), linewidth: float=0.75,
+                           alpha: float=1.0, **kwargs) -> LineCollection:
     """Plot lines btw distant vertices that are within the same voxel
 
     Parameters
@@ -462,10 +466,10 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     exclude_border_width : scalar or None
         if not None, width from edge of flatmap for which crossover lines are
         not computed.
-    height : scalar
+    height : scalar or None
         Height of image. if None, defaults to height of images already present
         in figure.
-    extents : array-like
+    extents : array-like or None
         4 values for [Left, Right, Bottom, Top] extents of image plotted. If
         None, defaults to extents of images already present in figure.
     color : rgba tuple
@@ -532,7 +536,7 @@ def add_connected_vertices(fig, dataview, exclude_border_width=None,
     # (This is the most time consuming step, as it draws many lines)
     # print('plotting lines...')
     fig, ax = _get_fig_and_ax(fig)
-    lc = LineCollection(pix_array_scaled,
+    lc = LineCollection(list(pix_array_scaled),
                         transform=fig.transFigure,
                         figure=fig,
                         colors=color,
