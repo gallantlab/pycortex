@@ -41,10 +41,6 @@ from ._space import (
 )
 from ._typing import (
     BuiltinView,
-    ColormappedLike,
-    RGBLike,
-    ScalarLike,
-    TwoDLike,
     VertexLike,
     VolumeLike,
     as_builtin_view,
@@ -93,10 +89,6 @@ __all__ = [
     "VolumeLike",
     "VertexLike",
     "BuiltinView",
-    "ScalarLike",
-    "TwoDLike",
-    "RGBLike",
-    "ColormappedLike",
     "as_builtin_view",
     "is_volume_view",
     "is_vertex_view",

@@ -312,6 +312,11 @@ consequence is that `typing.get_type_hints()` on these predicates raises
 `is_colormapped` exists rather than just `is_scalar_view` because the test it
 replaced, `hasattr(braindata, "cmap")`, matched 2D views as well as scalar ones.
 
+Only the *rows* of the grid get union aliases (`VolumeLike`, `VertexLike`, and
+`BuiltinView` for both). The columns are already classes -- `ScalarView`,
+`Dataview2D[Any]`, `DataviewRGB[Any]` -- so the predicates spell their column
+unions inline rather than naming them twice.
+
 ## The wire format is a hard interface
 
 `webgl/resources/js/dataset.js` dispatches **structurally**; no Python class name

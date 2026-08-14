@@ -47,6 +47,11 @@ from .views import Dataview, Vertex, Volume
 if TYPE_CHECKING:
     from typing_extensions import TypeIs
 
+# Only the *rows* of the 2x3 grid get aliases, because only the rows lack a class.
+# The columns are already real classes -- "any 2D view" is `Dataview2D[Any]` and
+# "any scalar view" is `ScalarView` -- so naming them again would be redundant.
+# The predicates below spell their column unions inline for the same reason.
+
 #: Any of the three built-in volumetric views.
 VolumeLike = Union[Volume, Volume2D, VolumeRGB]
 
@@ -60,21 +65,6 @@ VertexLike = Union[Vertex, Vertex2D, VertexRGB]
 #: negative branch. A view in a newly registered space is *not* a member; use
 #: :func:`space_of` for code that must handle those.
 BuiltinView = Union[VolumeLike, VertexLike]
-
-#: The two views carrying a single array of scalar values plus a 1D colormap.
-#: This is the stand-in for the ``BrainData & Dataview`` intersection that
-#: several comments in this package used to ask for; it is now a real class,
-#: :class:`~cortex.dataset.views.ScalarView`.
-ScalarLike = Union[Volume, Vertex]
-
-#: The two views carrying two channels under a 2D colormap.
-TwoDLike = Union[Volume2D, Vertex2D]
-
-#: The two views carrying their own colours rather than a colormap.
-RGBLike = Union[VolumeRGB, VertexRGB]
-
-#: The four views that have ``cmap``/``vmin``/``vmax``: scalar and 2D, not RGB.
-ColormappedLike = Union[Volume, Vertex, Volume2D, Vertex2D]
 
 
 def as_builtin_view(view: Dataview) -> BuiltinView:
@@ -134,7 +124,7 @@ def is_vertex_view(view: BuiltinView) -> TypeIs[VertexLike]:
     return isinstance(view, (Vertex, Vertex2D, VertexRGB))
 
 
-def is_scalar_view(view: BuiltinView) -> TypeIs[ScalarLike]:
+def is_scalar_view(view: BuiltinView) -> TypeIs[Union[Volume, Vertex]]:
     """Whether ``view`` carries scalar data and a 1D colormap.
 
     True for :class:`~cortex.dataset.views.Volume` and
@@ -144,24 +134,26 @@ def is_scalar_view(view: BuiltinView) -> TypeIs[ScalarLike]:
     return isinstance(view, (Volume, Vertex))
 
 
-def is_colormapped(view: BuiltinView) -> TypeIs[ColormappedLike]:
+def is_colormapped(
+    view: BuiltinView,
+) -> TypeIs[Union[Volume, Vertex, Volume2D, Vertex2D]]:
     """Whether ``view`` has ``cmap``/``vmin``/``vmax``.
 
     True for the scalar and 2D views, false for RGB, which carries its own
     colours. This is the typed replacement for ``hasattr(braindata, "cmap")`` --
     note that test matched 2D views as well as scalar ones, so
     :func:`is_scalar_view` would not be equivalent. The ``else`` branch of this
-    test is :data:`RGBLike`.
+    test is the two RGB views.
     """
     return isinstance(view, (Volume, Vertex, Volume2D, Vertex2D))
 
 
-def is_2d_view(view: BuiltinView) -> TypeIs[TwoDLike]:
+def is_2d_view(view: BuiltinView) -> TypeIs[Union[Volume2D, Vertex2D]]:
     """Whether ``view`` holds two channels under a 2D colormap."""
     return isinstance(view, (Volume2D, Vertex2D))
 
 
-def is_rgb_view(view: BuiltinView) -> TypeIs[RGBLike]:
+def is_rgb_view(view: BuiltinView) -> TypeIs[Union[VolumeRGB, VertexRGB]]:
     """Whether ``view`` carries its own colours rather than a colormap."""
     return isinstance(view, (VolumeRGB, VertexRGB))
 
@@ -179,10 +171,6 @@ __all__ = [
     "VolumeLike",
     "VertexLike",
     "BuiltinView",
-    "ScalarLike",
-    "TwoDLike",
-    "RGBLike",
-    "ColormappedLike",
     "BrainSpace",
     "VolumeSpace",
     "SurfaceSpace",
