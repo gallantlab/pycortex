@@ -135,7 +135,36 @@ def _build_cmapdict(
     return ColormapDict(cmap=resolved, vmin=vmin, vmax=vmax)
 
 
-class Dataview(ABC):
+class HasSubject(Protocol):
+    """Anything that knows which subject it belongs to.
+
+    A *static-only* protocol: deliberately not ``runtime_checkable``, so
+    ``isinstance`` against it raises ``TypeError`` rather than doing a
+    presence-only ``hasattr`` sweep. :class:`Dataview` claims it explicitly, which
+    is what makes the claim visible here and machine-checked -- a subclass that
+    failed to provide ``subject`` would be abstract and uninstantiable.
+    """
+
+    @property
+    def subject(self) -> str:
+        """Subject identifier. Must exist in the pycortex database."""
+
+
+class SupportsCurvatureBlend(Protocol):
+    """What :func:`_blend_curvature` needs from its receiver.
+
+    Claimed explicitly by :class:`SurfaceView`, so all three surface views
+    implement it by construction. Also static-only; see :class:`HasSubject`.
+    """
+
+    @property
+    def subject(self) -> str: ...
+
+    @property
+    def raw(self) -> VertexRGB: ...
+
+
+class Dataview(HasSubject, ABC):
     """Abstract root of every displayable view.
 
     Holds only what *every* view has: a subject, display metadata, and the
@@ -328,12 +357,22 @@ class VolumetricView(Dataview):
         data has already been colormapped.
         """
 
+    @property
+    @abstractmethod
+    def raw(self) -> VolumeRGB:
+        """Narrowed from :attr:`Dataview.raw`: a volumetric view renders to
+        :class:`~cortex.dataset.viewRGB.VolumeRGB`, never to the surface form."""
 
-class SurfaceView(Dataview):
+
+class SurfaceView(Dataview, SupportsCurvatureBlend):
     """A view whose data can be sampled per-vertex on a cortical surface.
 
     The other row of the grid. See :class:`VolumetricView` for why this is an
     abstract base rather than a ``Protocol``.
+
+    Claims :class:`SupportsCurvatureBlend` explicitly: ``blend_curvature`` is
+    available on all three surface views, and stating it here means mypy checks
+    that rather than leaving it to be rediscovered structurally.
     """
 
     @property
@@ -344,6 +383,12 @@ class SurfaceView(Dataview):
         Scalar for :class:`Vertex`; uint8 RGBA for the 2D and RGB views, whose
         data has already been colormapped.
         """
+
+    @property
+    @abstractmethod
+    def raw(self) -> VertexRGB:
+        """Narrowed from :attr:`Dataview.raw`: a surface view renders to
+        :class:`~cortex.dataset.viewRGB.VertexRGB`, never to the volumetric form."""
 
 
 class ScalarView(Dataview):
@@ -1203,16 +1248,6 @@ class Vertex(ScalarView, SurfaceView):
             contrast=contrast,
             smooth=smooth,
         )
-
-
-class SupportsCurvatureBlend(Protocol):
-    """What :func:`_blend_curvature` needs from its receiver."""
-
-    @property
-    def subject(self) -> str: ...
-
-    @property
-    def raw(self) -> VertexRGB: ...
 
 
 def _blend_curvature(

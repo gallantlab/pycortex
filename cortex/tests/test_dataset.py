@@ -823,3 +823,44 @@ def test_static_only_protocols_are_still_satisfied_structurally():
                composite.add_sulci, composite.add_custom):
         annot = inspect.signature(fn).parameters["dataview"].annotation
         assert "HasSubject" in str(annot), (fn.__name__, annot)
+
+
+def test_protocol_implementations_are_declared_not_merely_structural():
+    """Every protocol a view satisfies is claimed explicitly in its bases.
+
+    Explicit inheritance of a Protocol makes the claim visible on the class *and*
+    machine-checked -- a subclass that failed to provide a member would be
+    abstract and uninstantiable. It does not re-enable ``isinstance``, which still
+    requires ``@runtime_checkable``; that is checked separately.
+    """
+    from cortex.dataset.views import (
+        Dataview,
+        HasSubject,
+        SupportsCurvatureBlend,
+        SurfaceView,
+        VolumetricView,
+    )
+
+    assert HasSubject in Dataview.__bases__
+    assert SupportsCurvatureBlend in SurfaceView.__bases__
+
+    expected = {
+        "Volume": (VolumetricView, False),
+        "Volume2D": (VolumetricView, False),
+        "VolumeRGB": (VolumetricView, False),
+        "Vertex": (SurfaceView, True),
+        "Vertex2D": (SurfaceView, True),
+        "VertexRGB": (SurfaceView, True),
+    }
+    for name, (row, blends) in expected.items():
+        cls = getattr(cortex, name)
+        mro = cls.__mro__
+        # every view claims HasSubject, via Dataview
+        assert HasSubject in mro, name
+        # exactly one row
+        assert row in mro, name
+        other = SurfaceView if row is VolumetricView else VolumetricView
+        assert other not in mro, name
+        # curvature blending is a surface-only contract
+        assert (SupportsCurvatureBlend in mro) is blends, name
+        assert hasattr(cls, "blend_curvature") is blends, name

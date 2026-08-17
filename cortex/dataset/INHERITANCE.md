@@ -318,6 +318,34 @@ touches. Every one of `add_curvature`, `add_rois`, `add_sulci`, `add_custom` and
 `Dataview` (or a `Union[Vertex, Volume, Dataview]` that collapses to it). They now
 take `HasSubject`.
 
+### Which class implements what
+
+Every claim below is declared in the class's bases, not left to be rediscovered
+structurally, so mypy checks it and a missing member makes the class abstract.
+Pinned by `test_protocol_implementations_are_declared_not_merely_structural`.
+
+| class | row (ABC) | column (ABC) | `HasSubject` | `SupportsCurvatureBlend` |
+| --- | --- | --- | :-: | :-: |
+| `Volume` | `VolumetricView` | `ScalarView` | ✓ | |
+| `Volume2D` | `VolumetricView` | `Dataview2D[Volume]` | ✓ | |
+| `VolumeRGB` | `VolumetricView` | `DataviewRGB[Volume]` | ✓ | |
+| `Vertex` | `SurfaceView` | `ScalarView` | ✓ | ✓ |
+| `Vertex2D` | `SurfaceView` | `Dataview2D[Vertex]` | ✓ | ✓ |
+| `VertexRGB` | `SurfaceView` | `DataviewRGB[Vertex]` | ✓ | ✓ |
+
+`HasSubject` is claimed once, by `Dataview`, so it covers every view including any
+added later. `SupportsCurvatureBlend` is claimed once, by `SurfaceView` — curvature
+blending is a surface-only contract, and `blend_curvature` exists on exactly those
+three classes.
+
+The rows also narrow `raw`: `VolumetricView.raw` returns `VolumeRGB` and
+`SurfaceView.raw` returns `VertexRGB`, rather than the base's `DataviewRGB`. So
+`view.raw.volume` and `view.raw.left` resolve without a further cast.
+
+Note that inheriting a Protocol explicitly does **not** re-enable `isinstance`
+against it — that still requires `@runtime_checkable`, which these deliberately
+lack. The claim is checked statically; the runtime guard stays shut.
+
 **Why abstract bases rather than `Protocol` for the rows.** A `runtime_checkable`
 protocol's
 `isinstance` tests only for the *presence* of the member names — it cannot tell a
