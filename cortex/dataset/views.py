@@ -308,7 +308,32 @@ class Dataview(HasSubject, ABC):
         )
 
 
-class VolumetricView(Dataview):
+class RenderableView(Dataview):
+    """A view a renderer can sample, whatever space it lives in.
+
+    The common base of every row of the grid. Its purpose is to let callers stop
+    enumerating the rows: :func:`~cortex.dataset._typing.as_renderable` is one
+    ``isinstance`` against this, and the flatmap renderer reads
+    :attr:`sampling_data` instead of asking which row it holds.
+
+    That matters because an ``if volumetric / else surface`` fork silently encodes
+    "there are exactly two rows". A third row would have taken the ``else`` branch
+    and then failed -- or worse, drawn the wrong thing. Nothing branches on the row
+    any more, so a new row works everywhere by implementing this one member (plus
+    its space's :attr:`~cortex.dataset._space.BrainSpace.xfmname`).
+    """
+
+    @property
+    @abstractmethod
+    def sampling_data(self) -> npt.NDArray:
+        """The array a renderer samples, with a leading time axis.
+
+        Each row points this at whichever of its accessors is the sampled one.
+        Paired with ``view.space.xfmname``, which says what to sample *through*.
+        """
+
+
+class VolumetricView(RenderableView):
     """A view whose data can be sampled as a volume under a transform.
 
     One of the two *rows* of the 2x3 grid. The columns are already classes
@@ -344,13 +369,18 @@ class VolumetricView(Dataview):
         """
 
     @property
+    def sampling_data(self) -> npt.NDArray:
+        """A volumetric view is sampled from its volume."""
+        return self.volume
+
+    @property
     @abstractmethod
     def raw(self) -> VolumeRGB:
         """Narrowed from :attr:`Dataview.raw`: a volumetric view renders to
         :class:`~cortex.dataset.viewRGB.VolumeRGB`, never to the surface form."""
 
 
-class SurfaceView(Dataview):
+class SurfaceView(RenderableView):
     """A view whose data can be sampled per-vertex on a cortical surface.
 
     The other row of the grid. See :class:`VolumetricView` for why this is an
@@ -369,6 +399,11 @@ class SurfaceView(Dataview):
         Scalar for :class:`Vertex`; uint8 RGBA for the 2D and RGB views, whose
         data has already been colormapped.
         """
+
+    @property
+    def sampling_data(self) -> npt.NDArray:
+        """A surface view is sampled per-vertex."""
+        return self.vertices
 
     @property
     @abstractmethod

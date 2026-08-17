@@ -11,13 +11,12 @@ import numpy.typing as npt
 from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
-from ..dataset._typing import Renderable
-from ..dataset.views import SurfaceView
+from ..dataset.views import RenderableView
 from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata: Renderable, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
+def make_flatmap_image(braindata: RenderableView, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -47,25 +46,16 @@ def make_flatmap_image(braindata: Renderable, height: int=1024, recache: bool=Fa
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
     
-    # Was `not hasattr(braindata, "xfmname")`, which no checker can narrow.
-    # isinstance against a union member subtracts it from the else branch, so
-    # `braindata` is a VolumetricView there with no further guarding -- and being
-    # a real class check rather than a protocol's hasattr sweep, it cannot be
-    # satisfied by something that merely happens to have the attribute names.
-    if isinstance(braindata, SurfaceView):
-        pixmap = get_flatcache(braindata.subject,
-                               None,
-                               height=height,
-                               recache=recache,
-                               **kwargs)
-        data = braindata.vertices
-    else:
-        pixmap = get_flatcache(braindata.subject,
-                               braindata.xfmname,
-                               height=height,
-                               recache=recache,
-                               **kwargs)
-        data = braindata.volume
+    # No branch on the row. This was `not hasattr(braindata, "xfmname")`, then an
+    # isinstance fork whose `else` silently assumed exactly two rows existed. The
+    # space says what to sample *through* and the view says what to sample, so a
+    # newly added row works here without touching this function.
+    pixmap = get_flatcache(braindata.subject,
+                           braindata.space.xfmname,
+                           height=height,
+                           recache=recache,
+                           **kwargs)
+    data = braindata.sampling_data
 
     if data.shape[0] > 1:
         raise ValueError("Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data")

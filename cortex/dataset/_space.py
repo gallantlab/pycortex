@@ -61,6 +61,16 @@ class BrainSpace(ABC):
             subject if isinstance(subject, str) else subject.decode("utf-8")
         )
 
+    @property
+    @abstractmethod
+    def xfmname(self) -> Optional[str]:
+        """Transform name for this space, or None if it has no transform.
+
+        The single fact that distinguishes "sample through a transform" from
+        "sample on a surface". Both the flatmap cache and HDF slot 7 derive from
+        it, so neither has to ask which kind of space it is holding.
+        """
+
     # ------------------------------------------------------------------
     # binding an array
     # ------------------------------------------------------------------
@@ -126,9 +136,13 @@ class BrainSpace(ABC):
         """Write whatever this space needs to reconstruct itself onto ``node``."""
 
     @property
-    @abstractmethod
     def view_xfmname(self) -> Any:
-        """Value for slot 7 of a ``/views`` record, or None if not applicable."""
+        """Value for slot 7 of a ``/views`` record.
+
+        Concrete: derived from :attr:`xfmname` rather than overridden per space,
+        which is what it used to be.
+        """
+        return None if self.xfmname is None else [self.xfmname]
 
     @classmethod
     @abstractmethod
@@ -200,7 +214,9 @@ class VolumeSpace(BrainSpace):
         mask: MaskSpec = None,
     ) -> None:
         super().__init__(subject)
-        self.xfmname = (
+        # A property, not a plain attribute: an abstract property is not
+        # satisfied by an instance attribute assigned in __init__.
+        self._xfmname = (
             xfmname if isinstance(xfmname, str) else xfmname.decode("utf-8")
         )
 
@@ -213,6 +229,11 @@ class VolumeSpace(BrainSpace):
         #: Whether the bound array is flattened into mask space.
         self.linear = False
         self._shape: tuple[int, ...] = ()
+
+    @property
+    def xfmname(self) -> str:
+        """Narrowed from ``Optional[str]``: a volume always has a transform."""
+        return self._xfmname
 
     def coerce(self, data: Optional[npt.NDArray]) -> npt.NDArray:
         if data is None:
@@ -324,10 +345,6 @@ class VolumeSpace(BrainSpace):
 
         node.attrs["mask"] = mask
 
-    @property
-    def view_xfmname(self) -> Any:
-        return [self.xfmname]
-
     @classmethod
     def from_hdf(
         cls,
@@ -378,6 +395,11 @@ class SurfaceSpace(BrainSpace):
         self.rlen = len(right[0])
         #: Which hemispheres the bound array covered: "left", "right" or "both".
         self.hem = "both"
+
+    @property
+    def xfmname(self) -> None:
+        """A surface space has no transform."""
+        return None
 
     @property
     def nverts(self) -> int:
@@ -442,10 +464,6 @@ class SurfaceSpace(BrainSpace):
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset
     ) -> None:
-        return None
-
-    @property
-    def view_xfmname(self) -> Any:
         return None
 
     @classmethod

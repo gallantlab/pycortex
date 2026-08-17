@@ -872,3 +872,97 @@ def test_protocol_implementations_are_declared_not_merely_structural():
         assert other not in mro, name
         # curvature blending is a surface-only contract, inherited from the row
         assert hasattr(cls, "blend_curvature") is blends, name
+
+
+def test_a_third_row_needs_no_change_to_the_renderer():
+    """Nothing branches on which row a view is, so a new one just works.
+
+    ``make_flatmap_image`` used to fork on ``isinstance(braindata, SurfaceView)``
+    with an ``else`` that silently assumed exactly two rows existed -- a third
+    would have taken the volumetric path and then failed on ``.xfmname``. It now
+    reads ``space.xfmname`` (what to sample through) and ``sampling_data`` (what to
+    sample), so a row it has never heard of is drawn by the same code.
+    """
+    import inspect
+
+    from cortex.dataset._space import BrainSpace
+    from cortex.dataset._typing import as_renderable
+    from cortex.dataset.views import RenderableView, SurfaceView, VolumetricView
+    from cortex.quickflat import utils as qutils
+
+    class ThirdSpace(BrainSpace):
+        """A space that is neither volumetric nor surface-shaped."""
+
+        hdf_key = "third"
+
+        @property
+        def xfmname(self):
+            return None          # sampled without a transform
+
+        def coerce(self, data):
+            return np.zeros((1, 4)) if data is None else data
+
+        def is_movie(self, data):
+            return data.ndim > 1
+
+        @property
+        def spatial_shape(self):
+            return (4,)
+
+        def wrap(self, data, **kwargs):
+            raise NotImplementedError
+
+        def wrap_rgb(self, red, green, blue, alpha=None, **kwargs):
+            raise NotImplementedError
+
+        def to_json(self):
+            return {}
+
+        def write_hdf_attrs(self, h5, node):
+            return None
+
+        @classmethod
+        def from_hdf(cls, attrs, *, subject, xfmname, mask):
+            return None
+
+        @classmethod
+        def views(cls):
+            raise NotImplementedError
+
+    class ThirdRow(RenderableView):
+        """A row this package has never heard of."""
+
+        @property
+        def space(self):
+            return self._space
+
+        def __init__(self):
+            self._space = ThirdSpace(subj)
+
+        @property
+        def sampling_data(self):
+            return np.zeros((1, 4))
+
+        @property
+        def raw(self):
+            raise NotImplementedError
+
+        def uniques(self, collapse=False):
+            raise NotImplementedError
+
+        def _write_hdf(self, h5, name="data"):
+            raise NotImplementedError
+
+    row = ThirdRow()
+    # it is renderable without being either built-in row
+    assert as_renderable(row) is row
+    assert not isinstance(row, (VolumetricView, SurfaceView))
+    # and the two facts the renderer needs are both available
+    assert row.space.xfmname is None
+    assert row.sampling_data.shape == (1, 4)
+    # the renderer no longer asks which row it holds. (It still has isinstance
+    # checks for np.ma.MaskedArray -- those are about the array, not the row.)
+    src = inspect.getsource(qutils.make_flatmap_image)
+    for row_name in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
+        assert row_name not in src, row_name
+    assert "sampling_data" in src and "space.xfmname" in src

@@ -277,28 +277,39 @@ Both axes are real classes, so every narrowing test is a nominal `isinstance`.
 |  | volumetric | surface |
 | --- | --- | --- |
 | **row** (space) | `VolumetricView` | `SurfaceView` |
+| both rows | `RenderableView` | |
 | **column** (channels) | `ScalarView` / `Dataview2D` / `DataviewRGB` | same |
 
 The columns were always classes; only the rows lacked a type, which is why
-consumers duck-typed `hasattr(braindata, "xfmname")`. `VolumetricView` declares
-`xfmname` and `volume`; `SurfaceView` declares `vertices`. Each of the six views
-inherits exactly one, which is what makes the volumetric/surface fork total.
+consumers duck-typed `hasattr(braindata, "xfmname")`.
 
-Narrowing needs no machinery — `isinstance` against a union member subtracts it
-from the `else` branch:
+### Nothing branches on the row
+
+An `if volumetric / else surface` fork silently encodes "there are exactly two
+rows": a third would take the `else` and then fail, or draw the wrong thing. So the
+renderer asks for the two facts it needs instead of asking what it is holding:
+
+- `view.space.xfmname` — the transform to sample *through*, or `None`. Owned by the
+  space, and HDF slot 7 derives from the same value.
+- `view.sampling_data` — the array to sample. Owned by the row: `VolumetricView`
+  points it at `volume`, `SurfaceView` at `vertices`.
 
 ```python
-def make_flatmap_image(braindata: Renderable, ...):
-    if isinstance(braindata, SurfaceView):
-        data = braindata.vertices          # SurfaceView
-    else:
-        data = braindata.volume            # VolumetricView
+def make_flatmap_image(braindata: RenderableView, ...):
+    mask, extents = get_flatmask(braindata.subject, ...)
+    pixmap = get_flatcache(braindata.subject, braindata.space.xfmname, ...)
+    data = braindata.sampling_data
 ```
 
-No `TypeGuard`, no `TypeIs`, no `Protocol`, no `typing_extensions`, no predicate
-helpers. Earlier iterations had all of those; `TypeIs` is only needed to carry
-that narrowing *across a function-call boundary*, i.e. only if the check lives in
-a named helper rather than inline.
+`as_renderable` is likewise one `isinstance(view, RenderableView)` rather than a
+tuple of known rows. Adding a row therefore touches neither. Pinned by
+`test_a_third_row_needs_no_change_to_the_renderer`, which renders through a row
+this package has never seen.
+
+Tests *for* a specific capability stay as positive `isinstance` checks and are
+still correct — `with_dropout` needs a transform, so
+`isinstance(dataview, VolumetricView)` is exactly the right question, and it
+correctly rejects a third row that has none.
 
 **Which mechanism for which question.** Protocols and ABCs are both used here, for
 different questions, and the split is deliberate:

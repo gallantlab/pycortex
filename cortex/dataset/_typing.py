@@ -1,4 +1,4 @@
-"""Types for narrowing the ``cortex.dataset`` view grid, for consumers.
+r"""Types for narrowing the ``cortex.dataset`` view grid, for consumers.
 
 The six public view classes form a 2x3 grid. Both axes are now real classes, so
 every narrowing test is a nominal ``isinstance`` -- sound, and understood by type
@@ -68,10 +68,18 @@ from typing import Any, Protocol, Union
 
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .view2D import Dataview2D
-from .views import Dataview, ScalarView, SurfaceView, VolumetricView
+from .views import (
+    Dataview,
+    RenderableView,
+    ScalarView,
+    SurfaceView,
+    VolumetricView,
+)
 
-#: Anything the flatmap renderers can draw: one row of the grid or the other.
-Renderable = Union[VolumetricView, SurfaceView]
+#: Anything the flatmap renderers can draw. An alias for the common base of every
+#: row, not a union of the rows: a union would have to be edited whenever a row is
+#: added, and code branching over it would silently mis-route the new one.
+Renderable = RenderableView
 
 
 class HasSubject(Protocol):
@@ -124,7 +132,7 @@ def as_renderable(view: Dataview) -> Renderable:
     TypeError
         If ``view`` is neither.
     """
-    if isinstance(view, (VolumetricView, SurfaceView)):
+    if isinstance(view, RenderableView):
         return view
     # Naming the space is useful, but reading it must not be able to raise: this
     # is a diagnostic path, and `space` is a property on an unknown class.
@@ -133,9 +141,9 @@ def as_renderable(view: Dataview) -> Renderable:
     except Exception:
         space_name = "<unavailable>"
     raise TypeError(
-        "%s (space %s) is not renderable: it subclasses neither VolumetricView "
-        "(xfmname, volume) nor SurfaceView (vertices). A view in a new space "
-        "should inherit whichever of the two describes how its data is sampled."
+        "%s (space %s) is not renderable: it does not subclass RenderableView. A "
+        "view in a new space should inherit VolumetricView or SurfaceView, or "
+        "RenderableView directly if it is sampled some other way."
         % (type(view).__name__, space_name)
     )
 
@@ -151,6 +159,7 @@ def space_of(view: Dataview) -> BrainSpace:
 
 
 __all__ = [
+    "RenderableView",
     "VolumetricView",
     "SurfaceView",
     "Renderable",
