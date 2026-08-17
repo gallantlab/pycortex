@@ -38,7 +38,6 @@ from .views import (
     Vertex,
     Volume,
     VolumetricView,
-    _blend_curvature,
 )
 
 default_cmap = options.config.get("basic", "default_cmap")
@@ -1028,25 +1027,6 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
     @property
     def name(self) -> str:
         return "__%s" % _hash(self.vertices)[:16]
-
-    def blend_curvature(
-        self,
-        alpha: npt.NDArray[np.floating],
-        threshold: float = 0,
-        brightness: float = 0.5,
-        contrast: float = 0.25,
-        smooth: float = 20,
-    ) -> VertexRGB:
-        """Blend this map with a curvature map. Deprecated; see
-        :func:`cortex.dataset.views._blend_curvature`."""
-        return _blend_curvature(
-            self,
-            alpha,
-            threshold=threshold,
-            brightness=brightness,
-            contrast=contrast,
-            smooth=smooth,
-        )
 
 
 def _to_uint8(

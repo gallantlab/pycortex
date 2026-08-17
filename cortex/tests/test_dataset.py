@@ -791,13 +791,18 @@ def test_static_only_protocols_refuse_isinstance():
     static question -- so they are deliberately not @runtime_checkable, and
     isinstance against them is a TypeError rather than a hasattr sweep.
     """
+    from typing import Any
+
     from cortex.dataset._typing import HasSubject
-    from cortex.dataset.views import SupportsCurvatureBlend
 
     vol = cortex.Volume(np.ones(volshape), subj, xfmname)
-    for proto in (HasSubject, SupportsCurvatureBlend):
-        with pytest.raises(TypeError, match="runtime_checkable"):
-            isinstance(vol, proto)
+    # The guard has two halves. Statically, mypy rejects `isinstance(vol,
+    # HasSubject)` outright ("Only @runtime_checkable protocols can be used with
+    # instance and class checks") -- so this goes through a variable to get past
+    # the checker and exercise the *runtime* half.
+    proto: Any = HasSubject
+    with pytest.raises(TypeError, match="runtime_checkable"):
+        isinstance(vol, proto)
 
 
 def test_static_only_protocols_are_still_satisfied_structurally():
@@ -836,13 +841,17 @@ def test_protocol_implementations_are_declared_not_merely_structural():
     from cortex.dataset.views import (
         Dataview,
         HasSubject,
-        SupportsCurvatureBlend,
         SurfaceView,
         VolumetricView,
     )
 
     assert HasSubject in Dataview.__bases__
-    assert SupportsCurvatureBlend in SurfaceView.__bases__
+    # blend_curvature is defined once, on the row, not per concrete class
+    assert "blend_curvature" in SurfaceView.__dict__
+    assert not any(
+        "blend_curvature" in getattr(cortex, n).__dict__
+        for n in ("Vertex", "Vertex2D", "VertexRGB")
+    )
 
     expected = {
         "Volume": (VolumetricView, False),
@@ -861,6 +870,5 @@ def test_protocol_implementations_are_declared_not_merely_structural():
         assert row in mro, name
         other = SurfaceView if row is VolumetricView else VolumetricView
         assert other not in mro, name
-        # curvature blending is a surface-only contract
-        assert (SupportsCurvatureBlend in mro) is blends, name
+        # curvature blending is a surface-only contract, inherited from the row
         assert hasattr(cls, "blend_curvature") is blends, name

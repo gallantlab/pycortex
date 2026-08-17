@@ -150,20 +150,6 @@ class HasSubject(Protocol):
         """Subject identifier. Must exist in the pycortex database."""
 
 
-class SupportsCurvatureBlend(Protocol):
-    """What :func:`_blend_curvature` needs from its receiver.
-
-    Claimed explicitly by :class:`SurfaceView`, so all three surface views
-    implement it by construction. Also static-only; see :class:`HasSubject`.
-    """
-
-    @property
-    def subject(self) -> str: ...
-
-    @property
-    def raw(self) -> VertexRGB: ...
-
-
 class Dataview(HasSubject, ABC):
     """Abstract root of every displayable view.
 
@@ -364,15 +350,15 @@ class VolumetricView(Dataview):
         :class:`~cortex.dataset.viewRGB.VolumeRGB`, never to the surface form."""
 
 
-class SurfaceView(Dataview, SupportsCurvatureBlend):
+class SurfaceView(Dataview):
     """A view whose data can be sampled per-vertex on a cortical surface.
 
     The other row of the grid. See :class:`VolumetricView` for why this is an
     abstract base rather than a ``Protocol``.
 
-    Claims :class:`SupportsCurvatureBlend` explicitly: ``blend_curvature`` is
-    available on all three surface views, and stating it here means mypy checks
-    that rather than leaving it to be rediscovered structurally.
+    ``blend_curvature`` lives here as a concrete method, so all three surface
+    views inherit one implementation rather than each forwarding to a free
+    function.
     """
 
     @property
@@ -389,6 +375,103 @@ class SurfaceView(Dataview, SupportsCurvatureBlend):
     def raw(self) -> VertexRGB:
         """Narrowed from :attr:`Dataview.raw`: a surface view renders to
         :class:`~cortex.dataset.viewRGB.VertexRGB`, never to the volumetric form."""
+
+    def blend_curvature(
+        self,
+        alpha: npt.NDArray[np.floating],
+        threshold: float = 0,
+        brightness: float = 0.5,
+        contrast: float = 0.25,
+        smooth: float = 20,
+    ) -> VertexRGB:
+        """Blend the data with a curvature map depending on a transparency map.
+
+    .. deprecated::
+        Per-vertex/voxel alpha is now honored directly by both the WebGL
+        viewer and ``cortex.quickshow``, so this curvature-blending hack
+        is no longer needed. The recommended replacement for scalar data
+        with a transparency map is :class:`Vertex2D` (or
+        :class:`Volume2D`) with a 2D colormap whose second axis encodes
+        alpha (e.g. ``"fire_alpha"``, ``"PU_RdBu_covar_alpha"``)::
+
+            # Was:
+            #   blended = vtx.blend_curvature(alpha)
+            #   cortex.quickshow(blended)
+            # Now:
+            v2d = cortex.Vertex2D(vtx.data, alpha, subject,
+                                  cmap="fire_alpha",
+                                  vmin=vtx.vmin, vmax=vtx.vmax,
+                                  vmin2=0, vmax2=1)
+            cortex.quickshow(v2d)         # or cortex.webgl.show(v2d)
+
+        The 2D colormap path keeps colormap parameters (``cmap``,
+        ``vmin``, ``vmax``) editable on the resulting object, and the
+        curvature underlay is composited through automatically by both
+        the matplotlib and WebGL renderers.
+
+        For data that is already RGB, pass ``alpha=`` to
+        :class:`VertexRGB` / :class:`VolumeRGB` directly instead.
+
+    Vertex objects cannot use transparency as Volume objects. This function
+    is a hack to mimic the transparency of Volume objects, blending the
+    Vertex data with a curvature map. It returns a VertexRGB object, and the
+    colormap parameters (vmin, vmax, cmap, ...) of the original Vertex object
+    cannot be changed later on.
+
+    Parameters
+    ----------
+    alpha : array of shape (n_vertices, )
+        Transparency map.
+    threshold : float
+        Threshold for the curvature map.
+    brightness : float
+        Brightness of the curvature map.
+    contrast : float
+        Contrast of the curvature map.
+    smooth : float
+        Smoothness of the curvature map.
+
+    Returns
+    -------
+    blended : VertexRGB object
+        The original map blended with a curvature map.
+    """
+        warnings.warn(
+            "blend_curvature is deprecated and will be removed in a future "
+            "release. Per-vertex/voxel alpha is now honored directly by both "
+            "the WebGL viewer and quickshow, so this curvature-blending hack "
+            "is no longer needed. For scalar data with a transparency map, "
+            "use Vertex2D / Volume2D with a 2D colormap whose second axis "
+            "encodes alpha (e.g. 'fire_alpha', 'PU_RdBu_covar_alpha'), e.g. "
+            "`Vertex2D(data, alpha, subject, cmap='fire_alpha', vmin=..., "
+            "vmax=..., vmin2=0, vmax2=1)`. For data that is already RGB, "
+            "pass `alpha=` to VertexRGB / VolumeRGB directly.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        # prepare curvature map
+        curvature = db.get_surfinfo(self.subject, smooth=smooth).data
+        curvature = (curvature > threshold).astype("float")
+        curvature = curvature * contrast + brightness
+        curvature_raw = Vertex(
+            curvature, self.subject, vmin=0, vmax=1, cmap="gray"
+        ).raw
+    
+        # prepare alpha map
+        clipped = np.clip(alpha.astype("float"), 0, 1)
+    
+        # blend original map with curvature map. VertexRGB.raw returns self, so copy.
+        blended = deepcopy(self.raw)
+        for channel, curv in (
+            ("red", curvature_raw.red),
+            ("green", curvature_raw.green),
+            ("blue", curvature_raw.blue),
+        ):
+            chan = getattr(blended, channel)
+            chan.data = (chan.data * clipped + (1 - clipped) * curv.data).astype("uint8")
+    
+        return blended
+
 
 
 class ScalarView(Dataview):
@@ -1229,124 +1312,6 @@ class Vertex(ScalarView, SurfaceView):
         )
         result._nan_mask = nan_mask
         return result
-
-    def blend_curvature(
-        self,
-        alpha: npt.NDArray[np.floating],
-        threshold: float = 0,
-        brightness: float = 0.5,
-        contrast: float = 0.25,
-        smooth: float = 20,
-    ) -> VertexRGB:
-        """Blend this map with a curvature map. Deprecated; see
-        :func:`_blend_curvature` for the full docstring and the replacement."""
-        return _blend_curvature(
-            self,
-            alpha,
-            threshold=threshold,
-            brightness=brightness,
-            contrast=contrast,
-            smooth=smooth,
-        )
-
-
-def _blend_curvature(
-    view: SupportsCurvatureBlend,
-    alpha: npt.NDArray[np.floating],
-    threshold: float = 0,
-    brightness: float = 0.5,
-    contrast: float = 0.25,
-    smooth: float = 20,
-) -> VertexRGB:
-    """Blend the data with a curvature map depending on a transparency map.
-
-    .. deprecated::
-        Per-vertex/voxel alpha is now honored directly by both the WebGL
-        viewer and ``cortex.quickshow``, so this curvature-blending hack
-        is no longer needed. The recommended replacement for scalar data
-        with a transparency map is :class:`Vertex2D` (or
-        :class:`Volume2D`) with a 2D colormap whose second axis encodes
-        alpha (e.g. ``"fire_alpha"``, ``"PU_RdBu_covar_alpha"``)::
-
-            # Was:
-            #   blended = vtx.blend_curvature(alpha)
-            #   cortex.quickshow(blended)
-            # Now:
-            v2d = cortex.Vertex2D(vtx.data, alpha, subject,
-                                  cmap="fire_alpha",
-                                  vmin=vtx.vmin, vmax=vtx.vmax,
-                                  vmin2=0, vmax2=1)
-            cortex.quickshow(v2d)         # or cortex.webgl.show(v2d)
-
-        The 2D colormap path keeps colormap parameters (``cmap``,
-        ``vmin``, ``vmax``) editable on the resulting object, and the
-        curvature underlay is composited through automatically by both
-        the matplotlib and WebGL renderers.
-
-        For data that is already RGB, pass ``alpha=`` to
-        :class:`VertexRGB` / :class:`VolumeRGB` directly instead.
-
-    Vertex objects cannot use transparency as Volume objects. This function
-    is a hack to mimic the transparency of Volume objects, blending the
-    Vertex data with a curvature map. It returns a VertexRGB object, and the
-    colormap parameters (vmin, vmax, cmap, ...) of the original Vertex object
-    cannot be changed later on.
-
-    Parameters
-    ----------
-    view : Vertex, Vertex2D or VertexRGB
-        The view to blend.
-    alpha : array of shape (n_vertices, )
-        Transparency map.
-    threshold : float
-        Threshold for the curvature map.
-    brightness : float
-        Brightness of the curvature map.
-    contrast : float
-        Contrast of the curvature map.
-    smooth : float
-        Smoothness of the curvature map.
-
-    Returns
-    -------
-    blended : VertexRGB object
-        The original map blended with a curvature map.
-    """
-    warnings.warn(
-        "blend_curvature is deprecated and will be removed in a future "
-        "release. Per-vertex/voxel alpha is now honored directly by both "
-        "the WebGL viewer and quickshow, so this curvature-blending hack "
-        "is no longer needed. For scalar data with a transparency map, "
-        "use Vertex2D / Volume2D with a 2D colormap whose second axis "
-        "encodes alpha (e.g. 'fire_alpha', 'PU_RdBu_covar_alpha'), e.g. "
-        "`Vertex2D(data, alpha, subject, cmap='fire_alpha', vmin=..., "
-        "vmax=..., vmin2=0, vmax2=1)`. For data that is already RGB, "
-        "pass `alpha=` to VertexRGB / VolumeRGB directly.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-    # prepare curvature map
-    curvature = db.get_surfinfo(view.subject, smooth=smooth).data
-    curvature = (curvature > threshold).astype("float")
-    curvature = curvature * contrast + brightness
-    curvature_raw = Vertex(
-        curvature, view.subject, vmin=0, vmax=1, cmap="gray"
-    ).raw
-
-    # prepare alpha map
-    clipped = np.clip(alpha.astype("float"), 0, 1)
-
-    # blend original map with curvature map. VertexRGB.raw returns self, so copy.
-    blended = deepcopy(view.raw)
-    for channel, curv in (
-        ("red", curvature_raw.red),
-        ("green", curvature_raw.green),
-        ("blue", curvature_raw.blue),
-    ):
-        chan = getattr(blended, channel)
-        chan.data = (chan.data * clipped + (1 - clipped) * curv.data).astype("uint8")
-
-    return blended
 
 
 # Generic allows us to return the concrete view class, not just ScalarView

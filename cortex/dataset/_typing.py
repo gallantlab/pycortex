@@ -39,13 +39,17 @@ split is deliberate:
 - **ABCs, for "what kind of view is this?"** -- :class:`VolumetricView` and
   :class:`SurfaceView`. This question is asked at *runtime*, so the check has to be
   sound, and only a nominal base class gives that.
-- **Protocols, for "what does this function need?"** -- :class:`HasSubject`,
-  and :class:`~cortex.dataset.views.SupportsCurvatureBlend`. These are *static*
-  contracts on a parameter: they let a function claim exactly what it touches
+- **Protocols, for "what does this function need?"** -- :class:`HasSubject`.
+  A *static* contract on a parameter: it lets a function claim exactly what it touches
   instead of demanding a whole :class:`Dataview`. They are never ``isinstance``\ d,
-  so they are deliberately **not** ``runtime_checkable`` -- which makes
-  ``isinstance`` against them raise ``TypeError``, mechanically preventing the
-  presence-only check from creeping back in. A test pins that.
+  so it is deliberately **not** ``runtime_checkable`` -- which makes ``isinstance``
+  against it raise ``TypeError``, mechanically preventing the presence-only check
+  from creeping back in. A test pins that.
+
+  Protocols compose by inheritance when one is a superset of another --
+  ``class Blendable(HasSubject, Protocol)`` rather than re-declaring ``subject``.
+  Note the ``Protocol`` base has to be repeated: ``class Blendable(HasSubject)``
+  silently becomes an ordinary instantiable class.
 
 **Why abstract bases rather than ``Protocol`` for the rows.** A ``runtime_checkable`` protocol's
 ``isinstance`` tests only for the *presence* of the member names -- it cannot tell

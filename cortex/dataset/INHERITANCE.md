@@ -324,7 +324,7 @@ Every claim below is declared in the class's bases, not left to be rediscovered
 structurally, so mypy checks it and a missing member makes the class abstract.
 Pinned by `test_protocol_implementations_are_declared_not_merely_structural`.
 
-| class | row (ABC) | column (ABC) | `HasSubject` | `SupportsCurvatureBlend` |
+| class | row (ABC) | column (ABC) | `HasSubject` | `blend_curvature` |
 | --- | --- | --- | :-: | :-: |
 | `Volume` | `VolumetricView` | `ScalarView` | ✓ | |
 | `Volume2D` | `VolumetricView` | `Dataview2D[Volume]` | ✓ | |
@@ -334,9 +334,11 @@ Pinned by `test_protocol_implementations_are_declared_not_merely_structural`.
 | `VertexRGB` | `SurfaceView` | `DataviewRGB[Vertex]` | ✓ | ✓ |
 
 `HasSubject` is claimed once, by `Dataview`, so it covers every view including any
-added later. `SupportsCurvatureBlend` is claimed once, by `SurfaceView` — curvature
-blending is a surface-only contract, and `blend_curvature` exists on exactly those
-three classes.
+added later. `blend_curvature` is defined once, as a concrete method on
+`SurfaceView` — curvature blending is a surface-only contract, so all three surface
+views inherit one implementation. It used to be three identical forwarding methods
+delegating to a module-level function typed against a `SupportsCurvatureBlend`
+protocol; hoisting it removed the three copies, the function and the protocol.
 
 The rows also narrow `raw`: `VolumetricView.raw` returns `VolumeRGB` and
 `SurfaceView.raw` returns `VertexRGB`, rather than the base's `DataviewRGB`. So
