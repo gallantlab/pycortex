@@ -139,6 +139,13 @@ setup(name=DISTNAME,
       # Don't use `extras_require` here. Put them in pyproject.toml .
       cmdclass=dict(install=my_install),
       include_package_data=True,
+      # Reference renders for the visual-regression test are fixtures, of no use
+      # at runtime. MANIFEST.in's recursive-include keeps them in the source
+      # tarball, so a build from source can still run the test; this keeps them
+      # out of the wheel, where they would just sit in every user's
+      # site-packages. The test skips when they are absent.
+      exclude_package_data={'cortex.tests': ['reference_images/*',
+                                             'reference_images/*/*']},
       classifiers=[
           'Development Status :: 6 - Mature',
           'Intended Audience :: Science/Research',
