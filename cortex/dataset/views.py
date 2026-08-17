@@ -552,9 +552,47 @@ class ScalarView(Dataview):
     def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
         yield self
 
-    @abstractmethod
     def copy(self, data: npt.NDArray) -> Self:
-        """A new view of the same kind, over ``data``, sharing this one's space."""
+        """A new view of the same kind, over ``data``, sharing this one's space.
+
+        Cheap: the space carries whatever the geometry lookup produced, so this
+        does not re-resolve a mask or reload surfaces from the database.
+
+        Goes through :meth:`BrainSpace.wrap`, which is what makes one
+        implementation serve every space -- the per-space constructor arguments
+        are the space's business, not this method's.
+        """
+        return cast(
+            Self,
+            self.space.wrap(
+                data,
+                cmap=self.cmap,
+                vmin=self.vmin,
+                vmax=self.vmax,
+                description=self.description,
+                state=self.state,
+                **self.attrs,
+            ),
+        )
+
+    def _build_raw(self) -> DataviewRGB:
+        """Colormap this view and wrap the result as an RGB view of its space.
+
+        Shared by :attr:`Volume.raw` and :attr:`Vertex.raw`, which differ only in
+        which concrete RGB class they name -- something the space already knows.
+        """
+        (r, g, b, a), nan_mask = self._colormap_to_rgba()
+        result: DataviewRGB = self.space.wrap_rgb(
+            r,
+            g,
+            b,
+            a,
+            description=self.description,
+            state=self.state,
+            priority=self.priority,
+        )
+        result._nan_mask = nan_mask
+        return result
 
     def exp(self) -> Self:
         """Return copy of this brain data with data exponentiated."""
@@ -859,21 +897,6 @@ class Volume(ScalarView, VolumetricView):
         """
         return self.space.unmask(self.data, self.movie)
 
-    def copy(self, data: npt.NDArray) -> Self:
-        new = self.__class__(
-            data,
-            self.subject,
-            self.xfmname,
-            mask=self.space.mask_spec,
-            cmap=self.cmap,
-            vmin=self.vmin,
-            vmax=self.vmax,
-            description=self.description,
-            state=self.state,
-            **self.attrs,
-        )
-        return new
-
     def map(self, projection: str = "nearest") -> Vertex:
         """Convert this Volume into a Vertex using the given projection method.
 
@@ -991,20 +1014,7 @@ class Volume(ScalarView, VolumetricView):
 
     @property
     def raw(self) -> VolumeRGB:
-        (r, g, b, a), nan_mask = self._colormap_to_rgba()
-        result = VolumeRGB(
-            r,
-            g,
-            b,
-            self.subject,
-            self.xfmname,
-            a,
-            description=self.description,
-            state=self.state,
-            priority=self.priority,
-        )
-        result._nan_mask = nan_mask
-        return result
+        return cast(VolumeRGB, self._build_raw())
 
 
 class Vertex(ScalarView, SurfaceView):
@@ -1091,26 +1101,6 @@ class Vertex(ScalarView, SurfaceView):
         this records what was originally supplied.
         """
         return self.space.hem
-
-    def copy(self, data: npt.NDArray) -> Self:
-        """
-        Return a new Vertex object for the same subject but with data
-        replaced by the given `data`.
-
-        This is useful for efficiently creating many Vertex objects, since
-        it doesn't require reloading the surfaces from the database to check
-        numbers of vertices, etc.
-        """
-        return self.__class__(
-            data,
-            self.subject,
-            cmap=self.cmap,
-            vmin=self.vmin,
-            vmax=self.vmax,
-            description=self.description,
-            state=self.state,
-            **self.attrs,
-        )
 
     @property
     def vertices(self) -> npt.NDArray:
@@ -1299,19 +1289,7 @@ class Vertex(ScalarView, SurfaceView):
 
     @property
     def raw(self) -> VertexRGB:
-        (r, g, b, a), nan_mask = self._colormap_to_rgba()
-        result = VertexRGB(
-            r,
-            g,
-            b,
-            self.subject,
-            a,
-            description=self.description,
-            state=self.state,
-            priority=self.priority,
-        )
-        result._nan_mask = nan_mask
-        return result
+        return cast(VertexRGB, self._build_raw())
 
 
 # Generic allows us to return the concrete view class, not just ScalarView

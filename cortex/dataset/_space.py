@@ -96,6 +96,22 @@ class BrainSpace(ABC):
         space-agnostic: they never name ``Volume`` or ``Vertex``.
         """
 
+    @abstractmethod
+    def wrap_rgb(
+        self,
+        red: npt.NDArray,
+        green: npt.NDArray,
+        blue: npt.NDArray,
+        alpha: Optional[npt.NDArray] = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Build an RGB view over three channel arrays in a space like this one.
+
+        The counterpart of :meth:`wrap`. Lets a scalar view render itself to RGB
+        without naming a concrete class, so the implementation lives in one place
+        instead of once per space.
+        """
+
     # ------------------------------------------------------------------
     # serialization
     # ------------------------------------------------------------------
@@ -257,6 +273,20 @@ class VolumeSpace(BrainSpace):
             data, self.subject, self.xfmname, mask=self.mask_spec, **kwargs
         )
 
+    def wrap_rgb(
+        self,
+        red: npt.NDArray,
+        green: npt.NDArray,
+        blue: npt.NDArray,
+        alpha: Optional[npt.NDArray] = None,
+        **kwargs: Any,
+    ) -> Any:
+        from .viewRGB import VolumeRGB
+
+        return VolumeRGB(
+            red, green, blue, self.subject, self.xfmname, alpha, **kwargs
+        )
+
     def unmask(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
         """Expand ``data`` to a full 3D/4D volume, adding the time axis."""
         from cortex import volume
@@ -383,6 +413,18 @@ class SurfaceSpace(BrainSpace):
         from .views import Vertex
 
         return Vertex(data, self.subject, **kwargs)
+
+    def wrap_rgb(
+        self,
+        red: npt.NDArray,
+        green: npt.NDArray,
+        blue: npt.NDArray,
+        alpha: Optional[npt.NDArray] = None,
+        **kwargs: Any,
+    ) -> Any:
+        from .viewRGB import VertexRGB
+
+        return VertexRGB(red, green, blue, self.subject, alpha, **kwargs)
 
     def is_movie(self, data: npt.NDArray) -> bool:
         # (t, v) versus (v,)

@@ -239,6 +239,21 @@ class DataviewRGB(Dataview, Generic[ScalarT]):
     def _channel_stack(self) -> npt.NDArray:
         """The three channels stacked, for locating NaNs across them."""
 
+    def _rgba_stack(self, accessor: str) -> npt.NDArray[np.uint8]:
+        """Stack the four channels into a trailing RGBA axis.
+
+        ``accessor`` names the space's array property -- ``"volume"`` or
+        ``"vertices"``. ``moveaxis`` rather than a hand-written transpose list:
+        the intent is "put the channel axis last", and spelling that as
+        ``[1, 2, 3, 4, 0]`` had to be rewritten per rank and was easy to get
+        wrong.
+        """
+        channels = [
+            _to_uint8(getattr(dv, accessor), dv.vmin, dv.vmax)
+            for dv in (self.red, self.green, self.blue, self.alpha)
+        ]
+        return np.moveaxis(np.array(channels), 0, -1)
+
     def _wrap_alpha(self, data: npt.NDArray) -> ScalarT:
         """Wrap an alpha array as a scalar view in this view's space."""
         return cast(ScalarT, self.red.space.wrap(data, vmin=0, vmax=1))
@@ -574,7 +589,7 @@ def _resolve_rgb_channels(
     fallback_space: Callable[[], BrainSpace],
     subject: Optional[str],
     space_kwargs: dict[str, Any],
-    colors: tuple[Color[int], Color[int], Color[int]],
+    colors: tuple[Sequence[int], Sequence[int], Sequence[int]],
     max_color_value: Optional[float],
     max_color_saturation: float,
     vmin: Optional[Union[float, tuple[float, float, float]]],
@@ -590,6 +605,9 @@ def _resolve_rgb_channels(
     """
     chan1, chan2, chan3 = channels
     kind = channel_cls.__name__
+    # Coerced here rather than by each caller: a list or ndarray has to become a
+    # fixed-length tuple before it can be compared against the identity basis.
+    basis = (_as_color(colors[0]), _as_color(colors[1]), _as_color(colors[2]))
 
     template: Optional[ScalarT] = None
     if isinstance(chan1, channel_cls):
@@ -627,7 +645,7 @@ def _resolve_rgb_channels(
             )
 
     identity_basis = (
-        colors == _RGB_BASIS
+        basis == _RGB_BASIS
         and vmin is None
         and vmax is None
         and autorange == "individual"
@@ -657,9 +675,9 @@ def _resolve_rgb_channels(
         chan1,
         chan2,
         chan3,
-        colors[0],
-        colors[1],
-        colors[2],
+        basis[0],
+        basis[1],
+        basis[2],
         max_color_value,
         max_color_saturation,
         vmin,
@@ -768,11 +786,7 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
             ),
             subject=subject,
             space_kwargs={"xfmname": xfmname},
-            colors=(
-                _as_color(channel1color),
-                _as_color(channel2color),
-                _as_color(channel3color),
-            ),
+            colors=(channel1color, channel2color, channel3color),
             max_color_value=max_color_value,
             max_color_saturation=max_color_saturation,
             vmin=vmin,
@@ -822,11 +836,7 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
         """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
-        channels = [
-            _to_uint8(dv.volume, dv.vmin, dv.vmax)
-            for dv in (self.red, self.green, self.blue, self.alpha)
-        ]
-        return np.array(channels).transpose([1, 2, 3, 4, 0])
+        return self._rgba_stack("volume")
 
     def to_json(self, simple: bool = False) -> DataviewJSON:
         sdict = super().to_json(simple=simple)
@@ -954,11 +964,7 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
             fallback_space=lambda: SurfaceSpace(_require(subject, "Subject name")),
             subject=subject,
             space_kwargs={},
-            colors=(
-                _as_color(channel1color),
-                _as_color(channel2color),
-                _as_color(channel3color),
-            ),
+            colors=(channel1color, channel2color, channel3color),
             max_color_value=max_color_value,
             max_color_saturation=max_color_saturation,
             vmin=vmin,
@@ -995,11 +1001,7 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
         """3-dimensional array (t, v, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
-        channels = [
-            _to_uint8(dv.vertices, dv.vmin, dv.vmax)
-            for dv in (self.red, self.green, self.blue, self.alpha)
-        ]
-        return np.array(channels).transpose([1, 2, 0])
+        return self._rgba_stack("vertices")
 
     def to_json(self, simple: bool = False) -> DataviewJSON:
         sdict = super().to_json(simple=simple)

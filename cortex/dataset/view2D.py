@@ -17,6 +17,7 @@ import numpy.typing as npt
 
 from .. import options
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
+from .viewRGB import DataviewRGB
 from .views import (
     ColormapDict,
     Dataview,
@@ -67,10 +68,14 @@ class Dataview2D(Dataview, Generic[ScalarT]):
         self._dim1 = dim1
         self._dim2 = dim2
         self.cmap = cmap or default_cmap2D
-        self.vmin = vmin
-        self.vmax = vmax
-        self.vmin2 = vmin if vmin2 is None else vmin2
-        self.vmax2 = vmax if vmax2 is None else vmax2
+        # Each axis falls back to its own channel's range. This used to be done
+        # twice: the subclasses pre-resolved it from the channels, and this base
+        # had a *different* rule (vmin2 falling back to vmin) that could never
+        # fire because of that pre-resolution. One rule, in one place.
+        self.vmin = dim1.vmin if vmin is None else vmin
+        self.vmax = dim1.vmax if vmax is None else vmax
+        self.vmin2 = dim2.vmin if vmin2 is None else vmin2
+        self.vmax2 = dim2.vmax if vmax2 is None else vmax2
         super().__init__(description=description, state=state, **kwargs)
 
     @property
@@ -216,6 +221,23 @@ class Dataview2D(Dataview, Generic[ScalarT]):
         a[aidx] = 0
         return r, g, b, a
 
+    def _finish_raw(
+        self,
+        r: npt.NDArray[np.uint8],
+        g: npt.NDArray[np.uint8],
+        b: npt.NDArray[np.uint8],
+        a: npt.NDArray[np.uint8],
+    ) -> DataviewRGB:
+        """Wrap colormapped channels as an RGB view of this view's space.
+
+        Goes through :meth:`BrainSpace.wrap_rgb`, so neither subclass names a
+        concrete RGB class and a new space's 2D view gets ``raw`` for free.
+        """
+        kws = self._raw_kwargs()
+        # An explicit `alpha` attr overrides the colormap's alpha channel.
+        alpha = kws.pop("alpha", a)
+        return self.space.wrap_rgb(r, g, b, alpha, **kws)
+
     def _raw_kwargs(self) -> dict[str, Any]:
         """View metadata to forward onto the RGB view built by :attr:`raw`.
 
@@ -300,10 +322,10 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
             chan2,
             description=description,
             cmap=cmap,
-            vmin=chan1.vmin if vmin is None else vmin,
-            vmax=chan1.vmax if vmax is None else vmax,
-            vmin2=chan2.vmin if vmin2 is None else vmin2,
-            vmax2=chan2.vmax if vmax2 is None else vmax2,
+            vmin=vmin,
+            vmax=vmax,
+            vmin2=vmin2,
+            vmax2=vmax2,
             **kwargs,
         )
 
@@ -357,11 +379,7 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
         else:
             r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
 
-        kws = self._raw_kwargs()
-        kws.setdefault("alpha", a)
-        return VolumeRGB(
-            r, g, b, subject=self.dim1.subject, xfmname=self.dim1.xfmname, **kws
-        )
+        return cast(VolumeRGB, self._finish_raw(r, g, b, a))
 
 
 class Vertex2D(Dataview2D[Vertex], SurfaceView):
@@ -428,10 +446,10 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
             chan2,
             description=description,
             cmap=cmap,
-            vmin=chan1.vmin if vmin is None else vmin,
-            vmax=chan1.vmax if vmax is None else vmax,
-            vmin2=chan2.vmin if vmin2 is None else vmin2,
-            vmax2=chan2.vmax if vmax2 is None else vmax2,
+            vmin=vmin,
+            vmax=vmax,
+            vmin2=vmin2,
+            vmax2=vmax2,
             **kwargs,
         )
 
@@ -442,9 +460,7 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
     def raw(self) -> VertexRGB:
         """VertexRGB object containing the colormapped data from this object."""
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
-        kws = self._raw_kwargs()
-        kws.setdefault("alpha", a)
-        return VertexRGB(r, g, b, subject=self.dim1.subject, **kws)
+        return cast(VertexRGB, self._finish_raw(r, g, b, a))
 
     @property
     def vertices(self) -> npt.NDArray[np.uint8]:
