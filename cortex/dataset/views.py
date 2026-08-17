@@ -293,6 +293,59 @@ class Dataview(ABC):
         )
 
 
+class VolumetricView(Dataview):
+    """A view whose data can be sampled as a volume under a transform.
+
+    One of the two *rows* of the 2x3 grid. The columns are already classes
+    (:class:`ScalarView`, :class:`~cortex.dataset.view2D.Dataview2D`,
+    :class:`~cortex.dataset.viewRGB.DataviewRGB`); the rows had no type at all,
+    which is why consumers had to duck-type ``hasattr(braindata, "xfmname")``.
+
+    This is a stateless interface: no ``__init__``, no attributes of its own, and
+    no cooperative ``super()`` chain. It is therefore *not* a return to the
+    multiple inheritance this package was restructured to remove -- that was
+    pathological because ``BrainData`` and ``Dataview`` each carried state and
+    called ``super()`` methods that resolved only through a subclass's MRO.
+
+    Being a real base class rather than a ``Protocol``, ``isinstance`` against it
+    is a genuine class check. A ``runtime_checkable`` protocol can only test for
+    the *presence* of attribute names, so an object with an unrelated ``volume``
+    would satisfy it; and because the members here are abstract, a subclass that
+    forgets one cannot be instantiated at all.
+    """
+
+    @property
+    @abstractmethod
+    def xfmname(self) -> str:
+        """Transform name. Must exist in the pycortex database."""
+
+    @property
+    @abstractmethod
+    def volume(self) -> npt.NDArray:
+        """The data as a volume, with a leading time axis.
+
+        Scalar for :class:`Volume`; uint8 RGBA for the 2D and RGB views, whose
+        data has already been colormapped.
+        """
+
+
+class SurfaceView(Dataview):
+    """A view whose data can be sampled per-vertex on a cortical surface.
+
+    The other row of the grid. See :class:`VolumetricView` for why this is an
+    abstract base rather than a ``Protocol``.
+    """
+
+    @property
+    @abstractmethod
+    def vertices(self) -> npt.NDArray:
+        """The data per vertex, with a leading time axis.
+
+        Scalar for :class:`Vertex`; uint8 RGBA for the 2D and RGB views, whose
+        data has already been colormapped.
+        """
+
+
 class ScalarView(Dataview):
     """A single array of scalar values, displayed through a 1D colormap.
 
@@ -572,7 +625,7 @@ class Multiview(Dataview):
         raise NotImplementedError
 
 
-class Volume(ScalarView):
+class Volume(ScalarView, VolumetricView):
     """
     Encapsulates a 3D volume or 4D volumetric movie. Includes information on how
     the volume should be colormapped for display purposes.
@@ -826,7 +879,7 @@ class Volume(ScalarView):
         return result
 
 
-class Vertex(ScalarView):
+class Vertex(ScalarView, SurfaceView):
     """
     Encapsulates a 1D vertex map or 2D vertex movie. Includes information on how
     the data should be colormapped for display purposes.

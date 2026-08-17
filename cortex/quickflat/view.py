@@ -12,11 +12,9 @@ from matplotlib.typing import ColorType
 
 from . import composite
 from .. import dataset, utils
-from ..dataset._typing import (
-    SupportsColormap,
-    VolumetricRenderable,
-    as_renderable,
-)
+from ..dataset._typing import as_renderable
+from ..dataset.view2D import Dataview2D
+from ..dataset.views import ScalarView, VolumetricView
 from .utils import make_flatmap_image
 
 
@@ -134,10 +132,9 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
     normalized = dataset.normalize(braindata)
     if not isinstance(normalized, dataset.Dataview):
         raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
-    # Stay on the nominal Dataview here. isinstance against a protocol
-    # synthesizes an intersection ("subclass of Dataview and
-    # VolumetricRenderable"), so the forks below get the structural members
-    # without giving up the Dataview ones the composite helpers need.
+    # The row ABCs subclass Dataview, so narrowing to VolumetricView below keeps
+    # every Dataview member the composite helpers need -- no intersection or
+    # re-widening required.
     dataview = normalized
     if fig is None:
         fig_resize = True
@@ -180,7 +177,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
             # Dropout is computed from a transform, so it is volumetric-only.
             # This used to read dataview.xfmname unguarded and raise
             # AttributeError on surface data.
-            if not isinstance(dataview, VolumetricRenderable):
+            if not isinstance(dataview, VolumetricView):
                 raise TypeError(
                     "with_dropout needs volumetric data to compute dropout from a "
                     "transform; %s is surface data. Pass a precomputed dropout "
@@ -220,7 +217,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
-        if not isinstance(dataview, VolumetricRenderable):
+        if not isinstance(dataview, VolumetricView):
             raise TypeError(
                 "with_connected_vertices needs volumetric data; %s is surface data"
                 % type(dataview).__name__
@@ -370,7 +367,9 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
     mask_nans = np.isnan(arr[..., 3])
     arr[mask_nans, 3] = 0.
 
-    if isinstance(braindata, SupportsColormap):
+    # Inline tuple, not a constant: a `tuple[type, ...]` loses its members and
+    # mypy would learn nothing from the check.
+    if isinstance(braindata, (ScalarView, Dataview2D)):
         imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
     else:
         imsave(fp, arr)
@@ -400,7 +399,7 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
         else:
             # Dropout comes from a transform, so it is volumetric-only. This read
             # `dataview.xfmname` unguarded and raised AttributeError on surface data.
-            if not isinstance(braindata, VolumetricRenderable):
+            if not isinstance(braindata, VolumetricView):
                 raise TypeError(
                     "with_dropout needs volumetric data to compute dropout from a "
                     "transform; %s is surface data. Pass a precomputed dropout "

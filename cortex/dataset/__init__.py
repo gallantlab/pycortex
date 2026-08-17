@@ -28,8 +28,10 @@ from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
     ScalarView,
+    SurfaceView,
     Vertex,
     Volume,
+    VolumetricView,
     _from_hdf_data,
 )
 from ._space import (
@@ -40,10 +42,8 @@ from ._space import (
     registered_spaces,
 )
 from ._typing import (
+    ColormappedView,
     Renderable,
-    SupportsColormap,
-    SurfaceRenderable,
-    VolumetricRenderable,
     as_renderable,
     space_of,
 )
@@ -80,11 +80,11 @@ __all__ = [
     "SurfaceSpace",
     "register_space",
     "registered_spaces",
-    # structural types describing what renderers need from a view
-    "VolumetricRenderable",
-    "SurfaceRenderable",
+    # the row axis of the grid, and helpers for narrowing it
+    "VolumetricView",
+    "SurfaceView",
     "Renderable",
-    "SupportsColormap",
+    "ColormappedView",
     "as_renderable",
     "space_of",
 ]

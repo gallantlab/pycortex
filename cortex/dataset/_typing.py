@@ -1,133 +1,79 @@
-"""Structural types describing what renderers need from a brain-data view.
+"""Types for narrowing the ``cortex.dataset`` view grid, for consumers.
 
-The six public view classes form a 2x3 grid, but only its columns exist as
-classes: the channel layout is the inheritance axis, so there is no class meaning
-"any volumetric view". Consumers used to reach for ``hasattr(braindata,
-"xfmname")``, which no type checker can narrow.
+The six public view classes form a 2x3 grid. Both axes are now real classes, so
+every narrowing test is a nominal ``isinstance`` -- sound, and understood by type
+checkers in both branches:
 
-The answer here is a pair of ``Protocol``\\ s describing the *interface* a
-renderer actually consumes, rather than a closed union enumerating the classes
-that happen to satisfy it today:
+======================  ==========================  ==========================
+                        volumetric                  surface
+======================  ==========================  ==========================
+**row** (space)         :class:`VolumetricView`     :class:`SurfaceView`
+scalar                  ``Volume``                  ``Vertex``
+2D                      ``Volume2D``                ``Vertex2D``
+RGB                     ``VolumeRGB``               ``VertexRGB``
+**column** (channels)   ``ScalarView`` / ``Dataview2D`` / ``DataviewRGB``
+======================  ==========================  ==========================
 
-- :class:`VolumetricRenderable` -- has a subject, a transform, and a ``volume``
-- :class:`SurfaceRenderable` -- has a subject and ``vertices``
+The columns were always classes; only the rows lacked a type, which is why
+consumers had to duck-type ``hasattr(braindata, "xfmname")``. The row ABCs close
+that gap, so this module holds only the boundary helper and a couple of aliases
+-- there is nothing left for it to work around.
 
-Each of the six built-in views satisfies exactly one of them. Two properties of
-this design matter:
-
-**It narrows both branches.** ``isinstance`` against a member of a union subtracts
-that member from the ``else`` branch, so::
+Narrowing needs no machinery. ``isinstance`` against a member of a union
+subtracts it from the ``else`` branch::
 
     def f(view: Renderable) -> None:
-        if isinstance(view, SurfaceRenderable):
-            view.vertices        # SurfaceRenderable
+        if isinstance(view, SurfaceView):
+            view.vertices        # SurfaceView
         else:
-            view.xfmname         # VolumetricRenderable
+            view.xfmname         # VolumetricView
 
-Nothing else is needed for this -- no ``TypeGuard``, no ``TypeIs``, and no
-predicate helpers. (An inline ``isinstance`` against a union of *concrete*
-classes narrows identically; ``TypeIs`` is only required to carry that narrowing
-across a function-call boundary, which is why an earlier version of this module
-had six predicates and a ``typing_extensions`` question. It needed neither.)
+No ``TypeGuard``, no ``TypeIs``, no ``Protocol``, no ``typing_extensions``, and no
+predicate helpers. Earlier iterations of this module had all of those; ``TypeIs``
+is only needed to carry that narrowing *across a function-call boundary*, i.e.
+only if the check lives in a named helper rather than inline.
 
-**It is open.** A view in a space registered by third-party code conforms
-structurally, with no union to edit and no registry entry to add. That is the
-property the closed ``VolumeLike``/``VertexLike`` unions could not have.
-
-Two limits worth knowing:
-
-- ``runtime_checkable`` makes ``isinstance`` check only for the *presence* of the
-  named attributes -- it cannot tell a property from a method, or check types. So
-  the runtime check is exactly as strong as the ``hasattr`` it replaces; the
-  static check is what carries the weight. (Statically mypy does compare types,
-  and correctly rejects :class:`~cortex.dataset.views.Vertex` from
-  :class:`VolumetricRenderable` because its ``volume`` is a *method*.)
-- Protocol members must be declared the way the classes declare them. ``subject``
-  is a read-only property on :class:`~cortex.dataset.views.Dataview`, so
-  declaring ``subject: str`` in a protocol fails with *"expected settable
-  variable, got read-only attribute"*. The colormap members really are mutable
-  attributes, so :class:`SupportsColormap` declares them as such.
+**Why abstract bases rather than ``Protocol``.** A ``runtime_checkable`` protocol's
+``isinstance`` tests only for the *presence* of the member names -- it cannot tell
+a property from a method or check any types -- so an object carrying an unrelated
+``subject``/``xfmname``/``volume`` satisfies it. Composing several protocols does
+not help: the check is still per-name ``hasattr``. Nominal bases give a real class
+check, and because the row members are abstract, a view that forgets one cannot be
+instantiated. The trade is that conformance is explicit opt-in: a third-party view
+must inherit :class:`VolumetricView` or :class:`SurfaceView`, rather than merely
+happening to have the right attributes.
 """
 
 from __future__ import annotations
 
-from typing import Optional, Protocol, Union, runtime_checkable
-
-import numpy.typing as npt
+from typing import Any, Union
 
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
-from .views import Dataview
+from .view2D import Dataview2D
+from .views import Dataview, ScalarView, SurfaceView, VolumetricView
 
+#: Anything the flatmap renderers can draw: one row of the grid or the other.
+Renderable = Union[VolumetricView, SurfaceView]
 
-@runtime_checkable
-class VolumetricRenderable(Protocol):
-    """A view whose data can be sampled as a 3D/4D volume under a transform."""
-
-    @property
-    def subject(self) -> str:
-        """Subject identifier. Must exist in the pycortex database."""
-
-    @property
-    def xfmname(self) -> str:
-        """Transform name. Must exist in the pycortex database."""
-
-    @property
-    def volume(self) -> npt.NDArray:
-        """The data as a volume, with a leading time axis.
-
-        Scalar for :class:`~cortex.dataset.views.Volume`; uint8 RGBA for the 2D
-        and RGB views, whose data has already been colormapped.
-        """
-
-
-@runtime_checkable
-class SurfaceRenderable(Protocol):
-    """A view whose data can be sampled per-vertex on a cortical surface."""
-
-    @property
-    def subject(self) -> str:
-        """Subject identifier. Must exist in the pycortex database."""
-
-    @property
-    def vertices(self) -> npt.NDArray:
-        """The data per vertex, with a leading time axis.
-
-        Scalar for :class:`~cortex.dataset.views.Vertex`; uint8 RGBA for the 2D
-        and RGB views, whose data has already been colormapped.
-        """
-
-
-#: Anything the flatmap renderers can draw.
-Renderable = Union[SurfaceRenderable, VolumetricRenderable]
-
-
-@runtime_checkable
-class SupportsColormap(Protocol):
-    """A view carrying a 1D or 2D colormap, as opposed to its own colours.
-
-    Satisfied by the scalar and 2D views; not by the RGB views, which have no
-    ``cmap``. This is the typed replacement for ``hasattr(braindata, "cmap")`` --
-    note that test matched 2D views as well as scalar ones, so a scalar-only test
-    would not be equivalent.
-    """
-
-    cmap: str
-    vmin: Optional[float]
-    vmax: Optional[float]
+#: The views carrying a colormap, as opposed to their own colours -- the scalar
+#: and 2D columns, but not RGB. The typed replacement for
+#: ``hasattr(braindata, "cmap")``; note that test matched 2D views as well as
+#: scalar ones, so a scalar-only test is not equivalent.
+#:
+#: Test at runtime with an **inline** tuple, ``isinstance(view, (ScalarView,
+#: Dataview2D))``. A module-level ``tuple[type, ...]`` constant would read more
+#: nicely but cannot narrow: the annotation loses the members, so mypy learns
+#: nothing from the check.
+ColormappedView = Union[ScalarView, "Dataview2D[Any]"]
 
 
 def as_renderable(view: Dataview) -> Renderable:
-    """Check that ``view`` exposes an interface the renderers can draw.
+    """Check that ``view`` is one the renderers can draw.
 
     The single boundary between "some view" and "a view this code can render".
-    Public entry points legitimately accept any
-    :class:`~cortex.dataset.views.Dataview` -- including one in a space
-    registered by third-party code -- so something has to make the check explicit
-    and fail with a useful message rather than dying later on a missing
-    ``.xfmname`` or ``.volume``.
-
-    Unlike an enumeration of known classes, this accepts a view in any space, so
-    long as it exposes the interface.
+    Public entry points legitimately accept any :class:`Dataview`, so something
+    has to make the check explicit and fail with a useful message rather than
+    dying later on a missing ``.xfmname`` or ``.volume``.
 
     Parameters
     ----------
@@ -136,14 +82,14 @@ def as_renderable(view: Dataview) -> Renderable:
 
     Returns
     -------
-    A view satisfying :class:`VolumetricRenderable` or :class:`SurfaceRenderable`.
+    VolumetricView or SurfaceView
 
     Raises
     ------
     TypeError
-        If ``view`` exposes neither interface.
+        If ``view`` is neither.
     """
-    if isinstance(view, (VolumetricRenderable, SurfaceRenderable)):
+    if isinstance(view, (VolumetricView, SurfaceView)):
         return view
     # Naming the space is useful, but reading it must not be able to raise: this
     # is a diagnostic path, and `space` is a property on an unknown class.
@@ -152,27 +98,28 @@ def as_renderable(view: Dataview) -> Renderable:
     except Exception:
         space_name = "<unavailable>"
     raise TypeError(
-        "%s (space %s) is not renderable: it exposes neither a volumetric "
-        "interface (subject, xfmname, volume) nor a surface one "
-        "(subject, vertices)" % (type(view).__name__, space_name)
+        "%s (space %s) is not renderable: it subclasses neither VolumetricView "
+        "(xfmname, volume) nor SurfaceView (vertices). A view in a new space "
+        "should inherit whichever of the two describes how its data is sampled."
+        % (type(view).__name__, space_name)
     )
 
 
 def space_of(view: Dataview) -> BrainSpace:
     """The space a view's data lives in.
 
-    Use this when the question is genuinely about the space rather than about the
-    interface -- e.g. checking that two views share a transform. Prefer the
-    protocols when the question is "can I render this".
+    Use this when the question is genuinely about the space rather than about how
+    the data is sampled -- e.g. checking that two views share a transform. For
+    "can I render this", use :data:`Renderable` and ``isinstance``.
     """
     return view.space
 
 
 __all__ = [
-    "VolumetricRenderable",
-    "SurfaceRenderable",
+    "VolumetricView",
+    "SurfaceView",
     "Renderable",
-    "SupportsColormap",
+    "ColormappedView",
     "as_renderable",
     "space_of",
     "BrainSpace",

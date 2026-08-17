@@ -235,26 +235,37 @@ must respect:
 | `typing.Self` | 3.11 | usable via the `sys.version_info < (3, 11)` shim already in this package |
 | `ABC` + `Generic[T]` together | 3.7 | usable, no metaclass conflict |
 
-Neither `TypeIs` nor `TypeGuard` turned out to be needed, which is worth recording because
-two earlier iterations assumed otherwise.
+Neither `TypeIs` nor `TypeGuard` nor `Protocol` turned out to be needed, which is worth
+recording because three earlier iterations assumed otherwise.
 
 An inline `isinstance` against a member of a union already narrows **both** branches --
 `Union[A, B]` with `isinstance(x, A)` leaves `B` in the `else`. That holds for unions of
-concrete classes and for unions of protocols alike. `TypeIs` is only required to carry that
-narrowing *across a function-call boundary*, i.e. if you want a named predicate helper
-rather than an inline check. The intermediate version of `_typing.py` had six such
-predicates, and therefore needed `TypeIs` (`TypeGuard` narrows the positive branch only:
-measured on the volume/surface fork, loose signature + `TypeGuard` = 3 errors, tightened +
-`TypeGuard` = 5, tightened + `TypeIs` = 0). Replacing the predicates with two
-`Protocol`s removed the helpers, and with them the `TypeIs` requirement and the
-`typing_extensions` question entirely.
+concrete classes, protocols and ABCs alike. `TypeIs` is only required to carry that narrowing
+*across a function-call boundary*, i.e. if you want a named predicate helper rather than an
+inline check. So the sequence was: six `TypeIs` predicates over closed unions, then two
+`runtime_checkable` protocols, then the row ABCs that are actually there.
 
-For the record, had a predicate helper been kept: `TypeIs` reached the standard library only
-in 3.13 (confirmed absent from 3.10 and 3.12), so it would come from `typing_extensions`
-(>= 4.10). Importing it under `if TYPE_CHECKING:` avoids widening the dependency at all,
-since `from __future__ import annotations` means the annotation is never evaluated -- verified
-to import and run on 3.10 and 3.11 with `typing_extensions` absent. The trade-off there is
-that `typing.get_type_hints()` on such a predicate raises `NameError`.
+Measured, for the record: on the volume/surface fork, loose signature + `TypeGuard` = 3
+errors, tightened + `TypeGuard` = 5, tightened + `TypeIs` = 0. All three of the final
+designs reach the same checker outcome (244 errors total, 0 in `cortex/dataset/`, 31 in
+`cortex/quickflat/`); they differ only in soundness and machinery.
+
+Why ABCs won over protocols:
+
+- A `runtime_checkable` protocol's `isinstance` is presence-only. An object with
+  `subject = 42`, `xfmname = None`, `volume = "not an array"` satisfies it. **Composing
+  protocols does not help** -- verified -- because the check remains per-name `hasattr`.
+  `issubclass` is not even available on protocols with non-method members.
+- Protocols are structural where `Dataview` is nominal. Converting at the boundary and
+  carrying a protocol-typed value discarded the nominal type and broke five downstream
+  functions (+7 errors). Making the rows subclass `Dataview` removes the problem entirely.
+- `ABC.register()` gives runtime truth without static truth -- mypy does not know about the
+  registration -- so it is the wrong trade. A `ClassVar[Literal[...]]` tag is sound and
+  narrows, but requires a closed union, which is what openness was meant to escape.
+
+The cost is that conformance is explicit opt-in rather than structural. Given the abstract
+members then *guarantee* the accessors exist, that reads as an improvement rather than a
+restriction.
 
 Three files in this package lack `from __future__ import annotations` (`braindata.py`,
 `dataset.py`, `view2D.py`) and need it for forward references and `X | Y` under 3.10. It must

@@ -22,10 +22,12 @@ from .views import (
     Dataview,
     DataviewJSON,
     ScalarView,
+    SurfaceView,
     Vertex,
     VertexRGB,
     Volume,
     VolumeRGB,
+    VolumetricView,
     _blend_curvature,
     _build_cmapdict,
 )
@@ -229,7 +231,7 @@ class Dataview2D(Dataview, Generic[ScalarT]):
         return kws
 
 
-class Volume2D(Dataview2D[Volume]):
+class Volume2D(Dataview2D[Volume], VolumetricView):
     """
     Contains two 3D volumes for simultaneous visualization. Includes information
     on how the volumes should be jointly colormapped.
@@ -363,7 +365,7 @@ class Volume2D(Dataview2D[Volume]):
         )
 
 
-class Vertex2D(Dataview2D[Vertex]):
+class Vertex2D(Dataview2D[Vertex], SurfaceView):
     """
     Contains two vertex maps for simultaneous visualization. Includes information
     on how the maps should be jointly colormapped.

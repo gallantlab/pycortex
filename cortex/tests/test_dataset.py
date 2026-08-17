@@ -582,14 +582,14 @@ def test_vertex2d_survives_an_hdf_round_trip():
             loaded.h5.close()
 
 
-def test_each_view_satisfies_exactly_one_renderable_protocol():
+def test_each_view_subclasses_exactly_one_renderable_row():
     """The renderers fork on volumetric-vs-surface; the fork must be total.
 
     ``Volume2D`` used to satisfy neither, because it had no ``.volume`` -- every
     consumer special-cased it and reached for ``.raw.volume`` itself, while
     ``Vertex2D`` already had the symmetric delegating property.
     """
-    from cortex.dataset._typing import SurfaceRenderable, VolumetricRenderable
+    from cortex.dataset.views import SurfaceView, VolumetricView
 
     ones_v, ones_x = np.ones(volshape), np.ones(nverts)
     views = {
@@ -601,10 +601,10 @@ def test_each_view_satisfies_exactly_one_renderable_protocol():
         "VertexRGB": cortex.VertexRGB(ones_x, ones_x, ones_x, subj),
     }
     for name, view in views.items():
-        volumetric = isinstance(view, VolumetricRenderable)
-        surface = isinstance(view, SurfaceRenderable)
+        volumetric = isinstance(view, VolumetricView)
+        surface = isinstance(view, SurfaceView)
         assert volumetric != surface, (
-            "%s satisfies %s renderable protocol"
+            "%s subclasses %s renderable row"
             % (name, "both" if volumetric else "neither")
         )
         assert volumetric is name.startswith("Volume"), name
@@ -616,8 +616,11 @@ def test_each_view_satisfies_exactly_one_renderable_protocol():
             assert view.vertices.ndim >= 2, name
 
 
-def test_supports_colormap_matches_the_hasattr_it_replaces():
-    from cortex.dataset._typing import SupportsColormap
+def test_colormapped_matches_the_hasattr_it_replaces():
+    from cortex.dataset.view2D import Dataview2D
+    from cortex.dataset.views import ScalarView
+
+    COLORMAPPED = (ScalarView, Dataview2D)
 
     ones_v, ones_x = np.ones(volshape), np.ones(nverts)
     for name, view in {
@@ -630,8 +633,8 @@ def test_supports_colormap_matches_the_hasattr_it_replaces():
     }.items():
         # The RGB views have no cmap at all; the 2D ones do, which is why a
         # scalar-only test would not be equivalent to the old hasattr.
-        assert isinstance(view, SupportsColormap) == hasattr(view, "cmap"), name
-        assert isinstance(view, SupportsColormap) is not name.endswith("RGB"), name
+        assert isinstance(view, COLORMAPPED) == hasattr(view, "cmap"), name
+        assert isinstance(view, COLORMAPPED) is not name.endswith("RGB"), name
 
 
 def test_volume2d_volume_mirrors_vertex2d_vertices():
@@ -677,15 +680,17 @@ def test_as_renderable_rejects_a_view_with_neither_interface():
         as_renderable(Unrenderable())
 
 
-def test_as_renderable_accepts_an_unknown_space_that_conforms():
-    """The openness the closed unions could not have.
+def test_as_renderable_accepts_a_third_party_view_that_inherits_a_row():
+    """Still open, but by explicit opt-in rather than structurally.
 
-    A view in a space this package has never heard of is renderable if it exposes
-    the interface -- no registry entry, no union to edit.
+    A view in a space this package has never heard of is renderable as soon as it
+    inherits whichever row describes how its data is sampled -- no registry entry
+    and no union to edit.
     """
-    from cortex.dataset._typing import SurfaceRenderable, as_renderable
+    from cortex.dataset._typing import as_renderable
+    from cortex.dataset.views import SurfaceView
 
-    class ThirdPartyView(dataset.Dataview):
+    class ThirdPartyView(SurfaceView):
         @property
         def space(self):
             raise NotImplementedError
@@ -710,4 +715,69 @@ def test_as_renderable_accepts_an_unknown_space_that_conforms():
 
     view = ThirdPartyView()
     assert as_renderable(view) is view
-    assert isinstance(view, SurfaceRenderable)
+    assert isinstance(view, SurfaceView)
+
+
+def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
+    """The soundness a runtime_checkable Protocol could not provide.
+
+    A Protocol's isinstance tests only for the *presence* of the member names, so
+    this class would satisfy one. A nominal base class rejects it.
+    """
+    from cortex.dataset._typing import as_renderable
+    from cortex.dataset.views import SurfaceView, VolumetricView
+
+    class Lookalike(dataset.Dataview):
+        """Every name a renderable row wants, none of the meanings."""
+
+        subject = 42
+        xfmname = None
+        volume = "not an array"
+        vertices = "not an array either"
+
+        @property
+        def space(self):
+            raise NotImplementedError
+
+        @property
+        def raw(self):
+            raise NotImplementedError
+
+        def uniques(self, collapse=False):
+            raise NotImplementedError
+
+        def _write_hdf(self, h5, name="data"):
+            raise NotImplementedError
+
+    fake = Lookalike()
+    assert not isinstance(fake, VolumetricView)
+    assert not isinstance(fake, SurfaceView)
+    with pytest.raises(TypeError, match="is not renderable"):
+        as_renderable(fake)
+
+
+def test_a_row_subclass_must_implement_the_row():
+    """Abstract members mean a forgotten accessor fails at construction."""
+    from cortex.dataset.views import VolumetricView
+
+    class Incomplete(VolumetricView):
+        @property
+        def space(self):
+            raise NotImplementedError
+
+        @property
+        def subject(self):
+            return subj
+
+        @property
+        def raw(self):
+            raise NotImplementedError
+
+        def uniques(self, collapse=False):
+            raise NotImplementedError
+
+        def _write_hdf(self, h5, name="data"):
+            raise NotImplementedError
+
+    with pytest.raises(TypeError, match="abstract"):
+        Incomplete()

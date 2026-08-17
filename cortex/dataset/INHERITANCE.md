@@ -177,7 +177,8 @@ Source locations:
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| renderable `Protocol`s and `as_renderable` | `_typing.py` |
+| `VolumetricView` / `SurfaceView` (row ABCs) | `views.py` |
+| `Renderable`, `as_renderable`, `space_of` | `_typing.py` |
 
 `braindata.py` is a compatibility shim: `BrainData`, `VolumeData` and `VertexData`
 are aliases for `ScalarView`, `Volume` and `Vertex`. The aliases preserve
@@ -271,63 +272,69 @@ mask a flattened array matches, which hemisphere a half-length array covered), s
 
 ## Narrowing the grid
 
-There is no class meaning "any volumetric view", so `_typing.py` describes the
-*interface* a renderer consumes instead of enumerating the classes that satisfy
-it today:
+Both axes are real classes, so every narrowing test is a nominal `isinstance`.
 
-- `VolumetricRenderable` — `subject`, `xfmname`, `volume`
-- `SurfaceRenderable` — `subject`, `vertices`
+|  | volumetric | surface |
+| --- | --- | --- |
+| **row** (space) | `VolumetricView` | `SurfaceView` |
+| **column** (channels) | `ScalarView` / `Dataview2D` / `DataviewRGB` | same |
 
-Each of the six built-in views satisfies **exactly one**, which is what makes the
-volumetric/surface fork total. `isinstance` against a union member subtracts it
-from the `else` branch, so this is all the narrowing machinery needed:
+The columns were always classes; only the rows lacked a type, which is why
+consumers duck-typed `hasattr(braindata, "xfmname")`. `VolumetricView` declares
+`xfmname` and `volume`; `SurfaceView` declares `vertices`. Each of the six views
+inherits exactly one, which is what makes the volumetric/surface fork total.
+
+Narrowing needs no machinery — `isinstance` against a union member subtracts it
+from the `else` branch:
 
 ```python
 def make_flatmap_image(braindata: Renderable, ...):
-    if isinstance(braindata, SurfaceRenderable):
-        data = braindata.vertices          # SurfaceRenderable
+    if isinstance(braindata, SurfaceView):
+        data = braindata.vertices          # SurfaceView
     else:
-        data = braindata.volume            # VolumetricRenderable
+        data = braindata.volume            # VolumetricView
 ```
 
-No `TypeGuard`, no `TypeIs`, no predicate helpers, and no `typing_extensions`.
-An earlier version of this module had six `TypeIs` predicates over closed unions;
-it turned out an inline `isinstance` against a union narrows both branches by
-itself, and `TypeIs` is only needed to carry that narrowing *across a
-function-call boundary*.
+No `TypeGuard`, no `TypeIs`, no `Protocol`, no `typing_extensions`, no predicate
+helpers. Earlier iterations had all of those; `TypeIs` is only needed to carry
+that narrowing *across a function-call boundary*, i.e. only if the check lives in
+a named helper rather than inline.
 
-Being structural, this is also open: a view in a space registered by third-party
-code conforms with no union to edit and no registry entry to add.
+**Why abstract bases rather than `Protocol`.** A `runtime_checkable` protocol's
+`isinstance` tests only for the *presence* of the member names — it cannot tell a
+property from a method or check any types — so an object carrying an unrelated
+`subject`/`xfmname`/`volume` satisfies it. Composing several protocols does not
+help; the check is still per-name `hasattr`. Nominal bases give a real class
+check, and because the row members are abstract, a view that forgets one cannot be
+instantiated. The trade is that conformance is explicit opt-in: a third-party view
+must inherit one of the rows rather than merely happening to have the attributes.
+Both properties are pinned by tests.
 
-**Protocols are structural; `Dataview` is nominal.** Do not convert a `Dataview`
-to `Renderable` and carry it around — that discards the nominal type, and
-everything downstream expecting a `Dataview` (`get_cmapdict`, `add_curvature`,
-`add_rois`, …) then fails. Instead keep the `Dataview` and apply the protocol
-`isinstance` *inline at the fork*: mypy synthesizes an intersection,
-`<subclass of "Dataview" and "VolumetricRenderable">`, so both the structural and
-the nominal members stay available. `as_renderable()` is applied only at the one
-call that genuinely needs nothing but the interface.
+The rows subclass `Dataview`, so narrowing to a row keeps every `Dataview` member
+available. Do *not* convert a `Dataview` into some separate renderable type and
+carry it around — an intermediate design did that with protocols and broke
+`get_cmapdict`, `add_curvature`, `add_rois`, `add_sulci` and `add_custom`, because
+protocols are structural where `Dataview` is nominal.
 
-Two limits:
+**`isinstance` tuples must be inline literals.** `isinstance(v, (ScalarView,
+Dataview2D))` narrows; hoisting that tuple into a module constant annotated
+`tuple[type, ...]` does not, because the annotation loses the members. The same
+trap applies to any such constant.
 
-- `runtime_checkable` checks only for the *presence* of the named attributes. It
-  cannot tell a property from a method, so the runtime check is exactly as strong
-  as the `hasattr` it replaces — the static check carries the weight. Statically
-  mypy does compare types, and correctly rejects `Vertex` from
-  `VolumetricRenderable` because its `volume` is a *method*.
-- Protocol members must be declared as the classes declare them. `subject` is a
-  read-only property, so `subject: str` in a protocol fails with *"expected
-  settable variable, got read-only attribute"*. `SupportsColormap` declares
-  `cmap`/`vmin`/`vmax` as mutable attributes, which is what they are.
+This is not a return to the multiple inheritance the package was restructured to
+remove. The rows are stateless interfaces: no `__init__`, no attributes, no
+cooperative `super()` chain. `BrainData`/`Dataview` were pathological because each
+carried state and called `super()` methods that resolved only through a subclass's
+MRO. The MROs here linearize cleanly, e.g.
+`Volume2D -> Dataview2D -> VolumetricView -> Dataview -> ABC -> Generic -> object`.
 
-`SupportsColormap` covers what was `hasattr(braindata, "cmap")` — true for the
-scalar *and* 2D views, false for RGB, so a scalar-only test is not equivalent.
-
-`Volume2D.volume` exists to make the fork total. It mirrors `Vertex2D.vertices`,
-which always had it; without it `Volume2D` satisfied neither protocol and every
-consumer special-cased it to reach `.raw.volume`. Like `VolumeRGB.volume` it
-returns uint8 RGBA, not the scalar array `Volume.volume` returns — the same split
-`vertices` already had across `Vertex` and `Vertex2D`.
+`Volume2D.volume` and `VolumeRGB.xfmname` exist to make the rows implementable.
+`Volume2D` had no `volume` at all, so consumers special-cased it to reach
+`.raw.volume`; `VolumeRGB.xfmname` was a stored copy of `red.xfmname`, which an
+abstract property will not accept, so it is now derived. Like `VolumeRGB.volume`,
+`Volume2D.volume` returns uint8 RGBA rather than the scalar array
+`Volume.volume` returns — the same split `vertices` already had across `Vertex`
+and `Vertex2D`.
 
 ## The wire format is a hard interface
 

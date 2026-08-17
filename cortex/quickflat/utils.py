@@ -11,7 +11,8 @@ import numpy.typing as npt
 from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
-from ..dataset._typing import Renderable, SurfaceRenderable
+from ..dataset._typing import Renderable
+from ..dataset.views import SurfaceView
 from ..database import db
 from ..options import config
 
@@ -48,10 +49,10 @@ def make_flatmap_image(braindata: Renderable, height: int=1024, recache: bool=Fa
     
     # Was `not hasattr(braindata, "xfmname")`, which no checker can narrow.
     # isinstance against a union member subtracts it from the else branch, so
-    # `braindata` is VolumetricRenderable there with no further guarding. Being a
-    # protocol rather than a class union, this also accepts views in spaces
-    # registered by third-party code.
-    if isinstance(braindata, SurfaceRenderable):
+    # `braindata` is a VolumetricView there with no further guarding -- and being
+    # a real class check rather than a protocol's hasattr sweep, it cannot be
+    # satisfied by something that merely happens to have the attribute names.
+    if isinstance(braindata, SurfaceView):
         pixmap = get_flatcache(braindata.subject,
                                None,
                                height=height,
