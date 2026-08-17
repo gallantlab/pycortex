@@ -33,7 +33,21 @@ predicate helpers. Earlier iterations of this module had all of those; ``TypeIs`
 is only needed to carry that narrowing *across a function-call boundary*, i.e.
 only if the check lives in a named helper rather than inline.
 
-**Why abstract bases rather than ``Protocol``.** A ``runtime_checkable`` protocol's
+**Which mechanism for which question.** The two are not interchangeable, and the
+split is deliberate:
+
+- **ABCs, for "what kind of view is this?"** -- :class:`VolumetricView` and
+  :class:`SurfaceView`. This question is asked at *runtime*, so the check has to be
+  sound, and only a nominal base class gives that.
+- **Protocols, for "what does this function need?"** -- :class:`HasSubject`,
+  and :class:`~cortex.dataset.views.SupportsCurvatureBlend`. These are *static*
+  contracts on a parameter: they let a function claim exactly what it touches
+  instead of demanding a whole :class:`Dataview`. They are never ``isinstance``\ d,
+  so they are deliberately **not** ``runtime_checkable`` -- which makes
+  ``isinstance`` against them raise ``TypeError``, mechanically preventing the
+  presence-only check from creeping back in. A test pins that.
+
+**Why abstract bases rather than ``Protocol`` for the rows.** A ``runtime_checkable`` protocol's
 ``isinstance`` tests only for the *presence* of the member names -- it cannot tell
 a property from a method or check any types -- so an object carrying an unrelated
 ``subject``/``xfmname``/``volume`` satisfies it. Composing several protocols does
@@ -46,7 +60,7 @@ happening to have the right attributes.
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any, Protocol, Union
 
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .view2D import Dataview2D
@@ -54,6 +68,23 @@ from .views import Dataview, ScalarView, SurfaceView, VolumetricView
 
 #: Anything the flatmap renderers can draw: one row of the grid or the other.
 Renderable = Union[VolumetricView, SurfaceView]
+
+
+class HasSubject(Protocol):
+    """Anything that knows which subject it belongs to.
+
+    A *static-only* protocol: deliberately **not** ``runtime_checkable``, so
+    ``isinstance`` against it is a ``TypeError`` rather than a presence-only
+    ``hasattr`` sweep. See the module docstring for the rule.
+
+    Most of the ``cortex.quickflat.composite`` helpers need nothing more than
+    this: they look up a flatmap by subject and draw on it. Annotating them
+    ``Dataview`` claimed far more than they use.
+    """
+
+    @property
+    def subject(self) -> str:
+        """Subject identifier. Must exist in the pycortex database."""
 
 #: The views carrying a colormap, as opposed to their own colours -- the scalar
 #: and 2D columns, but not RGB. The typed replacement for
@@ -119,6 +150,7 @@ __all__ = [
     "VolumetricView",
     "SurfaceView",
     "Renderable",
+    "HasSubject",
     "ColormappedView",
     "as_renderable",
     "space_of",

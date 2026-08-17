@@ -300,7 +300,26 @@ helpers. Earlier iterations had all of those; `TypeIs` is only needed to carry
 that narrowing *across a function-call boundary*, i.e. only if the check lives in
 a named helper rather than inline.
 
-**Why abstract bases rather than `Protocol`.** A `runtime_checkable` protocol's
+**Which mechanism for which question.** Protocols and ABCs are both used here, for
+different questions, and the split is deliberate:
+
+| question | mechanism | why |
+| --- | --- | --- |
+| "what kind of view is this?" | ABC — `VolumetricView`, `SurfaceView` | asked at *runtime*, so the check must be sound; only a nominal base gives that |
+| "what does this function need?" | Protocol — `HasSubject`, `SupportsCurvatureBlend` | a *static* contract on a parameter; never `isinstance`d |
+
+The Protocols are deliberately **not** `runtime_checkable`, so `isinstance` against
+them raises `TypeError` — which mechanically prevents the presence-only check from
+creeping back in. A test pins that.
+
+The payoff for the Protocol half is that a function can claim exactly what it
+touches. Every one of `add_curvature`, `add_rois`, `add_sulci`, `add_custom` and
+`add_cutout` reads nothing but `dataview.subject`, yet they were annotated
+`Dataview` (or a `Union[Vertex, Volume, Dataview]` that collapses to it). They now
+take `HasSubject`.
+
+**Why abstract bases rather than `Protocol` for the rows.** A `runtime_checkable`
+protocol's
 `isinstance` tests only for the *presence* of the member names — it cannot tell a
 property from a method or check any types — so an object carrying an unrelated
 `subject`/`xfmname`/`volume` satisfies it. Composing several protocols does not

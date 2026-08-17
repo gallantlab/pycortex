@@ -781,3 +781,45 @@ def test_a_row_subclass_must_implement_the_row():
 
     with pytest.raises(TypeError, match="abstract"):
         Incomplete()
+
+
+def test_static_only_protocols_refuse_isinstance():
+    """The presence-only check cannot creep back in.
+
+    The row ABCs answer "what kind of view is this?" at runtime, so they must be
+    sound. The Protocols answer "what does this function need?", which is a purely
+    static question -- so they are deliberately not @runtime_checkable, and
+    isinstance against them is a TypeError rather than a hasattr sweep.
+    """
+    from cortex.dataset._typing import HasSubject
+    from cortex.dataset.views import SupportsCurvatureBlend
+
+    vol = cortex.Volume(np.ones(volshape), subj, xfmname)
+    for proto in (HasSubject, SupportsCurvatureBlend):
+        with pytest.raises(TypeError, match="runtime_checkable"):
+            isinstance(vol, proto)
+
+
+def test_static_only_protocols_are_still_satisfied_structurally():
+    """They are real contracts, just checked statically. Verify the shape holds."""
+    from cortex.dataset._typing import HasSubject
+
+    vol = cortex.Volume(np.ones(volshape), subj, xfmname)
+    # what HasSubject promises, on every view kind
+    for view in (
+        vol,
+        cortex.Vertex(np.ones(nverts), subj),
+        cortex.Volume2D(np.ones(volshape), np.ones(volshape) * 2, subj, xfmname),
+        cortex.VertexRGB(np.ones(nverts), np.ones(nverts), np.ones(nverts), subj),
+    ):
+        assert isinstance(view.subject, str)
+
+    # and the composite helpers now ask for nothing more than that
+    import inspect
+
+    from cortex.quickflat import composite
+
+    for fn in (composite.add_curvature, composite.add_rois,
+               composite.add_sulci, composite.add_custom):
+        annot = inspect.signature(fn).parameters["dataview"].annotation
+        assert "HasSubject" in str(annot), (fn.__name__, annot)

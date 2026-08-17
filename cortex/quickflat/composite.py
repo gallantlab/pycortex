@@ -11,7 +11,7 @@ import numpy.typing as npt
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 from .. import dataset
-from ..dataset._typing import as_renderable
+from ..dataset._typing import HasSubject, as_renderable
 from ..dataset.views import VolumetricView
 from ..database import db
 from ..options import config
@@ -20,7 +20,7 @@ from ..options import config
 """ --- Individual compositing functions --- """
 
 
-def add_curvature(fig: Axes, dataview: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, threshold: Optional[bool]=True, contrast: Optional[float]=None,
+def add_curvature(fig: Axes, dataview: HasSubject, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, threshold: Optional[bool]=True, contrast: Optional[float]=None,
                   brightness: Optional[float]=None, smooth: Optional[float]=None, cmap: str='gray', recache: bool=False, curvature_lims: float=0.5,
                   legacy_mode: bool=False) -> AxesImage:
     """Add curvature layer to figure
@@ -188,7 +188,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
                     **cmapdict)
     return img, extents
 
-def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_rois(fig: Figure, dataview: HasSubject, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -235,7 +235,7 @@ def add_rois(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, datase
     return img
 
 
-def add_sulci(fig: Figure, dataview: Union[dataset.Vertex, dataset.Volume, dataset.Dataview], extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
+def add_sulci(fig: Figure, dataview: HasSubject, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -397,7 +397,7 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, fl
 
     return cbar
 
-def add_custom(fig: Figure, dataview: dataset.Dataview, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
+def add_custom(fig: Figure, dataview: HasSubject, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False, 
                shape_list: Optional[Sequence[str]]=None, **kwargs):
     """Add a custom data layer
 

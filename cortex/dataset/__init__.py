@@ -43,6 +43,7 @@ from ._space import (
 )
 from ._typing import (
     ColormappedView,
+    HasSubject,
     Renderable,
     as_renderable,
     space_of,
@@ -85,6 +86,7 @@ __all__ = [
     "SurfaceView",
     "Renderable",
     "ColormappedView",
+    "HasSubject",
     "as_renderable",
     "space_of",
 ]
