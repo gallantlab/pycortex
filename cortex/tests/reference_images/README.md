@@ -15,6 +15,18 @@ a no-alpha baseline, `Volume2D`/`Vertex2D` use the 2D alpha colormap
 `RdBu_r_alpha`, and `VolumeRGB`/`VertexRGB` use the native `alpha=` keyword. All
 six also composite the curvature underlay.
 
+## Provenance
+
+Generated on the `main` branch at commit `5af26a86`, deliberately: they are a
+pre-change baseline, so a restructure of `cortex.dataset` has to reproduce main's
+output pixel for pixel.
+
+| | |
+| --- | --- |
+| chromium | 151.0.7922.34 (headless shell, SwiftShader software rendering) |
+| matplotlib | 3.11.1 |
+| pillow | 12.3.0 |
+
 ## Format
 
 Lossless WebP (`method=6`, `quality=100`, `exact=True`): bit-exact after decode,
