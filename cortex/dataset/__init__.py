@@ -47,7 +47,6 @@ from ._typing import (
     HasSubject,
     Renderable,
     as_renderable,
-    space_of,
 )
 from .braindata import BrainData, VertexData, VolumeData
 from .dataset import Dataset, DatasetLike, normalize
@@ -90,5 +89,4 @@ __all__ = [
     "ColormappedView",
     "HasSubject",
     "as_renderable",
-    "space_of",
 ]

@@ -180,6 +180,11 @@ class Dataview(HasSubject, ABC):
         The space is the *open* axis of the package: adding a new kind of brain
         data means adding a :class:`~cortex.dataset._space.BrainSpace` subclass,
         not reimplementing colormapping, HDF and JSON three more times.
+
+        Read this when the question is genuinely about the space -- checking that
+        two views share a transform, say. For "can I render this", use
+        ``isinstance(view, RenderableView)``, which is a different question: a
+        space says where the data lives, a row says how it is sampled.
         """
 
     @property

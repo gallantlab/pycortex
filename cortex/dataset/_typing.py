@@ -151,16 +151,6 @@ def as_renderable(view: Dataview) -> Renderable:
     )
 
 
-def space_of(view: Dataview) -> BrainSpace:
-    """The space a view's data lives in.
-
-    Use this when the question is genuinely about the space rather than about how
-    the data is sampled -- e.g. checking that two views share a transform. For
-    "can I render this", use :data:`Renderable` and ``isinstance``.
-    """
-    return view.space
-
-
 __all__ = [
     "Packable",
     "RenderableView",
@@ -170,7 +160,6 @@ __all__ = [
     "HasSubject",
     "ColormappedView",
     "as_renderable",
-    "space_of",
     "BrainSpace",
     "VolumeSpace",
     "SurfaceSpace",
