@@ -233,6 +233,8 @@ classDiagram
         +to_json()*
         +write_hdf_attrs()*
         +view_xfmname
+        +template_shape
+        +describe_layout()
         +from_hdf()$*
         +views()$*
     }
@@ -250,6 +252,7 @@ classDiagram
         +rlen
         +nverts
         +hem
+        +split_hemispheres()
     }
     BrainSpace <|-- VolumeSpace
     BrainSpace <|-- SurfaceSpace
@@ -370,6 +373,41 @@ Two members are deliberately *not* in that list, because both are concrete on
   geometry of an array already bound by `coerce` and is `()` until then, so a fresh
   volume space has to look its shape up from the transform. Getting this wrong is
   quiet -- `empty` would build a zero-dimensional array rather than fail.
+- `describe_layout(data)`, the keys telling the browser how to unpack the array it
+  is sent, merged into `to_json(simple=True)`. Empty by default. `VolumeSpace`
+  returns `shape` (the grid the mosaic tiles unpack into) and `SurfaceSpace`
+  returns `split` (the hemisphere boundary) and `frames`. Distinct from `to_json`,
+  which describes the *space* rather than a particular array bound to it -- which
+  is why only this one takes the data. These keys are read by `dataset.js`, so
+  they are a hard interface.
+
+### What the space owns, and why
+
+The rule is that anything depending on the *geometry* belongs to the space, so
+that adding a space does not mean editing the columns. Three things moved there
+because they were the same question asked once per space:
+
+| was | now | it was duplicated as |
+| --- | --- | --- |
+| `db.get_xfm(...).shape` vs `SurfaceSpace(...).nverts` | `template_shape` | 4 methods (`empty`/`random` x 2 classes) |
+| `shape` vs `split`/`frames` in the simple JSON | `describe_layout` | 2 `to_json` overrides, now one on `ScalarView` |
+| slicing at `llen`, branching on movie-ness | `SurfaceSpace.split_hemispheres` | 4 properties (`left`/`right` on `Vertex` and `VertexRGB`) |
+
+`split_hemispheres` also removed the one place a view reached *through a channel*
+for geometry: `VertexRGB.left` read `self.red.llen` because `DataviewRGB.space` is
+typed `BrainSpace`. `VertexRGB` now narrows `space` to `SurfaceSpace` the way
+`Vertex` does -- sound because `DataviewRGB[Vertex]` fixes the channel type, which
+the generic base cannot state.
+
+What deliberately did **not** move:
+
+- `Volume.map`, `Vertex.map`, `Vertex.volume` -- these transform *between* spaces
+  via `cortex.utils.get_mapper`, so they are a property of a space *pair*, and
+  putting them on `BrainSpace` would drag the mapper into `_space.py`.
+- `Volume.save_nii` -- the affine it needs is a space fact, but writing a file is
+  not; only the lookup is a candidate, and it is one line.
+- `__repr__` -- the mask description is space knowledge, but the payoff is
+  cosmetic.
 
 `MyRow` is the row interface — `VolumetricView` if the data samples through a
 transform, `SurfaceView` if it is per-vertex, or a new subclass of
