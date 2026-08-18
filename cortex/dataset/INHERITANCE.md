@@ -126,6 +126,10 @@ classDiagram
         <<protocol>>
         +subject
     }
+    class Packable {
+        <<abstract>>
+        +name*
+    }
     class RenderableView {
         <<abstract>>
         +sampling_data*
@@ -147,11 +151,12 @@ classDiagram
     }
 
     HasSubject <|.. Dataview
-    Dataview <|-- ScalarView
+    Dataview <|-- Packable
     Dataview <|-- Dataview2D
-    Dataview <|-- DataviewRGB
     Dataview <|-- Multiview
     Dataview <|-- RenderableView
+    Packable <|-- ScalarView
+    Packable <|-- DataviewRGB
     RenderableView <|-- VolumetricView
     RenderableView <|-- SurfaceView
 
@@ -173,6 +178,44 @@ classDiagram
 Each concrete class reads down two edges: its column (left) and its row (right).
 `blend_curvature` is drawn on `SurfaceView` because that is the only place it is
 defined; `Vertex` inherits it rather than declaring its own.
+
+### `Packable`: the unit of transport
+
+`Packable` sits between `Dataview` and the two columns that own an array, and it is
+what `uniques()` yields. It answers a different question from the row:
+
+| base | question | who has it |
+| --- | --- | --- |
+| `Packable` | "is this **one addressable array**?" | scalar and RGB columns |
+| `RenderableView` | "can a renderer **sample** this?" | every row |
+
+Neither implies the other, which is the point of keeping them separate. A 2D view
+is renderable but **not** packable: it owns no array, only the two channels it
+decomposes into, which is exactly why it has no `name`. Conversely a bare
+`ScalarView` subclass is packable but has no row.
+
+The one member is `name`, a content hash. That is what makes `Dataset.uniques()` a
+`set` rather than a list -- two views over identical data collapse to one entry and
+are stored and shipped once.
+
+`uniques()` was annotated `Iterator[Dataview]`, which is wider than the truth and
+lacks the one member every consumer reaches for first. `webgl.data.Package`
+type-checked only because the list it built was `Any`; nothing warned that
+`Dataview` has no `name`.
+
+**Do not hoist `name` onto the row.** `VolumeRGB.name` and `VertexRGB.name` are both
+exactly `_hash(self.sampling_data)`, which makes a single definition on
+`RenderableView` look free. It is not: `ScalarView.name` hashes the *stored* array,
+and for a masked `Volume` that is the flat masked array, not the unmasked 3-D
+`sampling_data`. Unifying them silently renames every existing HDF node. Pinned by
+`test_packable_name_is_not_hoisted_onto_the_row`. What *can* collapse is the two RGB
+definitions into one on `DataviewRGB`, since for RGB the stored array is the sampled
+one -- but that needs `DataviewRGB` to see a row member.
+
+What `name` addresses is also asymmetric, which is why `Packable` promises only the
+name and not what it hashes: for a scalar view it is both the HDF node name and the
+browser key, whereas an RGB view writes its channels as four separate HDF nodes and
+uses its own `name` only as the browser key.
 
 ```mermaid
 classDiagram
@@ -217,13 +260,13 @@ Source locations:
 | Class | Location |
 | --- | --- |
 | `Dataview`, `ScalarView`, `Volume`, `Vertex`, `Multiview`, `_masker` | `views.py` |
-| `HasSubject`, `RenderableView`, `VolumetricView`, `SurfaceView` | `views.py` |
+| `HasSubject`, `Packable`, `RenderableView`, `VolumetricView`, `SurfaceView` | `views.py` |
 | `Dataview2D`, `Volume2D`, `Vertex2D` | `view2D.py` |
 | `DataviewRGB`, `VolumeRGB`, `VertexRGB`, `Colors` | `viewRGB.py` |
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| `Renderable`, `ColormappedView`, `as_renderable`, `space_of` | `_typing.py` |
+| `Renderable`, `Packable` (re-export), `ColormappedView`, `as_renderable`, `space_of` | `_typing.py` |
 
 The row ABCs live in `views.py`, not `_typing.py`, because `Volume` and `Vertex`
 inherit them; `_typing.py` imports from `views.py` and re-exports, so it holds only
@@ -467,15 +510,23 @@ carried state and called `super()` methods that resolved only through a subclass
 MRO. The MROs here linearize cleanly:
 
 ```
+Volume    -> ScalarView  -> Packable    -> VolumetricView -> RenderableView
+          -> Dataview -> HasSubject -> Protocol -> Generic -> ABC -> object
+VertexRGB -> DataviewRGB -> Packable    -> SurfaceView    -> RenderableView
+          -> Dataview -> HasSubject -> Protocol -> Generic -> ABC -> object
 Volume2D  -> Dataview2D  -> VolumetricView -> RenderableView -> Dataview
-          -> HasSubject  -> Protocol -> Generic -> ABC -> object
-VertexRGB -> DataviewRGB -> SurfaceView    -> RenderableView -> Dataview
           -> HasSubject  -> Protocol -> Generic -> ABC -> object
 ```
 
-Column before row in both, because the column is listed first in the bases and
+Column before row in all three, because the column is listed first in the bases and
 carries the implementations; the row contributes only defaults such as
 `sampling_data` and `blend_curvature`, which nothing overrides.
+
+That order is load-bearing for `Packable`. It declares `name` abstract, and
+`Packable` precedes the row in the MRO, so had it also declared `sampling_data` the
+abstract stub would have shadowed the row's working implementation. `name` is safe
+because both columns define it ahead of `Packable`. Anything a row implements must
+therefore stay off `Packable`.
 
 `Volume2D.volume` and `VolumeRGB.xfmname` exist to make the rows implementable.
 `Volume2D` had no `volume` at all, so consumers special-cased it to reach
