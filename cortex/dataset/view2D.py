@@ -22,6 +22,7 @@ from .views import (
     ColormapDict,
     Dataview,
     DataviewJSON,
+    Packable,
     ScalarView,
     SurfaceView,
     Vertex,
@@ -90,7 +91,7 @@ class Dataview2D(Dataview, Generic[ScalarT]):
     def space(self) -> BrainSpace:
         return self.dim1.space
 
-    def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
+    def uniques(self, collapse: bool = False) -> Iterator[Packable]:
         yield self.dim1
         yield self.dim2
 

@@ -29,7 +29,11 @@ class Package(object):
 
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = list(data.uniques(collapse=True))
+        # `uniques` yields Packables -- the units of transport, each with the
+        # content-addressed `name` used as the browser's key for it. It was
+        # `Iterator[Dataview]`, which has no `name`; this list being untyped is
+        # the only reason that ever type-checked.
+        self.uniques: list[dataset.Packable] = list(data.uniques(collapse=True))
         self.subjects: set[str] = set()
 
         self.brains: dict[str, dataset.DataviewJSON] = dict()
@@ -125,12 +129,12 @@ class Package(object):
             (k, np.load(os.path.splitext(v)[0] + ".npz")) for k, v in subjects.items()
         )
         for brain in self.uniques:
-            # `name` is read before the narrowing below: it is a property of the
-            # *column* (the content hash of a shippable channel), not of the row,
-            # so narrowing to SurfaceView would lose it.
-            name = brain.name
             # Only the per-vertex-attribute encoding needs permuting; see __init__.
             if isinstance(brain, dataset.SurfaceView):
+                # `name` comes from Packable and `subject` from Dataview, so both
+                # survive narrowing to the row: mypy reads this as a subclass of
+                # both Packable and SurfaceView.
+                name = brain.name
                 data = np.array(self.images[name])[0]
                 npyform = BytesIO()
                 if self.brains[name]["raw"]:

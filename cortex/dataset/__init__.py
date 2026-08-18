@@ -27,6 +27,7 @@ from __future__ import annotations
 from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
+    Packable,
     ScalarView,
     SurfaceView,
     Vertex,
@@ -69,6 +70,7 @@ __all__ = [
     "DataviewJSON",
     # abstract bases, by both their current and their historical names
     "Dataview",
+    "Packable",
     "ScalarView",
     "Dataview2D",
     "DataviewRGB",

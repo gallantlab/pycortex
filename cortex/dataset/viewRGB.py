@@ -33,6 +33,7 @@ from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .views import (
     Dataview,
     DataviewJSON,
+    Packable,
     ScalarView,
     SurfaceView,
     Vertex,
@@ -122,7 +123,7 @@ def HSV2RGB(color: Union[Color[float], npt.NDArray]) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-class DataviewRGB(Dataview, Generic[ScalarT]):
+class DataviewRGB(Packable, Generic[ScalarT]):
     """Abstract base class for RGB data views.
 
     Three scalar channels plus an alpha channel, carrying their own colours
@@ -199,7 +200,7 @@ class DataviewRGB(Dataview, Generic[ScalarT]):
     def movie(self) -> bool:
         return self.red.movie
 
-    def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
+    def uniques(self, collapse: bool = False) -> Iterator[Packable]:
         if collapse:
             yield self
         else:
@@ -345,11 +346,6 @@ class DataviewRGB(Dataview, Generic[ScalarT]):
             sdict["vmin"] = [0]
             sdict["vmax"] = [255]
         return sdict
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Content-addressed name, used as the HDF node name."""
 
     def _write_hdf(
         self, h5: Union[h5py.File, h5py.Group], name: str = "data"

@@ -71,11 +71,20 @@ from .view2D import Dataview2D
 from .views import (
     Dataview,
     HasSubject,
+    Packable,
     RenderableView,
     ScalarView,
     SurfaceView,
     VolumetricView,
 )
+
+# `Packable` is re-exported from `.views` (imported above, not redeclared -- see the
+# note on `HasSubject` below for why a same-shaped copy is a trap). It is the unit of
+# transport: what `Dataview.uniques` yields, and the thing carrying a
+# content-addressed `name`. Note it is *not* the row axis, and neither implies the
+# other: `Packable` says "this is one addressable array" while `Renderable` says "a
+# renderer can sample this", so a 2D view is renderable but not packable, and a bare
+# ScalarView subclass is packable but has no row.
 
 #: Anything the flatmap renderers can draw. An alias for the common base of every
 #: row, not a union of the rows: a union would have to be edited whenever a row is
@@ -153,6 +162,7 @@ def space_of(view: Dataview) -> BrainSpace:
 
 
 __all__ = [
+    "Packable",
     "RenderableView",
     "VolumetricView",
     "SurfaceView",

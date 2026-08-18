@@ -11,7 +11,7 @@ from h5py._hl.files import File
 from ..database import db
 from ..xfm import Transform
 from ._hdf import _hdf_write
-from .views import Dataview, Vertex, Volume, VolumeRGB, _from_hdf_data
+from .views import Dataview, Packable, Vertex, Volume, VolumeRGB, _from_hdf_data
 from .views import normalize as _vnorm
 
 class Dataset:
@@ -124,11 +124,15 @@ class Dataset:
 
         return ds
         
-    def uniques(self, collapse: bool=False) -> set[Dataview]:
-        """Return the set of unique BrainData objects contained by this dataset"""
-        uniques = set()
+    def uniques(self, collapse: bool=False) -> set[Packable]:
+        """The distinct data arrays this dataset holds, deduplicated.
+
+        A ``set``, and the deduplication is the point: ``Packable.name`` is a
+        content hash, so two views over identical data collapse to one entry and
+        are stored and shipped once.
+        """
+        uniques: set[Packable] = set()
         for name, view in self:
-            # .uniques() is provided by BrainData
             for sv in view.uniques(collapse=collapse):
                 uniques.add(sv)
 
@@ -148,7 +152,6 @@ class Dataset:
             xfms: set[tuple[str, str]] = set()
             masks: set[tuple[str, str, str]] = set()
             for view in self.views.values():
-                # .uniques() is provided by BrainData
                 for data in view.uniques():
                     subjs.add(data.subject)
                     if isinstance(data, Volume):

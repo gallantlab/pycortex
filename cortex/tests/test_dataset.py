@@ -977,3 +977,66 @@ def test_a_third_row_needs_no_change_to_the_renderer():
     for row_name in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
         assert row_name not in src, row_name
     assert "sampling_data" in src and "space.xfmname" in src
+
+
+def test_uniques_yields_packables():
+    """``uniques()`` promises ``Packable``, and every element really is one.
+
+    The annotation used to be ``Iterator[Dataview]``, which is wider than the
+    truth and lacks ``name`` -- the one member every consumer reaches for first.
+    ``webgl.data.Package`` type-checked only because the list it built was
+    ``Any``.
+    """
+    from cortex.dataset import Packable
+
+    vol = cortex.Volume.random(subj, xfmname)
+    vtx = cortex.Vertex.random(subj)
+    views = [
+        vol,
+        vtx,
+        cortex.Volume2D(vol, vol),
+        cortex.Vertex2D(vtx, vtx),
+        cortex.VolumeRGB(vol, vol, vol),
+        cortex.VertexRGB(vtx, vtx, vtx),
+    ]
+    for view in views:
+        for collapse in (True, False):
+            produced = list(view.uniques(collapse=collapse))
+            assert produced, type(view).__name__
+            for item in produced:
+                assert isinstance(item, Packable), (type(view).__name__, type(item))
+                # the whole point: it has an addressable name
+                assert item.name.startswith("__")
+
+    # A 2D view is deliberately *not* packable: it owns no array of its own, only
+    # the two channels it decomposes into, so it has no content-addressed name.
+    for cls in (cortex.Volume2D, cortex.Vertex2D):
+        assert not issubclass(cls, Packable), cls.__name__
+        assert not hasattr(cls, "name"), cls.__name__
+
+    # Both columns claim it in their bases rather than happening to satisfy it.
+    assert Packable in cortex.dataset.ScalarView.__bases__
+    assert Packable in cortex.dataset.DataviewRGB.__bases__
+
+
+def test_packable_name_is_not_hoisted_onto_the_row():
+    """``name`` must keep hashing the *stored* array, not ``sampling_data``.
+
+    For an RGB view the two coincide, which makes hoisting ``name`` onto
+    ``RenderableView`` look free. It is not: a masked ``Volume`` stores a flat
+    array while ``sampling_data`` is the unmasked 3-D one, so unifying them would
+    silently rename every existing HDF node.
+    """
+    from cortex.dataset._hdf import _hash
+
+    mask = cortex.db.get_mask(subj, xfmname, "thick")
+    vol = cortex.Volume(np.random.randn(mask.sum()).astype(np.float32), subj, xfmname,
+                        mask=mask)
+
+    assert vol.name == "__%s" % _hash(vol.data)[:16]
+    assert vol.name != "__%s" % _hash(vol.sampling_data)[:16]
+
+    # ...whereas for RGB the stored array *is* the sampled one, which is why the
+    # two RGB classes could share one implementation.
+    rgb = cortex.VolumeRGB(vol, vol, vol)
+    assert rgb.name == "__%s" % _hash(rgb.sampling_data)[:16]

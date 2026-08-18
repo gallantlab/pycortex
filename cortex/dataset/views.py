@@ -193,7 +193,7 @@ class Dataview(HasSubject, ABC):
         """This view rendered to 8-bit RGBA channels."""
 
     @abstractmethod
-    def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
+    def uniques(self, collapse: bool = False) -> Iterator["Packable"]:
         """Yield the distinct data-carrying views inside this one."""
 
     @property
@@ -306,6 +306,41 @@ class Dataview(HasSubject, ABC):
             subject=subject,
             **attrs,
         )
+
+
+class Packable(Dataview):
+    """A view that is one addressable data array, as :meth:`Dataview.uniques` yields.
+
+    This is the *unit of transport*: the thing that gets a single
+    content-addressed :attr:`name`, is written as one node under HDF ``/data``,
+    and reaches the browser as one texture or vertex-attribute array. Both the
+    scalar column and the RGB column are packable -- an RGB view ships as a
+    single four-channel array -- but :class:`~cortex.dataset.view2D.Dataview2D`
+    is not: a 2D view has no array of its own, only the two channels it
+    decomposes into, which is why it has no ``name``.
+
+    It exists because ``uniques()`` used to be annotated ``Iterator[Dataview]``,
+    which is wider than the truth and misses the one member every consumer
+    immediately reaches for. ``webgl.data.Package`` type-checked only because the
+    list it built was ``Any``; nothing warned that ``Dataview`` has no ``name``.
+
+    Note the asymmetry in what ``name`` addresses, which is why this class only
+    promises the name and not what it hashes: for a scalar view it is both the
+    HDF node name and the browser key, while an RGB view writes its channels as
+    four separate HDF nodes and uses its own ``name`` only as the browser key.
+    """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Content-addressed identity of this view's data array.
+
+        Content-addressed so that two views over identical data share a node
+        instead of duplicating it. Do not reimplement this as a hash of
+        :attr:`RenderableView.sampling_data`: for a masked volume that is the
+        unmasked 3-D array, not the flat stored one, so it would silently rename
+        every existing HDF node.
+        """
 
 
 class RenderableView(Dataview):
@@ -509,7 +544,7 @@ class SurfaceView(RenderableView):
 
 
 
-class ScalarView(Dataview):
+class ScalarView(Packable):
     """A single array of scalar values, displayed through a 1D colormap.
 
     This is the union of what used to be ``BrainData`` and the colormapped half
@@ -584,7 +619,7 @@ class ScalarView(Dataview):
     def __hash__(self) -> int:
         return hash(_hash(self.data))
 
-    def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
+    def uniques(self, collapse: bool = False) -> Iterator["Packable"]:
         yield self
 
     def copy(self, data: npt.NDArray) -> Self:
@@ -817,7 +852,7 @@ class Multiview(Dataview):
     def raw(self) -> DataviewRGB:
         raise NotImplementedError
 
-    def uniques(self, collapse: bool = False) -> Iterator[Dataview]:
+    def uniques(self, collapse: bool = False) -> Iterator["Packable"]:
         raise NotImplementedError
 
     def _write_hdf(
