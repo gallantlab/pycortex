@@ -148,18 +148,21 @@ def get_flatcache(subject: str, xfmname: Optional[str], pixelwise: bool=True, th
                   recache: bool=False, height: int=1024, depth: float=0.5):
     """The mapping from data values to flatmap pixels.
 
-    Unlike :func:`get_flatmask`, this *is* per space, and ``xfmname`` is what
-    selects between the two kinds. Callers pass ``view.space.xfmname``, so:
+    Unlike :func:`get_flatmask`, this is per space. There are two kinds of cache,
+    and ``xfmname`` chooses between them -- callers pass ``view.space.xfmname``,
+    which is ``None`` exactly when the data is already per-vertex:
 
-    - ``None`` -- a surface space, i.e. per-vertex data. Cached as
-      ``flatverts_{height}.npz`` and shared by every surface view of the subject,
-      since a vertex mapping involves no transform.
-    - a transform name -- a volumetric space. Cached as
-      ``flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz``, one entry per
-      transform, sampler and thickness/depth.
+    - ``None``: a vertex cache, ``flatverts_{height}.npz``. This is what surface
+      data uses -- ``Vertex``, ``Vertex2D``, ``VertexRGB`` -- and one entry serves
+      all of them, because mapping vertices to pixels involves no transform.
+    - a transform name: a pixel cache,
+      ``flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz``. This is what
+      volumetric data uses -- ``Volume``, ``Volume2D``, ``VolumeRGB`` -- and there
+      is one entry per transform, sampler and thickness/depth, since the mapping
+      goes through the transform.
 
-    A space added later needs no change here: whichever of the two its ``xfmname``
-    implies is what it gets.
+    So it is the *space* that decides, not the view class: a space added later gets
+    whichever of the two kinds its ``xfmname`` implies, with no change here.
 
     The exception is ``pixelwise=False`` with a transform, which loads the *vertex*
     cache and multiplies by the mapper afterwards. That combination therefore
