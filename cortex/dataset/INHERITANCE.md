@@ -21,11 +21,15 @@ layouts**. The two axes are deliberately given different mechanisms.
   open axis: adding a new kind of brain data means adding a space, not
   reimplementing the three bases.
 
-There is no multiple inheritance anywhere. `BrainData` and `Dataview` used to be
-unrelated base classes joined only by MI in `Volume` and `Vertex`, and that MI was
-load-bearing: `BrainData.to_json` and `VolumeData.copy` called `super()` methods
-that existed nowhere in their own ancestry, resolving only because `Volume`'s MRO
-threaded through `Dataview`.
+Each concrete class has exactly two bases: its column, which carries all the state
+and behaviour, and its row, which is a stateless interface. That is not the
+multiple inheritance this package was restructured to remove. `BrainData` and
+`Dataview` used to be unrelated base classes joined only by MI in `Volume` and
+`Vertex`, and that MI was load-bearing: `BrainData.to_json` and `VolumeData.copy`
+called `super()` methods that existed nowhere in their own ancestry, resolving
+only because `Volume`'s MRO threaded through `Dataview`. The rows have no
+`__init__`, no attributes and no cooperative `super()` chain, so nothing depends
+on how they linearize. See [Narrowing the grid](#narrowing-the-grid).
 
 ```mermaid
 classDiagram
@@ -107,7 +111,6 @@ classDiagram
         +right
         +volume()
         +map()
-        +blend_curvature()
         +empty()$
         +random()$
     }
@@ -119,10 +122,38 @@ classDiagram
         <<unimplemented>>
     }
 
+    class HasSubject {
+        <<protocol>>
+        +subject
+    }
+    class RenderableView {
+        <<abstract>>
+        +sampling_data*
+        +raw()*
+    }
+    class VolumetricView {
+        <<abstract>>
+        +xfmname*
+        +volume*
+        +sampling_data
+        +raw() VolumeRGB
+    }
+    class SurfaceView {
+        <<abstract>>
+        +vertices*
+        +sampling_data
+        +raw() VertexRGB
+        +blend_curvature()
+    }
+
+    HasSubject <|.. Dataview
     Dataview <|-- ScalarView
     Dataview <|-- Dataview2D
     Dataview <|-- DataviewRGB
     Dataview <|-- Multiview
+    Dataview <|-- RenderableView
+    RenderableView <|-- VolumetricView
+    RenderableView <|-- SurfaceView
 
     ScalarView <|-- Volume
     ScalarView <|-- Vertex
@@ -130,7 +161,18 @@ classDiagram
     Dataview2D <|-- Vertex2D
     DataviewRGB <|-- VolumeRGB
     DataviewRGB <|-- VertexRGB
+
+    VolumetricView <|-- Volume
+    VolumetricView <|-- Volume2D
+    VolumetricView <|-- VolumeRGB
+    SurfaceView <|-- Vertex
+    SurfaceView <|-- Vertex2D
+    SurfaceView <|-- VertexRGB
 ```
+
+Each concrete class reads down two edges: its column (left) and its row (right).
+`blend_curvature` is drawn on `SurfaceView` because that is the only place it is
+defined; `Vertex` inherits it rather than declaring its own.
 
 ```mermaid
 classDiagram
@@ -139,18 +181,20 @@ classDiagram
         <<abstract>>
         +subject
         +hdf_key$
+        +xfmname*
         +coerce()*
         +is_movie()*
         +spatial_shape*
         +wrap()*
+        +wrap_rgb()*
         +to_json()*
         +write_hdf_attrs()*
-        +view_xfmname*
+        +view_xfmname
         +from_hdf()$*
         +views()$*
     }
     class VolumeSpace {
-        +xfmname
+        +xfmname: str
         +mask
         +mask_name
         +mask_spec
@@ -158,6 +202,7 @@ classDiagram
         +unmask()
     }
     class SurfaceSpace {
+        +xfmname: None
         +llen
         +rlen
         +nverts
@@ -172,20 +217,33 @@ Source locations:
 | Class | Location |
 | --- | --- |
 | `Dataview`, `ScalarView`, `Volume`, `Vertex`, `Multiview`, `_masker` | `views.py` |
+| `HasSubject`, `RenderableView`, `VolumetricView`, `SurfaceView` | `views.py` |
 | `Dataview2D`, `Volume2D`, `Vertex2D` | `view2D.py` |
 | `DataviewRGB`, `VolumeRGB`, `VertexRGB`, `Colors` | `viewRGB.py` |
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| `VolumetricView` / `SurfaceView` (row ABCs) | `views.py` |
-| `Renderable`, `as_renderable`, `space_of` | `_typing.py` |
+| `Renderable`, `ColormappedView`, `as_renderable`, `space_of` | `_typing.py` |
+
+The row ABCs live in `views.py`, not `_typing.py`, because `Volume` and `Vertex`
+inherit them; `_typing.py` imports from `views.py` and re-exports, so it holds only
+the boundary helpers and aliases. `cortex/dataset/__init__.py` must import `.views`
+first — it resolves its circular dependency on `view2D`/`viewRGB` with deferred
+imports at the bottom of its own module, so anything reaching those earlier sees a
+partially initialised module. A test pins the import order.
 
 `braindata.py` is a compatibility shim: `BrainData`, `VolumeData` and `VertexData`
 are aliases for `ScalarView`, `Volume` and `Vertex`. The aliases preserve
 `isinstance` exactly -- `isinstance(x, VolumeData)` was only ever true for
-`Volume`, since `Volume2D` and `VolumeRGB` never inherited it. Two module paths are
-pinned by external code and still resolve: `cortex.dataset.views.Vertex`
-(`cortex/database.py`) and `dataset.braindata.VertexData` (`cortex/blender/`).
+`Volume`, since `Volume2D` and `VolumeRGB` never inherited it.
+
+Nothing inside the package reaches through `braindata` any more. `cortex/blender/`
+used to (`isinstance(braindata, dataset.braindata.VertexData)`) and now tests
+`dataset.Vertex` directly; what remains are `cortex/tests/test_braindata.py`, which
+imports `_hash` from there, and `test_dataset.py`, which imports the three aliases
+precisely to keep this shim honest. It is kept for code outside the repo. One
+submodule path is still pinned internally and must keep resolving:
+`cortex.dataset.views.Vertex`, imported by `cortex/database.py`.
 
 ## Generics: one covariant TypeVar
 
@@ -235,25 +293,37 @@ Four declarations. The three bases supply everything else.
 @register_space
 class MySpace(BrainSpace):
     hdf_key = "myspace"
+    @property
+    def xfmname(self): ...                # the transform to sample through, or None
     def coerce(self, data): ...           # validate; record per-array geometry
     def is_movie(self, data): ...         # does it have a leading time axis
     @property
     def spatial_shape(self): ...
     def wrap(self, data, **kw): ...       # build a MyView over `data`
+    def wrap_rgb(self, r, g, b, a, **kw): ...   # build a MyViewRGB
     def to_json(self): ...
     def write_hdf_attrs(self, h5, node): ...
-    @property
-    def view_xfmname(self): ...           # slot 7 of the /views record
     @classmethod
     def from_hdf(cls, attrs, *, subject, xfmname, mask): ...
     @classmethod
     def views(cls):
         return SpaceViews(scalar=MyView, twod=MyView2D, rgb=MyViewRGB)
 
-class MyView(ScalarView): ...             # + space-specific accessors
-class MyView2D(Dataview2D[MyView]): ...   # + a constructor forwarding space kwargs
-class MyViewRGB(DataviewRGB[MyView]): ...
+class MyView(ScalarView, MyRow): ...      # + space-specific accessors
+class MyView2D(Dataview2D[MyView], MyRow): ...   # + a ctor forwarding space kwargs
+class MyViewRGB(DataviewRGB[MyView], MyRow): ...
 ```
+
+`view_xfmname` is deliberately *not* in that list: it is the one concrete member
+on `BrainSpace`, derived as `None if self.xfmname is None else [self.xfmname]`, so
+implementing `xfmname` gets slot 7 right for free. Override it only if a space
+needs a slot-7 value that is not just its transform name.
+
+`MyRow` is the row interface — `VolumetricView` if the data samples through a
+transform, `SurfaceView` if it is per-vertex, or a new subclass of
+`RenderableView` supplying `sampling_data` if it is sampled some other way. A view
+that inherits no row is still a perfectly good `Dataview`; it just cannot be
+passed to the flatmap renderers, and `as_renderable` will say so.
 
 `register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
 and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
@@ -317,11 +387,20 @@ different questions, and the split is deliberate:
 | question | mechanism | why |
 | --- | --- | --- |
 | "what kind of view is this?" | ABC — `VolumetricView`, `SurfaceView` | asked at *runtime*, so the check must be sound; only a nominal base gives that |
-| "what does this function need?" | Protocol — `HasSubject`, `SupportsCurvatureBlend` | a *static* contract on a parameter; never `isinstance`d |
+| "what does this function need?" | Protocol — `HasSubject` | a *static* contract on a parameter; never `isinstance`d |
 
-The Protocols are deliberately **not** `runtime_checkable`, so `isinstance` against
-them raises `TypeError` — which mechanically prevents the presence-only check from
+`HasSubject` is the only Protocol left. There was a second, `SupportsCurvatureBlend`,
+which vanished when `blend_curvature` moved onto `SurfaceView`: once the method had
+one home, nothing needed a structural name for "things it can be called on".
+
+`HasSubject` is deliberately **not** `runtime_checkable`, so `isinstance` against
+it raises `TypeError` — which mechanically prevents the presence-only check from
 creeping back in. A test pins that.
+
+It is also declared exactly once, in `views.py`, and re-exported from `_typing.py`.
+That matters more than it looks: two structurally identical Protocols type-check
+interchangeably, so a duplicate declaration is invisible to mypy *and* to the test
+asserting `Dataview` claims it, and the two copies then drift apart silently.
 
 The payoff for the Protocol half is that a function can claim exactly what it
 touches. Every one of `add_curvature`, `add_rois`, `add_sulci`, `add_custom` and
@@ -385,8 +464,18 @@ This is not a return to the multiple inheritance the package was restructured to
 remove. The rows are stateless interfaces: no `__init__`, no attributes, no
 cooperative `super()` chain. `BrainData`/`Dataview` were pathological because each
 carried state and called `super()` methods that resolved only through a subclass's
-MRO. The MROs here linearize cleanly, e.g.
-`Volume2D -> Dataview2D -> VolumetricView -> Dataview -> ABC -> Generic -> object`.
+MRO. The MROs here linearize cleanly:
+
+```
+Volume2D  -> Dataview2D  -> VolumetricView -> RenderableView -> Dataview
+          -> HasSubject  -> Protocol -> Generic -> ABC -> object
+VertexRGB -> DataviewRGB -> SurfaceView    -> RenderableView -> Dataview
+          -> HasSubject  -> Protocol -> Generic -> ABC -> object
+```
+
+Column before row in both, because the column is listed first in the bases and
+carries the implementations; the row contributes only defaults such as
+`sampling_data` and `blend_curvature`, which nothing overrides.
 
 `Volume2D.volume` and `VolumeRGB.xfmname` exist to make the rows implementable.
 `Volume2D` had no `volume` at all, so consumers special-cased it to reach
@@ -465,11 +554,12 @@ objects where arrays are expected.
 
 ## Other known issues, outside this package
 
-- `quickflat/composite.py` reads `dataview.xfmname` then tests `if xfmname is None`
-  to emit a "you seem to have provided vertex data" message -- but `Vertex` has no
-  `xfmname`, so it raises `AttributeError` before reaching the intended
-  `ValueError`.
-- `quickflat/view.py` reads `dataview.xfmname` unguarded on the `with_dropout` path.
+- `quickflat/composite.py`'s `add_connected_vertices` still reads
+  `dataview.xfmname` and tests `if xfmname is None` to emit a "you seem to have
+  provided vertex data" message. That branch is now dead rather than broken: the
+  parameter is typed `VolumetricView`, whose `xfmname` is a `str`, and the sole
+  caller guards with `isinstance`. It used to raise `AttributeError` before
+  reaching the intended `ValueError`, because `Vertex` has no `xfmname` at all.
 - `webgl/view.py`'s `JSMixer.addData` references `Dataset` and `_convert_dataset`,
   neither of which exists; it is permanently broken and xfailed.
 - `volume.py`'s `epi2anatspace_fsl` calls `normalize(...).data` then `.subject` on
@@ -478,5 +568,17 @@ objects where arrays are expected.
 - `Dataview2D.to_json` ignores its `simple` flag. Preserved deliberately: the webgl
   packer only ever calls `to_json(simple=True)` on the scalar channels yielded by
   `uniques()`, never on a 2D view.
-- `Database.get_cache` builds its hash from `auxfile.h5.filename`; `md5` needs
+Fixed in passing while typing the callers, and recorded here only so the change is
+not mistaken for an unrelated edit:
+
+- `Database.get_cache` built its hash from `auxfile.h5.filename`; `md5` needs
   bytes, so this raised an uncaught `TypeError` until it was given an `.encode()`.
+- `quickflat/view.py` read `dataview.xfmname` unguarded on both `with_dropout`
+  paths, raising `AttributeError` on surface data. Both now check
+  `isinstance(dataview, VolumetricView)` and raise a `TypeError` naming the class.
+- `Dataset.get_surf` and `Database.get_surf` take `merge` and `nudge` keyword-only
+  in every overload. Previously only the `merge=True` overload did, which made the
+  calling convention depend on the argument's value: a positional
+  `get_surf(s, t, 'both', True)` ran but matched no overload, and a positional
+  dynamic flag bound the wrong one. No caller in this repo passed either
+  positionally, but it is a break for anyone outside it who did.
