@@ -485,6 +485,67 @@ abstract property will not accept, so it is now derived. Like `VolumeRGB.volume`
 `Volume.volume` returns — the same split `vertices` already had across `Vertex`
 and `Vertex2D`.
 
+## What a new row must implement to be rendered
+
+The two renderers are not equally open, and the difference is not a matter of
+tidiness: `sampling_data` is enough to *draw a flatmap*, but not enough to *ship
+data to a browser*, because the browser needs to know how the bytes are laid out.
+
+### `quickflat` — nothing beyond the row ABC
+
+Implement `sampling_data` and give the space an `xfmname` (`None` if the data is
+not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
+renderer never asks what it is holding. Pinned by
+`test_a_third_row_needs_no_change_to_the_renderer`.
+
+Three flatmap *decorations* legitimately require a transform and will reject a row
+that has none, with a `TypeError` naming the class: `with_dropout`,
+`with_connected_vertices`, and `add_connected_vertices`. That is a capability
+requirement, not a closed-world assumption — there is nothing a transformless row
+could do with them.
+
+### `webgl` / `webshow` — pick one of exactly two wire encodings
+
+`webgl/data.py`'s `Package` reads `sampling_data` like everything else, but it must
+then choose how the array reaches the browser, and only two encodings exist:
+
+| | volumetric encoding | surface encoding |
+| --- | --- | --- |
+| array shape | `(frames, z, y, x[, 4])` | `(frames, nverts[, 4])` |
+| packing | `volume.mosaic()` per frame → PNG | raw `.npy` bytes |
+| JSON | sets `mosaic` to the tile shape | no `mosaic` key |
+| slot 7 | `[xfmname]` | `null` |
+| vertex order | n/a | **must** be permuted by `Package.reorder` into the CTM's order |
+| JS path | texture, sampled through the transform | per-vertex attribute |
+| premultiplied alpha | no — Three.js premultiplies on texture upload | **yes**, done in Python |
+
+A new row must therefore inherit `VolumetricView` or `SurfaceView` *for the webgl
+path to work*, even though `quickflat` would have accepted a bare `RenderableView`.
+That is the one place where the row axis is genuinely not open, and it is a
+constraint of the browser code, not of this package: `dataset.js` selects the path
+by testing `mosaic === undefined`, so a row wanting a third layout has to add a
+matching branch there (and to `shaderlib.js`, if it samples differently).
+
+The geometry is always a surface mesh, whatever the row: `brainctm.py` builds it
+from `db.get_surf`, so a volumetric row is rendered by sampling its texture at each
+vertex's coordinates. A row whose data cannot be evaluated per-vertex has no webgl
+representation at all.
+
+`Package` iterates `uniques(collapse=True)`, which decomposes 2D views into their
+scalar channels, so only the scalar and RGB columns ever reach it. That is why
+nothing there mentions `Dataview2D`.
+
+### Consumers that are deliberately narrower
+
+These name a concrete class because they need a specific capability, and a new row
+will be rejected rather than mis-drawn:
+
+| consumer | requires | why |
+| --- | --- | --- |
+| `volume.show_slice` | `Volume` | slices the 3D array against an anatomical reference |
+| `blender.add_cutdata` | `Volume` or `Vertex` | samples one colormapped value per vertex, so needs a single `cmap` |
+| `Mapper.__call__` | `Vertex` | splits per-hemisphere by vertex count |
+
 ## The wire format is a hard interface
 
 `webgl/resources/js/dataset.js` dispatches **structurally**; no Python class name
