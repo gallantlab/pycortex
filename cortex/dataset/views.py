@@ -1001,51 +1001,21 @@ class Volume(ScalarView, VolumetricView):
 
     @classmethod
     def empty(cls, subject: str, xfmname: str, value: float = 0, **kwargs: Any) -> Self:
-        """
-        Create a constant-valued Volume for the given subject and xfmname.
-        Often useful for testing purposes.
+        """A Volume filled with ``value``, shaped by ``xfmname``'s reference volume.
 
-        Parameters
-        ----------
-        subject : str
-            Subject identifier. Must exist in the pycortex database.
-        xfmname : str
-            Transform name. Must exist in the pycortex database.
-        value : float, optional
-            Value that the Volume will be filled with.
-        **kwargs
-            Other keyword arguments are passed to the init function for this
-            class.
-
-        Returns
-        -------
-        Volume
-            A Volume whose data is constant, equal to value.
+        ``subject`` and ``xfmname`` must both exist in the pycortex database.
+        Other keyword arguments go to the constructor. Useful for tests, and as a
+        starting point for arithmetic -- ``Volume.empty(s, x) + 1``.
         """
         shape = VolumeSpace(subject, xfmname).template_shape
         return cls(cls._sample(shape, value), subject, xfmname, **kwargs)
 
     @classmethod
     def random(cls, subject: str, xfmname: str, **kwargs: Any) -> Self:
-        """
-        Create a random-valued Volume for the given subject and xfmname.
-        Random values are from gaussian distribution with mean 0, s.d. 1.
-        Often useful for testing purposes.
+        """A Volume of standard normal noise, shaped by ``xfmname``'s reference volume.
 
-        Parameters
-        ----------
-        subject : str
-            Subject identifier. Must exist in the pycortex database.
-        xfmname : str
-            Transform name. Must exist in the pycortex database.
-        **kwargs
-            Other keyword arguments are passed to the init function for this
-            class.
-
-        Returns
-        -------
-        Volume
-            A Volume whose data is random.
+        Gaussian, mean 0, s.d. 1. ``subject`` and ``xfmname`` must both exist in
+        the pycortex database; other keyword arguments go to the constructor.
         """
         shape = VolumeSpace(subject, xfmname).template_shape
         return cls(cls._sample(shape, None), subject, xfmname, **kwargs)
@@ -1290,47 +1260,21 @@ class Vertex(ScalarView, SurfaceView):
 
     @classmethod
     def empty(cls, subject: str, value: float = 0, **kwargs: Any) -> Self:
-        """
-        Create a constant-valued Vertex for the given subject.
-        Often useful for testing purposes.
+        """A Vertex filled with ``value``, one entry per vertex of both hemispheres.
 
-        Parameters
-        ----------
-        subject : str
-            Subject identifier. Must exist in the pycortex database.
-        value : float, optional
-            Value that the Vertex will be filled with.
-        **kwargs
-            Other keyword arguments are passed to the init function for this
-            class.
-
-        Returns
-        -------
-        Vertex
-            A Vertex whose data is constant, equal to value.
+        ``subject`` must exist in the pycortex database. Other keyword arguments
+        go to the constructor. Useful for tests, and as a starting point for
+        arithmetic -- ``Vertex.empty(s) + 1``.
         """
         shape = SurfaceSpace(subject).template_shape
         return cls(cls._sample(shape, value), subject, **kwargs)
 
     @classmethod
     def random(cls, subject: str, **kwargs: Any) -> Self:
-        """
-        Create a random-valued Vertex for the given subject.
-        Random values are from gaussian distribution with mean 0, s.d. 1.
-        Often useful for testing purposes.
+        """A Vertex of standard normal noise, one entry per vertex of both hemispheres.
 
-        Parameters
-        ----------
-        subject : str
-            Subject identifier. Must exist in the pycortex database.
-        **kwargs
-            Other keyword arguments are passed to the init function for this
-            class.
-
-        Returns
-        -------
-        Vertex
-            A Vertex with random data.
+        Gaussian, mean 0, s.d. 1. ``subject`` must exist in the pycortex
+        database; other keyword arguments go to the constructor.
         """
         shape = SurfaceSpace(subject).template_shape
         return cls(cls._sample(shape, None), subject, **kwargs)
