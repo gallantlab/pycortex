@@ -89,6 +89,18 @@ class Package(object):
             if isinstance(brain, dataset.SurfaceView):
                 # TODO: how does this work? check if tests run this part
                 self.images[name] = [encdata]
+            elif not isinstance(brain, dataset.VolumetricView):
+                # Neither encoding applies. Say so here: this used to fall into
+                # the branch below and surface as "Invalid data shape" from
+                # `volume.mosaic`, several frames deep and naming neither the
+                # view nor the real problem.
+                raise TypeError(
+                    "%s has no webgl wire encoding: it is neither a "
+                    "VolumetricView (mosaicked texture) nor a SurfaceView "
+                    "(per-vertex attributes). Inherit one of those rows, or add "
+                    "a third encoding to webgl/resources/js/dataset.js. It can "
+                    "still be drawn by quickflat." % type(brain).__name__
+                )
             else:
                 # TODO: make temporary typing work
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
