@@ -264,6 +264,7 @@ Source locations:
 | --- | --- |
 | `Dataview`, `ScalarView`, `Volume`, `Vertex`, `Multiview`, `_masker` | `views.py` |
 | `HasSubject`, `Packable`, `RenderableView`, `VolumetricView`, `SurfaceView` | `views.py` |
+| `as_renderable`, `normalize`, `_detect_space`, `_from_hdf_data` | `views.py` |
 | `Dataview2D`, `Volume2D`, `Vertex2D` | `view2D.py` |
 | `DataviewRGB`, `VolumeRGB`, `VertexRGB`, `Colors` | `viewRGB.py` |
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
@@ -363,8 +364,8 @@ class MyView2D(Dataview2D[MyView], MyRow): ...   # + a ctor forwarding space kwa
 class MyViewRGB(DataviewRGB[MyView], MyRow): ...
 ```
 
-Two members are deliberately *not* in that list, because both are concrete on
-`BrainSpace` and most spaces should inherit them:
+Three members are deliberately *not* in that list, because all three are concrete
+on `BrainSpace` and most spaces should inherit them:
 
 - `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
   implementing `xfmname` gets slot 7 right for free. Override it only if a space
@@ -376,14 +377,6 @@ Two members are deliberately *not* in that list, because both are concrete on
   geometry of an array already bound by `coerce` and is `()` until then, so a fresh
   volume space has to look its shape up from the transform. Getting this wrong is
   quiet -- `empty` would build a zero-dimensional array rather than fail.
-`hdf_key` is a label rather than a mechanism, despite the name. Detection on load
-walks `registered_spaces()` in registration order and takes the first space whose
-`from_hdf` returns non-`None`; nothing reads `hdf_key`, and neither built-in writes
-a discriminator, because legacy files predate the idea and carry none. It is worth
-setting anyway as the one place a space names itself — a space that *does* want a
-key on disk has an obvious value to write in `write_hdf_attrs` and match in
-`from_hdf`.
-
 - `describe_layout(data)`, the keys telling the browser how to unpack the array it
   is sent, merged into `to_json(simple=True)`. Empty by default. `VolumeSpace`
   returns `shape` (the grid the mosaic tiles unpack into) and `SurfaceSpace`
@@ -391,6 +384,14 @@ key on disk has an obvious value to write in `write_hdf_attrs` and match in
   which describes the *space* rather than a particular array bound to it -- which
   is why only this one takes the data. These keys are read by `dataset.js`, so
   they are a hard interface.
+
+`hdf_key` is a label rather than a mechanism, despite the name. Detection on load
+walks `registered_spaces()` in registration order and takes the first space whose
+`from_hdf` returns non-`None`; nothing reads `hdf_key`, and neither built-in writes
+a discriminator, because legacy files predate the idea and carry none. It is worth
+setting anyway as the one place a space names itself — a space that *does* want a
+key on disk has an obvious value to write in `write_hdf_attrs` and match in
+`from_hdf`.
 
 ### What the space owns, and why
 
@@ -722,6 +723,34 @@ regression test. It is now visible to mypy: `Vertex.__getitem__` returns `Self`
 rather than `Any`, so the checker reports that the dead branch yields `Vertex`
 objects where arrays are expected.
 
+## Known bug: a float32 view cannot be saved
+
+`ScalarView._write_cmap_slots` does `json.dumps([self.vmin])`, and when `vmin` was
+left to default it holds whatever `np.percentile` returned. On a **float32** array
+that is an `np.float32`, which `json.dumps` refuses:
+
+```
+TypeError: Object of type float32 is not JSON serializable
+```
+
+float64 data works only because `np.float64` happens to subclass `float`. So
+`Dataset(v=cortex.Volume(float32_array, ...)).save(...)` raises unless `vmin`/`vmax`
+were passed explicitly. No test covers it: they all build data with
+`np.random.randn`, which is float64.
+
+Note this is *not* an argument for converting the percentile to a Python `float` --
+see the numerics note above for why that changes on-disk node identity. The fix
+belongs at the JSON boundary, not in the percentile.
+
+## Known bug: `VertexRGB` cannot be built from movie channels
+
+`VertexRGB(movie, movie, movie)` raises `ValueError: setting an array element with a
+sequence` from `_rgba_stack`. The three colour channels have `(t, v)` worth of
+frames while the auto-generated alpha has one, so `np.array([r, g, b, a])` is
+inhomogeneous. `VolumeRGB` with movie channels works, so the two paths disagree
+about whether a synthesised alpha should broadcast to the channels' frame count.
+Surface RGB movies are therefore unsupported, silently.
+
 ## Other known issues, outside this package
 
 - `quickflat/composite.py`'s `add_connected_vertices` still reads
@@ -738,6 +767,15 @@ objects where arrays are expected.
 - `Dataview2D.to_json` ignores its `simple` flag. Preserved deliberately: the webgl
   packer only ever calls `to_json(simple=True)` on the scalar channels yielded by
   `uniques()`, never on a 2D view.
+- `quickflat.make_movie` cannot run at all. It calls
+  `make_flatmap_image(data, subject, xfmname, recache=..., height=...)`, but that
+  signature is `(braindata, height, recache, nanmean, **kwargs)`, so `subject` binds
+  to `height` and `xfmname` to `recache` and the keywords then collide:
+  `TypeError: multiple values for argument 'height'`. It fails on the call, before
+  any work. mypy does not catch it because `make_movie` is unannotated, so its body
+  is unchecked — the same blind spot that hid the `sampling_data` fork in
+  `webgl/data.py`. It is exported and documented in `api_reference_flat.rst`.
+
 Fixed in passing while typing the callers, and recorded here only so the change is
 not mistaken for an unrelated edit:
 
