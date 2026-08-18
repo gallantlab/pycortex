@@ -357,10 +357,19 @@ class MyView2D(Dataview2D[MyView], MyRow): ...   # + a ctor forwarding space kwa
 class MyViewRGB(DataviewRGB[MyView], MyRow): ...
 ```
 
-`view_xfmname` is deliberately *not* in that list: it is the one concrete member
-on `BrainSpace`, derived as `None if self.xfmname is None else [self.xfmname]`, so
-implementing `xfmname` gets slot 7 right for free. Override it only if a space
-needs a slot-7 value that is not just its transform name.
+Two members are deliberately *not* in that list, because both are concrete on
+`BrainSpace` and most spaces should inherit them:
+
+- `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
+  implementing `xfmname` gets slot 7 right for free. Override it only if a space
+  needs a slot-7 value that is not just its transform name.
+- `template_shape`, the shape a *fresh* array should have, which is what
+  `ScalarView.empty` and `random` read. It defaults to `spatial_shape`, which is
+  correct whenever the geometry is known as soon as the space is built. Override it
+  only if it is not: `VolumeSpace` does, because `spatial_shape` reports the
+  geometry of an array already bound by `coerce` and is `()` until then, so a fresh
+  volume space has to look its shape up from the transform. Getting this wrong is
+  quiet -- `empty` would build a zero-dimensional array rather than fail.
 
 `MyRow` is the row interface — `VolumetricView` if the data samples through a
 transform, `SurfaceView` if it is per-vertex, or a new subclass of
