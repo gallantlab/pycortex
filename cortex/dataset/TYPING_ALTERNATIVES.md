@@ -243,7 +243,7 @@ An inline `isinstance` against a member of a union already narrows **both** bran
 concrete classes, protocols and ABCs alike. `TypeIs` is only required to carry that narrowing
 *across a function-call boundary*, i.e. if you want a named predicate helper rather than an
 inline check. So the sequence was: six `TypeIs` predicates over closed unions, then two
-`runtime_checkable` protocols, then the row ABCs that are actually there.
+`runtime_checkable` protocols, then the spatial interfaces that are actually there.
 
 Measured, for the record: on the volume/surface fork, loose signature + `TypeGuard` = 3
 errors, tightened + `TypeGuard` = 5, tightened + `TypeIs` = 0. All three of the final
@@ -258,7 +258,7 @@ Why ABCs won over protocols:
   `issubclass` is not even available on protocols with non-method members.
 - Protocols are structural where `Dataview` is nominal. Converting at the boundary and
   carrying a protocol-typed value discarded the nominal type and broke five downstream
-  functions (+7 errors). Making the rows subclass `Dataview` removes the problem entirely.
+  functions (+7 errors). Making the spatial interfaces subclass `Dataview` removes the problem entirely.
 - `ABC.register()` gives runtime truth without static truth -- mypy does not know about the
   registration -- so it is the wrong trade. A `ClassVar[Literal[...]]` tag is sound and
   narrows, but requires a closed union, which is what openness was meant to escape.

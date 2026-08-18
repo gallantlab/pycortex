@@ -84,7 +84,7 @@ __all__ = [
     "SurfaceSpace",
     "register_space",
     "registered_spaces",
-    # the row axis of the grid, and helpers for narrowing it
+    # the spatial axis of the grid, and helpers for narrowing it
     "VolumetricView",
     "SurfaceView",
     "RenderableView",

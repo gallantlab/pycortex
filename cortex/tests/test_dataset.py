@@ -581,7 +581,7 @@ def test_vertex2d_survives_an_hdf_round_trip():
             loaded.h5.close()
 
 
-def test_each_view_subclasses_exactly_one_renderable_row():
+def test_each_view_subclasses_exactly_one_spatial_interface():
     """The renderers fork on volumetric-vs-surface; the fork must be total.
 
     ``Volume2D`` used to satisfy neither, because it had no ``.volume`` -- every
@@ -603,7 +603,7 @@ def test_each_view_subclasses_exactly_one_renderable_row():
         volumetric = isinstance(view, VolumetricView)
         surface = isinstance(view, SurfaceView)
         assert volumetric != surface, (
-            "%s subclasses %s renderable row"
+            "%s subclasses %s spatial interface"
             % (name, "both" if volumetric else "neither")
         )
         assert volumetric is name.startswith("Volume"), name
@@ -679,11 +679,11 @@ def test_as_renderable_rejects_a_view_with_neither_interface():
         as_renderable(Unrenderable())
 
 
-def test_as_renderable_accepts_a_third_party_view_that_inherits_a_row():
+def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interface():
     """Still open, but by explicit opt-in rather than structurally.
 
     A view in a space this package has never heard of is renderable as soon as it
-    inherits whichever row describes how its data is sampled -- no registry entry
+    inherits whichever spatial interface describes how its data is sampled -- no entry
     and no union to edit.
     """
     from cortex.dataset.views import as_renderable
@@ -727,7 +727,7 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
     from cortex.dataset.views import SurfaceView, VolumetricView
 
     class Lookalike(dataset.Dataview):
-        """Every name a renderable row wants, none of the meanings."""
+        """Every name a spatial interface wants, none of the meanings."""
 
         subject = 42
         xfmname = None
@@ -755,7 +755,7 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
         as_renderable(fake)
 
 
-def test_a_row_subclass_must_implement_the_row():
+def test_a_spatial_subclass_must_implement_its_interface():
     """Abstract members mean a forgotten accessor fails at construction."""
     from cortex.dataset.views import VolumetricView
 
@@ -785,7 +785,7 @@ def test_a_row_subclass_must_implement_the_row():
 def test_static_only_protocols_refuse_isinstance():
     """The presence-only check cannot creep back in.
 
-    The row ABCs answer "what kind of view is this?" at runtime, so they must be
+    The spatial interfaces answer "what kind of view is this?" at runtime, so they
     sound. The Protocols answer "what does this function need?", which is a purely
     static question -- so they are deliberately not @runtime_checkable, and
     isinstance against them is a TypeError rather than a hasattr sweep.
@@ -853,7 +853,7 @@ def test_protocol_implementations_are_declared_not_merely_structural():
     # no view actually inherited. Only object identity catches that.
     assert cortex.dataset.HasSubject is HasSubject
 
-    # blend_curvature is defined once, on the row, not per concrete class
+    # blend_curvature is defined once, on the spatial interface, not per class
     assert "blend_curvature" in SurfaceView.__dict__
     assert not any(
         "blend_curvature" in getattr(cortex, n).__dict__
@@ -868,27 +868,27 @@ def test_protocol_implementations_are_declared_not_merely_structural():
         "Vertex2D": (SurfaceView, True),
         "VertexRGB": (SurfaceView, True),
     }
-    for name, (row, blends) in expected.items():
+    for name, (spatial, blends) in expected.items():
         cls = getattr(cortex, name)
         mro = cls.__mro__
         # every view claims HasSubject, via Dataview
         assert HasSubject in mro, name
-        # exactly one row
-        assert row in mro, name
-        other = SurfaceView if row is VolumetricView else VolumetricView
+        # exactly one spatial interface
+        assert spatial in mro, name
+        other = SurfaceView if spatial is VolumetricView else VolumetricView
         assert other not in mro, name
-        # curvature blending is a surface-only contract, inherited from the row
+        # curvature blending is a surface-only contract, inherited from the interface
         assert hasattr(cls, "blend_curvature") is blends, name
 
 
-def test_a_third_row_needs_no_change_to_the_renderer():
-    """Nothing branches on which row a view is, so a new one just works.
+def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
+    """Nothing branches on which spatial kind a view is, so a new one just works.
 
     ``make_flatmap_image`` used to fork on ``isinstance(braindata, SurfaceView)``
-    with an ``else`` that silently assumed exactly two rows existed -- a third
+    with an ``else`` that silently assumed exactly two kinds existed -- a third
     would have taken the volumetric path and then failed on ``.xfmname``. It now
     reads ``space.xfmname`` (what to sample through) and ``sampling_data`` (what to
-    sample), so a row it has never heard of is drawn by the same code.
+    sample), so a spatial kind it has never heard of is drawn by the same code.
     """
     import inspect
 
@@ -936,8 +936,8 @@ def test_a_third_row_needs_no_change_to_the_renderer():
         def views(cls):
             raise NotImplementedError
 
-    class ThirdRow(RenderableView):
-        """A row this package has never heard of."""
+    class ThirdSpatialKind(RenderableView):
+        """A spatial kind this package has never heard of."""
 
         @property
         def space(self):
@@ -960,18 +960,18 @@ def test_a_third_row_needs_no_change_to_the_renderer():
         def _write_hdf(self, h5, name="data"):
             raise NotImplementedError
 
-    row = ThirdRow()
-    # it is renderable without being either built-in row
-    assert as_renderable(row) is row
-    assert not isinstance(row, (VolumetricView, SurfaceView))
+    view = ThirdSpatialKind()
+    # it is renderable without being either built-in spatial interface
+    assert as_renderable(view) is view
+    assert not isinstance(view, (VolumetricView, SurfaceView))
     # and the two facts the renderer needs are both available
-    assert row.space.xfmname is None
-    assert row.sampling_data.shape == (1, 4)
-    # the renderer no longer asks which row it holds. (It still has isinstance
-    # checks for np.ma.MaskedArray -- those are about the array, not the row.)
+    assert view.space.xfmname is None
+    assert view.sampling_data.shape == (1, 4)
+    # the renderer no longer asks which spatial kind it holds. (It still has
+    # isinstance checks for np.ma.MaskedArray -- about the array, not the space.)
     src = inspect.getsource(qutils.make_flatmap_image)
-    for row_name in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
-        assert row_name not in src, row_name
+    for banned in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
+        assert banned not in src, banned
     assert "sampling_data" in src and "space.xfmname" in src
 
 
@@ -1015,7 +1015,7 @@ def test_uniques_yields_packables():
     assert Packable in cortex.dataset.DataviewRGB.__bases__
 
 
-def test_packable_name_is_not_hoisted_onto_the_row():
+def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
     """``name`` must keep hashing the *stored* array, not ``sampling_data``.
 
     For an RGB view the two coincide, which makes hoisting ``name`` onto

@@ -132,7 +132,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
     normalized = dataset.normalize(braindata)
     if not isinstance(normalized, dataset.Dataview):
         raise TypeError('Please provide a Dataview (e.g. an instance of cortex.Volume, cortex.Vertex, etc), not a Dataset')
-    # The row ABCs subclass Dataview, so narrowing to VolumetricView below keeps
+    # The spatial interfaces subclass Dataview, so narrowing to VolumetricView keeps
     # every Dataview member the composite helpers need -- no intersection or
     # re-widening required.
     dataview = normalized

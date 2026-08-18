@@ -190,7 +190,7 @@ class Dataview(HasSubject, ABC):
         Read this when the question is genuinely about the space -- checking that
         two views share a transform, say. For "can I render this", use
         ``isinstance(view, RenderableView)``, which is a different question: a
-        space says where the data lives, a row says how it is sampled.
+        space says where the data lives, a spatial interface says how it is sampled.
         """
 
     @property
@@ -357,15 +357,15 @@ class Packable(Dataview):
 class RenderableView(Dataview):
     """A view a renderer can sample, whatever space it lives in.
 
-    The common base of every row of the grid. Its purpose is to let callers stop
-    enumerating the rows: :func:`as_renderable` is one
+    The common base of every spatial interface. Its purpose is to let callers stop
+    enumerating the spatial kinds: :func:`as_renderable` is one
     ``isinstance`` against this, and the flatmap renderer reads
-    :attr:`sampling_data` instead of asking which row it holds.
+    :attr:`sampling_data` instead of asking which spatial kind it holds.
 
     That matters because an ``if volumetric / else surface`` fork silently encodes
-    "there are exactly two rows". A third row would have taken the ``else`` branch
-    and then failed -- or worse, drawn the wrong thing. Nothing branches on the row
-    any more, so a new row works everywhere by implementing this one member (plus
+    "there are exactly two spatial kinds". A third would have taken the ``else`` branch
+    and then failed -- or worse, drawn the wrong thing. Nothing branches on the spatial
+    kind any more, so a new one works everywhere by implementing this one member (plus
     its space's :attr:`~cortex.dataset._space.BrainSpace.xfmname`).
     """
 
@@ -374,7 +374,7 @@ class RenderableView(Dataview):
     def sampling_data(self) -> npt.NDArray:
         """The array a renderer samples, with a leading time axis.
 
-        Each row points this at whichever of its accessors is the sampled one.
+        Each spatial interface points this at whichever of its accessors is the sampled one.
         Paired with ``view.space.xfmname``, which says what to sample *through*.
         """
 
@@ -382,9 +382,9 @@ class RenderableView(Dataview):
 class VolumetricView(RenderableView):
     """A view whose data can be sampled as a volume under a transform.
 
-    One of the two *rows* of the 2x3 grid. The columns are already classes
+    One of the two *spatial interfaces* of the 2x3 grid. The columns are already classes
     (:class:`ScalarView`, :class:`~cortex.dataset.view2D.Dataview2D`,
-    :class:`~cortex.dataset.viewRGB.DataviewRGB`); the rows had no type at all,
+    :class:`~cortex.dataset.viewRGB.DataviewRGB`); the spatial axis had no type at all,
     which is why consumers had to duck-type ``hasattr(braindata, "xfmname")``.
 
     This is a stateless interface: no ``__init__``, no attributes of its own, and
@@ -429,7 +429,7 @@ class VolumetricView(RenderableView):
 class SurfaceView(RenderableView):
     """A view whose data can be sampled per-vertex on a cortical surface.
 
-    The other row of the grid. See :class:`VolumetricView` for why this is an
+    The other spatial interface. See :class:`VolumetricView` for why this is an
     abstract base rather than a ``Protocol``.
 
     ``blend_curvature`` lives here as a concrete method, so all three surface

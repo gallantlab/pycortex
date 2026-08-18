@@ -22,12 +22,12 @@ layouts**. The two axes are deliberately given different mechanisms.
   reimplementing the three bases.
 
 Each concrete class has exactly two bases: its column, which carries all the state
-and behaviour, and its row, which is a stateless interface. That is not the
+and behaviour, and its spatial interface, which is stateless. That is not the
 multiple inheritance this package was restructured to remove. `BrainData` and
 `Dataview` used to be unrelated base classes joined only by MI in `Volume` and
 `Vertex`, and that MI was load-bearing: `BrainData.to_json` and `VolumeData.copy`
 called `super()` methods that existed nowhere in their own ancestry, resolving
-only because `Volume`'s MRO threaded through `Dataview`. The rows have no
+only because `Volume`'s MRO threaded through `Dataview`. The spatial interfaces have no
 `__init__`, no attributes and no cooperative `super()` chain, so nothing depends
 on how they linearize. See [Narrowing the grid](#narrowing-the-grid).
 
@@ -175,24 +175,25 @@ classDiagram
     SurfaceView <|-- VertexRGB
 ```
 
-Each concrete class reads down two edges: its column (left) and its row (right).
+Each concrete class reads down two edges: its column (left) and its spatial
+interface (right).
 `blend_curvature` is drawn on `SurfaceView` because that is the only place it is
 defined; `Vertex` inherits it rather than declaring its own.
 
 ### `Packable`: the unit of transport
 
 `Packable` sits between `Dataview` and the two columns that own an array, and it is
-what `uniques()` yields. It answers a different question from the row:
+what `uniques()` yields. It answers a different question from the spatial axis:
 
 | base | question | who has it |
 | --- | --- | --- |
 | `Packable` | "is this **one addressable array**?" | scalar and RGB columns |
-| `RenderableView` | "can a renderer **sample** this?" | every row |
+| `RenderableView` | "can a renderer **sample** this?" | every spatial interface |
 
 Neither implies the other, which is the point of keeping them separate. A 2D view
 is renderable but **not** packable: it owns no array, only the two channels it
 decomposes into, which is exactly why it has no `name`. Conversely a bare
-`ScalarView` subclass is packable but has no row.
+`ScalarView` subclass is packable but has no spatial interface.
 
 The one member is `name`, a content hash. That is what makes `Dataset.uniques()` a
 `set` rather than a list -- two views over identical data collapse to one entry and
@@ -203,14 +204,14 @@ lacks the one member every consumer reaches for first. `webgl.data.Package`
 type-checked only because the list it built was `Any`; nothing warned that
 `Dataview` has no `name`.
 
-**Do not hoist `name` onto the row.** `VolumeRGB.name` and `VertexRGB.name` are both
+**Do not hoist `name` onto the spatial interface.** `VolumeRGB.name` and `VertexRGB.name` are both
 exactly `_hash(self.sampling_data)`, which makes a single definition on
 `RenderableView` look free. It is not: `ScalarView.name` hashes the *stored* array,
 and for a masked `Volume` that is the flat masked array, not the unmasked 3-D
 `sampling_data`. Unifying them silently renames every existing HDF node. Pinned by
 `test_packable_name_is_not_hoisted_onto_the_row`. What *can* collapse is the two RGB
 definitions into one on `DataviewRGB`, since for RGB the stored array is the sampled
-one -- but that needs `DataviewRGB` to see a row member.
+one -- but that needs `DataviewRGB` to see a spatial-interface member.
 
 What `name` addresses is also asymmetric, which is why `Packable` promises only the
 name and not what it hashes: for a scalar view it is both the HDF node name and the
@@ -272,8 +273,8 @@ Source locations:
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
 
 Everything naming the grid lives in `views.py`, next to the classes it names:
-there was a `_typing.py` holding the row ABCs' aliases and the boundary helper, but
-once the rows became real classes it had nothing left to work around, and its last
+there was a `_typing.py` holding the spatial ABCs' aliases and the boundary helper,
+but once they became real classes it had nothing left to work around, and its last
 occupant -- `as_renderable` -- belongs beside `RenderableView` anyway.
 `cortex/dataset/__init__.py` must import `.views`
 first — it resolves its circular dependency on `view2D`/`viewRGB` with deferred
@@ -359,9 +360,9 @@ class MySpace(BrainSpace):
         # `twod` and `rgb` are read when rebuilding a view from HDF; `scalar` is
         # not, since `wrap()` already builds one. Declared for completeness.
 
-class MyView(ScalarView, MyRow): ...      # + space-specific accessors
-class MyView2D(Dataview2D[MyView], MyRow): ...   # + a ctor forwarding space kwargs
-class MyViewRGB(DataviewRGB[MyView], MyRow): ...
+class MyView(ScalarView, MySpatial): ...  # + space-specific accessors
+class MyView2D(Dataview2D[MyView], MySpatial): ...  # + a ctor forwarding kwargs
+class MyViewRGB(DataviewRGB[MyView], MySpatial): ...
 ```
 
 Three members are deliberately *not* in that list, because all three are concrete
@@ -421,10 +422,10 @@ What deliberately did **not** move:
 - `__repr__` -- the mask description is space knowledge, but the payoff is
   cosmetic.
 
-`MyRow` is the row interface — `VolumetricView` if the data samples through a
+`MySpatial` is the spatial interface — `VolumetricView` if the data samples through a
 transform, `SurfaceView` if it is per-vertex, or a new subclass of
 `RenderableView` supplying `sampling_data` if it is sampled some other way. A view
-that inherits no row is still a perfectly good `Dataview`; it just cannot be
+that inherits neither is still a perfectly good `Dataview`; it just cannot be
 passed to the flatmap renderers, and `as_renderable` will say so.
 
 `register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
@@ -448,22 +449,24 @@ Both axes are real classes, so every narrowing test is a nominal `isinstance`.
 
 |  | volumetric | surface |
 | --- | --- | --- |
-| **row** (space) | `VolumetricView` | `SurfaceView` |
-| both rows | `RenderableView` | |
+| **spatial** | `VolumetricView` | `SurfaceView` |
+| either spatial kind | `RenderableView` | |
 | **column** (channels) | `ScalarView` / `Dataview2D` / `DataviewRGB` | same |
 
-The columns were always classes; only the rows lacked a type, which is why
+The columns were always classes; only the spatial axis lacked a type, which is why
 consumers duck-typed `hasattr(braindata, "xfmname")`.
 
-### Nothing branches on the row
+### Nothing branches on the spatial kind
 
 An `if volumetric / else surface` fork silently encodes "there are exactly two
-rows": a third would take the `else` and then fail, or draw the wrong thing. So the
+spatial kinds": a third would take the `else` and then fail, or draw the wrong
+thing. So the
 renderer asks for the two facts it needs instead of asking what it is holding:
 
 - `view.space.xfmname` — the transform to sample *through*, or `None`. Owned by the
   space, and HDF slot 7 derives from the same value.
-- `view.sampling_data` — the array to sample. Owned by the row: `VolumetricView`
+- `view.sampling_data` — the array to sample. Owned by the spatial interface:
+  `VolumetricView`
   points it at `volume`, `SurfaceView` at `vertices`.
 
 ```python
@@ -474,14 +477,14 @@ def make_flatmap_image(braindata: RenderableView, ...):
 ```
 
 `as_renderable` is likewise one `isinstance(view, RenderableView)` rather than a
-tuple of known rows. Adding a row therefore touches neither. Pinned by
-`test_a_third_row_needs_no_change_to_the_renderer`, which renders through a row
+tuple of known kinds. Adding one therefore touches neither. Pinned by
+`test_a_third_spatial_kind_needs_no_change_to_the_renderer`, which renders through a kind
 this package has never seen.
 
 Tests *for* a specific capability stay as positive `isinstance` checks and are
 still correct — `with_dropout` needs a transform, so
 `isinstance(dataview, VolumetricView)` is exactly the right question, and it
-correctly rejects a third row that has none.
+correctly rejects a third spatial kind that has none.
 
 **Which mechanism for which question.** Protocols and ABCs are both used here, for
 different questions, and the split is deliberate:
@@ -516,7 +519,7 @@ Every claim below is declared in the class's bases, not left to be rediscovered
 structurally, so mypy checks it and a missing member makes the class abstract.
 Pinned by `test_protocol_implementations_are_declared_not_merely_structural`.
 
-| class | row (ABC) | column (ABC) | `HasSubject` | `blend_curvature` |
+| class | spatial (ABC) | column (ABC) | `HasSubject` | `blend_curvature` |
 | --- | --- | --- | :-: | :-: |
 | `Volume` | `VolumetricView` | `ScalarView` | ✓ | |
 | `Volume2D` | `VolumetricView` | `Dataview2D[Volume]` | ✓ | |
@@ -532,7 +535,7 @@ views inherit one implementation. It used to be three identical forwarding metho
 delegating to a module-level function typed against a `SupportsCurvatureBlend`
 protocol; hoisting it removed the three copies, the function and the protocol.
 
-The rows also narrow `raw`: `VolumetricView.raw` returns `VolumeRGB` and
+The spatial interfaces also narrow `raw`: `VolumetricView.raw` returns `VolumeRGB` and
 `SurfaceView.raw` returns `VertexRGB`, rather than the base's `DataviewRGB`. So
 `view.raw.volume` and `view.raw.left` resolve without a further cast.
 
@@ -540,18 +543,18 @@ Note that inheriting a Protocol explicitly does **not** re-enable `isinstance`
 against it — that still requires `@runtime_checkable`, which these deliberately
 lack. The claim is checked statically; the runtime guard stays shut.
 
-**Why abstract bases rather than `Protocol` for the rows.** A `runtime_checkable`
+**Why abstract bases rather than `Protocol` for the spatial axis.** A `runtime_checkable`
 protocol's
 `isinstance` tests only for the *presence* of the member names — it cannot tell a
 property from a method or check any types — so an object carrying an unrelated
 `subject`/`xfmname`/`volume` satisfies it. Composing several protocols does not
 help; the check is still per-name `hasattr`. Nominal bases give a real class
-check, and because the row members are abstract, a view that forgets one cannot be
+check, and because their members are abstract, a view that forgets one cannot be
 instantiated. The trade is that conformance is explicit opt-in: a third-party view
-must inherit one of the rows rather than merely happening to have the attributes.
+must inherit one of them rather than merely happening to have the attributes.
 Both properties are pinned by tests.
 
-The rows subclass `Dataview`, so narrowing to a row keeps every `Dataview` member
+They subclass `Dataview`, so narrowing to one keeps every `Dataview` member
 available. Do *not* convert a `Dataview` into some separate renderable type and
 carry it around — an intermediate design did that with protocols and broke
 `get_cmapdict`, `add_curvature`, `add_rois`, `add_sulci` and `add_custom`, because
@@ -563,7 +566,7 @@ Dataview2D))` narrows; hoisting that tuple into a module constant annotated
 trap applies to any such constant.
 
 This is not a return to the multiple inheritance the package was restructured to
-remove. The rows are stateless interfaces: no `__init__`, no attributes, no
+remove. The spatial interfaces are stateless: no `__init__`, no attributes, no
 cooperative `super()` chain. `BrainData`/`Dataview` were pathological because each
 carried state and called `super()` methods that resolved only through a subclass's
 MRO. The MROs here linearize cleanly:
@@ -577,17 +580,18 @@ Volume2D  -> Dataview2D  -> VolumetricView -> RenderableView -> Dataview
           -> HasSubject  -> Protocol -> Generic -> ABC -> object
 ```
 
-Column before row in all three, because the column is listed first in the bases and
-carries the implementations; the row contributes only defaults such as
+Column before spatial in all three, because the column is listed first in the bases
+and carries the implementations; the spatial interface contributes only defaults such as
 `sampling_data` and `blend_curvature`, which nothing overrides.
 
 That order is load-bearing for `Packable`. It declares `name` abstract, and
-`Packable` precedes the row in the MRO, so had it also declared `sampling_data` the
-abstract stub would have shadowed the row's working implementation. `name` is safe
-because both columns define it ahead of `Packable`. Anything a row implements must
+`Packable` precedes the spatial interface in the MRO, so had it also declared `sampling_data` the
+abstract stub would have shadowed its working implementation. `name` is safe
+because both columns define it ahead of `Packable`. Anything a spatial interface implements must
 therefore stay off `Packable`.
 
-`Volume2D.volume` and `VolumeRGB.xfmname` exist to make the rows implementable.
+`Volume2D.volume` and `VolumeRGB.xfmname` exist to make the spatial interfaces
+implementable.
 `Volume2D` had no `volume` at all, so consumers special-cased it to reach
 `.raw.volume`; `VolumeRGB.xfmname` was a stored copy of `red.xfmname`, which an
 abstract property will not accept, so it is now derived. Like `VolumeRGB.volume`,
@@ -595,23 +599,23 @@ abstract property will not accept, so it is now derived. Like `VolumeRGB.volume`
 `Volume.volume` returns — the same split `vertices` already had across `Vertex`
 and `Vertex2D`.
 
-## What a new row must implement to be rendered
+## What a new spatial kind must implement to be rendered
 
 The two renderers are not equally open, and the difference is not a matter of
 tidiness: `sampling_data` is enough to *draw a flatmap*, but not enough to *ship
 data to a browser*, because the browser needs to know how the bytes are laid out.
 
-### `quickflat` — nothing beyond the row ABC
+### `quickflat` — nothing beyond the spatial ABC
 
 Implement `sampling_data` and give the space an `xfmname` (`None` if the data is
 not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
 renderer never asks what it is holding. Pinned by
 `test_a_third_row_needs_no_change_to_the_renderer`.
 
-Three flatmap *decorations* legitimately require a transform and will reject a row
+Three flatmap *decorations* legitimately require a transform and will reject a kind
 that has none, with a `TypeError` naming the class: `with_dropout`,
 `with_connected_vertices`, and `add_connected_vertices`. That is a capability
-requirement, not a closed-world assumption — there is nothing a transformless row
+requirement, not a closed-world assumption — there is nothing a transformless kind
 could do with them.
 
 ### `webgl` / `webshow` — pick one of exactly two wire encodings
@@ -629,16 +633,16 @@ then choose how the array reaches the browser, and only two encodings exist:
 | JS path | texture, sampled through the transform | per-vertex attribute |
 | premultiplied alpha | no — Three.js premultiplies on texture upload | **yes**, done in Python |
 
-A new row must therefore inherit `VolumetricView` or `SurfaceView` *for the webgl
+A new spatial kind must therefore inherit `VolumetricView` or `SurfaceView` *for the webgl
 path to work*, even though `quickflat` would have accepted a bare `RenderableView`.
-That is the one place where the row axis is genuinely not open, and it is a
+That is the one place where the spatial axis is genuinely not open, and it is a
 constraint of the browser code, not of this package: `dataset.js` selects the path
-by testing `mosaic === undefined`, so a row wanting a third layout has to add a
+by testing `mosaic === undefined`, so a kind wanting a third layout has to add a
 matching branch there (and to `shaderlib.js`, if it samples differently).
 
-The geometry is always a surface mesh, whatever the row: `brainctm.py` builds it
-from `db.get_surf`, so a volumetric row is rendered by sampling its texture at each
-vertex's coordinates. A row whose data cannot be evaluated per-vertex has no webgl
+The geometry is always a surface mesh, whatever the spatial kind: `brainctm.py`
+builds it from `db.get_surf`, so volumetric data is rendered by sampling its texture
+at each vertex's coordinates. A kind whose data cannot be evaluated per-vertex has no webgl
 representation at all.
 
 `Package` iterates `uniques(collapse=True)`, which decomposes 2D views into their
@@ -647,7 +651,7 @@ nothing there mentions `Dataview2D`.
 
 ### Consumers that are deliberately narrower
 
-These name a concrete class because they need a specific capability, and a new row
+These name a concrete class because they need a specific capability, and a new kind
 will be rejected rather than mis-drawn:
 
 | consumer | requires | why |

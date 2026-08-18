@@ -50,10 +50,10 @@ def make_flatmap_image(braindata: RenderableView, height: int=1024, recache: boo
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
     
-    # No branch on the row. This was `not hasattr(braindata, "xfmname")`, then an
-    # isinstance fork whose `else` silently assumed exactly two rows existed. The
+    # No branch on the spatial kind. This was `not hasattr(braindata, "xfmname")`,
+    # then an isinstance fork whose `else` silently assumed exactly two existed. The
     # space says what to sample *through* and the view says what to sample, so a
-    # newly added row works here without touching this function.
+    # newly added spatial kind works here without touching this function.
     pixmap = get_flatcache(braindata.subject,
                            braindata.space.xfmname,
                            height=height,

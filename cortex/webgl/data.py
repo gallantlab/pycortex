@@ -47,10 +47,11 @@ class Package(object):
             name = brain.name
             self.subjects.add(brain.subject)
             self.brains[name] = brain.to_json(simple=True)
-            # The array to ship is `sampling_data`, which each row points at its
-            # own storage -- `volume` for volumetric rows, `vertices` for surface
+            # The array to ship is `sampling_data`, which each spatial interface
+            # points at its own storage -- `volume` for volumetric kinds,
+            # `vertices` for surface
             # ones. This was a fork on `isinstance(brain, (Vertex, VertexRGB))`
-            # whose `else` branch read `.volume`, so a row this module had not
+            # whose `else` branch read `.volume`, so a spatial kind this module had not
             # heard of died on AttributeError (or, worse, was silently mosaicked
             # as a volume if it happened to have one).
             encdata = brain.sampling_data
@@ -59,10 +60,10 @@ class Package(object):
                 # The WebGL fragment shader (shaderlib.js) composites with a
                 # premultiplied-alpha "over" formula
                 # (gl_FragColor = vColor + (1-α)·bg). We only need to pre-
-                # multiply on the Python side for a surface row, whose bytes
+                # multiply on the Python side for a surface kind, whose bytes
                 # are uploaded as raw vertex attributes and which Three.js does
                 # NOT premultiply (see dataset.js VertexData path). A volumetric
-                # row ships through the PNG texture path (dataset.js:335-338, raw=true),
+                # kind ships through the PNG texture path (dataset.js:335-338, raw=true),
                 # where Three.js sets `tex.premultiplyAlpha = true` and the
                 # WebGL UNPACK_PREMULTIPLY_ALPHA_WEBGL hook premultiplies the
                 # texture once on upload -- premultiplying here would double-
@@ -83,12 +84,12 @@ class Package(object):
                 encdata = encdata.astype(np.float32)
                 self.brains[name]["raw"] = False
 
-            # How the array reaches the browser is a per-row fact, and the two
+            # How the array reaches the browser is a per-spatial-kind fact, and the two
             # encodings are not interchangeable: surface data ships as raw
             # per-vertex attributes (and must be permuted into the CTM's vertex
             # order by `reorder`), volumetric data as a mosaicked PNG texture the
             # shader samples through the transform. `webgl/resources/js/dataset.js`
-            # picks the path by `mosaic === undefined`, so a row needing a third
+            # picks the path by `mosaic === undefined`, so a spatial kind needing a third
             # encoding has to change the JS too. See INHERITANCE.md.
             if isinstance(brain, dataset.SurfaceView):
                 # TODO: how does this work? check if tests run this part
@@ -101,7 +102,7 @@ class Package(object):
                 raise TypeError(
                     "%s has no webgl wire encoding: it is neither a "
                     "VolumetricView (mosaicked texture) nor a SurfaceView "
-                    "(per-vertex attributes). Inherit one of those rows, or add "
+                    "(per-vertex attributes). Inherit one of those spatial interfaces, "
                     "a third encoding to webgl/resources/js/dataset.js. It can "
                     "still be drawn by quickflat." % type(brain).__name__
                 )
@@ -132,7 +133,7 @@ class Package(object):
             # Only the per-vertex-attribute encoding needs permuting; see __init__.
             if isinstance(brain, dataset.SurfaceView):
                 # `name` comes from Packable and `subject` from Dataview, so both
-                # survive narrowing to the row: mypy reads this as a subclass of
+                # survive narrowing to the spatial interface: mypy reads this as a subclass of
                 # both Packable and SurfaceView.
                 name = brain.name
                 data = np.array(self.images[name])[0]
