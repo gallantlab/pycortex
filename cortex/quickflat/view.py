@@ -12,7 +12,7 @@ from matplotlib.typing import ColorType
 
 from . import composite
 from .. import dataset, utils
-from ..dataset._typing import as_renderable
+from ..dataset.views import as_renderable
 from ..dataset.view2D import Dataview2D
 from ..dataset.views import ScalarView, VolumetricView
 from .utils import make_flatmap_image

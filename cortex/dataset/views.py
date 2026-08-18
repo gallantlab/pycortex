@@ -143,6 +143,12 @@ class HasSubject(Protocol):
     presence-only ``hasattr`` sweep. :class:`Dataview` claims it explicitly, which
     is what makes the claim visible here and machine-checked -- a subclass that
     failed to provide ``subject`` would be abstract and uninstantiable.
+
+    If another protocol is ever needed, compose by inheritance rather than
+    re-declaring ``subject`` -- and note the ``Protocol`` base has to be repeated:
+    ``class Blendable(HasSubject, Protocol)``. Writing
+    ``class Blendable(HasSubject)`` silently produces an ordinary instantiable
+    class instead of a protocol.
     """
 
     @property
@@ -352,7 +358,7 @@ class RenderableView(Dataview):
     """A view a renderer can sample, whatever space it lives in.
 
     The common base of every row of the grid. Its purpose is to let callers stop
-    enumerating the rows: :func:`~cortex.dataset._typing.as_renderable` is one
+    enumerating the rows: :func:`as_renderable` is one
     ``isinstance`` against this, and the flatmap renderer reads
     :attr:`sampling_data` instead of asking which row it holds.
 
@@ -548,6 +554,43 @@ class SurfaceView(RenderableView):
         return blended
 
 
+
+def as_renderable(view: Dataview) -> RenderableView:
+    """Check that ``view`` is one the renderers can draw.
+
+    The single boundary between "some view" and "a view this code can render".
+    Public entry points legitimately accept any :class:`Dataview`, so something
+    has to make the check explicit and fail with a useful message rather than
+    dying later on a missing ``.xfmname`` or ``.volume``.
+
+    Parameters
+    ----------
+    view : Dataview
+        Any view, typically straight out of :func:`cortex.dataset.normalize`.
+
+    Returns
+    -------
+    VolumetricView or SurfaceView
+
+    Raises
+    ------
+    TypeError
+        If ``view`` is neither.
+    """
+    if isinstance(view, RenderableView):
+        return view
+    # Naming the space is useful, but reading it must not be able to raise: this
+    # is a diagnostic path, and `space` is a property on an unknown class.
+    try:
+        space_name = type(view.space).__name__
+    except Exception:
+        space_name = "<unavailable>"
+    raise TypeError(
+        "%s (space %s) is not renderable: it does not subclass RenderableView. A "
+        "view in a new space should inherit VolumetricView or SurfaceView, or "
+        "RenderableView directly if it is sampled some other way."
+        % (type(view).__name__, space_name)
+    )
 
 class ScalarView(Packable):
     """A single array of scalar values, displayed through a 1D colormap.

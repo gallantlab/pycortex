@@ -269,11 +269,12 @@ Source locations:
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| `as_renderable`; `Packable`/`RenderableView` re-exported | `_typing.py` |
 
-The row ABCs live in `views.py`, not `_typing.py`, because `Volume` and `Vertex`
-inherit them; `_typing.py` imports from `views.py` and re-exports, so it holds only
-the boundary helpers and aliases. `cortex/dataset/__init__.py` must import `.views`
+Everything naming the grid lives in `views.py`, next to the classes it names:
+there was a `_typing.py` holding the row ABCs' aliases and the boundary helper, but
+once the rows became real classes it had nothing left to work around, and its last
+occupant -- `as_renderable` -- belongs beside `RenderableView` anyway.
+`cortex/dataset/__init__.py` must import `.views`
 first — it resolves its circular dependency on `view2D`/`viewRGB` with deferred
 imports at the bottom of its own module, so anything reaching those earlier sees a
 partially initialised module. A test pins the import order.
@@ -487,7 +488,7 @@ one home, nothing needed a structural name for "things it can be called on".
 it raises `TypeError` — which mechanically prevents the presence-only check from
 creeping back in. A test pins that.
 
-It is also declared exactly once, in `views.py`, and re-exported from `_typing.py`.
+It is also declared exactly once, in `views.py`.
 That matters more than it looks: two structurally identical Protocols type-check
 interchangeably, so a duplicate declaration is invisible to mypy *and* to the test
 asserting `Dataview` claims it, and the two copies then drift apart silently.

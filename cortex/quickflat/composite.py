@@ -11,7 +11,7 @@ import numpy.typing as npt
 from .utils import _get_height, _get_extents, _convert_svg_kwargs, _get_images, _parse_defaults
 from .utils import make_flatmap_image, _make_hatch_image, _get_fig_and_ax, get_flatmask, get_flatcache
 from .. import dataset
-from ..dataset._typing import HasSubject, as_renderable
+from ..dataset.views import HasSubject, as_renderable
 from ..dataset.views import VolumetricView
 from ..database import db
 from ..options import config

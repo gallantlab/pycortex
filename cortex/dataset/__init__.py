@@ -20,21 +20,24 @@ the restructuring options that were considered.
 
 from __future__ import annotations
 
-# `views` first, deliberately. It resolves the circular dependency on `viewRGB`
-# and `view2D` with deferred imports at the bottom of its own module, so importing
-# either of those first would have them reach back into a partially initialised
-# `views`. `_typing` used to be the module that tripped this, via an import it no
-# longer needs, so the hazard is currently latent rather than live -- kept ordered,
-# and kept out of isort's reach, so that re-introducing such an import fails here
-# rather than somewhere less obvious. `test_submodule_can_be_imported_first` pins
-# that each submodule also works as the entry point.
+# `views` first, and kept out of isort's reach, because the constraint is live:
+# `views` closes its circular dependency on `viewRGB`/`view2D` with deferred
+# imports at the very bottom of its own module, so if `view2D` is imported before
+# `views` has finished, it pulls in `viewRGB`, which re-enters `views`, whose
+# bottom then finds `viewRGB` half-built. Hoisting the `.view2D` line above this
+# one fails with `ImportError: cannot import name 'Colors' from partially
+# initialized module`, which is what that ordering buys.
+# `test_submodule_can_be_imported_first` separately pins that each submodule still
+# works as the process's entry point.
 from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
+    HasSubject,
     Packable,
     RenderableView,
     ScalarView,
     SurfaceView,
+    as_renderable,
     Vertex,
     Volume,
     VolumetricView,
@@ -46,10 +49,6 @@ from ._space import (
     VolumeSpace,
     register_space,
     registered_spaces,
-)
-from ._typing import (
-    HasSubject,
-    as_renderable,
 )
 from .braindata import BrainData, VertexData, VolumeData
 from .dataset import Dataset, DatasetLike, normalize
