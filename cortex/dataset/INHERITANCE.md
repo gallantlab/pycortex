@@ -339,7 +339,7 @@ Four declarations. The three bases supply everything else.
 ```python
 @register_space
 class MySpace(BrainSpace):
-    hdf_key = "myspace"
+    hdf_key = "myspace"          # a label; nothing reads it -- see below
     @property
     def xfmname(self): ...                # the transform to sample through, or None
     def coerce(self, data): ...           # validate; record per-array geometry
@@ -355,6 +355,8 @@ class MySpace(BrainSpace):
     @classmethod
     def views(cls):
         return SpaceViews(scalar=MyView, twod=MyView2D, rgb=MyViewRGB)
+        # `twod` and `rgb` are read when rebuilding a view from HDF; `scalar` is
+        # not, since `wrap()` already builds one. Declared for completeness.
 
 class MyView(ScalarView, MyRow): ...      # + space-specific accessors
 class MyView2D(Dataview2D[MyView], MyRow): ...   # + a ctor forwarding space kwargs
@@ -374,6 +376,14 @@ Two members are deliberately *not* in that list, because both are concrete on
   geometry of an array already bound by `coerce` and is `()` until then, so a fresh
   volume space has to look its shape up from the transform. Getting this wrong is
   quiet -- `empty` would build a zero-dimensional array rather than fail.
+`hdf_key` is a label rather than a mechanism, despite the name. Detection on load
+walks `registered_spaces()` in registration order and takes the first space whose
+`from_hdf` returns non-`None`; nothing reads `hdf_key`, and neither built-in writes
+a discriminator, because legacy files predate the idea and carry none. It is worth
+setting anyway as the one place a space names itself — a space that *does* want a
+key on disk has an obvious value to write in `write_hdf_attrs` and match in
+`from_hdf`.
+
 - `describe_layout(data)`, the keys telling the browser how to unpack the array it
   is sent, merged into `to_json(simple=True)`. Empty by default. `VolumeSpace`
   returns `shape` (the grid the mosaic tiles unpack into) and `SurfaceSpace`

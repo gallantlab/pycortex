@@ -43,17 +43,42 @@ array, or nothing. Recorded verbatim so it can be round-tripped through HDF."""
 
 
 class SpaceViews(NamedTuple):
-    """The three concrete view classes belonging to one space."""
+    """The three concrete view classes belonging to one space.
 
+    Used when rebuilding a view from HDF, where the column is known from the
+    record's shape but the class for it is not: ``twod`` in
+    :func:`~cortex.dataset.views._from_hdf_view`, ``rgb`` in both that and
+    :func:`~cortex.dataset.views._from_hdf_data`.
+    """
+
+    #: The scalar view class. Unlike its siblings, nothing reads this: every path
+    #: that needs a scalar view calls :meth:`BrainSpace.wrap`, which builds one
+    #: without having to name the class. Declared anyway so the triple describes a
+    #: space's full column set rather than just the parts one caller happens to
+    #: need, and so ``views()`` stays the single answer to "which classes are
+    #: mine?".
     scalar: type
+    #: The 2D view class, read when reconstructing a 2D view from HDF.
     twod: type
+    #: The RGB view class, read when reconstructing an RGB view from HDF.
     rgb: type
 
 
 class BrainSpace(ABC):
     """Where a data array lives: a subject plus the geometry to interpret it."""
 
-    #: Stable identifier for this space, used by the HDF detection order.
+    #: A stable, human-readable label for this kind of space.
+    #:
+    #: Nothing in the package reads it. Detection on load does not use it either,
+    #: despite the name: :func:`~cortex.dataset.views._detect_space` walks
+    #: :func:`registered_spaces` in registration order and takes the first space
+    #: whose :meth:`from_hdf` returns non-``None``, which is why the built-ins key
+    #: off whether a transform name is present rather than off any stored key.
+    #:
+    #: It is kept as the one place a space states its own name, so that a space
+    #: which *does* want a discriminator on disk has an obvious value to write in
+    #: :meth:`write_hdf_attrs` and match in :meth:`from_hdf` -- neither built-in
+    #: needs one, since legacy files predate the idea and carry no such key.
     hdf_key: ClassVar[str]
 
     def __init__(self, subject: Union[str, bytes]) -> None:
