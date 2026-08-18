@@ -151,6 +151,23 @@ class BrainSpace(ABC):
     def to_json(self) -> DataviewJSON:
         """Space-specific keys to merge into a view's JSON description."""
 
+    def describe_layout(self, data: npt.NDArray) -> DataviewJSON:
+        """Keys telling the browser how to read the array it is being sent.
+
+        Merged into ``to_json(simple=True)``, alongside the geometry-independent
+        ``name``/``subject``/``min``/``max``. Separate from :meth:`to_json`
+        because that one describes the *space* (a transform, say) while this
+        describes the particular array bound to it, and only the latter needs the
+        array. ``webgl/resources/js/dataset.js`` reads these positionally by name,
+        so the keys are a hard interface.
+
+        Empty by default: a space whose arrays need no unpacking hint says
+        nothing, and the browser falls back to treating the array as flat.
+        """
+        from .views import DataviewJSON as _JSON
+
+        return _JSON()
+
     @abstractmethod
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset
@@ -361,6 +378,12 @@ class VolumeSpace(BrainSpace):
         xfm = db.get_xfm(self.subject, self.xfmname, "coord").xfm
         return _JSON(xfm=[list(np.array(xfm).ravel())])
 
+    def describe_layout(self, data: npt.NDArray) -> DataviewJSON:
+        """The 3-D grid the mosaic tiles unpack back into."""
+        from .views import DataviewJSON as _JSON
+
+        return _JSON(shape=self.spatial_shape)
+
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset
     ) -> None:
@@ -493,6 +516,34 @@ class SurfaceSpace(BrainSpace):
         from .views import DataviewJSON as _JSON
 
         return _JSON()
+
+    def split_hemispheres(
+        self, data: npt.NDArray
+    ) -> tuple[npt.NDArray, npt.NDArray]:
+        """``(left, right)`` views of ``data``, cut where the hemispheres meet.
+
+        Where that boundary is, and which axis it lies along, is the space's
+        knowledge: :attr:`llen` vertices of left hemisphere followed by
+        :attr:`rlen` of right. The vertex axis is the only one for a plain array
+        and the second otherwise, which covers a scalar movie ``(t, v)`` as well
+        as the ``(frames, v, 4)`` an RGB view ships -- so one rule serves both,
+        and the returned slices are views, not copies.
+        """
+        if data.ndim > 1:
+            return data[:, : self.llen], data[:, self.llen :]
+        return data[: self.llen], data[self.llen :]
+
+    def describe_layout(self, data: npt.NDArray) -> DataviewJSON:
+        """Where the two hemispheres meet, and how many frames there are.
+
+        ``split`` is the index the browser cuts the vertex array at to get one
+        buffer per hemisphere. ``frames`` has to come from the array rather than
+        the space, since one space serves movies and single frames alike.
+        """
+        from .views import DataviewJSON as _JSON
+
+        frames = data.shape[0] if self.is_movie(data) else 1
+        return _JSON(split=self.llen, frames=frames)
 
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset

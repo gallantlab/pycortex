@@ -1009,12 +1009,26 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
         return sdict
 
     @property
+    def space(self) -> SurfaceSpace:
+        """Narrowed from :class:`BrainSpace`, as on :class:`Vertex`.
+
+        Sound because ``DataviewRGB[Vertex]`` fixes the channel type, so
+        ``red.space`` is a :class:`SurfaceSpace`; the base cannot say so because
+        it is generic over the channel.
+        """
+        return self.red.space
+
+    @property
     def left(self) -> npt.NDArray[np.uint8]:
-        return self.vertices[:, : self.red.llen]
+        """Colours for only the left hemisphere vertices."""
+        # Asks its own space rather than reaching through `self.red` for the
+        # geometry, which was the only reason a channel had to be consulted here.
+        return cast(npt.NDArray[np.uint8], self.space.split_hemispheres(self.vertices)[0])
 
     @property
     def right(self) -> npt.NDArray[np.uint8]:
-        return self.vertices[:, self.red.llen :]
+        """Colours for only the right hemisphere vertices."""
+        return cast(npt.NDArray[np.uint8], self.space.split_hemispheres(self.vertices)[1])
 
     def __repr__(self) -> str:
         return "<RGB vertex data for (%s)>" % (self.subject,)

@@ -1093,3 +1093,78 @@ def test_template_shape_is_distinct_from_spatial_shape():
     # A masked volume reports the *unmasked* geometry, since that is what a
     # caller building a fresh array needs.
     assert VolumeSpace(subj, xfmname, mask="thick").template_shape == volshape
+
+
+def llen_of(view):
+    return view.space.llen
+
+
+def test_space_supplies_its_own_wire_layout_keys():
+    """``to_json`` is one implementation; the space adds what the browser needs.
+
+    ``Volume`` and ``Vertex`` each overrode ``to_json`` to bolt on ``shape`` and
+    ``split``/``frames`` -- the same question (how does the browser unpack this
+    array?) answered per space. These keys are read by
+    ``webgl/resources/js/dataset.js``, so they are a hard interface.
+    """
+    from cortex.dataset.views import ScalarView
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    vtx = cortex.Vertex(np.random.randn(nverts), subj)
+    vtx_movie = cortex.Vertex(np.random.randn(3, nverts), subj)
+
+    # only ScalarView implements it now
+    assert "to_json" in ScalarView.__dict__
+    assert "to_json" not in cortex.Volume.__dict__
+    assert "to_json" not in cortex.Vertex.__dict__
+
+    assert vol.to_json(simple=True)["shape"] == volshape
+    assert "split" not in vol.to_json(simple=True)
+
+    vj = vtx.to_json(simple=True)
+    assert vj["split"] == vtx.llen and vj["frames"] == 1
+    assert vtx_movie.to_json(simple=True)["frames"] == 3
+    assert "shape" not in vj
+
+    # the non-simple form still carries the space's own description
+    assert "xfm" in vol.to_json()
+    assert "xfm" not in vtx.to_json()
+
+    # The default is concrete and contributes nothing, so a space that needs no
+    # unpacking hint inherits it. Called unbound on purpose, to reach the base
+    # rather than SurfaceSpace's override -- and to execute its body, which once
+    # raised NameError because DataviewJSON is a TYPE_CHECKING-only import there.
+    from cortex.dataset._space import BrainSpace
+    assert "describe_layout" in BrainSpace.__dict__
+    assert BrainSpace.describe_layout(vtx.space, vtx.data) == {}
+    assert vtx.space.describe_layout(vtx.data) == {"split": llen_of(vtx), "frames": 1}
+
+
+def test_hemisphere_split_lives_on_the_space():
+    """One rule for where the hemispheres meet, used by both surface columns.
+
+    ``Vertex.left/right`` branched on ``self.movie`` and ``VertexRGB.left/right``
+    reached through ``self.red.llen`` for the boundary -- four properties encoding
+    one piece of space geometry.
+    """
+    vtx = cortex.Vertex(np.random.randn(nverts), subj)
+    movie = cortex.Vertex(np.random.randn(3, nverts), subj)
+    rgb = cortex.VertexRGB(vtx, vtx, vtx)
+    llen = vtx.space.llen
+
+    # the vertex axis is axis 0 only for a plain array; second otherwise, which
+    # covers (t, v) and the (frames, v, 4) an RGB view ships
+    assert vtx.left.shape == (llen,)
+    assert movie.left.shape == (3, llen)
+    assert rgb.left.shape == (1, llen, 4)
+    for view in (vtx, movie, rgb):
+        assert view.left.shape[-1 if view is not rgb else 1] + \
+               view.right.shape[-1 if view is not rgb else 1] == vtx.nverts
+
+    # slices, not copies
+    assert vtx.left.base is not None
+
+    # and RGB no longer consults a channel for geometry
+    import inspect
+    src = inspect.getsource(type(rgb).left.fget)
+    assert "red.llen" not in src and "split_hemispheres" in src
