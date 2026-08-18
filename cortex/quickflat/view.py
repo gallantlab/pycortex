@@ -489,14 +489,43 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
 
     from scipy.interpolate import interp1d
 
-    # Make the flatmaps
-    ims, extents = make_flatmap_image(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
+    # Make the flatmaps.
+    #
+    # The old call was `make_flatmap_image(data, subject, xfmname, recache=...,
+    # height=..., sampler=...)`, written against a signature that took those three
+    # separately. It has been `(braindata, height, recache, nanmean, **kwargs)`
+    # since at least `main`, so `subject` bound to `height`, `xfmname` to
+    # `recache`, and the keywords then collided outright:
+    # `TypeError: multiple values for argument 'height'`.
+    #
+    # Rebinding is not enough, though: `make_flatmap_image` renders a single frame
+    # and raises on anything whose leading axis is longer than 1, so a 4D dataset
+    # -- the only thing this function is for -- has to go through it frame by
+    # frame. `copy()` gives a one-frame view sharing this one's space, so the mask
+    # is not re-resolved and the surfaces are not reloaded per frame.
+    braindata = dataset.normalize((data, subject, xfmname))
+    rendered = [
+        make_flatmap_image(as_renderable(braindata.copy(braindata.data[t])),
+                           height=height, recache=recache, sampler=sampler)
+        for t in range(braindata.data.shape[0])
+    ]
+    ims = np.array([im for im, _ in rendered])
+    extents = rendered[0][1]
     if vmin is None:
         vmin = np.nanmin(ims)
     if vmax is None:
         vmax = np.nanmax(ims)
 
-    # Create the matplotlib figure
+    # Create the matplotlib figure.
+    #
+    # STILL BROKEN, and not repairable by rebinding arguments: `make_figure` takes
+    # a Dataview and renders it itself, so it cannot be handed the pre-rendered
+    # `ims[0]`; `subject` lands on its `recache` parameter; and it has neither
+    # `vmin`/`vmax` nor `**kwargs`, because a view's colour range now lives on the
+    # view. Making this work means deciding how the movie should be built --
+    # probably passing `braindata` with vmin/vmax set on it, then swapping frames
+    # into the returned figure as the loop below already does. Left alone rather
+    # than guessed at: unreachable and untested, so any choice here is unverifiable.
     fig = make_figure(ims[0], subject, vmin=vmin, vmax=vmax, **kwargs)
     fig.set_size_inches(np.array([ims.shape[2], ims.shape[1]]) / float(dpi))
     img = fig.axes[0].images[0]

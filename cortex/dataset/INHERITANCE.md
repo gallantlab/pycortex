@@ -771,14 +771,30 @@ belongs at the JSON boundary, not in the percentile.
 - `Dataview2D.to_json` ignores its `simple` flag. Preserved deliberately: the webgl
   packer only ever calls `to_json(simple=True)` on the scalar channels yielded by
   `uniques()`, never on a 2D view.
-- `quickflat.make_movie` cannot run at all. It calls
-  `make_flatmap_image(data, subject, xfmname, recache=..., height=...)`, but that
-  signature is `(braindata, height, recache, nanmean, **kwargs)`, so `subject` binds
-  to `height` and `xfmname` to `recache` and the keywords then collide:
-  `TypeError: multiple values for argument 'height'`. It fails on the call, before
-  any work. mypy does not catch it because `make_movie` is unannotated, so its body
-  is unchecked — the same blind spot that hid the `spatial_data` fork in
-  `webgl/data.py`. It is exported and documented in `api_reference_flat.rst`.
+- `quickflat.make_movie` is `raise NotImplementedError` on its first line, with a
+  whole body behind it that has never run. That is true of `main` and `types-orig`
+  too, and no branch has ever had a test for it, so its contents have decayed
+  against the API around them unnoticed. It is nonetheless exported and documented
+  in `api_reference_flat.rst`.
+
+  Two of its calls had rotted. The `make_flatmap_image` one is now fixed: it passed
+  `(data, subject, xfmname, ...)` to a signature that has been
+  `(braindata, height, recache, nanmean, **kwargs)` since at least `main`, so
+  `subject` bound to `height` and the keywords then collided outright. Rebinding
+  alone was not enough — `make_flatmap_image` renders one frame and raises on a
+  longer leading axis, so a 4D dataset must go through it frame by frame, which is
+  what it now does.
+
+  `make_figure(ims[0], subject, vmin=..., vmax=...)` is still wrong and cannot be
+  repaired by rebinding: it takes a `Dataview` and renders it itself, so it cannot
+  accept a pre-rendered image; `subject` lands on `recache`; and it has neither
+  `vmin`/`vmax` nor `**kwargs`, because a view's colour range now lives on the
+  view. Fixing it is a design choice about how the movie should be assembled, and
+  any choice is unverifiable while the body is unreachable, so it is left annotated
+  in place.
+
+  mypy catches none of this: `make_movie` is unannotated, so its body is unchecked
+  — the same blind spot that hid the `spatial_data` fork in `webgl/data.py`.
 
 Fixed in passing while typing the callers, and recorded here only so the change is
 not mistaken for an unrelated edit:
