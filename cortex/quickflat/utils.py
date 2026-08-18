@@ -1,4 +1,8 @@
-"""Makes flattened views of volumetric data on the cortical surface.
+"""Makes flattened views of brain data on the cortical surface.
+
+Volumetric or surface data alike: the caches below are keyed on the space, and
+:func:`make_flatmap_image` reads what to sample from the view rather than
+branching on which kind it is.
 """
 import os
 import string
@@ -17,7 +21,7 @@ from ..options import config
 
 
 def make_flatmap_image(braindata: RenderableView, height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
-    """Generate flatmap image from volumetric brain data
+    """Generate a flatmap image from any renderable brain data
 
     This 
 
@@ -112,7 +116,12 @@ def make_flatmap_image(braindata: RenderableView, height: int=1024, recache: boo
         return img, extents
 
 def get_flatmask(subject: str, height: int=1024, recache: bool=False) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
-    """
+    """The flatmap outline: which pixels of the image are on the cortex at all.
+
+    Applies to every view of a subject. It is derived from the flat surface alone,
+    so it depends on neither the space nor the channel layout: all six view classes
+    and every transform share one entry per ``(subject, height)``.
+
     Parameters
     ----------
     subject : str
@@ -137,14 +146,32 @@ def get_flatmask(subject: str, height: int=1024, recache: bool=False) -> tuple[n
 
 def get_flatcache(subject: str, xfmname: Optional[str], pixelwise: bool=True, thick: int=32, sampler: str='nearest',
                   recache: bool=False, height: int=1024, depth: float=0.5):
-    """
-    
+    """The mapping from data values to flatmap pixels.
+
+    Unlike :func:`get_flatmask`, this *is* per space, and ``xfmname`` is what
+    selects between the two kinds. Callers pass ``view.space.xfmname``, so:
+
+    - ``None`` -- a surface space, i.e. per-vertex data. Cached as
+      ``flatverts_{height}.npz`` and shared by every surface view of the subject,
+      since a vertex mapping involves no transform.
+    - a transform name -- a volumetric space. Cached as
+      ``flatpixel_{xfmname}_{height}_{sampler}_{extra}.npz``, one entry per
+      transform, sampler and thickness/depth.
+
+    A space added later needs no change here: whichever of the two its ``xfmname``
+    implies is what it gets.
+
+    The exception is ``pixelwise=False`` with a transform, which loads the *vertex*
+    cache and multiplies by the mapper afterwards. That combination therefore
+    shares the surface artifact and redoes the volumetric half on every call --
+    which is also why ``sampler`` is absent from the ``flatverts`` filename.
+
     Parameters
     ----------
     subject : str
         Subject name in pycortex db
-    xfmname : str
-        Name of transform for subject
+    xfmname : str or None
+        Name of transform for subject, or None for per-vertex (surface) data
     pixelwise : bool
     
     thick : int
@@ -348,6 +375,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
     return hatchim
 
 def _make_flatmask(subject: str, height: int=1024) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
+    """Traces the flat surface's boundary. Subject geometry only, no view or space."""
     from PIL import Image, ImageDraw
 
     from .. import polyutils
@@ -367,6 +395,7 @@ def _make_flatmask(subject: str, height: int=1024) -> tuple[npt.NDArray[np.bool_
     return np.array(im).T > 0, extents
 
 def _make_vertex_cache(subject: str, height: int=1024) -> sparse.csr_matrix:
+    """Pixel-to-vertex weights. Surface spaces only; no transform is involved."""
     from scipy import sparse
     from scipy.spatial import cKDTree
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
@@ -386,6 +415,8 @@ def _make_vertex_cache(subject: str, height: int=1024) -> sparse.csr_matrix:
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
 def _make_pixel_cache(subject: str, xfmname: str, height: int=1024, thick: int=32, depth: float=0.5, sampler: str='nearest') -> sparse.csr_matrix:
+    """Pixel-to-voxel weights. Volumetric spaces only -- hence ``xfmname: str``
+    rather than ``Optional[str]``: it samples the volume through the transform."""
     from scipy import sparse
     from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
