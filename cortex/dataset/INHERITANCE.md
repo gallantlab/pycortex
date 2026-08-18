@@ -269,7 +269,7 @@ Source locations:
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
-| `Renderable`, `Packable` (re-export), `as_renderable` | `_typing.py` |
+| `as_renderable`; `Packable`/`RenderableView` re-exported | `_typing.py` |
 
 The row ABCs live in `views.py`, not `_typing.py`, because `Volume` and `Vertex`
 inherit them; `_typing.py` imports from `views.py` and re-exports, so it holds only

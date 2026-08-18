@@ -22,7 +22,7 @@ that gap, so this module holds only the boundary helper and a couple of aliases
 Narrowing needs no machinery. ``isinstance`` against a member of a union
 subtracts it from the ``else`` branch::
 
-    def f(view: Renderable) -> None:
+    def f(view: RenderableView) -> None:
         if isinstance(view, SurfaceView):
             view.vertices        # SurfaceView
         else:
@@ -78,15 +78,9 @@ from .views import (
 # note on `HasSubject` below for why a same-shaped copy is a trap). It is the unit of
 # transport: what `Dataview.uniques` yields, and the thing carrying a
 # content-addressed `name`. Note it is *not* the row axis, and neither implies the
-# other: `Packable` says "this is one addressable array" while `Renderable` says "a
+# other: `Packable` says "this is one addressable array" while `RenderableView` says "a
 # renderer can sample this", so a 2D view is renderable but not packable, and a bare
 # ScalarView subclass is packable but has no row.
-
-#: Anything the flatmap renderers can draw. An alias for the common base of every
-#: row, not a union of the rows: a union would have to be edited whenever a row is
-#: added, and code branching over it would silently mis-route the new one.
-Renderable = RenderableView
-
 
 # `HasSubject` is re-exported from `.views` rather than declared here, because
 # `Dataview` inherits it and the two must be the same class. A same-shaped copy
@@ -97,7 +91,7 @@ Renderable = RenderableView
 # helpers need nothing more than this: they look up a flatmap by subject and draw
 # on it, where annotating them `Dataview` claimed far more than they use.
 
-def as_renderable(view: Dataview) -> Renderable:
+def as_renderable(view: Dataview) -> RenderableView:
     """Check that ``view`` is one the renderers can draw.
 
     The single boundary between "some view" and "a view this code can render".
@@ -140,7 +134,6 @@ __all__ = [
     "RenderableView",
     "VolumetricView",
     "SurfaceView",
-    "Renderable",
     "HasSubject",
     "as_renderable",
     "BrainSpace",

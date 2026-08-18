@@ -32,6 +32,7 @@ from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
     Packable,
+    RenderableView,
     ScalarView,
     SurfaceView,
     Vertex,
@@ -48,7 +49,6 @@ from ._space import (
 )
 from ._typing import (
     HasSubject,
-    Renderable,
     as_renderable,
 )
 from .braindata import BrainData, VertexData, VolumeData
@@ -88,7 +88,7 @@ __all__ = [
     # the row axis of the grid, and helpers for narrowing it
     "VolumetricView",
     "SurfaceView",
-    "Renderable",
+    "RenderableView",
     "HasSubject",
     "as_renderable",
 ]
