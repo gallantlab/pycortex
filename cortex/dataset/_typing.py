@@ -64,12 +64,13 @@ happening to have the right attributes.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, Union
+from typing import Any, Union
 
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .view2D import Dataview2D
 from .views import (
     Dataview,
+    HasSubject,
     RenderableView,
     ScalarView,
     SurfaceView,
@@ -82,21 +83,14 @@ from .views import (
 Renderable = RenderableView
 
 
-class HasSubject(Protocol):
-    """Anything that knows which subject it belongs to.
-
-    A *static-only* protocol: deliberately **not** ``runtime_checkable``, so
-    ``isinstance`` against it is a ``TypeError`` rather than a presence-only
-    ``hasattr`` sweep. See the module docstring for the rule.
-
-    Most of the ``cortex.quickflat.composite`` helpers need nothing more than
-    this: they look up a flatmap by subject and draw on it. Annotating them
-    ``Dataview`` claimed far more than they use.
-    """
-
-    @property
-    def subject(self) -> str:
-        """Subject identifier. Must exist in the pycortex database."""
+# `HasSubject` is re-exported from `.views` rather than declared here, because
+# `Dataview` inherits it and the two must be the same class. A same-shaped copy
+# in this module type-checked identically -- structural protocols are
+# interchangeable -- so the duplicate was invisible both to mypy and to the test
+# asserting `Dataview` claims it, while `cortex.dataset.HasSubject` was in fact
+# *not* the class any view inherited. Most of the `cortex.quickflat.composite`
+# helpers need nothing more than this: they look up a flatmap by subject and draw
+# on it, where annotating them `Dataview` claimed far more than they use.
 
 #: The views carrying a colormap, as opposed to their own colours -- the scalar
 #: and 2D columns, but not RGB. The typed replacement for

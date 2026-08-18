@@ -11,9 +11,12 @@ The aliases are chosen so that ``isinstance`` behaves exactly as before:
 ``isinstance(x, VolumeData)`` was only ever true for ``Volume``, because
 ``Volume2D`` and ``VolumeRGB`` never inherited from ``VolumeData``.
 
-This module is a public-ish path in practice: ``cortex/blender/__init__.py``
-reaches ``dataset.braindata.VertexData`` through the package object, and
-``cortex/tests/test_braindata.py`` imports ``_hash`` from here.
+Nothing in the package reaches through this module any more.
+``cortex/blender/__init__.py`` used to
+(``isinstance(braindata, dataset.braindata.VertexData)``) and now tests
+``dataset.Vertex`` directly. What is left is ``cortex/tests/test_braindata.py``,
+which imports ``_hash`` from here, and ``test_dataset.py``, which imports the
+three aliases to keep the shim honest. It stays for code outside the repo.
 """
 
 from __future__ import annotations

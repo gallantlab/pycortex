@@ -846,6 +846,17 @@ def test_protocol_implementations_are_declared_not_merely_structural():
     )
 
     assert HasSubject in Dataview.__bases__
+
+    # ...and the HasSubject reachable from every export path is that same class,
+    # not a same-shaped copy. Two structurally identical Protocols type-check
+    # interchangeably, so a duplicate declaration is invisible to mypy and to the
+    # assertion above -- `cortex.dataset.HasSubject` was once a second class that
+    # no view actually inherited. Only object identity catches that.
+    import cortex.dataset._typing as _typing
+
+    assert cortex.dataset.HasSubject is HasSubject
+    assert _typing.HasSubject is HasSubject
+
     # blend_curvature is defined once, on the row, not per concrete class
     assert "blend_curvature" in SurfaceView.__dict__
     assert not any(
