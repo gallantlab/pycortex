@@ -619,6 +619,18 @@ class ScalarView(Packable):
     def __hash__(self) -> int:
         return hash(_hash(self.data))
 
+    @staticmethod
+    def _sample(shape: tuple[int, ...], value: Optional[float]) -> npt.NDArray:
+        """A fresh array of ``shape``: constant ``value``, or standard normal.
+
+        The body shared by ``empty`` and ``random`` in every space. ``np.ones() *
+        value`` rather than ``np.full``, which would give an integer array for the
+        default ``value=0``.
+        """
+        if value is None:
+            return np.random.randn(*shape)
+        return np.ones(shape) * value
+
     def uniques(self, collapse: bool = False) -> Iterator["Packable"]:
         yield self
 
@@ -1010,9 +1022,8 @@ class Volume(ScalarView, VolumetricView):
         Volume
             A Volume whose data is constant, equal to value.
         """
-        xfm = db.get_xfm(subject, xfmname)
-        shape = xfm.shape
-        return cls(np.ones(shape) * value, subject, xfmname, **kwargs)
+        shape = VolumeSpace(subject, xfmname).template_shape
+        return cls(cls._sample(shape, value), subject, xfmname, **kwargs)
 
     @classmethod
     def random(cls, subject: str, xfmname: str, **kwargs: Any) -> Self:
@@ -1036,9 +1047,8 @@ class Volume(ScalarView, VolumetricView):
         Volume
             A Volume whose data is random.
         """
-        xfm = db.get_xfm(subject, xfmname)
-        shape = xfm.shape
-        return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
+        shape = VolumeSpace(subject, xfmname).template_shape
+        return cls(cls._sample(shape, None), subject, xfmname, **kwargs)
 
     def save_nii(self, filename: Union[str, os.PathLike]) -> None:
         """Save as a nifti file at the given filename. Nifti headers are
@@ -1299,8 +1309,8 @@ class Vertex(ScalarView, SurfaceView):
         Vertex
             A Vertex whose data is constant, equal to value.
         """
-        nverts = cls._count_verts(subject)
-        return cls(np.ones((nverts,)) * value, subject, **kwargs)
+        shape = SurfaceSpace(subject).template_shape
+        return cls(cls._sample(shape, value), subject, **kwargs)
 
     @classmethod
     def random(cls, subject: str, **kwargs: Any) -> Self:
@@ -1322,12 +1332,8 @@ class Vertex(ScalarView, SurfaceView):
         Vertex
             A Vertex with random data.
         """
-        nverts = cls._count_verts(subject)
-        return cls(np.random.randn(nverts), subject, **kwargs)
-
-    @staticmethod
-    def _count_verts(subject: str) -> int:
-        return SurfaceSpace(subject).nverts
+        shape = SurfaceSpace(subject).template_shape
+        return cls(cls._sample(shape, None), subject, **kwargs)
 
     def __getitem__(self, idx: Any) -> Self:
         """Get the Vertex for the given time index. Only works for movie (2D)

@@ -1040,3 +1040,56 @@ def test_packable_name_is_not_hoisted_onto_the_row():
     # two RGB classes could share one implementation.
     rgb = cortex.VolumeRGB(vol, vol, vol)
     assert rgb.name == "__%s" % _hash(rgb.sampling_data)[:16]
+
+
+def test_empty_and_random_take_their_shape_from_the_space():
+    """``empty``/``random`` ask the space, so a new space gets both for free.
+
+    ``Volume`` used to call ``db.get_xfm(...).shape`` and ``Vertex``
+    ``SurfaceSpace(...).nverts`` -- the same question, asked two ways, in four
+    methods. Both now read ``BrainSpace.template_shape``.
+    """
+    from cortex.dataset._space import SurfaceSpace, VolumeSpace
+
+    vspace, sspace = VolumeSpace(subj, xfmname), SurfaceSpace(subj)
+    assert vspace.template_shape == cortex.db.get_xfm(subj, xfmname).shape
+    assert sspace.template_shape == (sspace.nverts,)
+
+    for view, shape in ((cortex.Volume.empty(subj, xfmname), volshape),
+                        (cortex.Vertex.empty(subj), (nverts,))):
+        assert view.data.shape == shape
+        assert view.data.dtype == np.float64  # np.ones()*value, not np.full
+        assert (view.data == 0).all()
+
+    assert (cortex.Volume.empty(subj, xfmname, value=3).data == 3).all()
+    assert (cortex.Vertex.empty(subj, value=3).data == 3).all()
+    assert cortex.Volume.random(subj, xfmname).data.shape == volshape
+    assert cortex.Vertex.random(subj).data.shape == (nverts,)
+
+    # kwargs still reach the constructor
+    assert cortex.Vertex.empty(subj, cmap="hot").cmap == "hot"
+    assert cortex.Volume.random(subj, xfmname, cmap="hot").cmap == "hot"
+
+
+def test_template_shape_is_distinct_from_spatial_shape():
+    """The two answer different questions; conflating them breaks ``empty``.
+
+    ``spatial_shape`` describes an array already bound by ``coerce``, so a fresh
+    ``VolumeSpace`` reports ``()`` for it -- which is exactly why ``empty`` cannot
+    use it. They coincide for a surface, whose vertex count is known as soon as
+    the space exists.
+    """
+    from cortex.dataset._space import SurfaceSpace, VolumeSpace
+
+    fresh = VolumeSpace(subj, xfmname)
+    assert fresh.spatial_shape == ()
+    assert fresh.template_shape == volshape
+    fresh.coerce(np.random.randn(*volshape))
+    assert fresh.spatial_shape == volshape
+
+    sspace = SurfaceSpace(subj)
+    assert sspace.spatial_shape == sspace.template_shape == (nverts,)
+
+    # A masked volume reports the *unmasked* geometry, since that is what a
+    # caller building a fresh array needs.
+    assert VolumeSpace(subj, xfmname, mask="thick").template_shape == volshape

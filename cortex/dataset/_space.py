@@ -93,7 +93,29 @@ class BrainSpace(ABC):
     @property
     @abstractmethod
     def spatial_shape(self) -> tuple[int, ...]:
-        """Shape of a single frame's worth of data in this space."""
+        """Shape of a single frame's worth of data in this space.
+
+        Describes an array that has already been bound by :meth:`coerce`, so it
+        may be unset on a freshly constructed space. For "what shape should a new
+        array be", use :attr:`template_shape`.
+        """
+
+    @property
+    def template_shape(self) -> tuple[int, ...]:
+        """Shape a *fresh* single frame should have, before any data exists.
+
+        This is what :meth:`~cortex.dataset.views.ScalarView.empty` and
+        ``random`` need, and it is not the same question as
+        :attr:`spatial_shape`: that one reports the geometry of an array already
+        bound to this space. For a surface the two coincide, because the vertex
+        count comes from the database the moment the space is built. A volume
+        only learns its shape from the array it is given, so this default is
+        wrong for it and :class:`VolumeSpace` overrides it with a lookup.
+
+        Concrete rather than abstract so that adding a space costs nothing when
+        its geometry is known up front, which is the common case.
+        """
+        return self.spatial_shape
 
     @abstractmethod
     def wrap(self, data: npt.NDArray, **kwargs: Any) -> Any:
@@ -284,6 +306,17 @@ class VolumeSpace(BrainSpace):
     @property
     def spatial_shape(self) -> tuple[int, ...]:
         return self._shape
+
+    @property
+    def template_shape(self) -> tuple[int, ...]:
+        """The reference volume's shape, from the transform.
+
+        Unlike :attr:`spatial_shape` this does not wait for data, so it costs a
+        database lookup. A masked volume still reports the full 3-D shape here:
+        callers building a new array want the unmasked geometry, and
+        :meth:`coerce` flattens it afterwards if a mask is in play.
+        """
+        return db.get_xfm(self.subject, self.xfmname).shape
 
     def wrap(self, data: npt.NDArray, **kwargs: Any) -> Any:
         from .views import Volume
