@@ -234,7 +234,13 @@ class DataviewRGB(Packable, Generic[ScalarT]):
     # ------------------------------------------------------------------
     @abstractmethod
     def _default_alpha(self) -> npt.NDArray:
-        """A fully-opaque alpha array shaped like this view's channels."""
+        """A fully-opaque alpha array shaped like this view's channels.
+
+        "Shaped like" includes the frame axis: for movie channels the alpha must
+        have the same number of frames, or :meth:`_rgba_stack` cannot stack the
+        four together. Match the channel's *stored* array, which is what a
+        one-frame view and a movie differ in.
+        """
 
     @abstractmethod
     def _channel_stack(self) -> npt.NDArray:
@@ -984,7 +990,12 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
     # alpha, in surface space
     # ------------------------------------------------------------------
     def _default_alpha(self) -> npt.NDArray:
-        return np.ones(self.red.vertices.shape[1])
+        # `data`, not `vertices.shape[1]`: the latter is the vertex count alone,
+        # so a movie's alpha came out with one frame against the channels' t and
+        # `_rgba_stack` failed on the ragged array. `data` already carries the
+        # frame axis exactly when the channels do, which is the invariant
+        # `VolumeRGB` gets for free from `volume`.
+        return np.ones(self.red.data.shape)
 
     def _channel_stack(self) -> npt.NDArray:
         return np.array([self.red.data, self.green.data, self.blue.data])

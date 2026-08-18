@@ -1164,3 +1164,36 @@ def test_hemisphere_split_lives_on_the_space():
     import inspect
     src = inspect.getsource(type(rgb).left.fget)
     assert "red.llen" not in src and "split_hemispheres" in src
+
+
+def test_rgb_default_alpha_tracks_the_channels_frame_count():
+    """A synthesised alpha must have as many frames as the channels.
+
+    ``VertexRGB._default_alpha`` sized itself from ``vertices.shape[1]``, the
+    vertex count alone, so a movie got a one-frame alpha against the channels'
+    ``t`` and ``_rgba_stack`` raised ``ValueError`` on the ragged array --
+    surface RGB movies were unconstructible. ``VolumeRGB`` never had the bug,
+    because ``volume`` carries the frame axis.
+    """
+    for cls, chan, nchan in (
+        (cortex.VertexRGB, cortex.Vertex(np.random.randn(4, nverts), subj), nverts),
+        (cortex.VolumeRGB, cortex.Volume(np.random.randn(4, *volshape), subj, xfmname), None),
+    ):
+        rgb = cls(chan, chan, chan)
+        assert rgb.alpha.data.shape[0] == 4, cls.__name__
+        assert rgb.alpha.data.shape == chan.data.shape, cls.__name__
+        stacked = rgb.vertices if cls is cortex.VertexRGB else rgb.volume
+        assert stacked.shape[0] == 4 and stacked.shape[-1] == 4, cls.__name__
+        assert rgb.to_json(simple=True).get("frames", 4) == 4, cls.__name__
+
+    # a one-frame view keeps the shape it always had, since that shape feeds the
+    # content hash used as the HDF node name
+    still = cortex.Vertex(np.random.randn(nverts), subj)
+    assert cortex.VertexRGB(still, still, still).alpha.data.shape == (nverts,)
+
+    # NaNs still mark only their own frame transparent
+    d = np.random.randn(3, nverts)
+    d[1, :50] = np.nan
+    movie = cortex.VertexRGB(*([cortex.Vertex(d, subj)] * 3))
+    assert (movie.vertices[1, :50, 3] == 0).all()
+    assert (movie.vertices[0, :, 3] != 0).all()

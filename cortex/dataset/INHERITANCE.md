@@ -590,6 +590,15 @@ abstract stub would have shadowed its working implementation. `name` is safe
 because both columns define it ahead of `Packable`. Anything a spatial interface implements must
 therefore stay off `Packable`.
 
+A synthesised alpha must carry the same frame axis as the channels it accompanies,
+or `_rgba_stack` cannot stack the four into one array. `VolumeRGB` gets that for
+free by sizing from `volume`, which always keeps the frame axis; `VertexRGB` sized
+from `vertices.shape[1]`, the vertex count alone, so surface RGB *movies* were
+unconstructible until it was changed to size from the channel's `data`. Pinned by
+`test_rgb_default_alpha_tracks_the_channels_frame_count`, which also pins that a
+one-frame view keeps the shape it always had -- that shape feeds the content hash
+used as the HDF node name.
+
 `Volume2D.volume` and `VolumeRGB.xfmname` exist to make the spatial interfaces
 implementable.
 `Volume2D` had no `volume` at all, so consumers special-cased it to reach
@@ -745,15 +754,6 @@ were passed explicitly. No test covers it: they all build data with
 Note this is *not* an argument for converting the percentile to a Python `float` --
 see the numerics note above for why that changes on-disk node identity. The fix
 belongs at the JSON boundary, not in the percentile.
-
-## Known bug: `VertexRGB` cannot be built from movie channels
-
-`VertexRGB(movie, movie, movie)` raises `ValueError: setting an array element with a
-sequence` from `_rgba_stack`. The three colour channels have `(t, v)` worth of
-frames while the auto-generated alpha has one, so `np.array([r, g, b, a])` is
-inhomogeneous. `VolumeRGB` with movie channels works, so the two paths disagree
-about whether a synthesised alpha should broadcast to the channels' frame count.
-Surface RGB movies are therefore unsupported, silently.
 
 ## Other known issues, outside this package
 
