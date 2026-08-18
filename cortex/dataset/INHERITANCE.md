@@ -132,20 +132,20 @@ classDiagram
     }
     class RenderableView {
         <<abstract>>
-        +sampling_data*
+        +spatial_data*
         +raw()*
     }
     class VolumetricView {
         <<abstract>>
         +xfmname*
         +volume*
-        +sampling_data
+        +spatial_data
         +raw() VolumeRGB
     }
     class SurfaceView {
         <<abstract>>
         +vertices*
-        +sampling_data
+        +spatial_data
         +raw() VertexRGB
         +blend_curvature()
     }
@@ -205,10 +205,10 @@ type-checked only because the list it built was `Any`; nothing warned that
 `Dataview` has no `name`.
 
 **Do not hoist `name` onto the spatial interface.** `VolumeRGB.name` and `VertexRGB.name` are both
-exactly `_hash(self.sampling_data)`, which makes a single definition on
+exactly `_hash(self.spatial_data)`, which makes a single definition on
 `RenderableView` look free. It is not: `ScalarView.name` hashes the *stored* array,
 and for a masked `Volume` that is the flat masked array, not the unmasked 3-D
-`sampling_data`. Unifying them silently renames every existing HDF node. Pinned by
+`spatial_data`. Unifying them silently renames every existing HDF node. Pinned by
 `test_packable_name_is_not_hoisted_onto_the_row`. What *can* collapse is the two RGB
 definitions into one on `DataviewRGB`, since for RGB the stored array is the sampled
 one -- but that needs `DataviewRGB` to see a spatial-interface member.
@@ -424,7 +424,7 @@ What deliberately did **not** move:
 
 `MySpatial` is the spatial interface — `VolumetricView` if the data samples through a
 transform, `SurfaceView` if it is per-vertex, or a new subclass of
-`RenderableView` supplying `sampling_data` if it is sampled some other way. A view
+`RenderableView` supplying `spatial_data` if it is sampled some other way. A view
 that inherits neither is still a perfectly good `Dataview`; it just cannot be
 passed to the flatmap renderers, and `as_renderable` will say so.
 
@@ -465,7 +465,7 @@ renderer asks for the two facts it needs instead of asking what it is holding:
 
 - `view.space.xfmname` — the transform to sample *through*, or `None`. Owned by the
   space, and HDF slot 7 derives from the same value.
-- `view.sampling_data` — the array to sample. Owned by the spatial interface:
+- `view.spatial_data` — the array to sample. Owned by the spatial interface:
   `VolumetricView`
   points it at `volume`, `SurfaceView` at `vertices`.
 
@@ -473,7 +473,7 @@ renderer asks for the two facts it needs instead of asking what it is holding:
 def make_flatmap_image(braindata: RenderableView, ...):
     mask, extents = get_flatmask(braindata.subject, ...)
     pixmap = get_flatcache(braindata.subject, braindata.space.xfmname, ...)
-    data = braindata.sampling_data
+    data = braindata.spatial_data
 ```
 
 `as_renderable` is likewise one `isinstance(view, RenderableView)` rather than a
@@ -582,10 +582,10 @@ Volume2D  -> Dataview2D  -> VolumetricView -> RenderableView -> Dataview
 
 Column before spatial in all three, because the column is listed first in the bases
 and carries the implementations; the spatial interface contributes only defaults such as
-`sampling_data` and `blend_curvature`, which nothing overrides.
+`spatial_data` and `blend_curvature`, which nothing overrides.
 
 That order is load-bearing for `Packable`. It declares `name` abstract, and
-`Packable` precedes the spatial interface in the MRO, so had it also declared `sampling_data` the
+`Packable` precedes the spatial interface in the MRO, so had it also declared `spatial_data` the
 abstract stub would have shadowed its working implementation. `name` is safe
 because both columns define it ahead of `Packable`. Anything a spatial interface implements must
 therefore stay off `Packable`.
@@ -611,12 +611,12 @@ and `Vertex2D`.
 ## What a new spatial kind must implement to be rendered
 
 The two renderers are not equally open, and the difference is not a matter of
-tidiness: `sampling_data` is enough to *draw a flatmap*, but not enough to *ship
+tidiness: `spatial_data` is enough to *draw a flatmap*, but not enough to *ship
 data to a browser*, because the browser needs to know how the bytes are laid out.
 
 ### `quickflat` — nothing beyond the spatial ABC
 
-Implement `sampling_data` and give the space an `xfmname` (`None` if the data is
+Implement `spatial_data` and give the space an `xfmname` (`None` if the data is
 not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
 renderer never asks what it is holding. Pinned by
 `test_a_third_row_needs_no_change_to_the_renderer`.
@@ -629,7 +629,7 @@ could do with them.
 
 ### `webgl` / `webshow` — pick one of exactly two wire encodings
 
-`webgl/data.py`'s `Package` reads `sampling_data` like everything else, but it must
+`webgl/data.py`'s `Package` reads `spatial_data` like everything else, but it must
 then choose how the array reaches the browser, and only two encodings exist:
 
 | | volumetric encoding | surface encoding |
@@ -777,7 +777,7 @@ belongs at the JSON boundary, not in the percentile.
   to `height` and `xfmname` to `recache` and the keywords then collide:
   `TypeError: multiple values for argument 'height'`. It fails on the call, before
   any work. mypy does not catch it because `make_movie` is unannotated, so its body
-  is unchecked — the same blind spot that hid the `sampling_data` fork in
+  is unchecked — the same blind spot that hid the `spatial_data` fork in
   `webgl/data.py`. It is exported and documented in `api_reference_flat.rst`.
 
 Fixed in passing while typing the callers, and recorded here only so the change is

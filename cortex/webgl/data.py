@@ -47,14 +47,14 @@ class Package(object):
             name = brain.name
             self.subjects.add(brain.subject)
             self.brains[name] = brain.to_json(simple=True)
-            # The array to ship is `sampling_data`, which each spatial interface
+            # The array to ship is `spatial_data`, which each spatial interface
             # points at its own storage -- `volume` for volumetric kinds,
-            # `vertices` for surface
-            # ones. This was a fork on `isinstance(brain, (Vertex, VertexRGB))`
-            # whose `else` branch read `.volume`, so a spatial kind this module had not
-            # heard of died on AttributeError (or, worse, was silently mosaicked
-            # as a volume if it happened to have one).
-            encdata = brain.sampling_data
+            # `vertices` for surface ones. This was a fork on
+            # `isinstance(brain, (Vertex, VertexRGB))` whose `else` branch read
+            # `.volume`, so a spatial kind this module had not heard of died on
+            # AttributeError (or, worse, was silently mosaicked as a volume if it
+            # happened to have one).
+            encdata = brain.spatial_data
             if isinstance(brain, dataset.DataviewRGB):
                 encdata = encdata.astype(np.uint8)
                 # The WebGL fragment shader (shaderlib.js) composites with a

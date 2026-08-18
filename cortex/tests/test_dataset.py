@@ -887,7 +887,7 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
     ``make_flatmap_image`` used to fork on ``isinstance(braindata, SurfaceView)``
     with an ``else`` that silently assumed exactly two kinds existed -- a third
     would have taken the volumetric path and then failed on ``.xfmname``. It now
-    reads ``space.xfmname`` (what to sample through) and ``sampling_data`` (what to
+    reads ``space.xfmname`` (what to sample through) and ``spatial_data`` (what to
     sample), so a spatial kind it has never heard of is drawn by the same code.
     """
     import inspect
@@ -947,7 +947,7 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
             self._space = ThirdSpace(subj)
 
         @property
-        def sampling_data(self):
+        def spatial_data(self):
             return np.zeros((1, 4))
 
         @property
@@ -966,13 +966,13 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
     assert not isinstance(view, (VolumetricView, SurfaceView))
     # and the two facts the renderer needs are both available
     assert view.space.xfmname is None
-    assert view.sampling_data.shape == (1, 4)
+    assert view.spatial_data.shape == (1, 4)
     # the renderer no longer asks which spatial kind it holds. (It still has
     # isinstance checks for np.ma.MaskedArray -- about the array, not the space.)
     src = inspect.getsource(qutils.make_flatmap_image)
     for banned in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
         assert banned not in src, banned
-    assert "sampling_data" in src and "space.xfmname" in src
+    assert "spatial_data" in src and "space.xfmname" in src
 
 
 def test_uniques_yields_packables():
@@ -1016,11 +1016,11 @@ def test_uniques_yields_packables():
 
 
 def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
-    """``name`` must keep hashing the *stored* array, not ``sampling_data``.
+    """``name`` must keep hashing the *stored* array, not ``spatial_data``.
 
     For an RGB view the two coincide, which makes hoisting ``name`` onto
     ``RenderableView`` look free. It is not: a masked ``Volume`` stores a flat
-    array while ``sampling_data`` is the unmasked 3-D one, so unifying them would
+    array while ``spatial_data`` is the unmasked 3-D one, so unifying them would
     silently rename every existing HDF node.
     """
     from cortex.dataset._hdf import _hash
@@ -1030,12 +1030,12 @@ def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
                         mask=mask)
 
     assert vol.name == "__%s" % _hash(vol.data)[:16]
-    assert vol.name != "__%s" % _hash(vol.sampling_data)[:16]
+    assert vol.name != "__%s" % _hash(vol.spatial_data)[:16]
 
     # ...whereas for RGB the stored array *is* the sampled one, which is why the
     # two RGB classes could share one implementation.
     rgb = cortex.VolumeRGB(vol, vol, vol)
-    assert rgb.name == "__%s" % _hash(rgb.sampling_data)[:16]
+    assert rgb.name == "__%s" % _hash(rgb.spatial_data)[:16]
 
 
 def test_empty_and_random_take_their_shape_from_the_space():

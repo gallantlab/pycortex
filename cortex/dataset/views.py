@@ -348,7 +348,7 @@ class Packable(Dataview):
 
         Content-addressed so that two views over identical data share a node
         instead of duplicating it. Do not reimplement this as a hash of
-        :attr:`RenderableView.sampling_data`: for a masked volume that is the
+        :attr:`RenderableView.spatial_data`: for a masked volume that is the
         unmasked 3-D array, not the flat stored one, so it would silently rename
         every existing HDF node.
         """
@@ -360,7 +360,7 @@ class RenderableView(Dataview):
     The common base of every spatial interface. Its purpose is to let callers stop
     enumerating the spatial kinds: :func:`as_renderable` is one
     ``isinstance`` against this, and the flatmap renderer reads
-    :attr:`sampling_data` instead of asking which spatial kind it holds.
+    :attr:`spatial_data` instead of asking which spatial kind it holds.
 
     That matters because an ``if volumetric / else surface`` fork silently encodes
     "there are exactly two spatial kinds". A third would have taken the ``else`` branch
@@ -371,11 +371,14 @@ class RenderableView(Dataview):
 
     @property
     @abstractmethod
-    def sampling_data(self) -> npt.NDArray:
+    def spatial_data(self) -> npt.NDArray:
         """The array a renderer samples, with a leading time axis.
 
-        Each spatial interface points this at whichever of its accessors is the sampled one.
-        Paired with ``view.space.xfmname``, which says what to sample *through*.
+        Each spatial interface points this at whichever of its accessors holds the
+        values -- ``volume`` for volumetric data, ``vertices`` for surface. Paired
+        with ``view.space.xfmname``, which says what to sample *through*, and named
+        to match :attr:`BrainSpace.spatial_shape`, which is the shape of one frame
+        of it.
         """
 
 
@@ -415,7 +418,7 @@ class VolumetricView(RenderableView):
         """
 
     @property
-    def sampling_data(self) -> npt.NDArray:
+    def spatial_data(self) -> npt.NDArray:
         """A volumetric view is sampled from its volume."""
         return self.volume
 
@@ -447,7 +450,7 @@ class SurfaceView(RenderableView):
         """
 
     @property
-    def sampling_data(self) -> npt.NDArray:
+    def spatial_data(self) -> npt.NDArray:
         """A surface view is sampled per-vertex."""
         return self.vertices
 
