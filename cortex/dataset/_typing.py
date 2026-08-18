@@ -64,16 +64,12 @@ happening to have the right attributes.
 
 from __future__ import annotations
 
-from typing import Any, Union
-
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
-from .view2D import Dataview2D
 from .views import (
     Dataview,
     HasSubject,
     Packable,
     RenderableView,
-    ScalarView,
     SurfaceView,
     VolumetricView,
 )
@@ -100,18 +96,6 @@ Renderable = RenderableView
 # *not* the class any view inherited. Most of the `cortex.quickflat.composite`
 # helpers need nothing more than this: they look up a flatmap by subject and draw
 # on it, where annotating them `Dataview` claimed far more than they use.
-
-#: The views carrying a colormap, as opposed to their own colours -- the scalar
-#: and 2D columns, but not RGB. The typed replacement for
-#: ``hasattr(braindata, "cmap")``; note that test matched 2D views as well as
-#: scalar ones, so a scalar-only test is not equivalent.
-#:
-#: Test at runtime with an **inline** tuple, ``isinstance(view, (ScalarView,
-#: Dataview2D))``. A module-level ``tuple[type, ...]`` constant would read more
-#: nicely but cannot narrow: the annotation loses the members, so mypy learns
-#: nothing from the check.
-ColormappedView = Union[ScalarView, "Dataview2D[Any]"]
-
 
 def as_renderable(view: Dataview) -> Renderable:
     """Check that ``view`` is one the renderers can draw.
@@ -158,7 +142,6 @@ __all__ = [
     "SurfaceView",
     "Renderable",
     "HasSubject",
-    "ColormappedView",
     "as_renderable",
     "BrainSpace",
     "VolumeSpace",

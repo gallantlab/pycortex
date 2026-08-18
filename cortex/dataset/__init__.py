@@ -20,10 +20,14 @@ the restructuring options that were considered.
 
 from __future__ import annotations
 
-# Import order matters. `views` resolves the circular dependency on `viewRGB` and
-# `view2D` with deferred imports at the bottom of its own module, so it has to be
-# imported first -- anything that reaches `view2D`/`viewRGB` before then (such as
-# `_typing`) would see a partially initialised module.
+# `views` first, deliberately. It resolves the circular dependency on `viewRGB`
+# and `view2D` with deferred imports at the bottom of its own module, so importing
+# either of those first would have them reach back into a partially initialised
+# `views`. `_typing` used to be the module that tripped this, via an import it no
+# longer needs, so the hazard is currently latent rather than live -- kept ordered,
+# and kept out of isort's reach, so that re-introducing such an import fails here
+# rather than somewhere less obvious. `test_submodule_can_be_imported_first` pins
+# that each submodule also works as the entry point.
 from .views import (  # isort: skip
     Dataview,
     DataviewJSON,
@@ -43,7 +47,6 @@ from ._space import (
     registered_spaces,
 )
 from ._typing import (
-    ColormappedView,
     HasSubject,
     Renderable,
     as_renderable,
@@ -86,7 +89,6 @@ __all__ = [
     "VolumetricView",
     "SurfaceView",
     "Renderable",
-    "ColormappedView",
     "HasSubject",
     "as_renderable",
 ]

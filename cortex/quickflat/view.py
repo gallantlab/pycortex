@@ -367,6 +367,9 @@ def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_c
     mask_nans = np.isnan(arr[..., 3])
     arr[mask_nans, 3] = 0.
 
+    # Both classes, not just ScalarView: this replaced `hasattr(braindata,
+    # "cmap")`, which matched 2D views as well as scalar ones, so narrowing it to
+    # scalars would silently stop passing a 2D view's colormap to imsave.
     # Inline tuple, not a constant: a `tuple[type, ...]` loses its members and
     # mypy would learn nothing from the check.
     if isinstance(braindata, (ScalarView, Dataview2D)):
