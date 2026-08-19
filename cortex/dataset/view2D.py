@@ -344,10 +344,6 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
             **kwargs,
         )
 
-    @property
-    def xfmname(self) -> str:
-        return self.dim1.xfmname
-
     def __repr__(self) -> str:
         return "<2D volumetric data for (%s, %s)>" % (
             self.dim1.subject,

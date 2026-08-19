@@ -410,9 +410,27 @@ class VolumetricView(RenderableView):
     """
 
     @property
-    @abstractmethod
     def xfmname(self) -> str:
-        """Transform name. Must exist in the pycortex database."""
+        """Transform name. Must exist in the pycortex database.
+
+        The space owns this -- it is half of what identifies a volumetric space --
+        so one implementation serves every volumetric view. It was abstract, and
+        answered three times over: ``self.space.xfmname`` on :class:`Volume`,
+        ``self.dim1.xfmname`` on ``Volume2D`` and ``self.red.xfmname`` on
+        ``VolumeRGB``. Those last two reach through a channel for a value the
+        channel itself reads off the shared space.
+
+        The narrowing to ``str`` is the whole reason this cannot just be inherited
+        from :attr:`BrainSpace.xfmname`, which is ``Optional`` because a surface
+        space has no transform.
+        """
+        xfmname = self.space.xfmname
+        if xfmname is None:
+            raise TypeError(
+                "%s is volumetric but its space (%r) has no transform"
+                % (type(self).__name__, self.space)
+            )
+        return xfmname
 
     @property
     def volume(self) -> npt.NDArray:
@@ -1017,10 +1035,6 @@ class Volume(ScalarView, VolumetricView):
     # ------------------------------------------------------------------
     # geometry, delegated to the space
     # ------------------------------------------------------------------
-    @property
-    def xfmname(self) -> str:
-        return self.space.xfmname
-
     @property
     def linear(self) -> bool:
         """Whether the data is flattened into mask space rather than a full volume."""

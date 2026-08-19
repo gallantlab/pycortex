@@ -762,6 +762,27 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
         as_renderable(fake)
 
 
+def test_xfmname_comes_from_the_space_not_from_a_channel():
+    """One implementation of ``xfmname`` for every volumetric view.
+
+    It was abstract and answered three times: ``self.space.xfmname`` on Volume,
+    ``self.dim1.xfmname`` on Volume2D, ``self.red.xfmname`` on VolumeRGB -- the
+    last two reaching through a channel for a value the channel reads off the
+    space they all share.
+    """
+    from cortex.dataset.view2D import Volume2D
+    from cortex.dataset.viewRGB import VolumeRGB
+    from cortex.dataset.views import Volume, VolumetricView
+
+    assert "xfmname" not in VolumetricView.__abstractmethods__
+    for cls in (Volume, Volume2D, VolumeRGB):
+        assert "xfmname" not in vars(cls), cls
+
+    vol = Volume(np.random.randn(*volshape), subj, xfmname)
+    for view in (vol, Volume2D(vol, vol), VolumeRGB(vol, vol, vol)):
+        assert view.xfmname == view.space.xfmname == xfmname, type(view)
+
+
 def test_the_spatial_array_is_implemented_once_per_view():
     """``spatial_data`` is the abstract member; ``volume``/``vertices`` are aliases.
 

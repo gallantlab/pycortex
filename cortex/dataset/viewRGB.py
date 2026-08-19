@@ -860,16 +860,6 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
             priority=priority,
         )
 
-    @property
-    def xfmname(self) -> str:
-        """Transform name, shared by all three channels.
-
-        Derived rather than stored: the constructor already rejects channels with
-        differing transforms, so a copy would only be able to disagree. Mirrors
-        :attr:`Volume2D.xfmname`, which has always been a property.
-        """
-        return self.red.xfmname
-
     def __repr__(self) -> str:
         return "<RGB volumetric data for (%s, %s)>" % (
             self.red.subject,
