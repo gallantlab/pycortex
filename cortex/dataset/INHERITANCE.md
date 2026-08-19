@@ -75,7 +75,9 @@ classDiagram
         +vmax
         +vmin2
         +vmax2
+        +spatial_data
         +copy()
+        +raw()
         +_to_raw()
     }
     class DataviewRGB~ScalarT~ {
@@ -84,17 +86,19 @@ classDiagram
         +green: ScalarT
         +blue: ScalarT
         +alpha: ScalarT
+        +name
+        +spatial_data
         +copy()
+        +to_json()
         +color_voxels()$
         +_nan_mask
     }
 
     class Volume {
-        +xfmname
         +linear
         +mask
         +mask_name
-        +volume
+        +spatial_data
         +masked
         +map()
         +save_nii()
@@ -106,7 +110,7 @@ classDiagram
         +rlen
         +nverts
         +hem
-        +vertices
+        +spatial_data
         +left
         +right
         +volume()
@@ -137,26 +141,26 @@ classDiagram
     }
     class VolumetricView {
         <<abstract>>
-        +xfmname*
-        +volume*
-        +spatial_data
+        +xfmname
+        +volume
         +raw() VolumeRGB
     }
     class SurfaceView {
         <<abstract>>
-        +vertices*
-        +spatial_data
+        +vertices
         +raw() VertexRGB
         +blend_curvature()
     }
 
     HasSubject <|.. Dataview
     Dataview <|-- Packable
-    Dataview <|-- Dataview2D
     Dataview <|-- Multiview
     Dataview <|-- RenderableView
     Packable <|-- ScalarView
     Packable <|-- DataviewRGB
+    RenderableView <|-- ScalarView
+    RenderableView <|-- Dataview2D
+    RenderableView <|-- DataviewRGB
     RenderableView <|-- VolumetricView
     RenderableView <|-- SurfaceView
 
@@ -209,9 +213,15 @@ exactly `_hash(self.spatial_data)`, which makes a single definition on
 `RenderableView` look free. It is not: `ScalarView.name` hashes the *stored* array,
 and for a masked `Volume` that is the flat masked array, not the unmasked 3-D
 `spatial_data`. Unifying them silently renames every existing HDF node. Pinned by
-`test_packable_name_is_not_hoisted_onto_the_row`. What *can* collapse is the two RGB
-definitions into one on `DataviewRGB`, since for RGB the stored array is the sampled
-one -- but that needs `DataviewRGB` to see a spatial-interface member.
+`test_packable_name_is_not_hoisted_onto_the_spatial_interface`.
+
+What *did* collapse is the two RGB definitions into one on `DataviewRGB`, since for
+an RGB view the stored array *is* the sampled one, and its `name` is only ever a
+browser key -- its channels are what become HDF nodes, each under its own name.
+That needed `DataviewRGB` to see a spatial-interface member, which is why all three
+column classes now list `RenderableView` among their bases: every concrete view is
+renderable, so saying it on the column is what lets a helper that reads "the array"
+live once there instead of twice in its volumetric and surface halves.
 
 What `name` addresses is also asymmetric, which is why `Packable` promises only the
 name and not what it hashes: for a scalar view it is both the HDF node name and the
@@ -233,9 +243,12 @@ classDiagram
         +wrap_rgb()*
         +to_json()*
         +write_hdf_attrs()*
+        +spec_keys$
         +view_xfmname
         +template_shape
         +describe_layout()
+        +align()
+        +from_spec()$
         +from_hdf()$*
         +views()$*
     }
@@ -365,8 +378,18 @@ class MyView2D(Dataview2D[MyView], MySpatial): ...  # + a ctor forwarding kwargs
 class MyViewRGB(DataviewRGB[MyView], MySpatial): ...
 ```
 
-Three members are deliberately *not* in that list, because all three are concrete
-on `BrainSpace` and most spaces should inherit them:
+`spec_keys` is the one other declaration a space usually wants: the names of its
+constructor arguments besides `subject`, `("xfmname",)` for `VolumeSpace` and empty
+for `SurfaceSpace`. `BrainSpace.from_spec` reads it to require each of them before
+constructing, which is how the composite views build a space when they are handed
+raw arrays rather than channel objects. Each of the four used to be passed a
+`lambda` naming the space class with `_require` applied to each of its arguments,
+*and* a dict of those same keys to validate channel objects against -- so "a
+volumetric space is subject plus xfmname, and both are mandatory" was written into
+four view constructors instead of into `VolumeSpace`.
+
+Four more members are deliberately *not* in the list above, because all four are
+concrete on `BrainSpace` and most spaces should inherit them:
 
 - `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
   implementing `xfmname` gets slot 7 right for free. Override it only if a space
@@ -385,6 +408,14 @@ on `BrainSpace` and most spaces should inherit them:
   which describes the *space* rather than a particular array bound to it -- which
   is why only this one takes the data. These keys are read by `dataset.js`, so
   they are a hard interface.
+- `align(first, second)`, two views' arrays in a layout where position *i* means
+  the same place in both -- what a 2D view needs before it can colormap its two
+  dimensions jointly. The stored arrays serve any space in which one array position
+  is one location, which is why this is concrete. `VolumeSpace` overrides it
+  because a flattened array's positions mean something only relative to its own
+  mask: two arrays under the *same* mask already line up and are far smaller, while
+  under different masks -- or with one flattened and one not -- only the unmasked
+  volumes are comparable. A space that cannot align two views at all raises.
 
 `hdf_key` is a label rather than a mechanism, despite the name. Detection on load
 walks `registered_spaces()` in registration order and takes the first space whose
@@ -397,14 +428,17 @@ key on disk has an obvious value to write in `write_hdf_attrs` and match in
 ### What the space owns, and why
 
 The rule is that anything depending on the *geometry* belongs to the space, so
-that adding a space does not mean editing the columns. Three things moved there
-because they were the same question asked once per space:
+that adding a space does not mean editing the columns. Six things moved there,
+each because it was the same question asked once per space:
 
 | was | now | it was duplicated as |
 | --- | --- | --- |
 | `db.get_xfm(...).shape` vs `SurfaceSpace(...).nverts` | `template_shape` | 4 methods (`empty`/`random` x 2 classes) |
-| `shape` vs `split`/`frames` in the simple JSON | `describe_layout` | 2 `to_json` overrides, now one on `ScalarView` |
+| `shape` vs `split`/`frames` in the simple JSON | `describe_layout` | 4 `to_json` overrides, now one each on `ScalarView` and `DataviewRGB` |
 | slicing at `llen`, branching on movie-ness | `SurfaceSpace.split_hemispheres` | 4 properties (`left`/`right` on `Vertex` and `VertexRGB`) |
+| whether two masked arrays can be compared elementwise | `align` | `Volume2D.raw` at 15 lines against `Vertex2D.raw` at 2 |
+| "subject and xfmname are both mandatory" | `spec_keys` + `from_spec` | a lambda plus a dict in each of 4 constructors |
+| the transform name a volumetric view reports | `xfmname`, now concrete on `VolumetricView` | 3 overrides, two of which reached through a channel |
 
 `split_hemispheres` also removed the one place a view reached *through a channel*
 for geometry: `VertexRGB.left` read `self.red.llen` because `DataviewRGB.space` is
@@ -436,6 +470,32 @@ accepts anything without a transform -- that is how legacy files, which carry no
 space discriminator, are detected. A new space should test for something it writes
 itself in `write_hdf_attrs`, and will be consulted ahead of the built-ins.
 
+### One channel resolver for both composite columns
+
+`Dataview2D` and `DataviewRGB` both accept either already-built channel views or raw
+arrays, and both have to reject the mixture. That validation -- is the first
+argument a channel object; are the rest; do they agree on subject; do they agree on
+the space's `spec_keys` -- was written out twice, in the same order, with different
+wording. It is now `views._resolve_channels`, which returns the space plus the
+channels if they arrived as views:
+
+```python
+space, views = _resolve_channels(
+    [dim1, dim2], channel_cls=Volume, space_cls=VolumeSpace,
+    subject=subject, spec={"xfmname": xfmname}, argnames=("dim1", "dim2"),
+)
+```
+
+What is left in each column is only what genuinely differs: per-dimension
+`vmin`/`vmax` for 2D, the colour basis and `color_voxels` for RGB. `argnames` exists
+solely so the messages can name the offending argument, since one column calls them
+`dim1`/`dim2` and the other `channel1`..`channel3`.
+
+One quirk is preserved rather than unified: the RGB column requires `ndarray`
+channels while the 2D column `np.asarray`'s whatever it is given. Loosening RGB
+would start accepting lists there while `Volume(list, ...)` still fails with an
+`AttributeError` from `coerce`, so the inconsistency is left where it is visible.
+
 `space.wrap()` is the abstraction that keeps the rest space-agnostic: the channel
 resolvers in `view2D.py` and `viewRGB.py`, and all three HDF factories, build views
 through it and never name `Volume` or `Vertex`. A space is per-view, not shared:
@@ -465,9 +525,17 @@ renderer asks for the two facts it needs instead of asking what it is holding:
 
 - `view.space.xfmname` — the transform to sample *through*, or `None`. Owned by the
   space, and HDF slot 7 derives from the same value.
-- `view.spatial_data` — the array to sample. Owned by the spatial interface:
-  `VolumetricView`
-  points it at `volume`, `SurfaceView` at `vertices`.
+- `view.spatial_data` — the array to sample. Owned by the *view*, and the one
+  member a spatial kind implements. The spatial interfaces then publish it under
+  the name their space has always used, `VolumetricView.volume` and
+  `SurfaceView.vertices`, both concrete.
+
+  This started out the other way round -- `volume`/`vertices` abstract and
+  `spatial_data` derived from whichever one the subclass inherited -- which cost a
+  property per space per column, since a column holds one array and had to publish
+  it under the name of each space it serves. Pinned by
+  `test_the_spatial_array_is_implemented_once_per_view`, because re-abstracting
+  `volume`/`vertices` would quietly bring all four of those properties back.
 
 ```python
 def make_flatmap_image(braindata: RenderableView, ...):
@@ -539,6 +607,13 @@ The spatial interfaces also narrow `raw`: `VolumetricView.raw` returns `VolumeRG
 `SurfaceView.raw` returns `VertexRGB`, rather than the base's `DataviewRGB`. So
 `view.raw.volume` and `view.raw.left` resolve without a further cast.
 
+That narrowing is the one thing `Volume2D` and `Vertex2D` still say about `raw`.
+The implementation is one method on `Dataview2D`, which asks
+`space.align(dim1, dim2)` for the pair of arrays to colormap and hands them to
+`_to_raw`; each subclass keeps a three-line override that only restates the
+concrete return type, which the shared one cannot name because it does not know
+the space.
+
 Note that inheriting a Protocol explicitly does **not** re-enable `isinstance`
 against it — that still requires `@runtime_checkable`, which these deliberately
 lack. The claim is checked statically; the runtime guard stays shut.
@@ -581,32 +656,39 @@ Volume2D  -> Dataview2D  -> VolumetricView -> RenderableView -> Dataview
 ```
 
 Column before spatial in all three, because the column is listed first in the bases
-and carries the implementations; the spatial interface contributes only defaults such as
-`spatial_data` and `blend_curvature`, which nothing overrides.
+and carries the implementations; the spatial interface contributes only concrete
+names for what the column already holds (`volume`, `vertices`, `xfmname`) plus
+`blend_curvature`, none of which anything overrides.
 
-That order is load-bearing for `Packable`. It declares `name` abstract, and
-`Packable` precedes the spatial interface in the MRO, so had it also declared `spatial_data` the
-abstract stub would have shadowed its working implementation. `name` is safe
-because both columns define it ahead of `Packable`. Anything a spatial interface implements must
-therefore stay off `Packable`.
+That order is load-bearing, and it is why `spatial_data` has to be implemented on
+the *column* rather than on the interface. `DataviewRGB` precedes `SurfaceView` in
+`VertexRGB`'s MRO, so an implementation on the column wins over anything the
+interface offers -- which is exactly what is wanted here, and exactly what would
+break if the interface tried to own the array again.
+
+The same rule constrains `Packable`. It declares `name` abstract and precedes the
+spatial interface, so anything a spatial interface implements must stay off
+`Packable`, or the abstract stub would shadow a working implementation. `name` is
+safe because both columns define it ahead of `Packable`.
 
 A synthesised alpha must carry the same frame axis as the channels it accompanies,
-or `_rgba_stack` cannot stack the four into one array. `VolumeRGB` gets that for
-free by sizing from `volume`, which always keeps the frame axis; `VertexRGB` sized
+or `_rgba_stack` cannot stack the four into one array. `VertexRGB` used to size it
 from `vertices.shape[1]`, the vertex count alone, so surface RGB *movies* were
-unconstructible until it was changed to size from the channel's `data`. Pinned by
+unconstructible; both columns now size from the channel's stored `data`, which
+carries the frame axis exactly when the channels do. Pinned by
 `test_rgb_default_alpha_tracks_the_channels_frame_count`, which also pins that a
 one-frame view keeps the shape it always had -- that shape feeds the content hash
-used as the HDF node name.
+used as the HDF node name. (`VolumeRGB` previously sized from `volume`, the same
+values with the frame axis already prepended, so its auto-alpha was wrapped as a
+one-frame movie. That unmasks back to an identical array, and an auto-generated
+alpha is never written to HDF nor shipped on its own, so nothing outside the class
+could observe the difference.)
 
-`Volume2D.volume` and `VolumeRGB.xfmname` exist to make the spatial interfaces
-implementable.
-`Volume2D` had no `volume` at all, so consumers special-cased it to reach
-`.raw.volume`; `VolumeRGB.xfmname` was a stored copy of `red.xfmname`, which an
-abstract property will not accept, so it is now derived. Like `VolumeRGB.volume`,
-`Volume2D.volume` returns uint8 RGBA rather than the scalar array
-`Volume.volume` returns — the same split `vertices` already had across `Vertex`
-and `Vertex2D`.
+Note that `volume` and `vertices` mean different things down the scalar column
+than down the other two: `Volume.volume` is the scalar array, while
+`Volume2D.volume` and `VolumeRGB.volume` are uint8 RGBA, their data having already
+been colormapped. That split has always been there across `Vertex` and `Vertex2D`;
+it is a property of the column, not of the space.
 
 ## What a new spatial kind must implement to be rendered
 
@@ -619,7 +701,7 @@ data to a browser*, because the browser needs to know how the bytes are laid out
 Implement `spatial_data` and give the space an `xfmname` (`None` if the data is
 not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
 renderer never asks what it is holding. Pinned by
-`test_a_third_row_needs_no_change_to_the_renderer`.
+`test_a_third_spatial_kind_needs_no_change_to_the_renderer`.
 
 Three flatmap *decorations* legitimately require a transform and will reject a kind
 that has none, with a `TypeError` naming the class: `with_dropout`,
