@@ -23,6 +23,7 @@ User Guide
    align
    dataset
    rois
+   userguide/webgl
    roidraw
    transforms
    colormaps
