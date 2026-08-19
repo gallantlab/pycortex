@@ -96,6 +96,48 @@ class DataviewJSON(TypedDict, total=False):
     frames: int
 
 
+def _json_default(obj: Any) -> Any:
+    """Serialise a numpy scalar as its Python equivalent.
+
+    ``json.dumps`` calls this only for objects it cannot handle itself, which is
+    exactly the set that needs converting. Of the numpy scalar types only
+    ``np.float64`` and ``np.str_`` subclass a builtin json understands (``float``
+    and ``str``), so those never arrive here and their output is byte-for-byte what
+    it always was; ``np.float32``, ``np.float16``, every integer width and
+    ``np.bool_`` all do arrive, since none of them subclasses anything.
+
+    That asymmetry is the whole bug. ``vmin``/``vmax`` hold whatever
+    ``np.percentile`` returned, so on float32 data they are ``np.float32`` and
+    saving raised ``TypeError: Object of type float32 is not JSON serializable``.
+    float64 data only ever worked by the accident of that subclassing.
+
+    Converting here rather than in :meth:`ScalarView._resolve_percentiles` is
+    deliberate: the numpy scalar has to survive on the *view*, because under NEP 50
+    it is a strong operand and `channel -= vmin` therefore computes in float64.
+    Rounding that to a Python float changes a handful of voxels by one LSB, and
+    channel names are content hashes -- it would silently rename on-disk nodes.
+    See the numerics note in INHERITANCE.md.
+
+    ``np.ndarray`` is not an ``np.generic``, so an array reaching a JSON slot
+    still raises. It has no representation in any of these slots, and quietly
+    inventing one would hide the mistake.
+    """
+    if isinstance(obj, np.generic):
+        return obj.item()
+    raise TypeError(
+        "Object of type %s is not JSON serializable" % type(obj).__name__
+    )
+
+
+def _dumps(obj: Any) -> str:
+    """``json.dumps`` for anything crossing a wire or an HDF slot.
+
+    Every ``json.dumps`` on a write path in this package goes through here, so
+    there is one answer to "what happens to a numpy scalar".
+    """
+    return json.dumps(obj, default=_json_default)
+
+
 def u(s, encoding: str = "utf8"):
     try:
         return s.decode(encoding)
@@ -258,14 +300,14 @@ class Dataview(HasSubject, ABC):
         """
         views = h5.require_group("/views")
         view = views.require_dataset(name, (8,), h5py.special_dtype(vlen=str))
-        view[0] = json.dumps(data)
+        view[0] = _dumps(data)
         view[1] = self.description
         view[2] = "null"
         view[3:5] = "null"
         self._write_cmap_slots(view)
-        view[5] = json.dumps(self.state)
-        view[6] = json.dumps(self.attrs)
-        view[7] = json.dumps(xfmname)
+        view[5] = _dumps(self.state)
+        view[6] = _dumps(self.attrs)
+        view[7] = _dumps(xfmname)
         return view
 
     @abstractmethod
@@ -952,9 +994,9 @@ class ScalarView(Packable, RenderableView):
         return sdict
 
     def _write_cmap_slots(self, view: h5py.Dataset) -> None:
-        view[2] = json.dumps([self.cmap])
-        view[3] = json.dumps([self.vmin])
-        view[4] = json.dumps([self.vmax])
+        view[2] = _dumps([self.cmap])
+        view[3] = _dumps([self.vmin])
+        view[4] = _dumps([self.vmax])
 
     def _write_data_hdf(
         self, h5: Union[h5py.File, h5py.Group], name: Optional[str] = None

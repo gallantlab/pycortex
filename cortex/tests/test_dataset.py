@@ -195,6 +195,110 @@ def test_mask_save():
     assert np.allclose(ds.masked.data, data)
 
 
+def test_a_float32_view_saves_and_reloads():
+    """The four view types that carry vmin/vmax could not be saved at all.
+
+    ``_write_cmap_slots`` json-dumps ``[self.vmin]``, and when vmin was left to
+    default it holds whatever ``np.percentile`` returned -- an ``np.float32`` for
+    float32 data, which ``json.dumps`` refuses. float64 worked only by the accident
+    that ``np.float64`` subclasses ``float``. RGB views were unaffected: they carry
+    no cmap bounds, and their channels are written as bare data nodes.
+    """
+    import json
+
+    a32 = np.random.randn(*volshape).astype(np.float32)
+    x32 = np.random.randn(nverts).astype(np.float32)
+    views = dict(
+        vol=cortex.Volume(a32, subj, xfmname),
+        vtx=cortex.Vertex(x32, subj),
+        vol2d=cortex.Volume2D(a32, a32, subj, xfmname),
+        vtx2d=cortex.Vertex2D(x32, x32, subj),
+        volrgb=cortex.VolumeRGB(a32, a32, a32, subj, xfmname),
+        vtxrgb=cortex.VertexRGB(x32, x32, x32, subj),
+    )
+    # the precondition: these really are numpy scalars, and json really refuses them
+    for key in ("vol", "vtx", "vol2d", "vtx2d"):
+        assert isinstance(views[key].vmin, np.float32), key
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            json.dumps([views[key].vmin])
+
+    fname = os.path.join(tempfile.mkdtemp(), "float32.hdf")
+    cortex.Dataset(**views).save(fname)
+    back = cortex.load(fname)
+
+    assert {k: type(back[k]).__name__ for k in sorted(back.views)} == {
+        "vol": "Volume", "vol2d": "Volume2D", "volrgb": "VolumeRGB",
+        "vtx": "Vertex", "vtx2d": "Vertex2D", "vtxrgb": "VertexRGB",
+    }
+    # dtype and every value survive
+    assert back["vol"].data.dtype == np.float32
+    assert np.array_equal(back["vol"].data, a32)
+    assert back["vtx"].data.dtype == np.float32
+    assert np.array_equal(back["vtx"].data, x32)
+
+    # the bound reloads as a Python float, and is the float32's exact value --
+    # float32 to float64 is lossless, so nothing is rounded on the way through
+    assert type(back["vol"].vmin) is float
+    assert back["vol"].vmin == float(views["vol"].vmin)
+    assert np.float32(back["vol"].vmin) == views["vol"].vmin
+
+
+def test_dumps_converts_numpy_scalars_and_nothing_else():
+    """The fix is at the JSON boundary, and is deliberately narrow.
+
+    Converting in ``_resolve_percentiles`` instead would change on-disk node
+    identity: under NEP 50 a numpy scalar is a strong operand, so ``channel -=
+    vmin`` computes in float64 where a weak Python float computes in float32, and
+    channel names are content hashes. See the numerics note in INHERITANCE.md.
+    """
+    import json
+
+    from cortex.dataset.views import _dumps
+
+    # the types json cannot handle are converted. np.bool_ is among them: Python's
+    # bool cannot be subclassed, so unlike np.float64 it is not covered for free
+    assert _dumps([np.float32(1.5)]) == "[1.5]"
+    assert _dumps([np.int64(3)]) == "[3]"
+    assert _dumps({"a": np.uint8(7)}) == '{"a": 7}'
+    assert _dumps([np.bool_(True)]) == "[true]"
+
+    # the two it can are untouched, so existing output is byte-for-byte identical
+    for value in (np.float64(1.5), np.str_("s"), 1.5, "s", None, True, [1, 2]):
+        assert _dumps(value) == json.dumps(value), value
+
+    # an array has no representation in any of these slots, so it still raises
+    # rather than quietly acquiring one
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        _dumps(np.zeros(3))
+
+    # and the view itself keeps the numpy scalar, which is the whole point
+    view = cortex.Volume(np.random.randn(*volshape).astype(np.float32), subj, xfmname)
+    assert isinstance(view.vmin, np.float32)
+
+
+def test_webgl_metadata_serialises_a_float32_view():
+    """The same root cause broke the browser payload, not just HDF.
+
+    ``webgl/view.py`` json-dumps ``Package.metadata()`` in both ``make_static``
+    and ``show``, and ``to_json(simple=False)`` puts the same defaulted vmin/vmax
+    in it. Only ``serve.py``'s websocket path had an encoder that coped.
+    """
+    import json
+
+    from cortex.dataset.views import _dumps
+    from cortex.webgl.data import Package
+
+    a32 = np.random.randn(*volshape).astype(np.float32)
+    meta = Package(cortex.Dataset(v=cortex.Volume(a32, subj, xfmname))).metadata()
+
+    assert isinstance(meta["views"][0]["vmin"][0], np.float32)
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        json.dumps(meta)
+    assert json.loads(_dumps(meta))["views"][0]["vmin"][0] == float(
+        meta["views"][0]["vmin"][0]
+    )
+
+
 def test_overwrite():
     tf = tempfile.NamedTemporaryFile(suffix=".hdf")
     ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))

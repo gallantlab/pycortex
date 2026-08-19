@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import sys
 import warnings
@@ -23,17 +22,18 @@ from .views import (
     Dataview,
     DataviewJSON,
     Packable,
+    RenderableView,
+    ScalarT,
     ScalarView,
     SurfaceView,
     Vertex,
     VertexRGB,
     Volume,
     VolumeRGB,
-    RenderableView,
     VolumetricView,
     _build_cmapdict,
+    _dumps,
     _resolve_channels,
-    ScalarT,
 )
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
@@ -125,9 +125,9 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
     # serialization
     # ------------------------------------------------------------------
     def _write_cmap_slots(self, view: h5py.Dataset) -> None:
-        view[2] = json.dumps([self.cmap])
-        view[3] = json.dumps([[self.vmin, self.vmin2]])
-        view[4] = json.dumps([[self.vmax, self.vmax2]])
+        view[2] = _dumps([self.cmap])
+        view[3] = _dumps([[self.vmin, self.vmin2]])
+        view[4] = _dumps([[self.vmax, self.vmax2]])
 
     def _write_hdf(
         self, h5: Union[h5py.File, h5py.Group], name: str = "data"
@@ -360,7 +360,7 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
         self, h5: Union[h5py.File, h5py.Group], name: str = "data"
     ) -> h5py.Dataset:
         viewnode = super()._write_hdf(h5, name)
-        viewnode[7] = json.dumps([[self.dim1.xfmname, self.dim2.xfmname]])
+        viewnode[7] = _dumps([[self.dim1.xfmname, self.dim2.xfmname]])
         return viewnode
 
     @property

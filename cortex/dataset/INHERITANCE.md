@@ -1076,6 +1076,51 @@ Python float computes in float32. The difference is a single LSB on a handful of
 voxels -- but channel names are content hashes, so it silently changes on-disk node
 identity. `np.float64` subclasses `float`, so the annotation still holds.
 
+## `_dumps`: the one JSON boundary
+
+Every `json.dumps` on a write path in this package goes through `views._dumps`,
+which is `json.dumps` with a `default=` that converts a numpy scalar via `.item()`.
+Eleven call sites across `views.py` and `view2D.py` use it, and so do the two in
+`webgl/view.py` that serialise `Package.metadata()`.
+
+It exists because a **float32 view could not be saved at all**.
+`ScalarView._write_cmap_slots` dumps `[self.vmin]`, and when `vmin` is left to
+default it holds whatever `np.percentile` returned -- an `np.float32` for float32
+data, which `json.dumps` refuses:
+
+```
+TypeError: Object of type float32 is not JSON serializable
+```
+
+Of the numpy scalar types only `np.float64` and `np.str_` subclass a builtin that
+json understands, so float64 data worked purely by that accident. Note `np.bool_`
+is *not* covered for free -- Python's `bool` cannot be subclassed -- so a boolean
+numpy scalar in `attrs` or `state` failed for the same reason. The four view types
+carrying cmap bounds were affected (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`);
+the RGB views were not, since they have no `vmin`/`vmax` and their channels are
+written as bare data nodes. The same root cause broke `make_static` and `show`,
+where `to_json(simple=False)` puts the same defaulted bounds into the browser
+payload; only `serve.py`'s websocket path had an encoder (`NPEncode`) that coped.
+
+Two things about the shape of the fix:
+
+- It is **not** in `_resolve_percentiles`. The numpy scalar has to survive on the
+  view -- see the numerics note above -- so converting there would silently rename
+  on-disk nodes. The JSON boundary is the only place the conversion is free.
+- `np.ndarray` is not an `np.generic`, so an array reaching a JSON slot still
+  raises. It has no representation in any of these slots and quietly inventing one
+  would hide the mistake.
+
+A bound saved from float32 data reloads as a Python `float`, holding the float32's
+exact value, since widening to float64 is lossless. The *type* does not survive,
+because JSON has no way to carry it; that matters only if the reloaded view is then
+colormapped, for the NEP 50 reason in the numerics note.
+
+Pinned by `test_a_float32_view_saves_and_reloads`, which asserts the precondition
+too (that `json.dumps` really does refuse those bounds),
+`test_dumps_converts_numpy_scalars_and_nothing_else` and
+`test_webgl_metadata_serialises_a_float32_view`.
+
 ## Known bug: `mapper.py`
 
 `Mapper.__call__` does:
@@ -1098,25 +1143,6 @@ Not fixed here, because correcting it changes runtime behaviour and needs a
 regression test. It is now visible to mypy: `Vertex.__getitem__` returns `Self`
 rather than `Any`, so the checker reports that the dead branch yields `Vertex`
 objects where arrays are expected.
-
-## Known bug: a float32 view cannot be saved
-
-`ScalarView._write_cmap_slots` does `json.dumps([self.vmin])`, and when `vmin` was
-left to default it holds whatever `np.percentile` returned. On a **float32** array
-that is an `np.float32`, which `json.dumps` refuses:
-
-```
-TypeError: Object of type float32 is not JSON serializable
-```
-
-float64 data works only because `np.float64` happens to subclass `float`. So
-`Dataset(v=cortex.Volume(float32_array, ...)).save(...)` raises unless `vmin`/`vmax`
-were passed explicitly. No test covers it: they all build data with
-`np.random.randn`, which is float64.
-
-Note this is *not* an argument for converting the percentile to a Python `float` --
-see the numerics note above for why that changes on-disk node identity. The fix
-belongs at the JSON boundary, not in the percentile.
 
 ## Other known issues, outside this package
 
