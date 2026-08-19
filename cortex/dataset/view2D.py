@@ -231,6 +231,19 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
         a[aidx] = 0
         return r, g, b, a
 
+    @property
+    def raw(self) -> DataviewRGB:
+        """The colormapped RGB form of this view.
+
+        Which pair of arrays gets colormapped is the space's call -- see
+        :meth:`~cortex.dataset._space.BrainSpace.align` -- so both columns share
+        one implementation. ``Volume2D`` had fifteen lines here and ``Vertex2D``
+        two, differing only in whether masked data could be colormapped in its
+        flattened form.
+        """
+        r, g, b, a = self._to_raw(*self.space.align(self.dim1, self.dim2))
+        return self._finish_raw(r, g, b, a)
+
     def _finish_raw(
         self,
         r: npt.NDArray[np.uint8],
@@ -352,24 +365,12 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
 
     @property
     def raw(self) -> VolumeRGB:
-        """VolumeRGB object containing the colormapped data from this object."""
-        if self.dim1.xfmname != self.dim2.xfmname:
-            raise ValueError(
-                "Both Volumes must have same xfmname to generate single raw volume"
-            )
+        """VolumeRGB object containing the colormapped data from this object.
 
-        if (
-            (self.dim1.linear and self.dim2.linear)
-            and self.dim1.mask is not None
-            and self.dim2.mask is not None
-            and (self.dim1.mask.shape == self.dim2.mask.shape)
-            and np.all(self.dim1.mask == self.dim2.mask)
-        ):
-            r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
-        else:
-            r, g, b, a = self._to_raw(self.dim1.volume, self.dim2.volume)
-
-        return cast(VolumeRGB, self._finish_raw(r, g, b, a))
+        Narrowing only: the implementation is :attr:`Dataview2D.raw`, which cannot
+        state the concrete class because it does not know the space.
+        """
+        return cast(VolumeRGB, super().raw)
 
 
 class Vertex2D(Dataview2D[Vertex], SurfaceView):
@@ -448,9 +449,11 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
 
     @property
     def raw(self) -> VertexRGB:
-        """VertexRGB object containing the colormapped data from this object."""
-        r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
-        return cast(VertexRGB, self._finish_raw(r, g, b, a))
+        """VertexRGB object containing the colormapped data from this object.
+
+        Narrowing only; see :attr:`Volume2D.raw`.
+        """
+        return cast(VertexRGB, super().raw)
 
 
 

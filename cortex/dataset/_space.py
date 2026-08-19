@@ -35,7 +35,7 @@ from ._hdf import _find_mask, _hash, _hdf_write
 
 if TYPE_CHECKING:
     # Annotation-only, so _space stays importable by views.py without a cycle.
-    from .views import DataviewJSON
+    from .views import DataviewJSON, ScalarView
 
 def _require(value: Optional[str], what: str) -> str:
     """Assert that a space-defining argument was supplied.
@@ -148,6 +148,22 @@ class BrainSpace(ABC):
         on ``self`` (which mask a flat array matches, which hemisphere a
         half-length array covered) -- a space belongs to exactly one view.
         """
+
+    def align(
+        self, first: "ScalarView", second: "ScalarView"
+    ) -> tuple[npt.NDArray, npt.NDArray]:
+        """Two views' arrays in a layout where position *i* means the same place.
+
+        What a 2D view needs before it can colormap its two dimensions jointly,
+        and what any elementwise operation between two views in this space would
+        need. The stored arrays serve for any space in which one array position is
+        one location, which is why this is concrete; :class:`VolumeSpace`
+        overrides it because a flattened array's positions mean something only
+        relative to its own mask.
+
+        Raise if the two cannot be aligned at all.
+        """
+        return first.data, second.data
 
     @abstractmethod
     def is_movie(self, data: npt.NDArray) -> bool:
@@ -421,6 +437,36 @@ class VolumeSpace(BrainSpace):
         return VolumeRGB(
             red, green, blue, self.subject, self.xfmname, alpha, **kwargs
         )
+
+    def align(
+        self, first: "ScalarView", second: "ScalarView"
+    ) -> tuple[npt.NDArray, npt.NDArray]:
+        """Stored arrays if both are flattened under the same mask, else volumes.
+
+        Two arrays flattened under the *same* mask already line up, and are far
+        smaller than the volumes they came from, so prefer them; under different
+        masks -- or with one flattened and one not -- position *i* means different
+        voxels in each, and only the unmasked volumes are comparable.
+
+        This lived in ``Volume2D.raw`` as fifteen lines against ``Vertex2D.raw``'s
+        two, the whole difference being about masks. Masks are volumetric
+        knowledge, and the rest of it is already here.
+        """
+        other = second.space
+        if not isinstance(other, VolumeSpace) or other.xfmname != self.xfmname:
+            raise ValueError(
+                "Both Volumes must have same xfmname to generate single raw volume"
+            )
+        if (
+            self.linear
+            and other.linear
+            and self.mask is not None
+            and other.mask is not None
+            and self.mask.shape == other.mask.shape
+            and np.all(self.mask == other.mask)
+        ):
+            return first.data, second.data
+        return first.spatial_data, second.spatial_data
 
     def unmask(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
         """Expand ``data`` to a full 3D/4D volume, adding the time axis."""

@@ -762,6 +762,55 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
         as_renderable(fake)
 
 
+def test_which_arrays_a_2d_view_colormaps_is_the_spaces_call():
+    """``BrainSpace.align``, not fifteen lines of mask logic inside Volume2D.raw.
+
+    Two arrays flattened under the same mask already line up and are far smaller,
+    so they can be colormapped as they are stored; under different masks -- or with
+    one flattened and one not -- position *i* means different voxels in each, and
+    only the unmasked volumes are comparable. That is volumetric knowledge, and
+    ``Vertex2D.raw`` existed as a two-line copy of the same method purely because
+    it had none of it.
+    """
+    from cortex.dataset.view2D import Dataview2D, Vertex2D, Volume2D
+    from cortex.dataset.views import Vertex, Volume
+
+    # one implementation, on the column; the subclasses only narrow the type
+    assert "raw" in vars(Dataview2D)
+    for cls in (Volume2D, Vertex2D):
+        assert cls.raw.fget.__doc__ and "arrowing" in cls.raw.fget.__doc__, cls
+
+    m1 = db.get_mask(subj, xfmname, "thick")
+    m2 = db.get_mask(subj, xfmname, "thin")
+    masked = Volume(np.random.randn(m1.sum()), subj, xfmname, mask=m1)
+    masked_b = Volume(np.random.randn(m1.sum()), subj, xfmname, mask=m1)
+    other_mask = Volume(np.random.randn(m2.sum()), subj, xfmname, mask=m2)
+    full = Volume(np.random.randn(*volshape), subj, xfmname)
+
+    # same mask: the stored arrays, which are flat and much smaller
+    first, second = Volume2D(masked, masked_b).space.align(masked, masked_b)
+    assert first.shape == second.shape == masked.data.shape
+    assert np.array_equal(first, masked.data)
+
+    # anything else volumetric: the unmasked volumes
+    for a, b in ((masked, other_mask), (masked, full), (full, full)):
+        first, second = Volume2D(a, b).space.align(a, b)
+        assert first.shape == second.shape == (1,) + volshape
+
+    # a surface space has no masks, so it always aligns the stored arrays
+    vtx = Vertex(np.random.randn(nverts), subj)
+    first, second = Vertex2D(vtx, vtx).space.align(vtx, vtx)
+    assert first.shape == second.shape == (nverts,)
+
+    # and views the space cannot align at all say so, rather than colormapping
+    # two arrays that do not correspond
+    retino = Volume(
+        np.random.randn(*db.get_xfm(subj, "retinotopy").shape), subj, "retinotopy"
+    )
+    with pytest.raises(ValueError, match="same xfmname"):
+        Volume2D(full, retino).raw
+
+
 def test_a_space_declares_what_identifies_it():
     """``spec_keys`` plus ``from_spec``, rather than a lambda per constructor.
 
