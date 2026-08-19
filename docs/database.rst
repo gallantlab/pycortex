@@ -204,7 +204,7 @@ Where, ``'subject'`` is the subject identifier and ``'name'`` is a unique name f
 ``overlays.svg``
 ----------------
 
-Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call ``cortex.add_roi``. ROI overlays are created and edited in Inkscape_. For more information, see :module:`svgroi.py`.
+Overlays are stored as SVG_'s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call ``cortex.add_roi``. ROI overlays are created and edited in Inkscape_. For more information, see ``svgroi.py``.
 
 
 ``rois.svg``
