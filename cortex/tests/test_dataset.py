@@ -811,6 +811,260 @@ def test_which_arrays_a_2d_view_colormaps_is_the_spaces_call():
         Volume2D(full, retino).raw
 
 
+def _third_space_family():
+    """Build a third space's three view classes exactly as INHERITANCE.md prescribes.
+
+    Returns ``(MySpace, MyView, MyView2D, MyViewRGB, nthings)``. Kept as a helper so
+    the skeleton in the doc has exactly one executable counterpart; if the skeleton
+    changes, this changes with it.
+    """
+    from cortex.dataset._space import BrainSpace, SpaceViews
+    from cortex.dataset.view2D import Dataview2D, _resolve_2d_channels
+    from cortex.dataset.viewRGB import Colors, DataviewRGB, _resolve_rgb_channels
+    from cortex.dataset.views import RenderableView, ScalarView
+
+    nthings = 10
+
+    class MySpatial(RenderableView):
+        """A third spatial interface: sampled by index, through no transform."""
+
+    class MySpace(BrainSpace):
+        hdf_key = "myspace"
+        spec_keys = ("myarg",)
+
+        def __init__(self, subject, myarg="a"):
+            super().__init__(subject)
+            self._myarg = myarg
+
+        @property
+        def myarg(self):
+            return self._myarg
+
+        @property
+        def xfmname(self):
+            return None
+
+        def coerce(self, data):
+            if data is None:
+                data = np.zeros((nthings,))
+            if data.shape[-1] != nthings:
+                raise ValueError("bad length")
+            return data
+
+        def is_movie(self, data):
+            return data.ndim > 1
+
+        @property
+        def spatial_shape(self):
+            return (nthings,)
+
+        def wrap(self, data, **kw):
+            return MyView(data, self.subject, self.myarg, **kw)
+
+        def wrap_rgb(self, r, g, b, a=None, **kw):
+            return MyViewRGB(r, g, b, self.subject, self.myarg, a, **kw)
+
+        def to_json(self):
+            return {}
+
+        def write_hdf_attrs(self, h5, node):
+            node.attrs["myarg"] = self.myarg
+
+        @classmethod
+        def from_hdf(cls, attrs, *, subject, xfmname, mask):
+            if "myarg" not in attrs:
+                return None
+            return cls(subject, attrs["myarg"])
+
+        @classmethod
+        def views(cls):
+            return SpaceViews(scalar=MyView, twod=MyView2D, rgb=MyViewRGB)
+
+    class MyView(ScalarView, MySpatial):
+        """A scalar view in MySpace."""
+
+        def __init__(self, data, subject, myarg, cmap=None, vmin=None, vmax=None,
+                     description="", state=None, **kwargs):
+            super().__init__(data, MySpace(subject, myarg), cmap=cmap, vmin=vmin,
+                             vmax=vmax, description=description, state=state,
+                             **kwargs)
+            self._resolve_percentiles()
+
+        # The doc's skeleton also carries a bare `_space: MySpace` annotation
+        # here. Omitted: it is a static-only device with no runtime effect, and
+        # inside an untyped test helper mypy would only emit an
+        # annotation-unchecked note for it.
+        @property
+        def space(self):
+            return self._space
+
+        @property
+        def spatial_data(self):
+            return self.data if self.movie else self.data[np.newaxis]
+
+        @property
+        def raw(self):
+            return self._build_raw()
+
+        @classmethod
+        def empty(cls, subject, myarg, value=0, **kwargs):
+            shape = MySpace(subject, myarg).template_shape
+            return cls(cls._sample(shape, value), subject, myarg, **kwargs)
+
+        @classmethod
+        def random(cls, subject, myarg, **kwargs):
+            shape = MySpace(subject, myarg).template_shape
+            return cls(cls._sample(shape, None), subject, myarg, **kwargs)
+
+        def __repr__(self):
+            return "<my data for (%s)>" % self.subject
+
+        @property
+        def nthings(self):
+            return self.space.spatial_shape[0]
+
+    class MyView2D(Dataview2D[MyView], MySpatial):
+        """Two MyViews, jointly colormapped."""
+
+        def __init__(self, dim1, dim2, subject=None, myarg=None, description="",
+                     cmap=None, vmin=None, vmax=None, vmin2=None, vmax2=None,
+                     **kwargs):
+            chan1, chan2 = _resolve_2d_channels(
+                dim1, dim2, channel_cls=MyView, space_cls=MySpace, subject=subject,
+                spec={"myarg": myarg}, ranges=((vmin, vmax), (vmin2, vmax2)))
+            super().__init__(chan1, chan2, description=description, cmap=cmap,
+                             vmin=vmin, vmax=vmax, vmin2=vmin2, vmax2=vmax2,
+                             **kwargs)
+
+        @property
+        def raw(self):
+            return super().raw
+
+        def __repr__(self):
+            return "<2D my data for (%s)>" % self.dim1.subject
+
+    class MyViewRGB(DataviewRGB[MyView], MySpatial):
+        """Three MyView channels plus alpha."""
+
+        def __init__(self, channel1, channel2, channel3, subject=None, myarg=None,
+                     alpha=None, description="", state=None,
+                     channel1color=Colors.Red, channel2color=Colors.Green,
+                     channel3color=Colors.Blue, max_color_value=None,
+                     max_color_saturation=1.0, vmin=None, vmax=None,
+                     autorange="individual", priority=1):
+            red, green, blue, resolved_alpha = _resolve_rgb_channels(
+                (channel1, channel2, channel3), channel_cls=MyView,
+                space_cls=MySpace, subject=subject, spec={"myarg": myarg},
+                colors=(channel1color, channel2color, channel3color),
+                max_color_value=max_color_value,
+                max_color_saturation=max_color_saturation,
+                vmin=vmin, vmax=vmax, autorange=autorange, alpha=alpha)
+            super().__init__(red, green, blue, alpha=resolved_alpha, subject=subject,
+                             description=description, state=state, priority=priority)
+
+        @property
+        def space(self):
+            return self.red.space
+
+        def __repr__(self):
+            return "<RGB my data for (%s)>" % self.subject
+
+    return MySpace, MyView, MyView2D, MyViewRGB, nthings
+
+
+def test_the_documented_skeleton_for_a_new_space_actually_works():
+    """Every claim the INHERITANCE.md skeleton makes, exercised.
+
+    The doc tells a reader to copy three class skeletons and fill them in. This is
+    that, filled in against a synthetic ten-element space, so the doc cannot rot
+    into describing an extension point that no longer exists.
+    """
+    from cortex.dataset.views import as_renderable
+
+    MySpace, MyView, MyView2D, MyViewRGB, nthings = _third_space_family()
+    arr = np.random.randn(nthings)
+
+    # --- the scalar view
+    view = MyView(arr, subj, "a")
+    assert repr(view) == "<my data for (S1)>"
+    assert view.subject == subj and view.nthings == nthings
+    assert view.space.xfmname is None
+    assert view.spatial_data.shape == (1, nthings)          # frame axis added
+    assert MyView(np.random.randn(3, nthings), subj, "a").spatial_data.shape == (3, nthings)
+    assert view.name.startswith("__") and len(view.name) == 18
+    assert np.allclose((view + 1).data, arr + 1)            # inherited operators
+    assert view.vmin is not None and view.vmax is not None  # _resolve_percentiles
+
+    # --- empty / random, which read template_shape off the space
+    assert np.all(MyView.empty(subj, "a", 2).data == 2)
+    assert MyView.random(subj, "a").data.shape == (nthings,)
+
+    # --- raw, which goes out through space.wrap_rgb and comes back concrete
+    raw = view.raw
+    assert isinstance(raw, MyViewRGB)
+    assert raw.spatial_data.shape == (1, nthings, 4)
+    assert raw.spatial_data.dtype == np.uint8
+
+    # --- the 2D view, from raw arrays and from built views
+    twod = MyView2D(arr, arr, subj, "a")
+    assert repr(twod) == "<2D my data for (S1)>"
+    assert twod.spatial_data.shape == (1, nthings, 4)
+    assert isinstance(twod.raw, MyViewRGB)
+    assert isinstance(MyView2D(view, view).dim1, MyView)
+    # the shared resolver enforces the space's spec keys
+    with pytest.raises(TypeError, match="myarg"):
+        MyView2D(arr, arr, subj)
+
+    # --- the RGB view, single frame and movie
+    rgb = MyViewRGB(arr, arr, arr, subj, "a")
+    assert repr(rgb) == "<RGB my data for (S1)>"
+    assert rgb.spatial_data.shape == (1, nthings, 4)
+    movie = MyViewRGB(*([np.random.randn(4, nthings)] * 3), subj, "a")
+    assert movie.spatial_data.shape == (4, nthings, 4)
+
+    # --- serialization, with the space contributing no layout keys of its own
+    assert set(view.to_json(simple=True)) == {"name", "subject", "min", "max"}
+    assert "data" in view.to_json(simple=False)
+    assert [type(u).__name__ for u in twod.uniques()] == ["MyView", "MyView"]
+    assert [type(u).__name__ for u in rgb.uniques(collapse=True)] == ["MyViewRGB"]
+
+    # --- and it is renderable without being either built-in spatial kind
+    from cortex.dataset.views import SurfaceView, VolumetricView
+
+    assert as_renderable(view) is view
+    assert not isinstance(view, (VolumetricView, SurfaceView))
+
+
+def test_a_third_space_is_registered_behind_the_catch_all():
+    """Known bug, pinned so the fix has something to flip.
+
+    ``register_space`` appends, and ``SurfaceSpace.from_hdf`` accepts any node
+    without a transform, so a space registered by a third party is never reached.
+    See "Known bug: a third space cannot be read back from HDF" in INHERITANCE.md.
+    """
+    from cortex.dataset import _space as space_mod
+
+    order = [c.__name__ for c in space_mod.registered_spaces()]
+    assert order == ["VolumeSpace", "SurfaceSpace"]
+
+    MySpace = _third_space_family()[0]
+    saved = list(space_mod._SPACES)
+    try:
+        space_mod.register_space(MySpace)
+        after = [c.__name__ for c in space_mod.registered_spaces()]
+        # the defect: the catch-all still precedes the new space
+        assert after.index("SurfaceSpace") < after.index("MySpace")
+        # and the catch-all really does claim a node the new space wrote
+        claimed = None
+        for cls in space_mod.registered_spaces():
+            claimed = cls.from_hdf({"myarg": "a"}, subject=subj, xfmname=None, mask=None)
+            if claimed is not None:
+                break
+        assert type(claimed).__name__ == "SurfaceSpace"
+    finally:
+        space_mod._SPACES[:] = saved
+
+
 def test_a_space_declares_what_identifies_it():
     """``spec_keys`` plus ``from_spec``, rather than a lambda per constructor.
 

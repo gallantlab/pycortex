@@ -373,8 +373,9 @@ class MySpace(BrainSpace):
         # `twod` and `rgb` are read when rebuilding a view from HDF; `scalar` is
         # not, since `wrap()` already builds one. Declared for completeness.
 
-class MyView(ScalarView, MySpatial): ...  # + space-specific accessors
-class MyView2D(Dataview2D[MyView], MySpatial): ...  # + a ctor forwarding kwargs
+# written out in full below, under "The three view classes"
+class MyView(ScalarView, MySpatial): ...     # + space-specific accessors
+class MyView2D(Dataview2D[MyView], MySpatial): ...   # + a ctor forwarding kwargs
 class MyViewRGB(DataviewRGB[MyView], MySpatial): ...
 ```
 
@@ -463,12 +464,279 @@ that inherits neither is still a perfectly good `Dataview`; it just cannot be
 passed to the flatmap renderers, and `as_renderable` will say so.
 
 `register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
-and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
-matters: the registry is consulted in registration order and the first space whose
-`from_hdf` returns non-`None` wins. `SurfaceSpace` is deliberately last, because it
-accepts anything without a transform -- that is how legacy files, which carry no
-space discriminator, are detected. A new space should test for something it writes
-itself in `write_hdf_attrs`, and will be consulted ahead of the built-ins.
+and `normalize` dispatch through. Order matters: the registry is consulted in
+registration order and the first space whose `from_hdf` returns non-`None` wins.
+`SurfaceSpace` is deliberately last *among the built-ins*, because it accepts
+anything without a transform -- that is how legacy files, which carry no space
+discriminator, are detected.
+
+**A third-party space is not consulted ahead of them.** `register_space` appends,
+so anything registered after import lands *behind* `SurfaceSpace`'s catch-all and
+never gets asked. Writing a discriminator in `write_hdf_attrs` and testing for it
+in `from_hdf` is necessary but not sufficient, and HDF round-tripping does *not*
+work for a new space today -- see "Known bug: a third space cannot be read back
+from HDF".
+
+### The three view classes, written out
+
+`MySpace` is where the thought goes. The three view classes are mostly signature:
+across the six built-in views they are **141 lines of signature, 383 of docstring
+and 228 of body**, and a single constructor is routinely thirty-five lines for two
+statements. Copy the three skeletons below and fill them in.
+
+Each member is marked **required** (the bases will not let you instantiate without
+it), **narrowing** (the implementation is inherited; you are only restating the
+concrete type so callers do not need a cast), or **optional**.
+
+#### The scalar view
+
+```python
+class MyView(ScalarView, MySpatial):
+    """One-line summary, then a numpydoc ``Parameters`` block.
+
+    Not optional. `docs/api_reference_flat.rst` autosummaries this class through
+    `_templates/class.rst`, which renders the class docstring verbatim -- so this
+    is where users read what the constructor takes. Budget 25-35 lines.
+    """
+
+    def __init__(
+        self,
+        data: Union[npt.NDArray, str, None],
+        subject: Union[str, bytes],
+        myarg: str,                      # one per name in MySpace.spec_keys,
+                                         # positional: `Volume(arr, "S1", "fullhead")`
+                                         # is the spelling every doc and test uses
+        cmap: Optional[str] = None,
+        vmin: Optional[float] = None,
+        vmax: Optional[float] = None,
+        description: str = "",
+        state: Any = None,
+        **kwargs: Any,                   # everything else lands in `attrs`
+    ) -> None:
+        # The whole job: build the space, hand it up. ScalarView.__init__ calls
+        # space.coerce(data), which is where per-array geometry gets recorded.
+        super().__init__(
+            data,
+            MySpace(subject, myarg),
+            cmap=cmap, vmin=vmin, vmax=vmax,
+            description=description, state=state,
+            **kwargs,
+        )
+        self._resolve_percentiles()      # optional: default vmin/vmax to the
+                                         # 1st/99th percentile at build time
+
+    _space: MySpace                      # a *bare* annotation, which narrows the
+                                         # attribute without shadowing the property
+
+    @property                            # narrowing -- but load-bearing, since
+    def space(self) -> MySpace:          # everything below reads space-specific
+        return self._space               # members off it
+
+    @property                            # REQUIRED
+    def spatial_data(self) -> npt.NDArray:
+        """The array a renderer samples, with a leading frame axis.
+
+        Published as `volume` or `vertices` too, if MySpatial is one of the two
+        built-in spatial interfaces. Do *not* also implement those.
+        """
+
+    @property                            # narrowing; ScalarView._build_raw does it
+    def raw(self) -> MyViewRGB:
+        return cast(MyViewRGB, self._build_raw())
+
+    @classmethod                         # optional, but two lines each
+    def empty(cls, subject: str, myarg: str, value: float = 0, **kwargs: Any) -> Self:
+        shape = MySpace(subject, myarg).template_shape
+        return cls(cls._sample(shape, value), subject, myarg, **kwargs)
+
+    @classmethod
+    def random(cls, subject: str, myarg: str, **kwargs: Any) -> Self:
+        shape = MySpace(subject, myarg).template_shape
+        return cls(cls._sample(shape, None), subject, myarg, **kwargs)
+
+    def __repr__(self) -> str:           # optional
+        return "<my data for (%s)>" % self.subject
+
+    # Then whatever vocabulary the space exposes, one line each. These are what
+    # `Vertex.llen`/`rlen`/`nverts`/`hem` and `Volume.linear`/`mask`/`mask_name`
+    # are, and they are the reason `space` is narrowed above:
+    #
+    #     @property
+    #     def nthings(self) -> int:
+    #         return self.space.nthings
+```
+
+Filled in against a synthetic 10-element space, all three of these work: scalar
+construction from an array and from a movie, `spatial_data`, the arithmetic
+operators, `empty`/`random`, `raw` (which round-trips through `space.wrap_rgb`),
+2D construction from both arrays and views, RGB construction including a movie,
+`to_json` in both modes, `uniques()` collapsed and expanded, `name`, and
+`as_renderable`. Writing to HDF works; reading back does *not*, for a reason that
+is nothing to do with the skeleton -- see "Known bug: a third space cannot be read
+back from HDF". Pinned by
+`test_the_documented_skeleton_for_a_new_space_actually_works`, which is this
+skeleton filled in and exercised, so the doc cannot rot into describing an
+extension point that no longer exists.
+
+Everything else on the scalar column is inherited and should not be reimplemented:
+`data`, `movie`, `shape`, `name`, `copy`, `to_json`, `uniques`, `save`, the eight
+arithmetic operators, `_write_data_hdf` and `_write_hdf` -- 29 members, 86
+statements.
+
+#### The 2D view
+
+```python
+class MyView2D(Dataview2D[MyView], MySpatial):
+    """Summary plus a numpydoc ``Parameters`` block, as above. Budget 30-40 lines."""
+
+    def __init__(
+        self,
+        dim1: Union[npt.NDArray, MyView],
+        dim2: Union[npt.NDArray, MyView],
+        subject: Optional[str] = None,   # optional, because it can come from dim1
+        myarg: Optional[str] = None,     # likewise
+        description: str = "",
+        cmap: Optional[str] = None,
+        vmin: Optional[float] = None,
+        vmax: Optional[float] = None,
+        vmin2: Optional[float] = None,
+        vmax2: Optional[float] = None,
+        **kwargs: Any,
+    ) -> None:
+        chan1, chan2 = _resolve_2d_channels(
+            dim1,
+            dim2,
+            channel_cls=MyView,
+            space_cls=MySpace,
+            subject=subject,
+            spec={"myarg": myarg},       # the same keys as MySpace.spec_keys;
+                                         # _resolve_channels uses them both to
+                                         # validate channel objects and to build
+                                         # the space when handed raw arrays
+            ranges=((vmin, vmax), (vmin2, vmax2)),
+        )
+        super().__init__(
+            chan1, chan2,
+            description=description,
+            cmap=cmap, vmin=vmin, vmax=vmax, vmin2=vmin2, vmax2=vmax2,
+            **kwargs,
+        )
+
+    @property                            # narrowing; Dataview2D.raw does it, via
+    def raw(self) -> MyViewRGB:          # space.align + space.wrap_rgb
+        return cast(MyViewRGB, super().raw)
+
+    def __repr__(self) -> str:           # optional
+        return "<2D my data for (%s)>" % self.dim1.subject
+```
+
+That is the whole class. No `spatial_data`, no `volume`/`vertices`, no `to_json`,
+no `_write_hdf` -- a 2D view owns no array of its own, so all of that is on
+`Dataview2D`. Override `_write_hdf` only if slot 7 needs something other than
+`space.view_xfmname`, as `Volume2D` does to record a transform name per dimension.
+
+#### The RGB view
+
+```python
+class MyViewRGB(DataviewRGB[MyView], MySpatial):
+    """Summary plus a numpydoc ``Parameters`` block. Budget 60-70 lines -- the
+    three channel colours, the HSV caps and the per-channel bounds all need
+    documenting."""
+
+    def __init__(
+        self,
+        channel1: Union[npt.NDArray, MyView],
+        channel2: Union[npt.NDArray, MyView],
+        channel3: Union[npt.NDArray, MyView],
+        subject: Optional[str] = None,
+        myarg: Optional[str] = None,
+        alpha: Optional[Union[npt.NDArray, MyView]] = None,
+        description: str = "",
+        state: Any = None,
+        channel1color: Color[int] = Colors.Red,
+        channel2color: Color[int] = Colors.Green,
+        channel3color: Color[int] = Colors.Blue,
+        max_color_value: Optional[float] = None,
+        max_color_saturation: float = 1.0,
+        vmin: Optional[Union[float, tuple[float, float, float]]] = None,
+        vmax: Optional[Union[float, tuple[float, float, float]]] = None,
+        autorange: Literal["shared", "individual"] = "individual",
+        priority: int = 1,
+    ) -> None:
+        red, green, blue, resolved_alpha = _resolve_rgb_channels(
+            (channel1, channel2, channel3),
+            channel_cls=MyView,
+            space_cls=MySpace,
+            subject=subject,
+            spec={"myarg": myarg},
+            colors=(channel1color, channel2color, channel3color),
+            max_color_value=max_color_value,
+            max_color_saturation=max_color_saturation,
+            vmin=vmin, vmax=vmax, autorange=autorange,
+            alpha=alpha,
+        )
+        super().__init__(
+            red, green, blue,
+            alpha=resolved_alpha,
+            subject=subject,
+            description=description, state=state, priority=priority,
+        )
+
+    @property                            # narrowing, if any space-specific member
+    def space(self) -> MySpace:          # is read below. Sound because
+        return self.red.space            # DataviewRGB[MyView] fixes the channel
+                                         # type; the generic base cannot say so
+
+    def __repr__(self) -> str:           # optional
+        return "<RGB my data for (%s)>" % self.subject
+```
+
+Also the whole class. `name`, `__hash__`, `spatial_data`, `to_json`, `_write_hdf`,
+`alpha` and its NaN masking, `_default_alpha`, `_channel_stack`, `_rgba_stack`,
+`uniques`, `copy` and `color_voxels` are all on `DataviewRGB` -- 23 members, 155
+statements, and eleven of those members were per-subclass until recently.
+
+#### Why none of this is generated
+
+The obvious next step is to generate the three classes from the space and let a new
+one subclass only for extras. It was costed and rejected; the numbers are why.
+
+Taking the surface family as one space's cost, of roughly 380 mechanical lines:
+
+| | lines | generatable? |
+| --- | --- | --- |
+| the three `__init__` signatures | 90 | **no** |
+| the three class docstrings | 123 | **no** |
+| the space's own vocabulary accessors | 17 | no -- it is new by definition |
+| genuinely new logic (`spatial_data`, cross-space maps, `__getitem__`) | 101 | no |
+| narrowing properties (`space`, `raw` x 3) | 20 | **no** |
+| `empty`/`random` and three `__repr__`s | 24 | yes |
+
+- **`__init__`** cannot be generated because the space-identifying argument is
+  passed *positionally* -- `cortex.Volume(arr, "S1", "fullhead")` -- so a generic
+  `__init__(self, data, subject, **spec)` cannot put `myarg` in position 3. That is
+  an API break, not a refactor. A `**kwargs` constructor also gives up parameter
+  types and positional arity: mypy currently rejects `Vertex2D(a, a, vmin="lo")`,
+  `VertexRGB(a, a, a, 3)` and a fourth positional to `Vertex`. (It does *not* reject
+  a misspelled keyword -- every constructor already ends in `**kwargs: Any` -- so
+  that much is lost already.) A `.pyi` stub recovers the checking at the price of
+  writing every signature twice.
+- **Class docstrings** are rendered verbatim by `autoclass`, and they *are* the
+  parameter documentation. Generating them means templating numpydoc, which is
+  worse than writing it.
+- **Narrowing properties** exist precisely to state a static type. A generated
+  property has no narrowed type, so nothing is saved.
+- **`empty`/`random`** genuinely could be `def random(cls, *args, **kwargs)`
+  forwarding to `cls._space_cls(*args)`. But `Volume.empty("S1", "fullhead", 5)`
+  passes `value` positionally today, and `*args` would swallow the `5` into the
+  space constructor as `mask=5` -- silent breakage. Making `value` keyword-only
+  fixes it and is an API change; and `*args: Any` means `Volume.empty("S1")`
+  type-checks and fails at runtime.
+
+So the ceiling is about 6% of the mechanical lines, half of it behind an API
+change, in exchange for an `__init_subclass__` mechanism. If the per-space cost is
+still the problem, the lever is the ~101 lines of genuinely new logic, and the only
+help available there is this document.
 
 ### One channel resolver for both composite columns
 
@@ -836,6 +1104,49 @@ were passed explicitly. No test covers it: they all build data with
 Note this is *not* an argument for converting the percentile to a Python `float` --
 see the numerics note above for why that changes on-disk node identity. The fix
 belongs at the JSON boundary, not in the percentile.
+
+## Known bug: a third space cannot be read back from HDF
+
+`register_space` appends to `_SPACES`, and `_from_hdf_data` walks that list taking
+the first space whose `from_hdf` returns non-`None`. `SurfaceSpace.from_hdf`
+accepts *any* node without a transform:
+
+```python
+if xfmname is not None:
+    return None
+return cls(subject)
+```
+
+So a space registered by a third party -- necessarily after `cortex.dataset` has
+imported and registered its own two -- is consulted last and never reached.
+`SurfaceSpace` claims the node, `space.wrap` builds a `Vertex`, and
+`SurfaceSpace.coerce` then raises on the vertex count:
+
+```
+ValueError: Invalid number of vertices for subject (given 10, should be 152893
+for left hem, 151487 for right hem, or 304380 for both)
+```
+
+`cortex.load` swallows that per-view and returns an *empty* Dataset rather than
+failing, so the data is silently gone. Writing is unaffected: the nodes and their
+`write_hdf_attrs` discriminator are on disk correctly, and can be read by hand.
+
+Two candidate fixes, neither applied:
+
+- Have `register_space` insert before the first space that declares itself a
+  fallback, so `SurfaceSpace` stays last however many spaces are added. This is a
+  behaviour change for anyone who registered a space expecting append order, which
+  is nobody outside this repository, and it makes the extension point work as
+  documented.
+- Have `_from_hdf_data` prefer a space whose discriminator is present, consulting
+  catch-alls only on a second pass. More code, but it does not depend on
+  registration order at all.
+
+The reason this went unnoticed is that both built-in spaces are registered inside
+`_space.py`, in an order chosen by hand, so the append semantics were never
+exercised by a third registration. Pinned by
+`test_a_third_space_is_registered_behind_the_catch_all`, which asserts the wrong
+order on purpose so that a fix has something to flip.
 
 ## Other known issues, outside this package
 
