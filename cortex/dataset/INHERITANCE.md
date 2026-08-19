@@ -247,6 +247,7 @@ classDiagram
         +view_xfmname
         +template_shape
         +describe_layout()
+        +pack_for_webgl()
         +align()
         +from_spec()$
         +from_hdf()$*
@@ -282,6 +283,7 @@ Source locations:
 | `Dataview2D`, `Volume2D`, `Vertex2D` | `view2D.py` |
 | `DataviewRGB`, `VolumeRGB`, `VertexRGB`, `Colors` | `viewRGB.py` |
 | `BrainSpace`, `VolumeSpace`, `SurfaceSpace`, the space registry | `_space.py` |
+| `WebGLPayload`, `MosaicTexture`, `VertexAttributes`, `pack_png` | `_webgl.py` |
 | `Dataset` | `dataset.py` |
 | `_hash`, `_hdf_write`, `_find_mask` | `_hdf.py` |
 
@@ -389,7 +391,7 @@ raw arrays rather than channel objects. Each of the four used to be passed a
 volumetric space is subject plus xfmname, and both are mandatory" was written into
 four view constructors instead of into `VolumeSpace`.
 
-Four more members are deliberately *not* in the list above, because all four are
+Five more members are deliberately *not* in the list above, because all five are
 concrete on `BrainSpace` and most spaces should inherit them:
 
 - `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
@@ -409,6 +411,11 @@ concrete on `BrainSpace` and most spaces should inherit them:
   which describes the *space* rather than a particular array bound to it -- which
   is why only this one takes the data. These keys are read by `dataset.js`, so
   they are a hard interface.
+- `pack_for_webgl(data, raw=...)`, the array encoded for the browser. Defaults to
+  raising, since only two encodings exist and a space with no browser
+  representation is legitimate; a space wanting one returns `MosaicTexture` or
+  `VertexAttributes`. See "What a new spatial kind must implement to be rendered"
+  below.
 - `align(first, second)`, two views' arrays in a layout where position *i* means
   the same place in both -- what a 2D view needs before it can colormap its two
   dimensions jointly. The stored arrays serve any space in which one array position
@@ -429,7 +436,7 @@ key on disk has an obvious value to write in `write_hdf_attrs` and match in
 ### What the space owns, and why
 
 The rule is that anything depending on the *geometry* belongs to the space, so
-that adding a space does not mean editing the columns. Six things moved there,
+that adding a space does not mean editing the columns. Seven things moved there,
 each because it was the same question asked once per space:
 
 | was | now | it was duplicated as |
@@ -440,6 +447,7 @@ each because it was the same question asked once per space:
 | whether two masked arrays can be compared elementwise | `align` | `Volume2D.raw` at 15 lines against `Vertex2D.raw` at 2 |
 | "subject and xfmname are both mandatory" | `spec_keys` + `from_spec` | a lambda plus a dict in each of 4 constructors |
 | the transform name a volumetric view reports | `xfmname`, now concrete on `VolumetricView` | 3 overrides, two of which reached through a channel |
+| how an array reaches the browser | `pack_for_webgl` | 3 `isinstance(brain, SurfaceView)` forks in `webgl/data.py`, plus a guard for "neither" |
 
 `split_hemispheres` also removed the one place a view reached *through a channel*
 for geometry: `VertexRGB.left` read `self.red.llen` because `DataviewRGB.space` is
@@ -533,8 +541,9 @@ class MyView(ScalarView, MySpatial):
             description=description, state=state,
             **kwargs,
         )
-        self._resolve_percentiles()      # optional: default vmin/vmax to the
-                                         # 1st/99th percentile at build time
+        # Nothing else. `ScalarView.__init__` defaults vmin/vmax to the 1st/99th
+        # data percentiles, so this view leaves construction with numeric bounds
+        # like every other -- see "One rule for vmin/vmax" below.
 
     _space: MySpace                      # a *bare* annotation, which narrows the
                                          # attribute without shadowing the property
@@ -675,6 +684,8 @@ class MyViewRGB(DataviewRGB[MyView], MySpatial):
         vmax: Optional[Union[float, tuple[float, float, float]]] = None,
         autorange: Literal["shared", "individual"] = "individual",
         priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,   # forward it, or a reloaded
+                                                     # view loses its metadata
     ) -> None:
         red, green, blue, resolved_alpha = _resolve_rgb_channels(
             (channel1, channel2, channel3),
@@ -693,6 +704,7 @@ class MyViewRGB(DataviewRGB[MyView], MySpatial):
             alpha=resolved_alpha,
             subject=subject,
             description=description, state=state, priority=priority,
+            attrs=attrs,
         )
 
     @property                            # narrowing, if any space-specific member
@@ -703,6 +715,13 @@ class MyViewRGB(DataviewRGB[MyView], MySpatial):
     def __repr__(self) -> str:           # optional
         return "<RGB my data for (%s)>" % self.subject
 ```
+
+Note the RGB column takes `attrs` as a named parameter rather than ending in
+`**kwargs` like the other two. That is deliberate: an unknown keyword to an RGB view
+is a plain `TypeError` from Python itself, which is stricter than the near-miss check
+the others get, and is pinned by `test_rgb_rejects_unknown_kwargs`. The cost is that
+a space's RGB view has to declare and forward `attrs` explicitly, or metadata is
+dropped when the view is rebuilt from HDF.
 
 Also the whole class. `name`, `__hash__`, `spatial_data`, `to_json`, `_write_hdf`,
 `alpha` and its NaN masking, `_default_alpha`, `_channel_stack`, `_rgba_stack`,
@@ -730,10 +749,12 @@ Taking the surface family as one space's cost, of roughly 380 mechanical lines:
   `__init__(self, data, subject, **spec)` cannot put `myarg` in position 3. That is
   an API break, not a refactor. A `**kwargs` constructor also gives up parameter
   types and positional arity: mypy currently rejects `Vertex2D(a, a, vmin="lo")`,
-  `VertexRGB(a, a, a, 3)` and a fourth positional to `Vertex`. (It does *not* reject
-  a misspelled keyword -- every constructor already ends in `**kwargs: Any` -- so
-  that much is lost already.) A `.pyi` stub recovers the checking at the price of
-  writing every signature twice.
+  `VertexRGB(a, a, a, 3)` and a fourth positional to `Vertex`. (mypy still does not
+  reject a misspelled keyword, since four of the six constructors end in
+  `**kwargs: Any` -- but the *runtime* now does, so this is caught on the first
+  call rather than never. See "Unknown keywords" below.)
+  A `.pyi` stub recovers the static checking at the price of writing every
+  signature twice.
 - **Class docstrings** are rendered verbatim by `autoclass`, and they *are* the
   parameter documentation. Generating them means templating numpydoc, which is
   worse than writing it.
@@ -783,6 +804,69 @@ through it and never name `Volume` or `Vertex`. A space is per-view, not shared:
 `coerce()` records facts that depend on the particular array bound to it (which
 mask a flattened array matches, which hemisphere a half-length array covered), so
 `wrap()` uses `self` only as a template of parameters.
+
+### Unknown keywords: `attrs` is a feature, a typo is not
+
+Four of the six constructors end in `**kwargs: Any`, and whatever lands there
+becomes `Dataview.attrs`, written to HDF slot 6 and shipped in the browser payload.
+That is a real feature and not an accident: `stim` is read by
+`webgl/view.py`, `alpha` by `Dataview2D._raw_kwargs`, `priority` by `Dataview`
+itself, and users hang their own metadata there. So unknown keywords cannot simply
+be rejected.
+
+What *was* an accident is that the sink swallowed misspellings of real parameters.
+`Volume(data, subj, xfm, cmpa="hot")` built a view with the **default** colormap
+plus an attribute nothing would ever read, and reported nothing.
+
+`Dataview.__init__` now runs `_reject_misspelled_kwargs` over whatever reached it,
+raising `TypeError` for any key that is a near-miss of a parameter its concrete
+class accepts, and letting everything else through to `attrs`:
+
+```python
+cortex.Volume(data, "S1", "fullhead", cmpa="hot")     # TypeError: did you mean 'cmap'?
+cortex.Volume(data, "S1", "fullhead", stim="a.mp4")   # fine -- attrs metadata
+cortex.Volume(data, "S1", "fullhead", attrs={"cmpa": "hot"})   # fine -- explicit
+```
+
+Pinned by `test_a_misspelled_constructor_keyword_is_rejected`, which covers all
+three lines above.
+
+Three things about the shape of it:
+
+- **The parameter names come from the whole MRO**, via `inspect.signature` on each
+  `__init__` in it, cached per class. They have to: `cmap` is named by
+  `Volume.__init__` and `description` only by `Dataview.__init__`, and a typo of
+  either should be caught. A third-party view gets this for free.
+- **The cutoff is 0.75, and both bounds are real cases.** `cmpa`/`cmap` -- the
+  motivating typo -- scores exactly 0.75 on `difflib`'s ratio, and `name`/`xfmname`
+  scores 0.727 while `name` is a plausible attr. Widening it to 0.7 makes
+  `Volume(..., name=...)` an error.
+- **`attrs=` is checked differently from `**kwargs`, deliberately.** Keywords a
+  caller *types* are checked; a dict passed as `attrs=` is carried verbatim. That
+  is what `copy()` and the three HDF factories use, because at that point the
+  metadata is *data*: a file written by an older pycortex may hold a key today's
+  constructor would flag, and `Dataset.from_file` swallows per-view exceptions, so
+  raising would make the view vanish rather than fail loudly. Pinned by
+  `test_carried_attrs_are_not_revalidated`. It doubles as the escape hatch for a
+  key that really does resemble a parameter name.
+
+On conflict `attrs` wins over a typed keyword, which matters for exactly one key.
+`priority` is both an attr and a *named parameter* of the RGB constructors, whose
+default is indistinguishable from an explicit value -- so ordering it the other way
+meant `copy()` and an HDF reload both reset a priority of 3 back to 1, since
+neither passes the parameter. Pinned by
+`test_priority_survives_copy_and_reload_for_every_view`.
+
+Fixing the sink is also what let the HDF factories stop hand-filtering their
+kwargs. `_from_hdf_view` had a `_RGB_KWARGS = ("description", "state", "priority")`
+whitelist whose real job was to discard a `cmap=None` that `from_hdf` had
+synthesised from the JSON `null` in slot 2 -- the slot an RGB view writes *because
+it has no colormap*. `from_hdf` no longer invents the argument, so the RGB branch
+forwards what it was given. One filter survives, in `_from_hdf_data`, and it is not
+a workaround for the construction path: there the *view* record said "scalar", so
+it carried a colormap and bounds, and only opening the data node revealed legacy
+packed RGB. Those three arguments describe a colormap the view does not have, so
+they are meaningless rather than merely unaccepted.
 
 ## Narrowing the grid
 
@@ -973,9 +1057,11 @@ it is a property of the column, not of the space.
 
 ## What a new spatial kind must implement to be rendered
 
-The two renderers are not equally open, and the difference is not a matter of
+The two renderers ask for different amounts, and the difference is not a matter of
 tidiness: `spatial_data` is enough to *draw a flatmap*, but not enough to *ship
 data to a browser*, because the browser needs to know how the bytes are laid out.
+Both are now open to a new spatial kind, but the webgl one is open only to the
+extent of picking between the two layouts `dataset.js` understands.
 
 ### `quickflat` — nothing beyond the spatial ABC
 
@@ -990,27 +1076,64 @@ that has none, with a `TypeError` naming the class: `with_dropout`,
 requirement, not a closed-world assumption — there is nothing a transformless kind
 could do with them.
 
-### `webgl` / `webshow` — pick one of exactly two wire encodings
+### `webgl` / `webshow` — `space.pack_for_webgl`, returning one of two encodings
 
-`webgl/data.py`'s `Package` reads `spatial_data` like everything else, but it must
-then choose how the array reaches the browser, and only two encodings exist:
+`webgl/data.py`'s `Package` reads `spatial_data` like everything else, and then asks
+the space to encode it: `space.pack_for_webgl(spatial_data, raw=...)` returns a
+`WebGLPayload`, of which exactly two exist because `dataset.js` can read exactly
+two. `raw` says the array is 4-channel uint8 from an RGB view rather than scalar
+floats.
 
-| | volumetric encoding | surface encoding |
+| | `MosaicTexture` | `VertexAttributes` |
 | --- | --- | --- |
+| returned by | `VolumeSpace` | `SurfaceSpace` |
 | array shape | `(frames, z, y, x[, 4])` | `(frames, nverts[, 4])` |
 | packing | `volume.mosaic()` per frame → PNG | raw `.npy` bytes |
-| JSON | sets `mosaic` to the tile shape | no `mosaic` key |
+| JSON (`describe()`) | `raw`, and `mosaic` set to the tile shape | `raw` only, no `mosaic` key |
 | slot 7 | `[xfmname]` | `null` |
-| vertex order | n/a | **must** be permuted by `Package.reorder` into the CTM's order |
+| vertex order | `reorder` is a no-op | **must** be permuted by `Package.reorder` into the CTM's order |
 | JS path | texture, sampled through the transform | per-vertex attribute |
 | premultiplied alpha | no — Three.js premultiplies on texture upload | **yes**, done in Python |
 
-A new spatial kind must therefore inherit `VolumetricView` or `SurfaceView` *for the webgl
-path to work*, even though `quickflat` would have accepted a bare `RenderableView`.
-That is the one place where the spatial axis is genuinely not open, and it is a
-constraint of the browser code, not of this package: `dataset.js` selects the path
-by testing `mosaic === undefined`, so a kind wanting a third layout has to add a
-matching branch there (and to `shaderlib.js`, if it samples differently).
+Both live in `_webgl.py`, next to each other, because the packing, the `mosaic`
+key, the reordering and the premultiply are one decision. `Package` used to make it
+three times over —
+`isinstance(brain, SurfaceView)` for the premultiply, again for the packing, again
+in `reorder` — plus a fourth `not isinstance(brain, VolumetricView)` guard for
+"neither". So a new spatial kind had to inherit `VolumetricView` or `SurfaceView`
+*for the webgl path to work*, even though `quickflat` accepts a bare
+`RenderableView`, and that was the one place the spatial axis was genuinely not
+open.
+
+It is open now, in the sense that matters here: a space picks an encoding, so it
+reaches the browser without any edit to `webgl/data.py`. Pinned by
+`test_a_third_space_packs_its_own_webgl_encoding`. What is *not* open is the set of
+encodings — that is a constraint of the browser code, not of this package.
+`dataset.js` selects the path by testing `mosaic === undefined`, so a kind wanting a
+third layout still has to add a matching branch there (and to `shaderlib.js`, if it
+samples differently).
+
+`BrainSpace.pack_for_webgl` is concrete rather than abstract, and its default
+raises a `TypeError` naming the space, both encodings and the JS file. A space with
+no browser representation is a legitimate thing to have — `quickflat` needs only
+`spatial_data` — so this is a capability the space declines rather than one it
+forgets. Pinned by `test_a_space_with_no_webgl_encoding_says_so_once`, which also
+records what the old shape cost: a third kind fell through to `volume.mosaic` and
+died on "Invalid data shape", several frames deep, naming neither the view nor the
+real problem.
+
+Between `pack_for_webgl` and `describe_layout` the whole wire contract is now
+stated by the space. `mosaic` used to be the exception — assembled by the consumer
+while its sibling keys `shape`, `split` and `frames` came from the space — and it
+is `MosaicTexture.describe()` that closed that gap. Keys must be *absent* rather
+than null when they do not apply, since the JS tests `mosaic === undefined`.
+
+Treat `_webgl.py` as a compatibility surface with its own tests, not as a place to
+tidy up: the premultiplied-alpha asymmetry above is a fact about Three.js
+(`tex.premultiplyAlpha` on upload for the texture path, nothing at all for vertex
+attributes), and it is pinned in both directions by
+`test_vertexrgb_alpha_is_premultiplied_in_package` and
+`test_volumergb_alpha_is_NOT_premultiplied_in_package`.
 
 The geometry is always a surface mesh, whatever the spatial kind: `brainctm.py`
 builds it from `db.get_surf`, so volumetric data is rendered by sampling its texture
@@ -1067,10 +1190,51 @@ An RGB view built with `alpha=None` writes `null` in the alpha position of slot 
 rather than a synthesized fully-opaque channel, which is what makes
 `_from_hdf_view`'s `data[3] is not None` branch reachable.
 
+## One rule for `vmin`/`vmax`
+
+Bounds are resolved **once, in `ScalarView.__init__`**, which calls
+`_resolve_percentiles` after `coerce`. Every scalar view therefore leaves
+construction with numeric bounds, and a composite view inherits them from its
+channels. Pinned by `test_every_view_leaves_construction_with_numeric_bounds`.
+
+There were three rules, and which one applied depended on the class:
+
+| where | rule |
+| --- | --- |
+| `Volume.__init__` / `Vertex.__init__` | compute percentiles eagerly and store them |
+| `ScalarView.to_json` | compute them lazily, *if still* `None` |
+| `Dataview2D.__init__` | take them from `dim1` / `dim2` |
+
+So `view.vmin is None` after construction depended on which class built the object,
+and a consumer reading `.vmin` had to know which. The 2D rule stays -- a 2D view
+owns no array of its own, so its channels are the only place its bounds can come
+from, and they are resolved by the time it sees them. The other two collapsed into
+one: the eager call moved *up* from the two concrete classes onto the column, which
+makes it an invariant a new space inherits rather than a step its `__init__` has to
+remember, and the lazy fallback in `to_json` was then deleted rather than left as a
+second answer to a settled question.
+
+Two consequences worth stating, since neither is visible in a test that only
+exercises the six built-in classes:
+
+- **Nothing changes for them.** `Volume` and `Vertex` already resolved eagerly, so
+  the lazy branch in `to_json` was unreachable for anything this package builds --
+  including a view rebuilt from a legacy file whose slot 3 holds `null`, which
+  arrives through those same constructors. The saved HDF and `to_json()` output are
+  byte-identical across all six classes before and after.
+- **`to_json` now reports the bounds the view actually holds.** If something sets
+  `.vmin = None` after construction the JSON says `null`, rather than quietly
+  substituting a percentile the object itself would not report. Pinned by
+  `test_to_json_reports_the_bounds_it_was_given`.
+
+What did change is who guarantees the invariant: a `ScalarView` subclass that
+forgets to resolve its own bounds no longer exists as a possibility.
+
 ## Numerics note
 
-`ScalarView._resolve_percentiles` keeps `np.percentile`'s `np.float64` rather than
-converting to a Python `float`. Under NEP 50 a numpy scalar is a *strong* operand,
+`ScalarView._resolve_percentiles` -- called by `ScalarView.__init__` for every
+scalar view, per the section above -- keeps `np.percentile`'s `np.float64` rather
+than converting to a Python `float`. Under NEP 50 a numpy scalar is a *strong* operand,
 so `float32_channel -= vmin` computes in float64 and rounds once, where a weak
 Python float computes in float32. The difference is a single LSB on a handful of
 voxels -- but channel names are content hashes, so it silently changes on-disk node
