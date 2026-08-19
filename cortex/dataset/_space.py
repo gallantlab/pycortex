@@ -85,7 +85,8 @@ class BrainSpace(ABC):
     #:
     #: Nothing in the package reads it. Detection on load does not use it either,
     #: despite the name: :func:`~cortex.dataset.views._detect_space` walks
-    #: :func:`registered_spaces` in registration order and takes the first space
+    #: :func:`registered_spaces` in order -- fallbacks last, see
+    #: :func:`register_space` -- and takes the first space
     #: whose :meth:`from_hdf` returns non-``None``, which is why the built-ins key
     #: off whether a transform name is present rather than off any stored key.
     #:
@@ -94,6 +95,17 @@ class BrainSpace(ABC):
     #: :meth:`write_hdf_attrs` and match in :meth:`from_hdf` -- neither built-in
     #: needs one, since legacy files predate the idea and carry no such key.
     hdf_key: ClassVar[str]
+
+    fallback: ClassVar[bool] = False
+    """Whether this space claims any node no other space wanted.
+
+    A fallback exists only because legacy files carry no space discriminator:
+    :class:`SurfaceSpace` accepts anything without a transform, which is how a
+    pre-registry file is recognised. Set it and :func:`register_space` keeps you
+    behind every non-fallback space, however many are added later. Leave it False
+    -- a new space should test in :meth:`from_hdf` for something it writes itself
+    in :meth:`write_hdf_attrs`, and will then be consulted ahead of the catch-all.
+    """
 
     spec_keys: ClassVar[tuple[str, ...]] = ()
     """Constructor arguments besides ``subject`` that identify this space.
@@ -293,11 +305,27 @@ _SPACES: list[type[BrainSpace]] = []
 def register_space(space: type[BrainSpace]) -> type[BrainSpace]:
     """Register a space so the HDF factories and ``normalize`` can find it.
 
-    Order matters: :func:`registered_spaces` is consulted in registration
-    order and the first space whose :meth:`BrainSpace.from_hdf` returns
-    non-None wins. ``SurfaceSpace`` is deliberately last, since it accepts
-    anything without a transform.
+    Order matters: :func:`registered_spaces` is consulted in order and the first
+    space whose :meth:`BrainSpace.from_hdf` returns non-None wins. A space is
+    inserted ahead of every :attr:`BrainSpace.fallback` space, so the catch-alls
+    stay last however many spaces are added.
+
+    This used to append, which meant a space registered by a third party -- and
+    that is necessarily after ``cortex.dataset`` has registered its own two --
+    landed *behind* ``SurfaceSpace``, whose ``from_hdf`` accepts any node without
+    a transform. It was therefore never reached: ``SurfaceSpace`` claimed the
+    node, ``wrap`` built a ``Vertex``, ``coerce`` raised on the vertex count, and
+    ``cortex.load`` swallowed that per view and returned an empty Dataset. The
+    append semantics were never exercised, because both built-in spaces are
+    registered here in an order chosen by hand.
     """
+    if space.fallback:
+        _SPACES.append(space)
+        return space
+    for i, existing in enumerate(_SPACES):
+        if existing.fallback:
+            _SPACES.insert(i, space)
+            return space
     _SPACES.append(space)
     return space
 
@@ -550,6 +578,9 @@ class SurfaceSpace(BrainSpace):
     """
 
     hdf_key = "surface"
+    #: Claims any node without a transform, which is how legacy files -- written
+    #: before spaces existed, so carrying no discriminator -- are recognised.
+    fallback = True
 
     def __init__(self, subject: Union[str, bytes]) -> None:
         super().__init__(subject)

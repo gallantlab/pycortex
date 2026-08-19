@@ -464,18 +464,29 @@ that inherits neither is still a perfectly good `Dataview`; it just cannot be
 passed to the flatmap renderers, and `as_renderable` will say so.
 
 `register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
-and `normalize` dispatch through. Order matters: the registry is consulted in
-registration order and the first space whose `from_hdf` returns non-`None` wins.
-`SurfaceSpace` is deliberately last *among the built-ins*, because it accepts
-anything without a transform -- that is how legacy files, which carry no space
-discriminator, are detected.
+and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
+matters: the registry is consulted in order and the first space whose `from_hdf`
+returns non-`None` wins.
 
-**A third-party space is not consulted ahead of them.** `register_space` appends,
-so anything registered after import lands *behind* `SurfaceSpace`'s catch-all and
-never gets asked. Writing a discriminator in `write_hdf_attrs` and testing for it
-in `from_hdf` is necessary but not sufficient, and HDF round-tripping does *not*
-work for a new space today -- see "Known bug: a third space cannot be read back
-from HDF".
+Order is by **`fallback`**, not by arrival. A fallback space claims any node no
+other space wanted, and exists only because legacy files carry no space
+discriminator: `SurfaceSpace` sets it, and accepts anything without a transform,
+which is how a pre-registry file is recognised. `register_space` inserts a
+non-fallback space ahead of every fallback one, so the catch-alls stay last
+however many spaces are added. Leave `fallback` alone; test in `from_hdf` for
+something you write yourself in `write_hdf_attrs`, and you will be consulted
+ahead of the built-in catch-all.
+
+That last part is recent. `register_space` used to append, which meant a space
+registered by a third party -- necessarily after `cortex.dataset` has registered
+its own two -- landed *behind* `SurfaceSpace` and was never reached:
+`SurfaceSpace` claimed the node, `wrap` built a `Vertex`, `coerce` raised on the
+vertex count, and `cortex.load` swallowed that per view and returned an **empty**
+Dataset, so the data was silently gone. Writing was unaffected throughout. Nobody
+noticed because both built-in spaces are registered inside `_space.py`, in an
+order chosen by hand, so the append semantics were never exercised by a third
+registration. Pinned by `test_a_third_space_registers_ahead_of_the_catch_all`,
+which also checks that a *second* fallback still sorts behind every real space.
 
 ### The three view classes, written out
 
@@ -570,10 +581,10 @@ Filled in against a synthetic 10-element space, all three of these work: scalar
 construction from an array and from a movie, `spatial_data`, the arithmetic
 operators, `empty`/`random`, `raw` (which round-trips through `space.wrap_rgb`),
 2D construction from both arrays and views, RGB construction including a movie,
-`to_json` in both modes, `uniques()` collapsed and expanded, `name`, and
-`as_renderable`. Writing to HDF works; reading back does *not*, for a reason that
-is nothing to do with the skeleton -- see "Known bug: a third space cannot be read
-back from HDF". Pinned by
+`to_json` in both modes, `uniques()` collapsed and expanded, `name`,
+`as_renderable`, and a full HDF round trip -- all three columns save and reload as
+their own classes, with the space rebuilt from the discriminator its
+`write_hdf_attrs` wrote. Pinned by
 `test_the_documented_skeleton_for_a_new_space_actually_works`, which is this
 skeleton filled in and exercised, so the doc cannot rot into describing an
 extension point that no longer exists.
@@ -1104,49 +1115,6 @@ were passed explicitly. No test covers it: they all build data with
 Note this is *not* an argument for converting the percentile to a Python `float` --
 see the numerics note above for why that changes on-disk node identity. The fix
 belongs at the JSON boundary, not in the percentile.
-
-## Known bug: a third space cannot be read back from HDF
-
-`register_space` appends to `_SPACES`, and `_from_hdf_data` walks that list taking
-the first space whose `from_hdf` returns non-`None`. `SurfaceSpace.from_hdf`
-accepts *any* node without a transform:
-
-```python
-if xfmname is not None:
-    return None
-return cls(subject)
-```
-
-So a space registered by a third party -- necessarily after `cortex.dataset` has
-imported and registered its own two -- is consulted last and never reached.
-`SurfaceSpace` claims the node, `space.wrap` builds a `Vertex`, and
-`SurfaceSpace.coerce` then raises on the vertex count:
-
-```
-ValueError: Invalid number of vertices for subject (given 10, should be 152893
-for left hem, 151487 for right hem, or 304380 for both)
-```
-
-`cortex.load` swallows that per-view and returns an *empty* Dataset rather than
-failing, so the data is silently gone. Writing is unaffected: the nodes and their
-`write_hdf_attrs` discriminator are on disk correctly, and can be read by hand.
-
-Two candidate fixes, neither applied:
-
-- Have `register_space` insert before the first space that declares itself a
-  fallback, so `SurfaceSpace` stays last however many spaces are added. This is a
-  behaviour change for anyone who registered a space expecting append order, which
-  is nobody outside this repository, and it makes the extension point work as
-  documented.
-- Have `_from_hdf_data` prefer a space whose discriminator is present, consulting
-  catch-alls only on a second pass. More code, but it does not depend on
-  registration order at all.
-
-The reason this went unnoticed is that both built-in spaces are registered inside
-`_space.py`, in an order chosen by hand, so the append semantics were never
-exercised by a third registration. Pinned by
-`test_a_third_space_is_registered_behind_the_catch_all`, which asserts the wrong
-order on purpose so that a fix has something to flip.
 
 ## Other known issues, outside this package
 

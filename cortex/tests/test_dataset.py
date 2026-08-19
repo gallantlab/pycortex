@@ -1034,33 +1034,74 @@ def test_the_documented_skeleton_for_a_new_space_actually_works():
     assert as_renderable(view) is view
     assert not isinstance(view, (VolumetricView, SurfaceView))
 
-
-def test_a_third_space_is_registered_behind_the_catch_all():
-    """Known bug, pinned so the fix has something to flip.
-
-    ``register_space`` appends, and ``SurfaceSpace.from_hdf`` accepts any node
-    without a transform, so a space registered by a third party is never reached.
-    See "Known bug: a third space cannot be read back from HDF" in INHERITANCE.md.
-    """
+    # --- HDF round trip, which needs the space registered so that _detect_space
+    # can find it. All three columns must come back as their own classes.
     from cortex.dataset import _space as space_mod
 
-    order = [c.__name__ for c in space_mod.registered_spaces()]
-    assert order == ["VolumeSpace", "SurfaceSpace"]
+    saved = list(space_mod._SPACES)
+    try:
+        space_mod.register_space(MySpace)
+        fname = os.path.join(tempfile.mkdtemp(), "third.hdf")
+        cortex.Dataset(scalar=view, twod=twod, rgb=rgb).save(fname)
+        back = cortex.load(fname)
+        assert {k: type(back[k]).__name__ for k in sorted(back.views)} == {
+            "rgb": "MyViewRGB",
+            "scalar": "MyView",
+            "twod": "MyView2D",
+        }
+        assert np.allclose(back["scalar"].data, arr)
+        assert back["scalar"].space.myarg == "a"      # written by write_hdf_attrs
+    finally:
+        space_mod._SPACES[:] = saved
+
+
+def test_a_third_space_registers_ahead_of_the_catch_all():
+    """Registration order is by fallback, not by arrival.
+
+    ``register_space`` used to append, so a space registered by a third party --
+    necessarily after ``cortex.dataset`` has registered its own two -- landed
+    behind ``SurfaceSpace``, whose ``from_hdf`` accepts any node without a
+    transform, and was never reached. ``SurfaceSpace`` claimed the node,
+    ``wrap`` built a ``Vertex``, ``coerce`` raised on the vertex count, and
+    ``cortex.load`` swallowed that per view and returned an empty Dataset.
+    """
+    from cortex.dataset import _space as space_mod
+    from cortex.dataset._space import SurfaceSpace, VolumeSpace
+
+    # only the catch-all declares itself one, and the built-in order is unchanged
+    assert SurfaceSpace.fallback and not VolumeSpace.fallback
+    assert [c.__name__ for c in space_mod.registered_spaces()] == [
+        "VolumeSpace",
+        "SurfaceSpace",
+    ]
 
     MySpace = _third_space_family()[0]
+    assert not MySpace.fallback
     saved = list(space_mod._SPACES)
     try:
         space_mod.register_space(MySpace)
         after = [c.__name__ for c in space_mod.registered_spaces()]
-        # the defect: the catch-all still precedes the new space
-        assert after.index("SurfaceSpace") < after.index("MySpace")
-        # and the catch-all really does claim a node the new space wrote
+        assert after == ["VolumeSpace", "MySpace", "SurfaceSpace"]
+
+        # so the new space claims its own node, rather than the catch-all doing it
         claimed = None
         for cls in space_mod.registered_spaces():
-            claimed = cls.from_hdf({"myarg": "a"}, subject=subj, xfmname=None, mask=None)
+            claimed = cls.from_hdf(
+                {"myarg": "a"}, subject=subj, xfmname=None, mask=None
+            )
             if claimed is not None:
                 break
-        assert type(claimed).__name__ == "SurfaceSpace"
+        assert type(claimed) is MySpace
+
+        # and a further fallback still sorts behind every real space
+        class LaterFallback(MySpace):
+            fallback = True
+
+        space_mod.register_space(LaterFallback)
+        assert [c.__name__ for c in space_mod.registered_spaces()][-2:] == [
+            "SurfaceSpace",
+            "LaterFallback",
+        ]
     finally:
         space_mod._SPACES[:] = saved
 
