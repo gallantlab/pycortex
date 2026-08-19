@@ -276,6 +276,18 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
             [c.spatial_data for c in (self.red, self.green, self.blue)]
         )
 
+    @property
+    def spatial_data(self) -> npt.NDArray[np.uint8]:
+        """The four channels as one uint8 RGBA array with a leading frame axis.
+
+        ``(t, z, y, x, rgba)`` for a volumetric space, ``(t, v, rgba)`` for a
+        surface one; the rank follows the space, and nothing here needs to know
+        which. Published as ``volume`` and ``vertices`` respectively by the
+        spatial interface, where it used to be written out once per subclass
+        under each of those names.
+        """
+        return self._rgba_stack()
+
     def _rgba_stack(self) -> npt.NDArray[np.uint8]:
         """Stack the four channels into a trailing RGBA axis.
 
@@ -858,13 +870,6 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
         """
         return self.red.xfmname
 
-    @property
-    def volume(self) -> npt.NDArray[np.uint8]:
-        """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
-        into 8-bit unsigned integers that correspond to colors.
-        """
-        return self._rgba_stack()
-
     def __repr__(self) -> str:
         return "<RGB volumetric data for (%s, %s)>" % (
             self.red.subject,
@@ -983,13 +988,6 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
             state=state,
             priority=priority,
         )
-
-    @property
-    def vertices(self) -> npt.NDArray[np.uint8]:
-        """3-dimensional array (t, v, rgba) with data that has been mapped
-        into 8-bit unsigned integers that correspond to colors.
-        """
-        return self._rgba_stack()
 
     @property
     def space(self) -> SurfaceSpace:

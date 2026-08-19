@@ -374,11 +374,17 @@ class RenderableView(Dataview):
     def spatial_data(self) -> npt.NDArray:
         """The array a renderer samples, with a leading time axis.
 
-        Each spatial interface points this at whichever of its accessors holds the
-        values -- ``volume`` for volumetric data, ``vertices`` for surface. Paired
-        with ``view.space.xfmname``, which says what to sample *through*, and named
-        to match :attr:`BrainSpace.spatial_shape`, which is the shape of one frame
-        of it.
+        This is *the* member a view implements to be renderable. Each spatial
+        interface then exposes it under the name its space has always used --
+        :attr:`VolumetricView.volume`, :attr:`SurfaceView.vertices` -- rather than
+        the reverse, which is how it was first written and which cost a property
+        per space per column: an RGB view and a 2D view each had to publish the
+        same array twice over, once as ``volume`` and once as ``vertices``, purely
+        to satisfy the interface it happened to inherit.
+
+        Paired with ``view.space.xfmname``, which says what to sample *through*,
+        and named to match :attr:`BrainSpace.spatial_shape`, which is the shape of
+        one frame of it.
         """
 
 
@@ -409,18 +415,15 @@ class VolumetricView(RenderableView):
         """Transform name. Must exist in the pycortex database."""
 
     @property
-    @abstractmethod
     def volume(self) -> npt.NDArray:
         """The data as a volume, with a leading time axis.
 
-        Scalar for :class:`Volume`; uint8 RGBA for the 2D and RGB views, whose
-        data has already been colormapped.
+        The volumetric name for :attr:`RenderableView.spatial_data`, and concrete
+        for every volumetric view: scalar and automatically unmasked for
+        :class:`Volume`, uint8 RGBA for the 2D and RGB views, whose data has
+        already been colormapped.
         """
-
-    @property
-    def spatial_data(self) -> npt.NDArray:
-        """A volumetric view is sampled from its volume."""
-        return self.volume
+        return self.spatial_data
 
     @property
     @abstractmethod
@@ -441,18 +444,14 @@ class SurfaceView(RenderableView):
     """
 
     @property
-    @abstractmethod
     def vertices(self) -> npt.NDArray:
         """The data per vertex, with a leading time axis.
 
-        Scalar for :class:`Vertex`; uint8 RGBA for the 2D and RGB views, whose
-        data has already been colormapped.
+        The surface name for :attr:`RenderableView.spatial_data`, and concrete for
+        every surface view: scalar for :class:`Vertex`, uint8 RGBA for the 2D and
+        RGB views, whose data has already been colormapped.
         """
-
-    @property
-    def spatial_data(self) -> npt.NDArray:
-        """A surface view is sampled per-vertex."""
-        return self.vertices
+        return self.spatial_data
 
     @property
     @abstractmethod
@@ -1047,9 +1046,11 @@ class Volume(ScalarView, VolumetricView):
         return self.space.mask_spec
 
     @property
-    def volume(self) -> npt.NDArray:
-        """Returns a 3D or 4D volume for this Volume, automatically unmasking
-        masked data.
+    def spatial_data(self) -> npt.NDArray:
+        """A 3D or 4D volume, automatically unmasking masked data.
+
+        Also reachable as :attr:`~cortex.dataset.views.VolumetricView.volume`,
+        which is the name this has always had in user code.
         """
         return self.space.unmask(self.data, self.movie)
 
@@ -1213,7 +1214,12 @@ class Vertex(ScalarView, SurfaceView):
         return self.space.hem
 
     @property
-    def vertices(self) -> npt.NDArray:
+    def spatial_data(self) -> npt.NDArray:
+        """The per-vertex data with a leading frame axis, added if absent.
+
+        Also reachable as :attr:`~cortex.dataset.views.SurfaceView.vertices`,
+        which is the name this has always had in user code.
+        """
         verts = self.data
         if not self.movie:
             verts = verts[np.newaxis]

@@ -685,6 +685,10 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
     A view in a space this package has never heard of is renderable as soon as it
     inherits whichever spatial interface describes how its data is sampled -- no entry
     and no union to edit.
+
+    Note what it has to implement: ``spatial_data`` and nothing else about its
+    array. ``vertices`` is the surface interface's name for that same array and
+    arrives concrete, so a third-party view does not publish it twice.
     """
     from cortex.dataset.views import as_renderable
     from cortex.dataset.views import SurfaceView
@@ -698,9 +702,11 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
         def subject(self):
             return subj
 
+        _array = np.zeros((1, 10))
+
         @property
-        def vertices(self):
-            return np.zeros((1, 10))
+        def spatial_data(self):
+            return self._array
 
         @property
         def raw(self):
@@ -715,6 +721,7 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
     view = ThirdPartyView()
     assert as_renderable(view) is view
     assert isinstance(view, SurfaceView)
+    assert view.vertices is view.spatial_data
 
 
 def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
@@ -753,6 +760,41 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
     assert not isinstance(fake, SurfaceView)
     with pytest.raises(TypeError, match="is not renderable"):
         as_renderable(fake)
+
+
+def test_the_spatial_array_is_implemented_once_per_view():
+    """``spatial_data`` is the abstract member; ``volume``/``vertices`` are aliases.
+
+    It used to be the other way round, which cost one property per space per
+    column: ``VolumeRGB.volume`` and ``VertexRGB.vertices`` were the same
+    ``_rgba_stack()`` call under two names, as were ``Volume2D.volume`` and
+    ``Vertex2D.vertices`` over ``raw``. Guard the direction, because re-abstracting
+    ``volume``/``vertices`` would silently reintroduce all four.
+    """
+    from cortex.dataset.view2D import Dataview2D
+    from cortex.dataset.viewRGB import DataviewRGB
+    from cortex.dataset.views import (
+        RenderableView,
+        SurfaceView,
+        Volume,
+        VolumetricView,
+    )
+
+    assert "spatial_data" in RenderableView.__abstractmethods__
+    for iface, alias in ((VolumetricView, "volume"), (SurfaceView, "vertices")):
+        assert alias in vars(iface), alias
+        assert alias not in iface.__abstractmethods__, alias
+
+    # each column class implements it exactly once, on the column and not on
+    # either of its two spatial subclasses
+    for column in (DataviewRGB, Dataview2D):
+        assert "spatial_data" in vars(column), column
+        for sub in column.__subclasses__():
+            assert "spatial_data" not in vars(sub), sub
+
+    # and the scalar column, whose two views differ in how they do it, is where
+    # the per-space implementations legitimately live
+    assert "spatial_data" in vars(Volume)
 
 
 def test_a_spatial_subclass_must_implement_its_interface():

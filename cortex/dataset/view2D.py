@@ -185,6 +185,18 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
     # ------------------------------------------------------------------
     # rendering
     # ------------------------------------------------------------------
+    @property
+    def spatial_data(self) -> npt.NDArray[np.uint8]:
+        """The colormapped RGBA array, as produced by :attr:`raw`.
+
+        A 2D view has no array of its own -- it is two channels plus a joint
+        colormap -- so what a renderer samples is whatever its RGB form ships.
+        Published as ``volume`` and ``vertices`` by the spatial interface;
+        ``Volume2D.volume`` did not exist at all until recently, which forced
+        every consumer to special-case it and reach for ``.raw.volume`` itself.
+        """
+        return self.raw.spatial_data
+
     def _to_raw(
         self, data1: npt.NDArray, data2: npt.NDArray
     ) -> tuple[
@@ -336,20 +348,6 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
     def xfmname(self) -> str:
         return self.dim1.xfmname
 
-    @property
-    def volume(self) -> npt.NDArray[np.uint8]:
-        """5-dimensional volume (t, z, y, x, rgba) of colormapped data.
-
-        Mirrors :attr:`Vertex2D.vertices`, which has always done this. Its
-        absence was an asymmetry that forced every consumer to special-case
-        ``Volume2D`` and reach for ``.raw.volume`` itself.
-
-        Note the uint8 RGBA result matches :attr:`VolumeRGB.volume` rather than
-        :attr:`Volume.volume`, which is scalar -- the same split ``vertices``
-        already has across :class:`Vertex` and :class:`Vertex2D`.
-        """
-        return self.raw.volume
-
     def __repr__(self) -> str:
         return "<2D volumetric data for (%s, %s)>" % (
             self.dim1.subject,
@@ -465,9 +463,6 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
         r, g, b, a = self._to_raw(self.dim1.data, self.dim2.data)
         return cast(VertexRGB, self._finish_raw(r, g, b, a))
 
-    @property
-    def vertices(self) -> npt.NDArray[np.uint8]:
-        return self.raw.vertices
 
 
 def _resolve_2d_channels(
