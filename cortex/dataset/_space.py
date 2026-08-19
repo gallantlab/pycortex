@@ -37,6 +37,20 @@ if TYPE_CHECKING:
     # Annotation-only, so _space stays importable by views.py without a cycle.
     from .views import DataviewJSON
 
+def _require(value: Optional[str], what: str) -> str:
+    """Assert that a space-defining argument was supplied.
+
+    Lives here rather than beside the views because what is mandatory is a
+    property of the space: :mod:`~cortex.dataset.view2D` and
+    :mod:`~cortex.dataset.viewRGB` each had their own copy, worded differently,
+    and applied it by hand to the arguments of whichever space class they were
+    about to construct.
+    """
+    if value is None:
+        raise TypeError("%s must be specified with raw data" % what)
+    return value
+
+
 MaskSpec = Union[str, npt.NDArray[np.bool_], None]
 """What the user passed as ``mask=``: a database mask name, an explicit boolean
 array, or nothing. Recorded verbatim so it can be round-tripped through HDF."""
@@ -81,6 +95,14 @@ class BrainSpace(ABC):
     #: needs one, since legacy files predate the idea and carry no such key.
     hdf_key: ClassVar[str]
 
+    spec_keys: ClassVar[tuple[str, ...]] = ()
+    """Constructor arguments besides ``subject`` that identify this space.
+
+    Read by :meth:`from_spec`, so that "a volumetric space is subject plus
+    xfmname, and both are mandatory" is stated once here rather than in each of
+    the four composite view constructors that had to build one.
+    """
+
     def __init__(self, subject: Union[str, bytes]) -> None:
         self.subject = (
             subject if isinstance(subject, str) else subject.decode("utf-8")
@@ -99,6 +121,22 @@ class BrainSpace(ABC):
     # ------------------------------------------------------------------
     # binding an array
     # ------------------------------------------------------------------
+    @classmethod
+    def from_spec(cls, subject: Optional[str], **spec: Any) -> Self:
+        """Build this space from the arguments a view constructor was handed.
+
+        The composite views need to construct a space when they are given raw
+        arrays rather than channel objects. Each used to be passed a ``lambda``
+        naming the space class with :func:`_require` applied to each of its
+        arguments, *and* a dict of those same keys to validate channel objects
+        against -- the same knowledge spelled out twice per constructor, four
+        times over.
+        """
+        name = _require(subject, "Subject")
+        for key in cls.spec_keys:
+            _require(spec.get(key), key)
+        return cls(name, **spec)
+
     @abstractmethod
     def coerce(self, data: Optional[npt.NDArray]) -> npt.NDArray:
         """Validate ``data`` against this space and return it, possibly padded.
@@ -270,6 +308,7 @@ class VolumeSpace(BrainSpace):
     """
 
     hdf_key = "volume"
+    spec_keys = ("xfmname",)
 
     def __init__(
         self,

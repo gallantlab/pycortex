@@ -15,6 +15,7 @@ from typing import (
     Mapping,
     Optional,
     Protocol,
+    Sequence,
     TypedDict,
     TypeVar,
     Union,
@@ -575,16 +576,76 @@ class SurfaceView(RenderableView):
 
 
 
-def _require(value: Optional[str], what: str) -> str:
-    """Assert that a space-defining argument was supplied.
+#: The scalar view type a composite view's channels have. Covariant, because the
+#: channels are read-only properties, so ``DataviewRGB[Volume]`` is safely usable
+#: where ``DataviewRGB[ScalarView]`` is expected; an invariant parameter would
+#: reject that, which is the usual generics tax. Declared here rather than once
+#: per composite column, which is where it was: two identical definitions
+#: carrying the same comment.
+ScalarT = TypeVar("ScalarT", bound="ScalarView", covariant=True)
 
-    Shared by the composite constructors in :mod:`~cortex.dataset.view2D` and
-    :mod:`~cortex.dataset.viewRGB`, which each had their own copy under this name
-    and worded the message differently.
+
+def _resolve_channels(
+    channels: Sequence[Union[npt.NDArray, "ScalarView"]],
+    *,
+    channel_cls: type[ScalarT],
+    space_cls: type[BrainSpace],
+    subject: Optional[str],
+    spec: dict[str, Any],
+    argnames: Sequence[str],
+) -> tuple[BrainSpace, Optional[list[ScalarT]]]:
+    """Validate a composite view's channel arguments and find their space.
+
+    Returns the space to build views in, plus the channels as already-built views
+    if that is what was passed and ``None`` if they were raw arrays -- the two
+    composite columns wrap arrays with different arguments (per-dimension ranges
+    against a colour basis), so wrapping is all that is left to them.
+
+    The two forms cannot be mixed: either every channel is a ``channel_cls`` and
+    they agree on subject and on whatever else identifies the space, or none is
+    and ``subject`` plus the space's :attr:`~cortex.dataset._space.BrainSpace.spec_keys`
+    must be given explicitly. ``Dataview2D`` and ``DataviewRGB`` each carried
+    this, with the same four checks in the same order and different wording.
+
+    ``argnames`` is only for messages, since one column calls its arguments
+    ``dim1``/``dim2`` and the other ``channel1``..``channel3``.
     """
-    if value is None:
-        raise TypeError("%s must be specified with raw data" % what)
-    return value
+    kind = channel_cls.__name__
+    first = channels[0]
+
+    if isinstance(first, channel_cls):
+        for name, chan in zip(argnames[1:], channels[1:]):
+            if not isinstance(chan, channel_cls):
+                raise TypeError(
+                    "%s is not a %s object; if %s is one then all of them must be"
+                    % (name, kind, argnames[0])
+                )
+            if chan.subject != first.subject:
+                raise TypeError("%s is from a different subject" % name)
+        if subject is not None and first.subject != subject:
+            raise ValueError(
+                "Subject in %s objects (%r) is different than specified subject "
+                "(%r)" % (kind, first.subject, subject)
+            )
+        for key, value in spec.items():
+            existing = getattr(first, key, None)
+            if value is not None and existing != value:
+                raise ValueError(
+                    "%s in %s objects (%r) is different than specified %s (%r)"
+                    % (key, kind, existing, key, value)
+                )
+        return first.space, [cast(ScalarT, c) for c in channels]
+
+    for name, chan in zip(argnames[1:], channels[1:]):
+        if isinstance(chan, channel_cls):
+            raise TypeError(
+                "%s is a %s object, so %s must be one as well"
+                % (name, kind, argnames[0])
+            )
+    # Only reached with raw arrays, so the space has to be built from scratch and
+    # every argument that identifies it is now mandatory. Which those are is the
+    # space's own business; see BrainSpace.from_spec.
+    return space_cls.from_spec(subject, **spec), None
 
 
 def as_renderable(view: Dataview) -> RenderableView:

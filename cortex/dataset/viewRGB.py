@@ -5,7 +5,6 @@ import sys
 import warnings
 from typing import (
     Any,
-    Callable,
     Generic,
     Iterator,
     Literal,
@@ -37,7 +36,8 @@ from .views import (
     Vertex,
     Volume,
     VolumetricView,
-    _require,
+    _resolve_channels,
+    ScalarT,
 )
 
 default_cmap = options.config.get("basic", "default_cmap")
@@ -48,11 +48,6 @@ Color = tuple[ColorDtype, ColorDtype, ColorDtype]  # RGB color
 
 #: A channel argument: either an array of values or an already-built scalar view.
 ChannelLike = Union[npt.NDArray, ScalarView]
-
-#: Covariant: the channels are read-only properties, so `DataviewRGB[Volume]` is
-#: safely usable where `DataviewRGB[ScalarView]` is expected.
-ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
-
 
 class Colors:
     """
@@ -638,9 +633,9 @@ def _resolve_rgb_channels(
     channels: tuple[ChannelLike, ChannelLike, ChannelLike],
     *,
     channel_cls: type[ScalarT],
-    fallback_space: Callable[[], BrainSpace],
+    space_cls: type[BrainSpace],
     subject: Optional[str],
-    space_kwargs: dict[str, Any],
+    spec: dict[str, Any],
     colors: tuple[Sequence[int], Sequence[int], Sequence[int]],
     max_color_value: Optional[float],
     max_color_saturation: float,
@@ -653,48 +648,31 @@ def _resolve_rgb_channels(
 
     Replaces the four-branch shape (channel-object vs ndarray, x, identity basis
     vs remap) that ``VolumeRGB`` and ``VertexRGB`` each carried separately -- the
-    same logic written out eight times.
+    same logic written out eight times. The validation half is shared further
+    still, with the 2D column, as :func:`~cortex.dataset.views._resolve_channels`.
     """
     chan1, chan2, chan3 = channels
-    kind = channel_cls.__name__
+    space, views = _resolve_channels(
+        list(channels),
+        channel_cls=channel_cls,
+        space_cls=space_cls,
+        subject=subject,
+        spec=spec,
+        argnames=("channel1", "channel2", "channel3"),
+    )
+    if views is None and not (
+        isinstance(chan2, np.ndarray) and isinstance(chan3, np.ndarray)
+    ):
+        # Stricter than the 2D column, which np.asarray's whatever it is given.
+        # Preserved as-is: loosening it would silently start accepting lists here
+        # while `Volume(list, ...)` still fails.
+        raise TypeError(
+            "Data channels must be numpy arrays if channel1 is a numpy array"
+        )
+
     # Coerced here rather than by each caller: a list or ndarray has to become a
     # fixed-length tuple before it can be compared against the identity basis.
     basis = (_as_color(colors[0]), _as_color(colors[1]), _as_color(colors[2]))
-
-    template: Optional[ScalarT] = None
-    if isinstance(chan1, channel_cls):
-        template = chan1
-        for pos, chan in (("2", chan2), ("3", chan3)):
-            if not isinstance(chan, channel_cls):
-                raise TypeError(
-                    "Data channel %s is not a %s object" % (pos, kind)
-                )
-            if chan.subject != chan1.subject:
-                raise TypeError(
-                    "Data channel %s is from a different subject" % pos
-                )
-        if subject is not None and chan1.subject != subject:
-            raise ValueError(
-                "Subject in %s objects (%r) is different than specified subject "
-                "(%r)" % (kind, chan1.subject, subject)
-            )
-        for key, value in space_kwargs.items():
-            existing = getattr(chan1, key, None)
-            if value is not None and existing != value:
-                raise ValueError(
-                    "%s in %s objects (%r) is different than specified %s (%r)"
-                    % (key, kind, existing, key, value)
-                )
-    else:
-        if subject is None:
-            raise TypeError("Subject name is required")
-        for key, value in space_kwargs.items():
-            _require(value, key)
-        if not isinstance(chan2, np.ndarray) or not isinstance(chan3, np.ndarray):
-            raise TypeError(
-                "Data channels must be numpy arrays if channel1 is a numpy array"
-            )
-
     identity_basis = (
         basis == _RGB_BASIS
         and vmin is None
@@ -704,17 +682,13 @@ def _resolve_rgb_channels(
 
     # Wrapping goes through the space, so this function never names a concrete
     # view class -- which is what lets a new space reuse it unchanged.
-    space = template.space if template is not None else fallback_space()
-
     def wrap(data: npt.NDArray) -> ScalarT:
         return cast(ScalarT, space.wrap(data))
 
     if identity_basis:
         # R/G/B basis can be passed straight through.
-        if template is not None:
-            assert isinstance(chan2, channel_cls)
-            assert isinstance(chan3, channel_cls)
-            return template, chan2, chan3, alpha
+        if views is not None:
+            return views[0], views[1], views[2], alpha
         return (
             wrap(np.asarray(chan1)),
             wrap(np.asarray(chan2)),
@@ -832,11 +806,9 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
         red, green, blue, resolved_alpha = _resolve_rgb_channels(
             (channel1, channel2, channel3),
             channel_cls=Volume,
-            fallback_space=lambda: VolumeSpace(
-                _require(subject, "Subject"), _require(xfmname, "xfmname")
-            ),
+            space_cls=VolumeSpace,
             subject=subject,
-            space_kwargs={"xfmname": xfmname},
+            spec={"xfmname": xfmname},
             colors=(channel1color, channel2color, channel3color),
             max_color_value=max_color_value,
             max_color_saturation=max_color_saturation,
@@ -956,9 +928,9 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
         r, g, b, resolved_alpha = _resolve_rgb_channels(
             (red, green, blue),
             channel_cls=Vertex,
-            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject")),
+            space_cls=SurfaceSpace,
             subject=subject,
-            space_kwargs={},
+            spec={},
             colors=(channel1color, channel2color, channel3color),
             max_color_value=max_color_value,
             max_color_saturation=max_color_saturation,

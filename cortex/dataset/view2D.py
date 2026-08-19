@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import warnings
-from typing import Any, Callable, Generic, Iterator, Optional, TypeVar, Union, cast
+from typing import Any, Generic, Iterator, Optional, TypeVar, Union, cast
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self
@@ -32,16 +32,11 @@ from .views import (
     RenderableView,
     VolumetricView,
     _build_cmapdict,
-    _require,
+    _resolve_channels,
+    ScalarT,
 )
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
-
-#: Covariant: the channels are read-only properties, so `Dataview2D[Volume]` is
-#: safely usable where `Dataview2D[ScalarView]` is expected. An invariant
-#: parameter would reject that, which is the usual generics tax.
-ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
-
 
 class Dataview2D(RenderableView, Generic[ScalarT]):
     """Abstract base class for 2-dimensional data views.
@@ -324,11 +319,9 @@ class Volume2D(Dataview2D[Volume], VolumetricView):
             dim1,
             dim2,
             channel_cls=Volume,
-            fallback_space=lambda: VolumeSpace(
-                _require(subject, "Subject"), _require(xfmname, "xfmname")
-            ),
+            space_cls=VolumeSpace,
             subject=subject,
-            space_kwargs={"xfmname": xfmname},
+            spec={"xfmname": xfmname},
             ranges=((vmin, vmax), (vmin2, vmax2)),
         )
 
@@ -432,9 +425,9 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
             dim1,
             dim2,
             channel_cls=Vertex,
-            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject")),
+            space_cls=SurfaceSpace,
             subject=subject,
-            space_kwargs={},
+            spec={},
             ranges=((vmin, vmax), (vmin2, vmax2)),
         )
 
@@ -466,9 +459,9 @@ def _resolve_2d_channels(
     dim2: Union[npt.NDArray, ScalarT],
     *,
     channel_cls: type[ScalarT],
-    fallback_space: Callable[[], BrainSpace],
+    space_cls: type[BrainSpace],
     subject: Optional[str],
-    space_kwargs: dict[str, Any],
+    spec: dict[str, Any],
     ranges: tuple[
         tuple[Optional[float], Optional[float]],
         tuple[Optional[float], Optional[float]],
@@ -476,35 +469,23 @@ def _resolve_2d_channels(
 ) -> tuple[ScalarT, ScalarT]:
     """Turn the two ``dim`` arguments into a matched pair of scalar views.
 
-    Accepts either two already-built views or two raw arrays, and enforces that
-    the two forms are not mixed. Replaces the branch pair that ``Volume2D`` and
-    ``Vertex2D`` each carried separately.
+    All that is left here beyond
+    :func:`~cortex.dataset.views._resolve_channels` is the wrapping, which is
+    where the two composite columns genuinely differ: a 2D view gives each
+    dimension its own ``vmin``/``vmax``.
     """
-    kind = channel_cls.__name__
-    if isinstance(dim1, channel_cls):
-        if not isinstance(dim2, channel_cls) or dim2.subject != dim1.subject:
-            raise TypeError("Invalid data for second dimension")
-        if subject is not None and dim1.subject != subject:
-            raise ValueError(
-                "Subject in %s objects (%r) is different than specified subject (%r)"
-                % (kind, dim1.subject, subject)
-            )
-        for key, value in space_kwargs.items():
-            existing = getattr(dim1, key, None)
-            if value is not None and existing != value:
-                raise ValueError(
-                    "%s in %s objects (%r) is different than specified %s (%r)"
-                    % (key, kind, existing, key, value)
-                )
-        return dim1, dim2
-
-    if isinstance(dim2, channel_cls):
-        raise TypeError(
-            "If dim2 is a %s, dim1 must be a %s as well" % (kind, kind)
-        )
+    space, views = _resolve_channels(
+        [dim1, dim2],
+        channel_cls=channel_cls,
+        space_cls=space_cls,
+        subject=subject,
+        spec=spec,
+        argnames=("dim1", "dim2"),
+    )
+    if views is not None:
+        return views[0], views[1]
 
     # Wrapping goes through the space, so this never names a concrete view class.
-    space = fallback_space()
     (vmin, vmax), (vmin2, vmax2) = ranges
     return (
         cast(ScalarT, space.wrap(np.asarray(dim1), vmin=vmin, vmax=vmax)),

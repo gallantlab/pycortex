@@ -762,6 +762,73 @@ def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
         as_renderable(fake)
 
 
+def test_a_space_declares_what_identifies_it():
+    """``spec_keys`` plus ``from_spec``, rather than a lambda per constructor.
+
+    Volume2D, Vertex2D, VolumeRGB and VertexRGB each used to be handed a lambda
+    naming their space class with ``_require`` applied to each of its arguments,
+    *and* a dict of those same keys to validate channel objects against. "A
+    volumetric space is subject plus xfmname, and both are mandatory" was written
+    into four view constructors instead of into VolumeSpace.
+    """
+    from cortex.dataset._space import BrainSpace, SurfaceSpace, VolumeSpace
+
+    assert BrainSpace.spec_keys == ()
+    assert VolumeSpace.spec_keys == ("xfmname",)
+    assert SurfaceSpace.spec_keys == ()
+
+    space = VolumeSpace.from_spec(subj, xfmname=xfmname)
+    assert isinstance(space, VolumeSpace)
+    assert space.subject == subj and space.xfmname == xfmname
+    assert isinstance(SurfaceSpace.from_spec(subj), SurfaceSpace)
+
+    # every spec key is mandatory, and so is the subject
+    with pytest.raises(TypeError, match="xfmname"):
+        VolumeSpace.from_spec(subj, xfmname=None)
+    with pytest.raises(TypeError, match="Subject"):
+        VolumeSpace.from_spec(None, xfmname=xfmname)
+    with pytest.raises(TypeError, match="Subject"):
+        SurfaceSpace.from_spec(None)
+
+
+def test_both_composite_columns_share_one_channel_resolver():
+    """The same four checks, in the same order, for 2D and RGB alike.
+
+    They were written out twice with different wording. The messages now name the
+    offending argument, which is the only reason the resolver is told what its
+    caller calls them.
+    """
+    from cortex.dataset._space import VolumeSpace
+    from cortex.dataset.views import Volume, _resolve_channels
+
+    vol = Volume(np.random.randn(*volshape), subj, xfmname)
+    common = dict(channel_cls=Volume, space_cls=VolumeSpace, spec={"xfmname": xfmname})
+
+    # views in: the space comes from the first channel, and they are handed back
+    space, views = _resolve_channels(
+        [vol, vol], subject=None, argnames=("dim1", "dim2"), **common
+    )
+    assert space is vol.space and views == [vol, vol]
+
+    # arrays in: no views, and the space is built from the spec
+    arr = np.random.randn(*volshape)
+    space, views = _resolve_channels(
+        [arr, arr, arr],
+        subject=subj,
+        argnames=("channel1", "channel2", "channel3"),
+        **common,
+    )
+    assert views is None
+    assert isinstance(space, VolumeSpace) and space.xfmname == xfmname
+
+    # mixing is rejected in both directions, and says which argument
+    for channels, offender in (([vol, arr], "dim2"), ([arr, vol], "dim2")):
+        with pytest.raises(TypeError, match=offender):
+            _resolve_channels(
+                channels, subject=None, argnames=("dim1", "dim2"), **common
+            )
+
+
 def test_xfmname_comes_from_the_space_not_from_a_channel():
     """One implementation of ``xfmname`` for every volumetric view.
 
