@@ -558,6 +558,18 @@ class SurfaceView(RenderableView):
 
 
 
+def _require(value: Optional[str], what: str) -> str:
+    """Assert that a space-defining argument was supplied.
+
+    Shared by the composite constructors in :mod:`~cortex.dataset.view2D` and
+    :mod:`~cortex.dataset.viewRGB`, which each had their own copy under this name
+    and worded the message differently.
+    """
+    if value is None:
+        raise TypeError("%s must be specified with raw data" % what)
+    return value
+
+
 def as_renderable(view: Dataview) -> RenderableView:
     """Check that ``view`` is one the renderers can draw.
 
@@ -595,7 +607,7 @@ def as_renderable(view: Dataview) -> RenderableView:
         % (type(view).__name__, space_name)
     )
 
-class ScalarView(Packable):
+class ScalarView(Packable, RenderableView):
     """A single array of scalar values, displayed through a 1D colormap.
 
     This is the union of what used to be ``BrainData`` and the colormapped half

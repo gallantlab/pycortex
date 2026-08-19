@@ -3,7 +3,6 @@ from __future__ import annotations
 import colorsys
 import sys
 import warnings
-from abc import abstractmethod
 from typing import (
     Any,
     Callable,
@@ -27,18 +26,18 @@ import numpy as np
 import numpy.typing as npt
 
 from .. import options
-from ..database import db
 from ._hdf import _hash
 from ._space import BrainSpace, SurfaceSpace, VolumeSpace
 from .views import (
-    Dataview,
     DataviewJSON,
     Packable,
+    RenderableView,
     ScalarView,
     SurfaceView,
     Vertex,
     Volume,
     VolumetricView,
+    _require,
 )
 
 default_cmap = options.config.get("basic", "default_cmap")
@@ -123,7 +122,7 @@ def HSV2RGB(color: Union[Color[float], npt.NDArray]) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-class DataviewRGB(Packable, Generic[ScalarT]):
+class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
     """Abstract base class for RGB data views.
 
     Three scalar channels plus an alpha channel, carrying their own colours
@@ -214,6 +213,23 @@ class DataviewRGB(Packable, Generic[ScalarT]):
                 yield self.alpha
 
     @property
+    def name(self) -> str:
+        """Content-addressed name, hashing the RGBA array this view ships.
+
+        Both subclasses carried this, over ``volume`` and ``vertices``
+        respectively -- the same array under two names. Hashing
+        :attr:`~cortex.dataset.views.RenderableView.spatial_data` is sound here in
+        a way it would not be on :class:`~cortex.dataset.views.ScalarView` (see
+        :attr:`~cortex.dataset.views.Packable.name`): an RGB view's name is only
+        ever a browser key, because its channels are what get written as HDF
+        nodes, each under its own name.
+        """
+        return "__%s" % _hash(self.spatial_data)[:16]
+
+    def __hash__(self) -> int:
+        return hash(_hash(self.spatial_data))
+
+    @property
     def raw(self) -> Self:
         return self
 
@@ -232,31 +248,48 @@ class DataviewRGB(Packable, Generic[ScalarT]):
     # ------------------------------------------------------------------
     # alpha
     # ------------------------------------------------------------------
-    @abstractmethod
     def _default_alpha(self) -> npt.NDArray:
         """A fully-opaque alpha array shaped like this view's channels.
 
-        "Shaped like" includes the frame axis: for movie channels the alpha must
-        have the same number of frames, or :meth:`_rgba_stack` cannot stack the
-        four together. Match the channel's *stored* array, which is what a
-        one-frame view and a movie differ in.
+        Shaped from the channel's *stored* array, which is what a one-frame view
+        and a movie differ in, so the alpha grows a frame axis exactly when the
+        channels have one and :meth:`_rgba_stack` can stack the four together.
+        ``VolumeRGB`` used to size this from ``red.volume`` -- the same values
+        with the frame axis already prepended, so the alpha it wrapped came out
+        as a one-frame movie. That unmasks back to an identical array, and an
+        auto-generated alpha is never written to HDF or shipped on its own, so
+        nothing outside this class could tell; it did mean the rule was written
+        twice and differently.
         """
+        return np.ones(self.red.data.shape)
 
-    @abstractmethod
     def _channel_stack(self) -> npt.NDArray:
-        """The three channels stacked, for locating NaNs across them."""
+        """The three channels stacked, for locating NaNs across them.
 
-    def _rgba_stack(self, accessor: str) -> npt.NDArray[np.uint8]:
+        Reads :attr:`~cortex.dataset.views.RenderableView.spatial_data`, so it
+        does not matter whether the channels store volumes or vertices. For a
+        single-frame surface view that adds a leading axis the stored arrays do
+        not have; :meth:`_mask_alpha` already accepts a mask carrying one, which
+        is what makes one implementation serve both spaces.
+        """
+        return np.array(
+            [c.spatial_data for c in (self.red, self.green, self.blue)]
+        )
+
+    def _rgba_stack(self) -> npt.NDArray[np.uint8]:
         """Stack the four channels into a trailing RGBA axis.
 
-        ``accessor`` names the space's array property -- ``"volume"`` or
-        ``"vertices"``. ``moveaxis`` rather than a hand-written transpose list:
-        the intent is "put the channel axis last", and spelling that as
+        Each channel is read through
+        :attr:`~cortex.dataset.views.RenderableView.spatial_data`, which is why
+        this no longer takes the name of the accessor to use: it was passed the
+        string ``"volume"`` or ``"vertices"`` by whichever subclass knew which of
+        them its space stored. ``moveaxis`` rather than a hand-written transpose
+        list: the intent is "put the channel axis last", and spelling that as
         ``[1, 2, 3, 4, 0]`` had to be rewritten per rank and was easy to get
         wrong.
         """
         channels = [
-            _to_uint8(getattr(dv, accessor), dv.vmin, dv.vmax)
+            _to_uint8(dv.spatial_data, dv.vmin, dv.vmax)
             for dv in (self.red, self.green, self.blue, self.alpha)
         ]
         return np.moveaxis(np.array(channels), 0, -1)
@@ -339,6 +372,14 @@ class DataviewRGB(Packable, Generic[ScalarT]):
     # serialization
     # ------------------------------------------------------------------
     def to_json(self, simple: bool = False) -> DataviewJSON:
+        """One implementation for every space; the space supplies its own keys.
+
+        Mirrors :meth:`~cortex.dataset.views.ScalarView.to_json`. ``VolumeRGB``
+        and ``VertexRGB`` each overrode this to add ``shape`` or
+        ``split``/``frames`` -- the single question "how does the browser unpack
+        this array", answered per space -- and ``VolumeRGB`` additionally added
+        the ``xfm`` that its space already knows how to emit.
+        """
         sdict = super().to_json(simple=simple)
 
         if simple:
@@ -346,24 +387,25 @@ class DataviewRGB(Packable, Generic[ScalarT]):
             sdict["subject"] = self.subject
             sdict["min"] = 0
             sdict["max"] = 255
+            sdict.update(self.space.describe_layout(self.spatial_data))
         else:
             sdict["data"] = [self.name]
             sdict["cmap"] = [default_cmap]
             sdict["vmin"] = [0]
             sdict["vmax"] = [255]
+            sdict.update(self.space.to_json())
         return sdict
 
     def _write_hdf(
         self, h5: Union[h5py.File, h5py.Group], name: str = "data"
     ) -> h5py.Dataset:
-        return self._write_rgb_hdf(h5, name=name, xfmname=None)
+        """Write the channels as ``/data`` nodes plus one ``/views`` record.
 
-    def _write_rgb_hdf(
-        self,
-        h5: Union[h5py.File, h5py.Group],
-        name: str = "data",
-        xfmname: Any = None,
-    ) -> h5py.Dataset:
+        Slot 7 comes from :attr:`~cortex.dataset._space.BrainSpace.view_xfmname`,
+        exactly as in :meth:`~cortex.dataset.views.ScalarView._write_hdf`. This
+        was two methods and an ``xfmname`` parameter, the outer one existing only
+        so that ``VolumeRGB`` could override it to pass ``[self.xfmname]`` in.
+        """
         self.red._write_data_hdf(h5)
         self.green._write_data_hdf(h5)
         self.blue._write_data_hdf(h5)
@@ -375,7 +417,9 @@ class DataviewRGB(Packable, Generic[ScalarT]):
             alpha_name = alpha.name
 
         data = [self.red.name, self.green.name, self.blue.name, alpha_name]
-        return self._write_view_node(h5, name=name, data=[data], xfmname=xfmname)
+        return self._write_view_node(
+            h5, name=name, data=[data], xfmname=self.space.view_xfmname
+        )
 
     @staticmethod
     def color_voxels(
@@ -563,12 +607,6 @@ class DataviewRGB(Packable, Generic[ScalarT]):
         return red, green, blue, alpha_out
 
 
-def _require(value: Optional[str], what: str) -> str:
-    if value is None:
-        raise TypeError("%s is required" % what)
-    return value
-
-
 def _channel_data(channel: ChannelLike) -> npt.NDArray:
     return channel.data if isinstance(channel, ScalarView) else np.asarray(channel)
 
@@ -639,8 +677,7 @@ def _resolve_rgb_channels(
         if subject is None:
             raise TypeError("Subject name is required")
         for key, value in space_kwargs.items():
-            if value is None:
-                raise TypeError("%s is required" % key)
+            _require(value, key)
         if not isinstance(chan2, np.ndarray) or not isinstance(chan3, np.ndarray):
             raise TypeError(
                 "Data channels must be numpy arrays if channel1 is a numpy array"
@@ -821,57 +858,18 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
         """
         return self.red.xfmname
 
-    # ------------------------------------------------------------------
-    # alpha, in volume space
-    # ------------------------------------------------------------------
-    def _default_alpha(self) -> npt.NDArray:
-        return np.ones(self.red.volume.shape)
-
-    def _channel_stack(self) -> npt.NDArray:
-        return np.array([self.red.volume, self.green.volume, self.blue.volume])
-
-    # ------------------------------------------------------------------
-    # rendering / serialization
-    # ------------------------------------------------------------------
     @property
     def volume(self) -> npt.NDArray[np.uint8]:
         """5-dimensional volume (t, z, y, x, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
-        return self._rgba_stack("volume")
-
-    def to_json(self, simple: bool = False) -> DataviewJSON:
-        sdict = super().to_json(simple=simple)
-        if simple:
-            sdict["shape"] = self.red.shape
-        else:
-            sdict["xfm"] = [
-                list(
-                    np.array(
-                        db.get_xfm(self.subject, self.xfmname, "coord").xfm
-                    ).ravel()
-                )
-            ]
-
-        return sdict
+        return self._rgba_stack()
 
     def __repr__(self) -> str:
         return "<RGB volumetric data for (%s, %s)>" % (
             self.red.subject,
             self.red.xfmname,
         )
-
-    def __hash__(self) -> int:
-        return hash(_hash(self.volume))
-
-    @property
-    def name(self) -> str:
-        return "__%s" % _hash(self.volume)[:16]
-
-    def _write_hdf(
-        self, h5: Union[h5py.File, h5py.Group], name: str = "data"
-    ) -> h5py.Dataset:
-        return self._write_rgb_hdf(h5, name=name, xfmname=[self.xfmname])
 
 
 class VertexRGB(DataviewRGB[Vertex], SurfaceView):
@@ -963,7 +961,7 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
         r, g, b, resolved_alpha = _resolve_rgb_channels(
             (red, green, blue),
             channel_cls=Vertex,
-            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject name")),
+            fallback_space=lambda: SurfaceSpace(_require(subject, "Subject")),
             subject=subject,
             space_kwargs={},
             colors=(channel1color, channel2color, channel3color),
@@ -986,38 +984,12 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
             priority=priority,
         )
 
-    # ------------------------------------------------------------------
-    # alpha, in surface space
-    # ------------------------------------------------------------------
-    def _default_alpha(self) -> npt.NDArray:
-        # `data`, not `vertices.shape[1]`: the latter is the vertex count alone,
-        # so a movie's alpha came out with one frame against the channels' t and
-        # `_rgba_stack` failed on the ragged array. `data` already carries the
-        # frame axis exactly when the channels do, which is the invariant
-        # `VolumeRGB` gets for free from `volume`.
-        return np.ones(self.red.data.shape)
-
-    def _channel_stack(self) -> npt.NDArray:
-        return np.array([self.red.data, self.green.data, self.blue.data])
-
-    # ------------------------------------------------------------------
-    # rendering / serialization
-    # ------------------------------------------------------------------
     @property
     def vertices(self) -> npt.NDArray[np.uint8]:
         """3-dimensional array (t, v, rgba) with data that has been mapped
         into 8-bit unsigned integers that correspond to colors.
         """
-        return self._rgba_stack("vertices")
-
-    def to_json(self, simple: bool = False) -> DataviewJSON:
-        sdict = super().to_json(simple=simple)
-
-        if simple:
-            sdict["split"] = self.red.llen
-            sdict["frames"] = self.vertices.shape[0]
-
-        return sdict
+        return self._rgba_stack()
 
     @property
     def space(self) -> SurfaceSpace:
@@ -1043,13 +1015,6 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
 
     def __repr__(self) -> str:
         return "<RGB vertex data for (%s)>" % (self.subject,)
-
-    def __hash__(self) -> int:
-        return hash(_hash(self.vertices))
-
-    @property
-    def name(self) -> str:
-        return "__%s" % _hash(self.vertices)[:16]
 
 
 def _to_uint8(

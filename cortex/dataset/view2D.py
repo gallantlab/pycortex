@@ -29,8 +29,10 @@ from .views import (
     VertexRGB,
     Volume,
     VolumeRGB,
+    RenderableView,
     VolumetricView,
     _build_cmapdict,
+    _require,
 )
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
@@ -41,7 +43,7 @@ default_cmap2D = options.config.get("basic", "default_cmap2D")
 ScalarT = TypeVar("ScalarT", bound=ScalarView, covariant=True)
 
 
-class Dataview2D(Dataview, Generic[ScalarT]):
+class Dataview2D(RenderableView, Generic[ScalarT]):
     """Abstract base class for 2-dimensional data views.
 
     Holds two scalar channels displayed through a single 2D colormap. The
@@ -466,12 +468,6 @@ class Vertex2D(Dataview2D[Vertex], SurfaceView):
     @property
     def vertices(self) -> npt.NDArray[np.uint8]:
         return self.raw.vertices
-
-
-def _require(value: Optional[str], what: str) -> str:
-    if value is None:
-        raise TypeError("%s must be specified with raw data" % what)
-    return value
 
 
 def _resolve_2d_channels(
