@@ -8,6 +8,7 @@ from typing import (
     Generic,
     Iterator,
     Literal,
+    Mapping,
     Optional,
     Sequence,
     TypeVar,
@@ -147,6 +148,7 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
         description: str = "",
         state: Any = None,
         priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self._red = red
         self._green = green
@@ -169,7 +171,9 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
 
         self._alpha: Optional[ChannelLike] = alpha
         self._alpha_cache: Optional[ScalarT] = None
-        super().__init__(description=description, state=state, priority=priority)
+        super().__init__(
+            description=description, state=state, priority=priority, attrs=attrs
+        )
 
     # ------------------------------------------------------------------
     # channels
@@ -237,7 +241,7 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
             alpha=self._alpha,
             description=self.description,
             state=self.state,
-            priority=self.priority,
+            attrs=self.attrs,
         )
 
     # ------------------------------------------------------------------
@@ -802,6 +806,7 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
         vmax: Optional[Union[float, tuple[float, float, float]]] = None,
         autorange: Literal["shared", "individual"] = "individual",
         priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         red, green, blue, resolved_alpha = _resolve_rgb_channels(
             (channel1, channel2, channel3),
@@ -830,6 +835,7 @@ class VolumeRGB(DataviewRGB[Volume], VolumetricView):
             description=description,
             state=state,
             priority=priority,
+            attrs=attrs,
         )
 
     def __repr__(self) -> str:
@@ -924,6 +930,7 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
         vmax: Optional[Union[float, tuple[float, float, float]]] = None,
         autorange: Literal["shared", "individual"] = "individual",
         priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         r, g, b, resolved_alpha = _resolve_rgb_channels(
             (red, green, blue),
@@ -949,6 +956,7 @@ class VertexRGB(DataviewRGB[Vertex], SurfaceView):
             description=description,
             state=state,
             priority=priority,
+            attrs=attrs,
         )
 
     @property

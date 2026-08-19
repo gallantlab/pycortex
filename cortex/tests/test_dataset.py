@@ -1244,3 +1244,126 @@ def test_rgb_default_alpha_tracks_the_channels_frame_count():
     movie = cortex.VertexRGB(*([cortex.Vertex(d, subj)] * 3))
     assert (movie.vertices[1, :50, 3] == 0).all()
     assert (movie.vertices[0, :, 3] != 0).all()
+
+
+def _one_of_each_view():
+    """One instance of each of the six public classes, sharing a subject."""
+    vol = np.random.randn(*volshape)
+    vtx = np.random.randn(nverts)
+    return [
+        cortex.Volume(vol, subj, xfmname),
+        cortex.Vertex(vtx, subj),
+        cortex.Volume2D(vol, vol * 2, subj, xfmname),
+        cortex.Vertex2D(vtx, vtx * 2, subj),
+        cortex.VolumeRGB(vol, vol * 2, vol * 3, subj, xfmname),
+        cortex.VertexRGB(vtx, vtx * 2, vtx * 3, subj),
+    ]
+
+
+def test_a_misspelled_constructor_keyword_is_rejected():
+    """A typo of a real parameter must not be silently absorbed into ``attrs``.
+
+    ``attrs`` is a genuine feature -- ``stim`` is read by ``webgl/view.py`` and
+    users hang their own metadata there -- so unrecognized keywords cannot simply
+    be refused. But it was also a ``**kwargs`` sink, so
+    ``Volume(data, subj, xfm, cmpa="hot")`` built a view with the *default*
+    colormap plus an attribute nothing would ever read, and reported nothing.
+    """
+    vol = np.random.randn(*volshape)
+
+    with pytest.raises(TypeError, match="did you mean 'cmap'"):
+        cortex.Volume(vol, subj, xfmname, cmpa="hot")
+    with pytest.raises(TypeError, match="did you mean 'description'"):
+        cortex.Volume(vol, subj, xfmname, descriptoin="x")
+    # A scalar view has no second colormap axis, so this is a typo there even
+    # though `vmax2` is a real parameter of the 2D column.
+    with pytest.raises(TypeError, match="did you mean 'vmax'"):
+        cortex.Volume(vol, subj, xfmname, vmax2=3)
+
+    # Metadata that does not resemble a parameter name still lands in attrs.
+    view = cortex.Volume(vol, subj, xfmname, stim="movie.mp4", session=3)
+    assert view.attrs["stim"] == "movie.mp4" and view.attrs["session"] == 3
+
+    # And `attrs=` is the escape hatch for one that does resemble one.
+    deliberate = cortex.Volume(vol, subj, xfmname, attrs={"cmpa": "hot"})
+    assert deliberate.attrs["cmpa"] == "hot"
+
+
+def test_carried_attrs_are_not_revalidated():
+    """``copy()`` and an HDF reload pass metadata as data, not as typed keywords.
+
+    Both paths used to splat ``**self.attrs`` back into a constructor. With the
+    typo check in place that would make a file written by an older pycortex --
+    which may hold a key today's constructor would flag -- fail to load, and
+    ``Dataset.from_file`` swallows per-view exceptions, so the view would vanish
+    rather than raise.
+    """
+    vol = np.random.randn(*volshape)
+    view = cortex.Volume(vol, subj, xfmname, attrs={"cmpa": "hot"})
+
+    assert view.copy(vol * 2).attrs["cmpa"] == "hot"
+
+    fname = tempfile.mktemp(suffix=".hdf")
+    try:
+        dataset.Dataset(view=view).save(fname)
+        reloaded = cortex.load(fname)["view"]
+        assert reloaded.attrs["cmpa"] == "hot"
+    finally:
+        os.unlink(fname)
+
+
+def test_priority_survives_copy_and_reload_for_every_view():
+    """``priority`` is both an attr and a named RGB parameter; the attr wins.
+
+    The RGB constructors take ``priority=1``, and a default is indistinguishable
+    from an explicit value -- so ordering a typed keyword ahead of carried
+    metadata reset a priority of 3 back to 1 on both paths, since neither passes
+    the parameter.
+    """
+    fname = tempfile.mktemp(suffix=".hdf")
+    for view in _one_of_each_view():
+        view.priority = 3
+        # the scalar column's copy() takes the new array; the composite ones,
+        # which own no array of their own, take nothing
+        copied = (
+            view.copy(view.data * 2)
+            if isinstance(view, dataset.ScalarView)
+            else view.copy()
+        )
+        assert copied.priority == 3, type(view).__name__
+        try:
+            dataset.Dataset(v=view).save(fname)
+            assert cortex.load(fname)["v"].priority == 3, type(view).__name__
+        finally:
+            os.unlink(fname)
+
+
+def test_every_view_leaves_construction_with_numeric_bounds():
+    """One rule for ``vmin``/``vmax``: resolved once, at construction.
+
+    There were three. ``Volume``/``Vertex`` computed percentiles eagerly and
+    stored them, ``ScalarView.to_json`` computed them lazily if they were still
+    ``None``, and ``Dataview2D`` took them from its channels -- so whether
+    ``view.vmin is None`` after construction depended on which class built the
+    object, and every consumer reading it had to know which.
+    """
+    for view in _one_of_each_view():
+        if isinstance(view, dataset.DataviewRGB):
+            continue  # no single colormap, so no bounds to resolve
+        assert view.vmin is not None and view.vmax is not None, type(view).__name__
+        assert view.vmax > view.vmin
+        if isinstance(view, dataset.Dataview2D):
+            assert view.vmin2 is not None and view.vmax2 is not None
+
+
+def test_to_json_reports_the_bounds_it_was_given():
+    """``to_json`` no longer re-derives bounds, so a ``None`` is visible.
+
+    The lazy percentile fallback there was unreachable for any view built by this
+    package once construction resolved them, and it made the JSON disagree with
+    the object: a consumer reading ``.vmin`` got ``None`` while the browser got a
+    percentile.
+    """
+    view = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    view.vmin = None
+    assert view.to_json(simple=False)["vmin"] == [None]

@@ -337,7 +337,6 @@ def _third_space_family():
             super().__init__(data, MySpace(subject, myarg), cmap=cmap, vmin=vmin,
                              vmax=vmax, description=description, state=state,
                              **kwargs)
-            self._resolve_percentiles()
 
         # The doc's skeleton also carries a bare `_space: MySpace` annotation
         # here. Omitted: it is a static-only device with no runtime effect, and
@@ -400,7 +399,7 @@ def _third_space_family():
                      channel1color=Colors.Red, channel2color=Colors.Green,
                      channel3color=Colors.Blue, max_color_value=None,
                      max_color_saturation=1.0, vmin=None, vmax=None,
-                     autorange="individual", priority=1):
+                     autorange="individual", priority=1, attrs=None):
             red, green, blue, resolved_alpha = _resolve_rgb_channels(
                 (channel1, channel2, channel3), channel_cls=MyView,
                 space_cls=MySpace, subject=subject, spec={"myarg": myarg},
@@ -409,7 +408,8 @@ def _third_space_family():
                 max_color_saturation=max_color_saturation,
                 vmin=vmin, vmax=vmax, autorange=autorange, alpha=alpha)
             super().__init__(red, green, blue, alpha=resolved_alpha, subject=subject,
-                             description=description, state=state, priority=priority)
+                             description=description, state=state, priority=priority,
+                             attrs=attrs)
 
         @property
         def space(self):
@@ -442,7 +442,10 @@ def test_the_documented_skeleton_for_a_new_space_actually_works():
     assert MyView(np.random.randn(3, nthings), subj, "a").spatial_data.shape == (3, nthings)
     assert view.name.startswith("__") and len(view.name) == 18
     assert np.allclose((view + 1).data, arr + 1)            # inherited operators
-    assert view.vmin is not None and view.vmax is not None  # _resolve_percentiles
+    # Resolved by ScalarView.__init__ itself, so a new space inherits the
+    # invariant rather than having to remember a call. This assertion is what
+    # would catch it moving back out into the subclasses.
+    assert view.vmin is not None and view.vmax is not None
 
     # --- empty / random, which read template_shape off the space
     assert np.all(MyView.empty(subj, "a", 2).data == 2)
@@ -553,3 +556,51 @@ def test_a_third_space_registers_ahead_of_the_catch_all():
         ]
     finally:
         space_mod._SPACES[:] = saved
+
+
+def test_a_third_space_packs_its_own_webgl_encoding():
+    """Shipping data to a browser needs no edit to ``webgl/data.py``.
+
+    That module used to answer "which wire encoding?" itself, in three
+    ``isinstance(brain, SurfaceView)`` branches plus a guard for "neither" -- so
+    the dtype cast, the premultiplied-alpha asymmetry, the mosaic-versus-attributes
+    choice and the vertex reordering were four forks on one fact, and a space
+    inheriting neither built-in spatial interface could not be packaged at all. It
+    now asks ``space.pack_for_webgl``, so a space picks one of the two encodings
+    ``dataset.js`` can read and nothing downstream changes.
+    """
+    from cortex.dataset._webgl import VertexAttributes
+    from cortex.webgl.data import Package
+
+    MySpace, MyView, _, _, nthings = _third_space_family()
+    MySpace.pack_for_webgl = lambda self, data, *, raw: VertexAttributes(data, raw=raw)
+
+    view = MyView(np.random.randn(nthings), subj, "a")
+    pkg = Package(dataset.Dataset(view=view))
+    record = pkg.brains[view.name]
+
+    # the per-vertex encoding: an array still awaiting `reorder`, no `mosaic` key
+    assert len(pkg.images[view.name]) == 1
+    assert pkg.images[view.name][0].dtype == np.float32
+    assert record["raw"] is False
+    assert "mosaic" not in record
+
+
+def test_a_space_with_no_webgl_encoding_says_so_once():
+    """A space that cannot be sent to a browser fails with one clear message.
+
+    Only two encodings exist, because ``dataset.js`` selects between them by
+    testing ``mosaic === undefined``; that limit is real and is not removed by
+    routing through the space. What changes is where it is stated: the default
+    ``pack_for_webgl`` raises, naming both encodings and the JS file, instead of
+    the consumer testing ``not isinstance(brain, VolumetricView)`` and a third
+    kind otherwise falling into ``volume.mosaic`` to die on "Invalid data shape".
+    Such a space is still perfectly renderable by ``quickflat``.
+    """
+    from cortex.webgl.data import Package
+
+    _, MyView, _, _, nthings = _third_space_family()
+    view = MyView(np.random.randn(nthings), subj, "a")
+
+    with pytest.raises(TypeError, match="MySpace has no webgl wire encoding"):
+        Package(dataset.Dataset(view=view))

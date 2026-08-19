@@ -154,22 +154,24 @@ def test_volumergb_alpha_is_NOT_premultiplied_in_package():
     raw = vrgb.volume
     assert raw.dtype == np.uint8
 
-    # Spy on the Package internals: wrap volume.mosaic to capture the array
-    # Package actually ships before it gets PNG-encoded. mock.patch handles
-    # restoration even if the patched call raises before reaching the
-    # assertions below.
+    # Spy on the encoding: wrap volume.mosaic to capture the array that actually
+    # gets shipped, before it is PNG-encoded. Patched on `cortex.volume` rather
+    # than on the packer's module, because `MosaicTexture` imports it at call time
+    # (`cortex.volume` imports `cortex.dataset`, so the top-level import would
+    # cycle). mock.patch handles restoration even if the patched call raises
+    # before reaching the assertions below.
     from unittest import mock
 
-    from cortex.webgl import data as webgl_data
+    from cortex import volume as cortex_volume
 
     captured = []
-    real_mosaic = webgl_data.volume.mosaic
+    real_mosaic = cortex_volume.mosaic
 
     def spy_mosaic(arr, show=False):
         captured.append(arr.copy())
         return real_mosaic(arr, show=show)
 
-    with mock.patch.object(webgl_data.volume, "mosaic", side_effect=spy_mosaic):
+    with mock.patch.object(cortex_volume, "mosaic", side_effect=spy_mosaic):
         Package(dataset.Dataset(view=vrgb))
 
     assert len(captured) == 1

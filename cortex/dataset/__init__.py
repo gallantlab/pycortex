@@ -50,6 +50,7 @@ from ._space import (
     register_space,
     registered_spaces,
 )
+from ._webgl import MosaicTexture, VertexAttributes, WebGLPayload
 from .braindata import BrainData, VertexData, VolumeData
 from .dataset import Dataset, DatasetLike, normalize
 from .view2D import Dataview2D, Vertex2D, Volume2D
@@ -84,6 +85,10 @@ __all__ = [
     "SurfaceSpace",
     "register_space",
     "registered_spaces",
+    # the two webgl wire encodings a space can pack its arrays into
+    "WebGLPayload",
+    "MosaicTexture",
+    "VertexAttributes",
     # the spatial axis of the grid, and helpers for narrowing it
     "VolumetricView",
     "SurfaceView",

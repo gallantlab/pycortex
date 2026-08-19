@@ -32,6 +32,7 @@ import numpy.typing as npt
 
 from ..database import db
 from ._hdf import _find_mask, _hash, _hdf_write
+from ._webgl import MosaicTexture, VertexAttributes, WebGLPayload, no_encoding
 
 if TYPE_CHECKING:
     # Annotation-only, so _space stays importable by views.py without a cycle.
@@ -258,6 +259,26 @@ class BrainSpace(ABC):
         from .views import DataviewJSON as _JSON
 
         return _JSON()
+
+    def pack_for_webgl(self, data: npt.NDArray, *, raw: bool) -> WebGLPayload:
+        """This space's arrays encoded for the browser.
+
+        The single decision behind what used to be four forks in
+        ``webgl/data.py``: the dtype cast, whether alpha is premultiplied, whether
+        frames are mosaicked into PNGs or shipped as per-vertex attributes, and
+        whether they are permuted into the CTM's vertex order. All four follow
+        from the geometry, which is why they belong here.
+
+        ``raw`` says the array is 4-channel uint8 from an RGB view rather than
+        scalar floats. Return one of the two encodings in
+        :mod:`cortex.dataset._webgl`; a space wanting a third has to add a
+        matching branch to ``webgl/resources/js/dataset.js``.
+
+        Not abstract, because a space with no browser representation is a
+        legitimate thing to have -- ``quickflat`` needs only ``spatial_data`` --
+        and the default says so with a message naming both encodings.
+        """
+        return no_encoding(self)
 
     @abstractmethod
     def write_hdf_attrs(
@@ -522,6 +543,10 @@ class VolumeSpace(BrainSpace):
 
         return _JSON(shape=self.spatial_shape)
 
+    def pack_for_webgl(self, data: npt.NDArray, *, raw: bool) -> WebGLPayload:
+        """A mosaicked PNG texture, which the shader samples through the transform."""
+        return MosaicTexture(data, raw=raw)
+
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset
     ) -> None:
@@ -685,6 +710,10 @@ class SurfaceSpace(BrainSpace):
 
         frames = data.shape[0] if self.is_movie(data) else 1
         return _JSON(split=self.llen, frames=frames)
+
+    def pack_for_webgl(self, data: npt.NDArray, *, raw: bool) -> WebGLPayload:
+        """Raw per-vertex attributes, premultiplied and permuted into CTM order."""
+        return VertexAttributes(data, raw=raw)
 
     def write_hdf_attrs(
         self, h5: Union[h5py.File, h5py.Group], node: h5py.Dataset

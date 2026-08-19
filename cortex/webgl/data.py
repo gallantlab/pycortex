@@ -10,13 +10,10 @@ dict(
 
 import os
 import json
-from io import BytesIO
 import numpy as np
-import numpy.typing as npt
 
 from .. import dataset
-from .. import volume
-from typing import Any, Optional, TypedDict, Union
+from typing import Any, Optional, TypedDict, cast
 
 class PackageMetadata(TypedDict):
     views: list[dataset.DataviewJSON]
@@ -37,82 +34,37 @@ class Package(object):
         self.subjects: set[str] = set()
 
         self.brains: dict[str, dataset.DataviewJSON] = dict()
-        # Two-phase, which is why this is not `list[bytes]`: the volumetric path
-        # finishes as PNG bytes here, but the surface path leaves the raw float
+        # Two-phase, which is why this is not `list[bytes]`: the mosaicked-texture
+        # encoding finishes as PNG bytes here, but the per-vertex one leaves an
         # array in place and only `reorder` turns it into `.npy` bytes, because it
         # cannot serialise until it knows the CTM's vertex order. Anything reading
         # `images` between the two is holding arrays, not bytes.
         self.images: dict[str, list[Any]] = dict()
+        # Kept so `reorder` can ask the same encoding that produced the frames what
+        # to do with them, instead of re-deriving it from the view's class.
+        self._payloads: dict[str, dataset.WebGLPayload] = dict()
         for brain in self.uniques:
             name = brain.name
             self.subjects.add(brain.subject)
             self.brains[name] = brain.to_json(simple=True)
-            # The array to ship is `spatial_data`, which each spatial interface
-            # points at its own storage -- `volume` for volumetric kinds,
-            # `vertices` for surface ones. This was a fork on
-            # `isinstance(brain, (Vertex, VertexRGB))` whose `else` branch read
-            # `.volume`, so a spatial kind this module had not heard of died on
-            # AttributeError (or, worse, was silently mosaicked as a volume if it
-            # happened to have one).
-            encdata = brain.spatial_data
-            if isinstance(brain, dataset.DataviewRGB):
-                encdata = encdata.astype(np.uint8)
-                # The WebGL fragment shader (shaderlib.js) composites with a
-                # premultiplied-alpha "over" formula
-                # (gl_FragColor = vColor + (1-α)·bg). We only need to pre-
-                # multiply on the Python side for a surface kind, whose bytes
-                # are uploaded as raw vertex attributes and which Three.js does
-                # NOT premultiply (see dataset.js VertexData path). A volumetric
-                # kind ships through the PNG texture path (dataset.js:335-338, raw=true),
-                # where Three.js sets `tex.premultiplyAlpha = true` and the
-                # WebGL UNPACK_PREMULTIPLY_ALPHA_WEBGL hook premultiplies the
-                # texture once on upload -- premultiplying here would double-
-                # attenuate it. The .vertices/.volume properties stay
-                # non-premultiplied so the matplotlib (quickshow) path keeps
-                # using matplotlib's straight-alpha imshow compositor.
-                if isinstance(brain, dataset.SurfaceView):
-                    # Note: encdata is already a fresh uint8 copy from the
-                    # .astype(np.uint8) call above, so we can write into it
-                    # in place. The assignment to a uint8 slice handles the
-                    # float→uint8 cast for us.
-                    a = encdata[..., 3:4].astype(np.float32) / 255.0
-                    encdata[..., :3] = np.round(
-                        encdata[..., :3].astype(np.float32) * a
-                    )
-                self.brains[name]["raw"] = True
-            else:
-                encdata = encdata.astype(np.float32)
-                self.brains[name]["raw"] = False
-
-            # How the array reaches the browser is a per-spatial-kind fact, and the two
-            # encodings are not interchangeable: surface data ships as raw
-            # per-vertex attributes (and must be permuted into the CTM's vertex
-            # order by `reorder`), volumetric data as a mosaicked PNG texture the
-            # shader samples through the transform. `webgl/resources/js/dataset.js`
-            # picks the path by `mosaic === undefined`, so a spatial kind needing a third
-            # encoding has to change the JS too. See INHERITANCE.md.
-            if isinstance(brain, dataset.SurfaceView):
-                # TODO: how does this work? check if tests run this part
-                self.images[name] = [encdata]
-            elif not isinstance(brain, dataset.VolumetricView):
-                # Neither encoding applies. Say so here: this used to fall into
-                # the branch below and surface as "Invalid data shape" from
-                # `volume.mosaic`, several frames deep and naming neither the
-                # view nor the real problem.
-                raise TypeError(
-                    "%s has no webgl wire encoding: it is neither a "
-                    "VolumetricView (mosaicked texture) nor a SurfaceView "
-                    "(per-vertex attributes). Inherit one of those spatial interfaces, "
-                    "a third encoding to webgl/resources/js/dataset.js. It can "
-                    "still be drawn by quickflat." % type(brain).__name__
-                )
-            else:
-                # TODO: make temporary typing work
-                self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
-                if len(set([shape for m, shape in self.images[name]])) != 1:
-                    raise ValueError("Internal error in mosaic")
-                self.brains[name]["mosaic"] = self.images[name][0][1]
-                self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
+            # Two questions, both answered by the view rather than by its class:
+            # `spatial_data` is the array to ship (each spatial interface points it
+            # at its own storage), and `space.pack_for_webgl` is how that array
+            # reaches the browser. This module used to answer the second itself, in
+            # three `isinstance(brain, SurfaceView)` forks -- the premultiplied-alpha
+            # asymmetry, the mosaic-versus-attributes choice and the vertex
+            # reordering -- plus a guard for "neither", so one fact was restated
+            # once per consequence and a space this module had not heard of hit
+            # whichever `else` came first. See INHERITANCE.md.
+            payload = brain.space.pack_for_webgl(
+                brain.spatial_data, raw=isinstance(brain, dataset.DataviewRGB)
+            )
+            self._payloads[name] = payload
+            self.images[name] = payload.frames
+            # `describe()` returns only keys of DataviewJSON, but says so as a
+            # plain dict: it lives in `cortex.dataset._webgl`, which `views` (where
+            # DataviewJSON is declared) cannot be imported from without a cycle.
+            self.brains[name].update(cast(dataset.DataviewJSON, payload.describe()))
 
     @property
     def views(self) -> list[dataset.DataviewJSON]:
@@ -130,21 +82,14 @@ class Package(object):
             (k, np.load(os.path.splitext(v)[0] + ".npz")) for k, v in subjects.items()
         )
         for brain in self.uniques:
-            # Only the per-vertex-attribute encoding needs permuting; see __init__.
-            if isinstance(brain, dataset.SurfaceView):
-                # `name` comes from Packable and `subject` from Dataview, so both
-                # survive narrowing to the spatial interface: mypy reads this as a subclass of
-                # both Packable and SurfaceView.
-                name = brain.name
-                data = np.array(self.images[name])[0]
-                npyform = BytesIO()
-                if self.brains[name]["raw"]:
-                    data = data[..., indices[brain.subject]["index"], :]
-                else:
-                    data = data[..., indices[brain.subject]["index"]]
-                np.save(npyform, np.ascontiguousarray(data))
-                npyform.seek(0)
-                self.images[name] = [npyform.read()]
+            # Whether permuting applies is the encoding's business, and only the
+            # per-vertex one says yes -- the default `reorder` returns the frames
+            # untouched without reading the index, so a mosaicked view does not
+            # decompress an index array it has no use for.
+            name = brain.name
+            self.images[name] = self._payloads[name].reorder(
+                self.images[name], indices[brain.subject]
+            )
         for npz in indices.values():
             npz.close()
 
@@ -163,16 +108,3 @@ class Package(object):
             names[name] = [fmt.format(name=name, frame=i) for i in range(len(imgs))]
         return names
 
-
-def _pack_png(mosaic: Union[npt.NDArray[np.float32], npt.NDArray[np.uint8]]) -> bytes:
-    from PIL import Image
-
-    buf = BytesIO()
-    if mosaic.dtype not in (np.float32, np.uint8):
-        raise TypeError
-
-    y, x = mosaic.shape[:2]
-    im = Image.frombuffer("RGBA", (x, y), mosaic.data, "raw", "RGBA", 0, 1)
-    im.save(buf, format="PNG")
-    buf.seek(0)
-    return buf.read()

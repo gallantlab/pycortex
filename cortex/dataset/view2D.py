@@ -118,7 +118,7 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
             vmin2=self.vmin2,
             vmax2=self.vmax2,
             state=self.state,
-            **self.attrs,
+            attrs=self.attrs,
         )
 
     # ------------------------------------------------------------------
