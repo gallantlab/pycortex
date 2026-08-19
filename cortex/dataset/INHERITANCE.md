@@ -587,7 +587,9 @@ their own classes, with the space rebuilt from the discriminator its
 `write_hdf_attrs` wrote. Pinned by
 `test_the_documented_skeleton_for_a_new_space_actually_works`, which is this
 skeleton filled in and exercised, so the doc cannot rot into describing an
-extension point that no longer exists.
+extension point that no longer exists. It lives in `cortex/tests/test_new_space.py`
+along with every other test that defines a space or a view this package does not
+ship -- the ones cited by name elsewhere in this document included.
 
 Everything else on the scalar column is inherited and should not be reimplemented:
 `data`, `movie`, `shape`, `name`, `copy`, `to_json`, `uniques`, `save`, the eight
