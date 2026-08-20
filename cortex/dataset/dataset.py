@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import tempfile
 from typing import Iterator, Optional, Union, overload, Literal
 import numpy as np
@@ -10,7 +12,6 @@ from ..xfm import Transform
 from .braindata import _hdf_write
 from .views import normalize as _vnorm
 from .views import Dataview, Vertex, Volume, _from_hdf_data
-from h5py._hl.files import File
 
 class Dataset:
     """
@@ -255,7 +256,7 @@ def normalize(data: Union[DatasetLike, Dataview, tuple]) -> Union[Dataset, Datav
 
     raise TypeError('Unknown input type')
 
-def _pack_subjs(h5: File, subjects: set[str]) -> None:
+def _pack_subjs(h5: h5py.File, subjects: set[str]) -> None:
     for subject in subjects:
         rois = db.get_overlay(subject, modify_svg_file=False)
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
@@ -270,14 +271,14 @@ def _pack_subjs(h5: File, subjects: set[str]) -> None:
                 _hdf_write(h5, pts, "pts", group)
                 _hdf_write(h5, polys, "polys", group)
 
-def _pack_xfms(h5: File, xfms: set[tuple[str, str]]) -> None:
+def _pack_xfms(h5: h5py.File, xfms: set[tuple[str, str]]) -> None:
     for subj, xfmname in xfms:
         xfm = db.get_xfm(subj, xfmname, 'coord')
         group = "/subjects/%s/transforms/%s"%(subj, xfmname)
         node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
         node.attrs['shape'] = xfm.shape
 
-def _pack_masks(h5: File, masks: set[tuple[str, str, str]]) -> None:
+def _pack_masks(h5: h5py.File, masks: set[tuple[str, str, str]]) -> None:
     for subj, xfm, maskname in masks:
         mask = db.get_mask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)
