@@ -439,37 +439,33 @@ class RenderableView(Dataview):
 
 
 class Packable(RenderableView):
-    """A view that is one addressable data array, as :meth:`Dataview.uniques` yields.
+    """A renderable view that ships as exactly one array: what ``uniques()`` yields.
 
-    This is the *unit of transport*: the thing that gets a single
-    content-addressed :attr:`name`, is written as one node under HDF ``/data``,
-    and reaches the browser as one texture or vertex-attribute array. Both the
-    scalar column and the RGB column are packable -- an RGB view ships as a
-    single four-channel array -- but :class:`~cortex.dataset.view2D.Dataview2D`
-    is not: a 2D view has no array of its own, only the two channels it
-    decomposes into, which is why it has no ``name``.
-
-    It exists because ``uniques()`` used to be annotated ``Iterator[Dataview]``,
-    which is wider than the truth and misses the one member every consumer
-    immediately reaches for. ``webgl.data.Package`` type-checked only because the
-    list it built was ``Any``; nothing warned that ``Dataview`` has no ``name``.
-
-    Note the asymmetry in what ``name`` addresses, which is why this class only
-    promises the name and not what it hashes: for a scalar view it is both the
-    HDF node name and the browser key, while an RGB view writes its channels as
-    four separate HDF nodes and uses its own ``name`` only as the browser key.
+    Renderable *and* one array, which is why this subclasses
+    :class:`RenderableView` rather than sitting beside it: a consumer needs both
+    :attr:`name` to key the array by and :attr:`~RenderableView.spatial_data` to
+    ship it. The scalar and RGB columns qualify -- an RGB view ships as one
+    four-channel array -- and :class:`~cortex.dataset.view2D.Dataview2D` does not,
+    owning no array of its own, only the two channels it decomposes into.
     """
 
     @property
     @abstractmethod
     def name(self) -> str:
-        """Content-addressed identity of this view's data array.
+        """Identity of this view's array, derived from its contents.
 
-        Content-addressed so that two views over identical data share a node
-        instead of duplicating it. Do not reimplement this as a hash of
-        :attr:`RenderableView.spatial_data`: for a masked volume that is the
-        unmasked 3-D array, not the flat stored one, so it would silently rename
-        every existing HDF node.
+        Two views over identical data therefore get the *same* name, which is the
+        point: it is how :meth:`Dataview.uniques` collapses to a set, and how one
+        array is stored and shipped once rather than per view that references it.
+        Not an identity for the *view* -- distinct views commonly share one.
+
+        Used as the HDF node name under ``/data`` and as the browser's key for
+        that array. The two coincide for a scalar view; an RGB view writes its
+        four channels as separate nodes, so for it this is only the browser key.
+        That is why this promises the name alone and not what is hashed: hashing
+        :attr:`~RenderableView.spatial_data` instead would take a masked volume's
+        unmasked 3-D array rather than its flat stored one, renaming every node
+        already on disk.
         """
 
 
