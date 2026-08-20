@@ -333,10 +333,10 @@ def _third_space_family():
         """A scalar view in MySpace."""
 
         def __init__(self, data, subject, myarg, cmap=None, vmin=None, vmax=None,
-                     description="", state=None, **kwargs):
+                     description="", state=None, priority=1, attrs=None):
             super().__init__(data, MySpace(subject, myarg), cmap=cmap, vmin=vmin,
                              vmax=vmax, description=description, state=state,
-                             **kwargs)
+                             priority=priority, attrs=attrs)
 
         # The doc's skeleton also carries a bare `_space: MySpace` annotation
         # here. Omitted: it is a static-only device with no runtime effect, and
@@ -376,13 +376,14 @@ def _third_space_family():
 
         def __init__(self, dim1, dim2, subject=None, myarg=None, description="",
                      cmap=None, vmin=None, vmax=None, vmin2=None, vmax2=None,
-                     **kwargs):
+                     alpha=None, state=None, priority=1, attrs=None):
             chan1, chan2 = _resolve_2d_channels(
                 dim1, dim2, channel_cls=MyView, space_cls=MySpace, subject=subject,
                 spec={"myarg": myarg}, ranges=((vmin, vmax), (vmin2, vmax2)))
             super().__init__(chan1, chan2, description=description, cmap=cmap,
                              vmin=vmin, vmax=vmax, vmin2=vmin2, vmax2=vmax2,
-                             **kwargs)
+                             alpha=alpha, state=state, priority=priority,
+                             attrs=attrs)
 
         @property
         def raw(self):

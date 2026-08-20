@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import difflib
 import glob
-import inspect
 import json
 import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from functools import lru_cache
 from typing import (
     Any,
     Generic,
@@ -202,68 +199,6 @@ class HasSubject(Protocol):
         """Subject identifier. Must exist in the pycortex database."""
 
 
-#: Similarity above which an unrecognized keyword is treated as a misspelling
-#: rather than as metadata. Both bounds are real cases, which is why it is not a
-#: round number: ``cmpa``/``cmap`` -- the motivating typo -- scores exactly 0.75,
-#: while ``name``/``xfmname`` scores 0.727 and ``name`` is a plausible attr.
-_KWARG_TYPO_CUTOFF = 0.75
-
-
-@lru_cache(maxsize=None)
-def _constructor_params(cls: type) -> frozenset[str]:
-    """Every named parameter of ``cls``'s constructor chain.
-
-    Walks the MRO because a view's parameters are split across it: ``cmap`` is
-    named by ``Volume.__init__``, ``description`` only by ``Dataview.__init__``,
-    and a typo of either should be caught. Cached per class -- ``inspect`` is far
-    too slow to run per constructed view, and the answer cannot change.
-    """
-    names: set[str] = set()
-    for klass in cls.__mro__:
-        init = klass.__dict__.get("__init__")
-        if init is None:
-            continue
-        try:
-            params = inspect.signature(init).parameters
-        except (TypeError, ValueError):  # pragma: no cover - C-level __init__
-            continue
-        names.update(
-            name
-            for name, param in params.items()
-            if name != "self"
-            and param.kind in (param.POSITIONAL_OR_KEYWORD, param.KEYWORD_ONLY)
-        )
-    return frozenset(names)
-
-
-def _reject_misspelled_kwargs(cls: type, kwargs: Mapping[str, Any]) -> None:
-    """Raise on a keyword that is a near-miss of one this constructor accepts.
-
-    ``attrs`` is a genuine feature -- ``stim`` is read by ``webgl/view.py``,
-    ``alpha`` by ``Dataview2D._raw_kwargs``, and users hang their own metadata
-    there -- so unknown keywords cannot simply be rejected. What *can* be
-    rejected is a keyword that looks like a misspelling of a real parameter, which
-    is the case that used to be silent: ``Volume(data, subj, xfm, cmpa="hot")``
-    built a view with the default colormap and an attribute nobody would ever
-    read. Anything not resembling a parameter name still lands in ``attrs``.
-
-    Pass such a key through ``attrs=`` if it really is metadata.
-    """
-    known = _constructor_params(cls)
-    for key in kwargs:
-        if key in known:
-            continue
-        close = difflib.get_close_matches(key, known, n=1, cutoff=_KWARG_TYPO_CUTOFF)
-        if close:
-            raise TypeError(
-                "%s() got an unexpected keyword argument %r; did you mean %r? "
-                "Unrecognized keywords are stored as `attrs` metadata, so this "
-                "would otherwise have been accepted and silently ignored. Pass "
-                "attrs={%r: ...} if it is deliberate."
-                % (cls.__name__, key, close[0], key)
-            )
-
-
 class Dataview(HasSubject, ABC):
     """Abstract root of every displayable view.
 
@@ -283,32 +218,34 @@ class Dataview(HasSubject, ABC):
         self,
         description: str = "",
         state: Any = None,
+        priority: int = 1,
         attrs: Optional[Mapping[str, Any]] = None,
-        **kwargs: Any,
     ) -> None:
         """
         Parameters
         ----------
         attrs : mapping, optional
-            Metadata to carry verbatim, *not* checked against the constructor's
-            parameter names. This is how ``copy()`` and the HDF factories pass
-            metadata that already lives on a view: it is data at that point, so
-            re-validating it would make a file written by an older pycortex
-            unloadable. Keywords a caller *types* go through ``**kwargs``, which
-            is checked -- see :func:`_reject_misspelled_kwargs`.
+            Arbitrary metadata to carry on the view. Written to HDF slot 6 and
+            shipped in the browser payload; ``stim`` is read by
+            ``webgl/view.py``. The **only** route for a key that is not a
+            parameter -- no constructor here ends in ``**kwargs``, so a keyword
+            that is not a parameter is a ``TypeError`` from Python itself.
+
+            Not validated, deliberately: this is also how ``copy()`` and the HDF
+            factories pass metadata that already lives on a view. It is data at
+            that point, and a file written by an older pycortex may hold a key no
+            current parameter matches -- ``Dataset.from_file`` swallows per-view
+            exceptions, so rejecting it would make the view vanish rather than
+            fail loudly.
         """
         self.state = state
-        if kwargs:
-            _reject_misspelled_kwargs(type(self), kwargs)
-        # Carried metadata wins over a typed keyword on the one key where the two
-        # can collide. `priority` is both an attr and a named parameter of the RGB
-        # constructors, whose default is indistinguishable from an explicit value
-        # -- so ordering it the other way meant `copy()` and an HDF reload both
-        # reset a priority of 3 back to 1, since neither passes the parameter.
-        self.attrs: dict[str, Any] = dict(kwargs)
-        if attrs is not None:
-            self.attrs.update(attrs)
-        self.attrs.setdefault("priority", 1)
+        # `setdefault`, so carried metadata wins over the `priority` parameter,
+        # whose default is indistinguishable from an explicit value -- ordering it
+        # the other way meant `copy()` and an HDF reload both reset a priority of 3
+        # back to 1, since neither passes the parameter. Seeding `attrs` first also
+        # keeps slot 6's key order, and therefore its bytes, as they were.
+        self.attrs: dict[str, Any] = dict(attrs) if attrs is not None else {}
+        self.attrs.setdefault("priority", priority)
         self.description = description
 
     @property
@@ -848,7 +785,8 @@ class ScalarView(Packable, RenderableView):
         vmax: Optional[float] = None,
         description: str = "",
         state: Any = None,
-        **kwargs: Any,
+        priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         if isinstance(data, str):
             import nibabel
@@ -867,7 +805,9 @@ class ScalarView(Packable, RenderableView):
         self.cmap = cmap if cmap is not None else default_cmap
         self.vmin = vmin
         self.vmax = vmax
-        super().__init__(description=description, state=state, **kwargs)
+        super().__init__(
+            description=description, state=state, priority=priority, attrs=attrs
+        )
         # Every scalar view leaves this constructor with numeric bounds. Doing it
         # here rather than in each subclass is what makes that an invariant of the
         # column instead of a step each new space has to remember: `.vmin` used to
@@ -1199,8 +1139,11 @@ class Volume(ScalarView, VolumetricView):
         of the data.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
-    **kwargs
-        All additional arguments are stored in ``attrs``.
+    priority : int, optional
+        Priority for display ordering. Default is 1.
+    attrs : mapping, optional
+        Arbitrary metadata to carry on the view. The only route for a key that is
+        not a parameter: an unrecognized keyword is a ``TypeError``.
     """
 
     def __init__(
@@ -1214,7 +1157,8 @@ class Volume(ScalarView, VolumetricView):
         vmax: Optional[float] = None,
         description: str = "",
         state: Any = None,
-        **kwargs: Any,
+        priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         super().__init__(
             data,
@@ -1224,7 +1168,8 @@ class Volume(ScalarView, VolumetricView):
             vmax=vmax,
             description=description,
             state=state,
-            **kwargs,
+            priority=priority,
+            attrs=attrs,
         )
         self.masked: _masker[Volume] = _masker(self)
 
@@ -1369,8 +1314,11 @@ class Vertex(ScalarView, SurfaceView):
         of the data.
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
-    **kwargs
-        All additional arguments are stored in ``attrs``.
+    priority : int, optional
+        Priority for display ordering. Default is 1.
+    attrs : mapping, optional
+        Arbitrary metadata to carry on the view. The only route for a key that is
+        not a parameter: an unrecognized keyword is a ``TypeError``.
     """
 
     def __init__(
@@ -1382,7 +1330,8 @@ class Vertex(ScalarView, SurfaceView):
         vmax: Optional[float] = None,
         description: str = "",
         state: Any = None,
-        **kwargs: Any,
+        priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         super().__init__(
             data,
@@ -1392,7 +1341,8 @@ class Vertex(ScalarView, SurfaceView):
             vmax=vmax,
             description=description,
             state=state,
-            **kwargs,
+            priority=priority,
+            attrs=attrs,
         )
 
     _space: SurfaceSpace

@@ -1260,33 +1260,70 @@ def _one_of_each_view():
     ]
 
 
-def test_a_misspelled_constructor_keyword_is_rejected():
-    """A typo of a real parameter must not be silently absorbed into ``attrs``.
+def test_an_unrecognized_constructor_keyword_is_rejected():
+    """Every keyword must be a parameter. There is no ``**kwargs`` sink.
 
-    ``attrs`` is a genuine feature -- ``stim`` is read by ``webgl/view.py`` and
-    users hang their own metadata there -- so unrecognized keywords cannot simply
-    be refused. But it was also a ``**kwargs`` sink, so
-    ``Volume(data, subj, xfm, cmpa="hot")`` built a view with the *default*
-    colormap plus an attribute nothing would ever read, and reported nothing.
+    ``Dataview.attrs`` used to be one, so ``Volume(data, subj, xfm, cmpa="hot")``
+    built a view with the *default* colormap plus an attribute nothing would ever
+    read, and reported nothing. No constructor in the package ends in
+    ``**kwargs`` now, so the rejection is Python's own and mypy sees it too --
+    which is what a runtime check could not give.
     """
     vol = np.random.randn(*volshape)
+    vtx = np.random.randn(nverts)
 
-    with pytest.raises(TypeError, match="did you mean 'cmap'"):
+    # a misspelling of a real parameter
+    with pytest.raises(TypeError, match="unexpected keyword argument 'cmpa'"):
         cortex.Volume(vol, subj, xfmname, cmpa="hot")
-    with pytest.raises(TypeError, match="did you mean 'description'"):
-        cortex.Volume(vol, subj, xfmname, descriptoin="x")
-    # A scalar view has no second colormap axis, so this is a typo there even
-    # though `vmax2` is a real parameter of the 2D column.
-    with pytest.raises(TypeError, match="did you mean 'vmax'"):
+    # a parameter of a *different* column: a scalar view has no second axis
+    with pytest.raises(TypeError, match="unexpected keyword argument 'vmax2'"):
         cortex.Volume(vol, subj, xfmname, vmax2=3)
+    # and metadata, which used to be absorbed silently
+    with pytest.raises(TypeError, match="unexpected keyword argument 'stim'"):
+        cortex.Volume(vol, subj, xfmname, stim="movie.mp4")
 
-    # Metadata that does not resemble a parameter name still lands in attrs.
-    view = cortex.Volume(vol, subj, xfmname, stim="movie.mp4", session=3)
+    # every column, so none of the six keeps a sink
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        cortex.Vertex(vtx, subj, bogus=1)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        cortex.Volume2D(vol, vol * 2, subj, xfmname, bogus=1)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        cortex.Vertex2D(vtx, vtx * 2, subj, bogus=1)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        cortex.VolumeRGB(vol, vol, vol, subj, xfmname, bogus=1)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        cortex.VertexRGB(vtx, vtx, vtx, subj, bogus=1)
+
+
+def test_attrs_is_the_route_for_metadata_that_is_not_a_parameter():
+    """``attrs=`` is now the only way in, and the keys still reach HDF and JSON.
+
+    Metadata is a real feature -- ``stim`` is read by ``webgl/view.py`` -- it just
+    no longer arrives by being unrecognized.
+    """
+    vol = np.random.randn(*volshape)
+    view = cortex.Volume(vol, subj, xfmname, attrs={"stim": "movie.mp4", "session": 3})
+
     assert view.attrs["stim"] == "movie.mp4" and view.attrs["session"] == 3
+    assert view.to_json(simple=False)["attrs"]["session"] == 3
+    assert view.copy(vol * 2).attrs["session"] == 3
 
-    # And `attrs=` is the escape hatch for one that does resemble one.
-    deliberate = cortex.Volume(vol, subj, xfmname, attrs={"cmpa": "hot"})
-    assert deliberate.attrs["cmpa"] == "hot"
+
+def test_the_2d_alpha_override_is_a_parameter():
+    """``alpha`` on a 2D view was read out of ``attrs``, which needed the sink.
+
+    It is a real feature -- it replaces the alpha channel the 2D colormap would
+    have produced -- so it becomes a real parameter rather than dying with the
+    sink that carried it.
+    """
+    vol = np.random.randn(*volshape)
+    opaque = cortex.Volume2D(vol, vol * 2, subj, xfmname, alpha=np.ones(volshape))
+    transparent = cortex.Volume2D(vol, vol * 2, subj, xfmname, alpha=np.zeros(volshape))
+
+    assert (opaque.raw.volume[..., 3] == 255).all()
+    assert (transparent.raw.volume[..., 3] == 0).all()
+    # and it survives a copy, which the attrs lookup also did
+    assert transparent.copy()._alpha is transparent._alpha
 
 
 def test_carried_attrs_are_not_revalidated():

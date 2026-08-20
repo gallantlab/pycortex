@@ -377,7 +377,7 @@ class MySpace(BrainSpace):
 
 # written out in full below, under "The three view classes"
 class MyView(ScalarView, MySpatial): ...     # + space-specific accessors
-class MyView2D(Dataview2D[MyView], MySpatial): ...   # + a ctor forwarding kwargs
+class MyView2D(Dataview2D[MyView], MySpatial): ...   # + a ctor naming its params
 class MyViewRGB(DataviewRGB[MyView], MySpatial): ...
 ```
 
@@ -530,7 +530,11 @@ class MyView(ScalarView, MySpatial):
         vmax: Optional[float] = None,
         description: str = "",
         state: Any = None,
-        **kwargs: Any,                   # everything else lands in `attrs`
+        priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,   # metadata; the only route
+                                         # for a key that is not a parameter.
+                                         # Do NOT add **kwargs -- see
+                                         # "Unknown keywords" below
     ) -> None:
         # The whole job: build the space, hand it up. ScalarView.__init__ calls
         # space.coerce(data), which is where per-array geometry gets recorded.
@@ -539,7 +543,7 @@ class MyView(ScalarView, MySpatial):
             MySpace(subject, myarg),
             cmap=cmap, vmin=vmin, vmax=vmax,
             description=description, state=state,
-            **kwargs,
+            priority=priority, attrs=attrs,
         )
         # Nothing else. `ScalarView.__init__` defaults vmin/vmax to the 1st/99th
         # data percentiles, so this view leaves construction with numeric bounds
@@ -564,6 +568,9 @@ class MyView(ScalarView, MySpatial):
     def raw(self) -> MyViewRGB:
         return cast(MyViewRGB, self._build_raw())
 
+    # `empty`/`random` are the one place `**kwargs` remains, forwarding to the
+    # constructor above -- so a bad keyword here is caught on the call rather than
+    # by mypy. See "Unknown keywords" below.
     @classmethod                         # optional, but two lines each
     def empty(cls, subject: str, myarg: str, value: float = 0, **kwargs: Any) -> Self:
         shape = MySpace(subject, myarg).template_shape
@@ -623,7 +630,10 @@ class MyView2D(Dataview2D[MyView], MySpatial):
         vmax: Optional[float] = None,
         vmin2: Optional[float] = None,
         vmax2: Optional[float] = None,
-        **kwargs: Any,
+        alpha: Optional[npt.NDArray] = None,   # overrides the colormap's alpha
+        state: Any = None,
+        priority: int = 1,
+        attrs: Optional[Mapping[str, Any]] = None,
     ) -> None:
         chan1, chan2 = _resolve_2d_channels(
             dim1,
@@ -641,7 +651,7 @@ class MyView2D(Dataview2D[MyView], MySpatial):
             chan1, chan2,
             description=description,
             cmap=cmap, vmin=vmin, vmax=vmax, vmin2=vmin2, vmax2=vmax2,
-            **kwargs,
+            alpha=alpha, state=state, priority=priority, attrs=attrs,
         )
 
     @property                            # narrowing; Dataview2D.raw does it, via
@@ -716,12 +726,11 @@ class MyViewRGB(DataviewRGB[MyView], MySpatial):
         return "<RGB my data for (%s)>" % self.subject
 ```
 
-Note the RGB column takes `attrs` as a named parameter rather than ending in
-`**kwargs` like the other two. That is deliberate: an unknown keyword to an RGB view
-is a plain `TypeError` from Python itself, which is stricter than the near-miss check
-the others get, and is pinned by `test_rgb_rejects_unknown_kwargs`. The cost is that
-a space's RGB view has to declare and forward `attrs` explicitly, or metadata is
-dropped when the view is rebuilt from HDF.
+All three columns take `attrs` as a named parameter and none ends in `**kwargs`,
+so an unknown keyword to any of them is a plain `TypeError` from Python -- which is
+also what lets mypy flag it. A space's three view classes each have to declare and
+forward `attrs`, or metadata is dropped when the view is rebuilt from HDF; the
+skeleton test catches that omission.
 
 Also the whole class. `name`, `__hash__`, `spatial_data`, `to_json`, `_write_hdf`,
 `alpha` and its NaN masking, `_default_alpha`, `_channel_stack`, `_rgba_stack`,
@@ -748,13 +757,11 @@ Taking the surface family as one space's cost, of roughly 380 mechanical lines:
   passed *positionally* -- `cortex.Volume(arr, "S1", "fullhead")` -- so a generic
   `__init__(self, data, subject, **spec)` cannot put `myarg` in position 3. That is
   an API break, not a refactor. A `**kwargs` constructor also gives up parameter
-  types and positional arity: mypy currently rejects `Vertex2D(a, a, vmin="lo")`,
-  `VertexRGB(a, a, a, 3)` and a fourth positional to `Vertex`. (mypy still does not
-  reject a misspelled keyword, since four of the six constructors end in
-  `**kwargs: Any` -- but the *runtime* now does, so this is caught on the first
-  call rather than never. See "Unknown keywords" below.)
-  A `.pyi` stub recovers the static checking at the price of writing every
-  signature twice.
+  types and positional arity: mypy rejects `Vertex2D(a, a, vmin="lo")`,
+  `VertexRGB(a, a, a, 3)`, a fourth positional to `Vertex`, and -- since no
+  constructor ends in `**kwargs: Any` any more -- every misspelled keyword. A
+  `**kwargs` constructor would give all of that back up, which is now the strongest
+  argument against generating these. See "Unknown keywords" below.
 - **Class docstrings** are rendered verbatim by `autoclass`, and they *are* the
   parameter documentation. Generating them means templating numpydoc, which is
   worse than writing it.
@@ -805,59 +812,79 @@ through it and never name `Volume` or `Vertex`. A space is per-view, not shared:
 mask a flattened array matches, which hemisphere a half-length array covered), so
 `wrap()` uses `self` only as a template of parameters.
 
-### Unknown keywords: `attrs` is a feature, a typo is not
+### Unknown keywords: no constructor has a `**kwargs` sink
 
-Four of the six constructors end in `**kwargs: Any`, and whatever lands there
-becomes `Dataview.attrs`, written to HDF slot 6 and shipped in the browser payload.
-That is a real feature and not an accident: `stim` is read by
-`webgl/view.py`, `alpha` by `Dataview2D._raw_kwargs`, `priority` by `Dataview`
-itself, and users hang their own metadata there. So unknown keywords cannot simply
-be rejected.
+Whatever reached `**kwargs: Any` became `Dataview.attrs`, written to HDF slot 6
+and shipped in the browser payload. That made metadata convenient -- `stim` is
+read by `webgl/view.py` -- and it also swallowed every misspelling of a real
+parameter. `Volume(data, subj, xfm, cmpa="hot")` built a view with the **default**
+colormap plus an attribute nothing would ever read, and reported nothing.
 
-What *was* an accident is that the sink swallowed misspellings of real parameters.
-`Volume(data, subj, xfm, cmpa="hot")` built a view with the **default** colormap
-plus an attribute nothing would ever read, and reported nothing.
-
-`Dataview.__init__` now runs `_reject_misspelled_kwargs` over whatever reached it,
-raising `TypeError` for any key that is a near-miss of a parameter its concrete
-class accepts, and letting everything else through to `attrs`:
+None of the six constructors ends in `**kwargs` now. An unrecognized keyword is a
+`TypeError` from Python itself:
 
 ```python
-cortex.Volume(data, "S1", "fullhead", cmpa="hot")     # TypeError: did you mean 'cmap'?
-cortex.Volume(data, "S1", "fullhead", stim="a.mp4")   # fine -- attrs metadata
-cortex.Volume(data, "S1", "fullhead", attrs={"cmpa": "hot"})   # fine -- explicit
+cortex.Volume(data, "S1", "fullhead", cmpa="hot")   # TypeError: unexpected keyword 'cmpa'
+cortex.Volume(data, "S1", "fullhead", stim="a.mp4") # TypeError: likewise
+cortex.Volume(data, "S1", "fullhead", attrs={"stim": "a.mp4"})   # this is the way in
 ```
 
-Pinned by `test_a_misspelled_constructor_keyword_is_rejected`, which covers all
-three lines above.
+Metadata has not gone away; it has one route instead of two. `attrs=` is an
+explicit parameter on all six, and the keys still reach slot 6 and the payload.
+Pinned by `test_an_unrecognized_constructor_keyword_is_rejected` and
+`test_attrs_is_the_route_for_metadata_that_is_not_a_parameter`.
 
-Three things about the shape of it:
+**Removing the sink is what buys the static check.** mypy could never flag a
+misspelling while a constructor ended in `**kwargs: Any`; it now flags all six,
+and reports a better suggestion than any string-similarity heuristic could,
+because it knows the real parameter list:
 
-- **The parameter names come from the whole MRO**, via `inspect.signature` on each
-  `__init__` in it, cached per class. They have to: `cmap` is named by
-  `Volume.__init__` and `description` only by `Dataview.__init__`, and a typo of
-  either should be caught. A third-party view gets this for free.
-- **The cutoff is 0.75, and both bounds are real cases.** `cmpa`/`cmap` -- the
-  motivating typo -- scores exactly 0.75 on `difflib`'s ratio, and `name`/`xfmname`
-  scores 0.727 while `name` is a plausible attr. Widening it to 0.7 makes
-  `Volume(..., name=...)` an error.
-- **`attrs=` is checked differently from `**kwargs`, deliberately.** Keywords a
-  caller *types* are checked; a dict passed as `attrs=` is carried verbatim. That
-  is what `copy()` and the three HDF factories use, because at that point the
-  metadata is *data*: a file written by an older pycortex may hold a key today's
-  constructor would flag, and `Dataset.from_file` swallows per-view exceptions, so
-  raising would make the view vanish rather than fail loudly. Pinned by
-  `test_carried_attrs_are_not_revalidated`. It doubles as the escape hatch for a
-  key that really does resemble a parameter name.
+```
+error: Unexpected keyword argument "cmpa" for "Volume"
+error: Unexpected keyword argument "vmax2" for "Volume"; did you mean "vmax"?
+```
 
-On conflict `attrs` wins over a typed keyword, which matters for exactly one key.
-`priority` is both an attr and a *named parameter* of the RGB constructors, whose
-default is indistinguishable from an explicit value -- so ordering it the other way
-meant `copy()` and an HDF reload both reset a priority of 3 back to 1, since
-neither passes the parameter. Pinned by
-`test_priority_survives_copy_and_reload_for_every_view`.
+The inheritance structure does not get in the way of that, which is worth stating
+because it looks like it should: mypy checks a call against the *concrete* class's
+`__init__`, and `__init__` is exempt from Liskov override checking, so
+`Volume.__init__` differing from `ScalarView.__init__` is fine. The abstract
+columns are checked too -- instantiating `ScalarView` directly with a bad keyword
+reports both the keyword and the abstract-class error.
 
-Fixing the sink is also what let the HDF factories stop hand-filtering their
+Two forwarding paths keep `**kwargs: Any`, so a bad keyword there is caught at
+runtime rather than by mypy. Both are internal, not places a caller types a
+keyword:
+
+- `empty`/`random`, which forward to the constructor. Closing this needs `value`
+  to become keyword-only, which is an API change -- see [Why none of this is
+  generated](#why-none-of-this-is-generated) for the same argument in the other
+  direction.
+- `BrainSpace.wrap`/`wrap_rgb`, the indirection that lets `.raw` and the HDF
+  factories avoid naming a concrete class. Typing it precisely would need a
+  signature per space, which is the thing it exists to avoid.
+
+Two consequences of the strict rule worth knowing rather than discovering:
+
+- **`alpha` on a 2D view is now a real parameter.** It overrides the alpha channel
+  the 2D colormap produces, and it used to be read back out of `attrs` under that
+  key -- which only worked because the sink put it there. It is declared on
+  `Dataview2D`, `Volume2D` and `Vertex2D`, stored as `_alpha`, and carried by
+  `copy()`. Pinned by `test_the_2d_alpha_override_is_a_parameter`.
+- **`priority` is a real parameter on all six**, not just the RGB column. It was
+  reaching `attrs` through the sink everywhere else. Carried metadata still wins
+  over it, via `setdefault`: the parameter's default is indistinguishable from an
+  explicit value, so ordering it the other way meant `copy()` and an HDF reload
+  both reset a priority of 3 back to 1, since neither passes the parameter.
+  Pinned by `test_priority_survives_copy_and_reload_for_every_view`.
+
+`attrs=` is deliberately **not** validated, which is also why it is the route
+`copy()` and the three HDF factories use. Metadata on an existing view is data by
+then, and a file written by an older pycortex may hold a key no current parameter
+matches; `Dataset.from_file` swallows per-view exceptions, so rejecting it would
+make the view vanish rather than fail loudly. Pinned by
+`test_carried_attrs_are_not_revalidated`.
+
+Dropping the sink is also what let the HDF factories stop hand-filtering their
 kwargs. `_from_hdf_view` had a `_RGB_KWARGS = ("description", "state", "priority")`
 whitelist whose real job was to discard a `cmap=None` that `from_hdf` had
 synthesised from the JSON `null` in slot 2 -- the slot an RGB view writes *because
