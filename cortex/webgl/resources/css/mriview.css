@@ -131,8 +131,8 @@ a:visited { color:white; }
     position:absolute;
     z-index:8;
     top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    left: 0%;
+    transform: translate(0%, -50%);
     padding:15px;
     margin:20px;
     border-radius:10px;
