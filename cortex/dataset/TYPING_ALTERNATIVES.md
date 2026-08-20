@@ -317,6 +317,48 @@ own regression test.
   `Dataview`; `webgl/view.py:730` references `Dataset` and `_convert_dataset`, neither of which
   exists (`addData` is permanently broken, xfailed).
 
+## Why the three view classes are not generated
+
+The obvious next step is to generate the three classes from the space and let a new
+one subclass only for extras. It was costed and rejected; the numbers are why.
+
+Taking the surface family as one space's cost, of roughly 380 mechanical lines:
+
+| | lines | generatable? |
+| --- | --- | --- |
+| the three `__init__` signatures | 90 | **no** |
+| the three class docstrings | 123 | **no** |
+| the space's own vocabulary accessors | 17 | no -- it is new by definition |
+| genuinely new logic (`renderer_data`, cross-space maps, `__getitem__`) | 101 | no |
+| narrowing properties (`space`, `raw` x 3) | 20 | **no** |
+| `empty`/`random` and three `__repr__`s | 24 | yes |
+
+- **`__init__`** cannot be generated because the space-identifying argument is
+  passed *positionally* -- `cortex.Volume(arr, "S1", "fullhead")` -- so a generic
+  `__init__(self, data, subject, **spec)` cannot put `myarg` in position 3. That is
+  an API break, not a refactor. A `**kwargs` constructor also gives up parameter
+  types and positional arity: mypy rejects `Vertex2D(a, a, vmin="lo")`,
+  `VertexRGB(a, a, a, 3)`, a fourth positional to `Vertex`, and -- since no
+  constructor ends in `**kwargs: Any` any more -- every misspelled keyword. A
+  `**kwargs` constructor would give all of that back up, which is now the strongest
+  argument against generating these. See INHERITANCE.md, "Unknown keywords".
+- **Class docstrings** are rendered verbatim by `autoclass`, and they *are* the
+  parameter documentation. Generating them means templating numpydoc, which is
+  worse than writing it.
+- **Narrowing properties** exist precisely to state a static type. A generated
+  property has no narrowed type, so nothing is saved.
+- **`empty`/`random`** genuinely could be `def random(cls, *args, **kwargs)`
+  forwarding to `cls._space_cls(*args)`. But `Volume.empty("S1", "fullhead", 5)`
+  passes `value` positionally today, and `*args` would swallow the `5` into the
+  space constructor as `mask=5` -- silent breakage. Making `value` keyword-only
+  fixes it and is an API change; and `*args: Any` means `Volume.empty("S1")`
+  type-checks and fails at runtime.
+
+So the ceiling is about 6% of the mechanical lines, half of it behind an API
+change, in exchange for an `__init_subclass__` mechanism. If the per-space cost is
+still the problem, the lever is the ~101 lines of genuinely new logic, and the only
+help available there is this document.
+
 ## Constraint that bounds all options: the wire format
 
 `webgl/resources/js/dataset.js` dispatches **structurally, not nominally** — no Python class name

@@ -41,17 +41,13 @@ class MyViewRGB(DataviewRGB[MyView], MySpatial): ...
 ```
 
 `spec_keys` is the one other declaration a space usually wants: the names of its
-constructor arguments besides `subject`, `("xfmname",)` for `VolumeSpace` and empty
+constructor arguments besides `subject` -- `("xfmname",)` for `VolumeSpace`, empty
 for `SurfaceSpace`. `BrainSpace.from_spec` reads it to require each of them before
 constructing, which is how the composite views build a space when they are handed
-raw arrays rather than channel objects. Each of the four used to be passed a
-`lambda` naming the space class with `_require` applied to each of its arguments,
-*and* a dict of those same keys to validate channel objects against -- so "a
-volumetric space is subject plus xfmname, and both are mandatory" was written into
-four view constructors instead of into `VolumeSpace`.
+raw arrays rather than channel objects.
 
-Six more members are deliberately *not* in the list above, because all six are
-concrete on `BrainSpace` and most spaces should inherit them:
+Six more members are concrete on `BrainSpace`. Inherit them unless the note says
+otherwise:
 
 - `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
   implementing `xfmname` gets slot 7 right for free. Override it only if a space
@@ -96,60 +92,22 @@ setting anyway as the one place a space names itself — a space that *does* wan
 key on disk has an obvious value to write in `write_hdf_attrs` and match in
 `from_hdf`.
 
-### What the space owns, and why
+### What goes on the space
 
-The rule is that anything depending on the *geometry* belongs to the space, so
-that adding a space does not mean editing the columns. Seven things moved there,
-each because it was the same question asked once per space:
+Anything that depends on the geometry. If you find yourself wanting to branch on
+which space you are in, from inside a column or a consumer, the answer is a method
+on the space instead.
 
-| was | now | it was duplicated as |
-| --- | --- | --- |
-| `db.get_xfm(...).shape` vs `SurfaceSpace(...).nverts` | `template_shape` | 4 methods (`empty`/`random` x 2 classes) |
-| `shape` vs `split`/`frames` in the simple JSON | `describe_layout` | 4 `to_json` overrides, now one each on `ScalarView` and `DataviewRGB` |
-| slicing at `llen`, branching on movie-ness | `SurfaceSpace.split_hemispheres` | 4 properties (`left`/`right` on `Vertex` and `VertexRGB`) |
-| whether two masked arrays can be compared elementwise | `align` | `Volume2D.raw` at 15 lines against `Vertex2D.raw` at 2 |
-| "subject and xfmname are both mandatory" | `spec_keys` + `from_spec` | a lambda plus a dict in each of 4 constructors |
-| the transform name a volumetric view reports | `xfmname`, now concrete on `VolumetricView` | 3 overrides, two of which reached through a channel |
-| how an array reaches the browser | `pack_for_webgl` | 3 `isinstance(brain, SurfaceView)` forks in `webgl/data.py`, plus a guard for "neither" |
+Concretely, the space owns: the shape of a frame (`spatial_shape`) and of a fresh
+array (`template_shape`); validation and any per-array facts `coerce` records;
+densification (`to_dense`); how two arrays are made comparable (`align`); the JSON
+keys describing an array's layout (`describe_layout`) and the space itself
+(`to_json`); the wire encoding (`pack_for_webgl`); the HDF attrs and their reader
+(`write_hdf_attrs`, `from_hdf`); and the three view classes (`views`).
 
-`split_hemispheres` also removed the one place a view reached *through a channel*
-for geometry: `VertexRGB.left` read `self.red.llen` because `DataviewRGB.space` is
-typed `BrainSpace`. `VertexRGB` now narrows `space` to `SurfaceSpace` the way
-`Vertex` does -- sound because `DataviewRGB[Vertex]` fixes the channel type, which
-the generic base cannot state.
-
-What deliberately did **not** move:
-
-- `Volume.map`, `Vertex.map`, `Vertex.volume` -- these transform *between* spaces
-  via `cortex.utils.get_mapper`, so they are a property of a space *pair*, and
-  putting them on `BrainSpace` would drag the mapper into `_space.py`.
-- `Volume.save_nii` -- the affine it needs is a space fact, but writing a file is
-  not; only the lookup is a candidate, and it is one line.
-- `__repr__` -- the mask description is space knowledge, but the payoff is
-  cosmetic.
-
-`MySpatial` is the spatial interface — `VolumetricView` if the data samples through a
-transform, `SurfaceView` if it is per-vertex, or a new subclass of
-`RenderableView` supplying `renderer_data` if it is sampled some other way. A view
-that inherits neither is still a perfectly good `Dataview`; it just cannot be
-passed to the flatmap renderers, and `as_renderable` will say so.
-
-`register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
-and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
-matters: the registry is consulted in order and the first space whose `from_hdf`
-returns non-`None` wins.
-
-Order is by **`fallback`**, not by arrival. A fallback space claims any node no
-other space wanted, and exists only because legacy files carry no space
-discriminator: `SurfaceSpace` sets it, and accepts anything without a transform,
-which is how a pre-registry file is recognised. `register_space` inserts a
-non-fallback space ahead of every fallback one, so the catch-alls stay last
-however many spaces are added. Leave `fallback` alone; test in `from_hdf` for
-something you write yourself in `write_hdf_attrs`, and you will be consulted
-ahead of the built-in catch-all.
-
-Pinned by `test_a_third_space_registers_ahead_of_the_catch_all`, which also checks
-that a *second* fallback still sorts behind every real space.
+It does not own anything that relates *two* spaces. `Volume.map`, `Vertex.map` and
+`Vertex.volume` transform between spaces through `cortex.utils.get_mapper`, so they
+live on the views. A mapper for your space belongs beside those.
 
 ### The three view classes, written out
 
@@ -240,19 +198,15 @@ class MyView(ScalarView, MySpatial):
     #         return self.space.nthings
 ```
 
-Filled in against a synthetic 10-element space, all three of these work: scalar
-construction from an array and from a movie, `renderer_data`, the arithmetic
-operators, `empty`/`random`, `raw` (which round-trips through `space.wrap_rgb`),
-2D construction from both arrays and views, RGB construction including a movie,
+These three skeletons, filled in against a synthetic ten-element space, support
+everything the built-in views do: construction from an array and from a movie,
+`renderer_data`, the arithmetic operators, `empty`/`random`, `.raw`, 2D
+construction from either arrays or views, RGB construction including movies,
 `to_json` in both modes, `uniques()` collapsed and expanded, `name`,
-`as_renderable`, and a full HDF round trip -- all three columns save and reload as
-their own classes, with the space rebuilt from the discriminator its
-`write_hdf_attrs` wrote. Pinned by
-`test_the_documented_skeleton_for_a_new_space_actually_works`, which is this
-skeleton filled in and exercised, so the doc cannot rot into describing an
-extension point that no longer exists. It lives in `cortex/tests/test_new_space.py`
-along with every other test that defines a space or a view this package does not
-ship -- the ones cited by name elsewhere in this document included.
+`as_renderable`, and a full HDF round trip in which all three columns reload as
+their own classes with the space rebuilt from what `write_hdf_attrs` wrote. That
+filled-in version is `test_the_documented_skeleton_for_a_new_space_actually_works`
+in `cortex/tests/test_new_space.py`; run it, then copy it.
 
 Everything else on the scalar column is inherited and should not be reimplemented:
 `data`, `movie`, `shape`, `name`, `copy`, `to_json`, `uniques`, `save`, the eight
@@ -384,178 +338,135 @@ Also the whole class. `name`, `__hash__`, `renderer_data`, `to_json`, `_write_hd
 `uniques`, `copy` and `color_voxels` are all on `DataviewRGB` -- 23 members, 155
 statements, and eleven of those members were per-subclass until recently.
 
-#### Why none of this is generated
+### The channel resolvers
 
-The obvious next step is to generate the three classes from the space and let a new
-one subclass only for extras. It was costed and rejected; the numbers are why.
-
-Taking the surface family as one space's cost, of roughly 380 mechanical lines:
-
-| | lines | generatable? |
-| --- | --- | --- |
-| the three `__init__` signatures | 90 | **no** |
-| the three class docstrings | 123 | **no** |
-| the space's own vocabulary accessors | 17 | no -- it is new by definition |
-| genuinely new logic (`renderer_data`, cross-space maps, `__getitem__`) | 101 | no |
-| narrowing properties (`space`, `raw` x 3) | 20 | **no** |
-| `empty`/`random` and three `__repr__`s | 24 | yes |
-
-- **`__init__`** cannot be generated because the space-identifying argument is
-  passed *positionally* -- `cortex.Volume(arr, "S1", "fullhead")` -- so a generic
-  `__init__(self, data, subject, **spec)` cannot put `myarg` in position 3. That is
-  an API break, not a refactor. A `**kwargs` constructor also gives up parameter
-  types and positional arity: mypy rejects `Vertex2D(a, a, vmin="lo")`,
-  `VertexRGB(a, a, a, 3)`, a fourth positional to `Vertex`, and -- since no
-  constructor ends in `**kwargs: Any` any more -- every misspelled keyword. A
-  `**kwargs` constructor would give all of that back up, which is now the strongest
-  argument against generating these. See INHERITANCE.md, "Unknown keywords".
-- **Class docstrings** are rendered verbatim by `autoclass`, and they *are* the
-  parameter documentation. Generating them means templating numpydoc, which is
-  worse than writing it.
-- **Narrowing properties** exist precisely to state a static type. A generated
-  property has no narrowed type, so nothing is saved.
-- **`empty`/`random`** genuinely could be `def random(cls, *args, **kwargs)`
-  forwarding to `cls._space_cls(*args)`. But `Volume.empty("S1", "fullhead", 5)`
-  passes `value` positionally today, and `*args` would swallow the `5` into the
-  space constructor as `mask=5` -- silent breakage. Making `value` keyword-only
-  fixes it and is an API change; and `*args: Any` means `Volume.empty("S1")`
-  type-checks and fails at runtime.
-
-So the ceiling is about 6% of the mechanical lines, half of it behind an API
-change, in exchange for an `__init_subclass__` mechanism. If the per-space cost is
-still the problem, the lever is the ~101 lines of genuinely new logic, and the only
-help available there is this document.
-
-### One channel resolver for both composite columns
-
-`Dataview2D` and `DataviewRGB` both accept either already-built channel views or raw
-arrays, and both have to reject the mixture. That validation -- is the first
-argument a channel object; are the rest; do they agree on subject; do they agree on
-the space's `spec_keys` -- was written out twice, in the same order, with different
-wording. It is now `views._resolve_channels`, which returns the space plus the
-channels if they arrived as views:
+Both composite columns accept either already-built channel views or raw arrays, and
+must reject the mixture. Do not re-implement that: call `_resolve_2d_channels` from
+your 2D constructor and `_resolve_rgb_channels` from your RGB one, passing
+`channel_cls`, `space_cls`, `subject`, and a `spec` dict whose keys are your
+`spec_keys`. They validate, build the space when handed arrays, and return the
+channels.
 
 ```python
 space, views = _resolve_channels(
-    [dim1, dim2], channel_cls=Volume, space_cls=VolumeSpace,
-    subject=subject, spec={"xfmname": xfmname}, argnames=("dim1", "dim2"),
+    [dim1, dim2], channel_cls=MyView, space_cls=MySpace,
+    subject=subject, spec={"myarg": myarg}, argnames=("dim1", "dim2"),
 )
 ```
 
-What is left in each column is only what genuinely differs: per-dimension
-`vmin`/`vmax` for 2D, the colour basis and `color_voxels` for RGB. `argnames` exists
-solely so the messages can name the offending argument, since one column calls them
-`dim1`/`dim2` and the other `channel1`..`channel3`.
+`argnames` only shapes the error messages, so that they name the argument your
+signature uses.
 
-One quirk is preserved rather than unified: the RGB column requires `ndarray`
-channels while the 2D column `np.asarray`'s whatever it is given. Loosening RGB
-would start accepting lists there while `Volume(list, ...)` still fails with an
-`AttributeError` from `coerce`, so the inconsistency is left where it is visible.
-
-`space.wrap()` is the abstraction that keeps the rest space-agnostic: the channel
-resolvers in `view2D.py` and `viewRGB.py`, and all three HDF factories, build views
-through it and never name `Volume` or `Vertex`. A space is per-view, not shared:
-`coerce()` records facts that depend on the particular array bound to it (which
-mask a flattened array matches, which hemisphere a half-length array covered), so
-`wrap()` uses `self` only as a template of parameters.
+One asymmetry to expect: the RGB resolver requires `ndarray` channels, while the 2D
+one calls `np.asarray` on whatever it is given. Pass arrays to both and it will not
+matter.
 
 
-## What a new spatial kind must implement to be rendered
+## Getting it rendered
 
-The two renderers ask for different amounts, and the difference is not a matter of
-tidiness: `renderer_data` is enough to *draw a flatmap*, but not enough to *ship
-data to a browser*, because the browser needs to know how the bytes are laid out.
-Both are now open to a new spatial kind, but the webgl one is open only to the
-extent of picking between the two layouts `dataset.js` understands.
+Two renderers, asking for different amounts. `quickflat` needs only what you have
+already written. `webgl` needs a wire encoding, and if neither built-in encoding
+fits, changes in JavaScript as well.
 
-### `quickflat` — nothing beyond the spatial ABC
+### `quickflat` — nothing beyond the space
 
-Implement `renderer_data` and give the space an `xfmname` (`None` if the data is
-not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
-renderer never asks what it is holding. Pinned by
-`test_a_third_spatial_kind_needs_no_change_to_the_renderer`.
+Implement `renderer_data` on your views and give the space an `xfmname` (`None` if
+the data is not sampled through a transform), and `quickshow`,
+`make_flatmap_image` and `make_png` work. The renderer asks the space what to
+sample through and the view for the array; it never asks what kind it is holding.
 
-Three flatmap *decorations* legitimately require a transform and will reject a kind
-that has none, with a `TypeError` naming the class: `with_dropout`,
-`with_connected_vertices`, and `add_connected_vertices`. That is a capability
-requirement, not a closed-world assumption — there is nothing a transformless kind
-could do with them.
+Three flatmap *decorations* require a transform and will refuse a space that has
+none, with a `TypeError` naming the class: `with_dropout`,
+`with_connected_vertices` and `add_connected_vertices`. There is nothing a
+transformless space could do with them.
 
-### `webgl` / `webshow` — `space.pack_for_webgl`, returning one of two encodings
+### `webgl` — pick an encoding, or write one
 
-`webgl/data.py`'s `Package` reads `renderer_data` like everything else, and then asks
-the space to encode it: `space.pack_for_webgl(renderer_data, raw=...)` returns a
-`WebGLPayload`, of which exactly two exist because `dataset.js` can read exactly
-two. `raw` says the array is 4-channel uint8 from an RGB view rather than scalar
-floats.
+`Package` reads `renderer_data` and hands it to
+`space.pack_for_webgl(data, raw=...)`, which returns a `WebGLPayload`. `raw` is
+true when the array is 4-channel uint8 from an RGB view.
+
+Two encodings exist, because `dataset.js` reads two:
 
 | | `MosaicTexture` | `VertexAttributes` |
 | --- | --- | --- |
-| returned by | `VolumeSpace` | `SurfaceSpace` |
+| use when | values sit on a 3-D grid sampled through a transform | values sit on the surface's vertices |
 | array shape | `(frames, z, y, x[, 4])` | `(frames, nverts[, 4])` |
-| packing | `volume.mosaic()` per frame → PNG | raw `.npy` bytes |
-| JSON (`describe()`) | `raw`, and `mosaic` set to the tile shape | `raw` only, no `mosaic` key |
-| slot 7 | `[xfmname]` | `null` |
-| vertex order | `reorder` is a no-op | **must** be permuted by `Package.reorder` into the CTM's order |
-| JS path | texture, sampled through the transform | per-vertex attribute |
-| premultiplied alpha | no — Three.js premultiplies on texture upload | **yes**, done in Python |
+| served as | one PNG per frame, tiled | one `.npy` array |
+| JSON keys | `raw`, `mosaic` | `raw` |
+| vertex order | n/a | permuted into the CTM's order by `reorder` |
+| premultiplied alpha | no | **yes** |
 
-Both live in `_webgl.py`, next to each other, because the packing, the `mosaic`
-key, the reordering and the premultiply are one decision. `Package` used to make it
-three times over —
-`isinstance(brain, SurfaceView)` for the premultiply, again for the packing, again
-in `reorder` — plus a fourth `not isinstance(brain, VolumetricView)` guard for
-"neither". So a new spatial kind had to inherit `VolumetricView` or `SurfaceView`
-*for the webgl path to work*, even though `quickflat` accepts a bare
-`RenderableView`, and that was the one place the spatial axis was genuinely not
-open.
+Return one of them and you are done — nothing downstream changes:
 
-It is open now, in the sense that matters here: a space picks an encoding, so it
-reaches the browser without any edit to `webgl/data.py`. Pinned by
-`test_a_third_space_packs_its_own_webgl_encoding`. What is *not* open is the set of
-encodings — that is a constraint of the browser code, not of this package.
-`dataset.js` selects the path by testing `mosaic === undefined`, so a kind wanting a
-third layout still has to add a matching branch there (and to `shaderlib.js`, if it
-samples differently).
+```python
+def pack_for_webgl(self, data, *, raw):
+    from ._webgl import VertexAttributes
+    return VertexAttributes(data, raw=raw)
+```
 
-`BrainSpace.pack_for_webgl` is concrete rather than abstract, and its default
-raises a `TypeError` naming the space, both encodings and the JS file. A space with
-no browser representation is a legitimate thing to have — `quickflat` needs only
-`renderer_data` — so this is a capability the space declines rather than one it
-forgets. Pinned by `test_a_space_with_no_webgl_encoding_says_so_once`, which also
-records what the old shape cost: a third kind fell through to `volume.mosaic` and
-died on "Invalid data shape", several frames deep, naming neither the view nor the
-real problem.
+`BrainSpace.pack_for_webgl` raises by default, so a space with no browser
+representation simply does not override it, and `quickflat` still works.
 
-Between `pack_for_webgl` and `describe_layout` the whole wire contract is now
-stated by the space. `mosaic` used to be the exception — assembled by the consumer
-while its sibling keys `shape`, `split` and `frames` came from the space — and it
-is `MosaicTexture.describe()` that closed that gap. Keys must be *absent* rather
-than null when they do not apply, since the JS tests `mosaic === undefined`.
+The premultiplied-alpha asymmetry in that table is not a choice: Three.js
+premultiplies a texture on upload, and does nothing to a vertex attribute, so the
+per-vertex encoding has to do it in Python and the texture one must not.
 
-Treat `_webgl.py` as a compatibility surface with its own tests, not as a place to
-tidy up: the premultiplied-alpha asymmetry above is a fact about Three.js
-(`tex.premultiplyAlpha` on upload for the texture path, nothing at all for vertex
-attributes), and it is pinned in both directions by
-`test_vertexrgb_alpha_is_premultiplied_in_package` and
-`test_volumergb_alpha_is_NOT_premultiplied_in_package`.
+#### If neither encoding fits
 
-The geometry is always a surface mesh, whatever the spatial kind: `brainctm.py`
-builds it from `db.get_surf`, so volumetric data is rendered by sampling its texture
-at each vertex's coordinates. A kind whose data cannot be evaluated per-vertex has no webgl
-representation at all.
+You are now changing the viewer, and these are the places. Nothing in
+`cortex/dataset` or `webgl/data.py` needs to change.
 
-`Package` iterates `uniques(collapse=True)`, which decomposes 2D views into their
-scalar channels, so only the scalar and RGB columns ever reach it. That is why
-nothing there mentions `Dataview2D`.
+**1. Serialization — `resources/js/dataset.js`.**
 
-### Consumers that are deliberately narrower
+- `module.fromJSON` chooses the payload class by testing
+  `dataset.data[name].mosaic === undefined`. It is a two-way branch; add yours,
+  keyed on a JSON key your `describe()` emits.
+- Write a payload class beside `module.VolumeData` and `module.VertexData`. Follow
+  whichever is closer: `VolumeData` loads PNGs into textures and exposes
+  `init(uniforms, dim, xfm, filter)` and `setFilter`; `VertexData` loads a `.npy`
+  through `NParray.fromURL`, splits it at `json.split` into per-hemisphere
+  `Float32Array`s, and re-maps through the CTM's index shuffle.
+- `module.DataView` sets `this.vertex = this.data[0].mosaic === undefined`. This is
+  the *same* test as in `fromJSON`, made a second time, and it selects the shader.
+  A third kind needs it generalized, not just extended.
+- The keys your payload's `describe()` and your space's `describe_layout()` emit
+  are read here. Emit a key only when it applies: the JS tests for
+  `undefined`, so a null is not the same as absent.
 
-These name a concrete class because they need a specific capability, and a new kind
-will be rejected rather than mis-drawn:
+**2. Shaders — `resources/js/shaderlib.js`.**
 
-| consumer | requires | why |
-| --- | --- | --- |
-| `volume.show_slice` | `Volume` | slices the 3D array against an anatomical reference |
-| `blender.add_cutdata` | `Volume` or `Vertex` | samples one colormapped value per vertex, so needs a single `cmap` |
-| `Mapper.__call__` | `Vertex` | splits per-hemisphere by vertex count |
+- `Shaders.surface_vertex` and `Shaders.surface_pixel` are the two sampling paths;
+  `mriview_surface.js` picks between them on `dataview.vertex`. A third sampling
+  scheme means a third function and a third branch there.
+- `DataView.getShader` passes flags your shader can read: `rgb` (from
+  `data[0].raw`), `twod` (two channels), `sampler`, `voxline`. Add a flag rather
+  than a new code path if the difference is small.
+- Per-vertex attributes are declared as `attributes['data'+i]`, typed `v4` when
+  `rgb` and `f` otherwise. Geometry that is not per-vertex — point sprites,
+  instanced spheres — needs its own attribute set and its own draw call, which is
+  the largest piece of work here.
+
+**3. UI — `resources/js/dataset.js` and `mriview.js`.**
+
+- `DataView.ui` is a `jsplot.Menu` populated with the colormap, `vmin` and `vmax`
+  controls, and only when `!this.data[0].raw` — an RGB view carries its own colours
+  and gets none. If your kind needs its own controls (electrode size, say), add
+  them here.
+- `mriview.js` `addData`/`setData` and the `#datasets` list are what present the
+  loaded views; a kind that is selectable the same way needs nothing there.
+
+### Consumers that will refuse your space
+
+These name a concrete class because they need a specific capability, so they reject
+a new space rather than mis-draw it: `volume.show_slice` needs a `Volume`,
+`blender.add_cutdata` needs a single colormap, and `Mapper.__call__` needs a
+`Vertex`.
+
+## A worked example
+
+`cortex/tests/test_new_space.py` builds a complete space and its three views
+against a synthetic ten-element geometry, and exercises construction, movies,
+`.raw`, `to_json`, HDF round-tripping, rendering through `quickflat`, and both
+outcomes of `pack_for_webgl`. Copy from there rather than from `VolumeSpace` or
+`SurfaceSpace`, which carry volume- and surface-specific detail you do not need.

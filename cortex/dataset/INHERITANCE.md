@@ -407,6 +407,61 @@ How to add one -- the space's own declarations, the three view skeletons, and
 what each renderer needs from it -- is in
 [ADDING_A_SPACE.md](ADDING_A_SPACE.md).
 
+## What the space owns, and why
+
+The rule is that anything depending on the *geometry* belongs to the space, so
+that adding a space does not mean editing the columns. Seven things moved there,
+each because it was the same question asked once per space:
+
+| was | now | it was duplicated as |
+| --- | --- | --- |
+| `db.get_xfm(...).shape` vs `SurfaceSpace(...).nverts` | `template_shape` | 4 methods (`empty`/`random` x 2 classes) |
+| `shape` vs `split`/`frames` in the simple JSON | `describe_layout` | 4 `to_json` overrides, now one each on `ScalarView` and `DataviewRGB` |
+| slicing at `llen`, branching on movie-ness | `SurfaceSpace.split_hemispheres` | 4 properties (`left`/`right` on `Vertex` and `VertexRGB`) |
+| whether two masked arrays can be compared elementwise | `align` | `Volume2D.raw` at 15 lines against `Vertex2D.raw` at 2 |
+| "subject and xfmname are both mandatory" | `spec_keys` + `from_spec` | a lambda plus a dict in each of 4 constructors |
+| the transform name a volumetric view reports | `xfmname`, now concrete on `VolumetricView` | 3 overrides, two of which reached through a channel |
+| how an array reaches the browser | `pack_for_webgl` | 3 `isinstance(brain, SurfaceView)` forks in `webgl/data.py`, plus a guard for "neither" |
+
+`split_hemispheres` also removed the one place a view reached *through a channel*
+for geometry: `VertexRGB.left` read `self.red.llen` because `DataviewRGB.space` is
+typed `BrainSpace`. `VertexRGB` now narrows `space` to `SurfaceSpace` the way
+`Vertex` does -- sound because `DataviewRGB[Vertex]` fixes the channel type, which
+the generic base cannot state.
+
+What deliberately did **not** move:
+
+- `Volume.map`, `Vertex.map`, `Vertex.volume` -- these transform *between* spaces
+  via `cortex.utils.get_mapper`, so they are a property of a space *pair*, and
+  putting them on `BrainSpace` would drag the mapper into `_space.py`.
+- `Volume.save_nii` -- the affine it needs is a space fact, but writing a file is
+  not; only the lookup is a candidate, and it is one line.
+- `__repr__` -- the mask description is space knowledge, but the payoff is
+  cosmetic.
+
+`MySpatial` is the spatial interface — `VolumetricView` if the data samples through a
+transform, `SurfaceView` if it is per-vertex, or a new subclass of
+`RenderableView` supplying `renderer_data` if it is sampled some other way. A view
+that inherits neither is still a perfectly good `Dataview`; it just cannot be
+passed to the flatmap renderers, and `as_renderable` will say so.
+
+`register_space` puts it in the registry that `_from_hdf_data`, `_from_hdf_view`
+and `normalize` dispatch through, so HDF round-tripping needs no edits. Order
+matters: the registry is consulted in order and the first space whose `from_hdf`
+returns non-`None` wins.
+
+Order is by **`fallback`**, not by arrival. A fallback space claims any node no
+other space wanted, and exists only because legacy files carry no space
+discriminator: `SurfaceSpace` sets it, and accepts anything without a transform,
+which is how a pre-registry file is recognised. `register_space` inserts a
+non-fallback space ahead of every fallback one, so the catch-alls stay last
+however many spaces are added. Leave `fallback` alone; test in `from_hdf` for
+something you write yourself in `write_hdf_attrs`, and you will be consulted
+ahead of the built-in catch-all.
+
+Pinned by `test_a_third_space_registers_ahead_of_the_catch_all`, which also checks
+that a *second* fallback still sorts behind every real space.
+
 ## Unknown keywords: no constructor has a `**kwargs` sink
 
 Whatever reached `**kwargs: Any` became `Dataview.attrs`, written to HDF slot 6
@@ -429,10 +484,12 @@ explicit parameter on all six, and the keys still reach slot 6 and the payload.
 Pinned by `test_an_unrecognized_constructor_keyword_is_rejected` and
 `test_attrs_is_the_route_for_metadata_that_is_not_a_parameter`.
 
-**Removing the sink is what buys the static check.** mypy could never flag a
-misspelling while a constructor ended in `**kwargs: Any`; it now flags all six,
-and reports a better suggestion than any string-similarity heuristic could,
-because it knows the real parameter list:
+**Removing the sink is what buys the static check.** mypy cannot flag anything
+while a constructor ends in `**kwargs: Any`; with none of the six ending that way
+it flags all six, before the code is run. Nothing in this package inspects or
+compares keyword names -- the check is Python's own `TypeError` at runtime and
+mypy's at edit time, and the suggestions below are mypy's, derived from the real
+parameter list:
 
 ```
 error: Unexpected keyword argument "cmpa" for "Volume"
