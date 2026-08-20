@@ -46,6 +46,9 @@ try:
 
     extensions.append("nbsphinx")
     nbsphinx_execute = "auto"
+    # Ignore whatever kernel a notebook was last saved with; the docs build
+    # only ever has the default kernel available.
+    nbsphinx_kernel_name = "python3"
 except ImportError:
     exclude_patterns.append("notebooks/*.ipynb")
 
