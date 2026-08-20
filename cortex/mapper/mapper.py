@@ -1,5 +1,5 @@
 import abc
-from typing import Union, overload
+from typing import Union, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -51,12 +51,22 @@ class Mapper(abc.ABC):
         return '<%s mapper with %d vertices>'%(ptype, self.nverts)
 
     @overload
-    def __call__(self, data: Union[dataset.Volume, tuple]) -> dataset.Vertex: ...
+    def __call__(self, data: dataset.Volume) -> dataset.Vertex: ...
 
     @overload
     def __call__(self, data: dataset.Vertex) -> tuple[npt.NDArray, npt.NDArray]: ...
 
-    def __call__(self, data: Union[dataset.Vertex, dataset.Volume, tuple]) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
+    def __call__(
+        self, data: Union[dataset.Vertex, dataset.Volume, tuple]
+    ) -> Union[tuple[npt.NDArray, npt.NDArray], dataset.Vertex]:
+        """Project a Volume onto the surface, or split a Vertex per hemisphere.
+
+        The overloads above are the typed contract: this maps between the two
+        view classes it knows, ``Volume`` in and ``Vertex`` out. A 3-tuple of
+        ``(data, subject, xfmname)`` is still accepted at runtime as a shorthand
+        for the ``Volume`` it constructs, but is not part of that contract --
+        build the ``Volume`` at the call site instead.
+        """
         if isinstance(data, tuple):
             data = dataset.Volume(*data)
 
@@ -72,7 +82,12 @@ class Mapper(abc.ABC):
                 if self.idxmap is not None:
                     left = left[..., self.idxmap[0]]
                     right = right[..., self.idxmap[1]]
-            return left, right
+            # `Vertex.raw` is a property that builds a VertexRGB, so it is always
+            # truthy and only the first branch above runs -- which is the one that
+            # yields arrays. The second indexes the Vertex itself, so it yields
+            # Vertex objects and contradicts the overload. Cast rather than
+            # silently widen the contract; see KNOWN_ISSUES.md.
+            return cast(tuple[npt.NDArray, npt.NDArray], (left, right))
 
         volume = np.ascontiguousarray(data.volume)
         volume.shape = len(volume), -1
@@ -94,19 +109,25 @@ class Mapper(abc.ABC):
     @overload
     def backwards(self, vertexdata: npt.NDArray) -> npt.NDArray: ...
 
-    def backwards(self, vertexdata: Union[dataset.Vertex, npt.NDArray]) -> Union[dataset.Volume, npt.NDArray]:
+    def backwards(
+        self, vertexdata: Union[dataset.Vertex, npt.NDArray]
+    ) -> Union[dataset.Volume, npt.NDArray]:
         '''Projects vertex data back into volume space.
+
+        The view direction is ``Vertex`` in, ``Volume`` out -- the inverse of
+        :meth:`__call__`. A bare array is also accepted and returns a bare array,
+        for callers that have per-vertex values without a subject to attach them
+        to; ``cortex.utils`` projects ROI masks that way.
 
         Parameters
         ----------
-        vertexdata : Vertex object or array
-            The data that will be projected back into voxel space.
-            If Vertex object is provided, a Volume object is returned
-            If an array is provided, an array is returned
+        vertexdata : Vertex or ndarray
+            Per-vertex values to project back into voxel space.
         '''
-        Vert2Vol = isinstance(vertexdata, dataset.Vertex)
-        if Vert2Vol:
-            to_map = vertexdata.data
+        # `isinstance` on the parameter rather than a bool flag, so that the two
+        # returns below are each checked against the overload they satisfy.
+        if isinstance(vertexdata, dataset.Vertex):
+            to_map: npt.NDArray = vertexdata.data
         else:
             to_map = vertexdata
         # stack the two mappers together
@@ -115,11 +136,9 @@ class Mapper(abc.ABC):
         partial_vertex = bothmappers.T.dot(to_map)
         # solve the inverse mapping problem
         voxeldata: npt.NDArray = self._get_backmapper().solve(partial_vertex).reshape(self.shape)
-        if Vert2Vol:
-            # construct a volume object with the new data
+        if isinstance(vertexdata, dataset.Vertex):
             return dataset.Volume(voxeldata, self.subject, self.xfmname)
-        else:
-            return voxeldata
+        return voxeldata
 
     def _get_backmapper(self):
         if not hasattr(self, '_backmapper'):
