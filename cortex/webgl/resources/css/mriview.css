@@ -140,6 +140,7 @@ a:visited { color:white; }
     max-width:400px;
     display:none;
     font-size:12pt;
+    font-family:Helvetica, Arial, sans-serif;
     color:white;
     transition:all .3s;
     transition-timing-function:ease;
