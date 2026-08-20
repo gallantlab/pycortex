@@ -192,7 +192,13 @@ def get_flatcache(subject: str, xfmname: Optional[str], pixelwise: bool=True, th
 
     if not pixelwise and xfmname is not None:
         from scipy import sparse
+        from ..mapper import Mapper
         mapper = utils.get_mapper(subject, xfmname, sampler)
+        # get_mapper isn't typed yet (Mapper's typing PR lands after this one), so
+        # mapper is currently just Any. TODO: once that PR types cortex/mapper,
+        # get_mapper's own return annotation makes this redundant -- remove this
+        # import and assert.
+        assert isinstance(mapper, Mapper)
         pixmap = cast(sparse.csr_matrix, pixmap * sparse.vstack(mapper.masks))
 
     return pixmap
