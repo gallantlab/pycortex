@@ -22,13 +22,13 @@ class Dataset:
     # TODO: should be BrainData & Dataview, or just Dataview
     All kwargs should be `BrainData` or `Dataset` objects.
     """
-    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> None:
+    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> None:
         self.h5: Optional[h5py.File] = None
         self.views: dict[str, Dataview] = {}
 
         self.append(**kwargs)
 
-    def append(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> "Dataset":
+    def append(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> Dataset:
         """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
         dataset.
         """
@@ -70,7 +70,7 @@ class Dataset:
         return list(self.__dict__.keys()) + list(self.views.keys())
 
     @classmethod
-    def from_file(cls, filename: str, subject: Optional[str]=None) -> "Dataset":
+    def from_file(cls, filename: str, subject: Optional[str]=None) -> Dataset:
         """Load a pycortex Dataset (cortex.Dataset class) from a file
 
         Parameters
