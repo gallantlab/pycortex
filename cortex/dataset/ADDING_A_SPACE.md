@@ -368,12 +368,31 @@ Two renderers, asking for different amounts. `quickflat` needs only what you hav
 already written. `webgl` needs a wire encoding, and if neither built-in encoding
 fits, changes in JavaScript as well.
 
+### Choosing what `xfmname` returns
+
+Two legal values, and the choice decides most of what follows:
+
+- **`None`** — the data is already per-vertex. `quickflat` uses the vertex cache,
+  so `renderer_data` must return one value per vertex; resample in your space or
+  view if it does not already. Register ahead of `SurfaceSpace`, which is the
+  fallback and claims any node without a transform, and have `from_hdf` match a
+  discriminator you write yourself.
+- **a string** — it must name a `Transform` in the pycortex database.
+  `quickflat` passes it to `get_mapper`, so a name that does not resolve there
+  fails inside the renderer rather than in your space.
+
+There is no third value. If your geometry is sampled through something that is not
+a pycortex `Transform` -- a nonlinear warp, an MNI mapping, coordinates you hold
+yourself -- return `None` and sample it yourself in Python. Sampling it in the
+browser instead is a JavaScript change: the volumetric encoding sends one 4x4
+matrix as the `xfm` JSON key and applies it in the shader (`volxfm`), which cannot
+express a warp. See "If neither encoding fits" below.
+
 ### `quickflat` — nothing beyond the space
 
-Implement `renderer_data` on your views and give the space an `xfmname` (`None` if
-the data is not sampled through a transform), and `quickshow`,
-`make_flatmap_image` and `make_png` work. The renderer asks the space what to
-sample through and the view for the array; it never asks what kind it is holding.
+Implement `renderer_data` on your views, and `quickshow`, `make_flatmap_image` and
+`make_png` work. The renderer asks the space what to sample through and the view
+for the array; it never asks what kind it is holding.
 
 Three flatmap *decorations* require a transform and will refuse a space that has
 none, with a `TypeError` naming the class: `with_dropout`,
