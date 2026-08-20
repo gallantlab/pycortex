@@ -1062,6 +1062,34 @@ def test_uniques_yields_packables():
     assert Packable in cortex.dataset.DataviewRGB.__bases__
 
 
+def test_a_packable_is_renderable_so_uniques_promises_both_members():
+    """``Packable`` subclasses ``RenderableView``, which is what makes the
+    ``uniques()`` return type usable.
+
+    ``webgl.data.Package`` reads *two* members off each unique -- ``name``, to key
+    it by, and ``spatial_data``, to ship -- so promising only ``Packable`` was
+    promising half of what the one consumer needs. Python has no intersection
+    type, so the way to say "both" is for one to subclass the other, and every
+    ``Packable`` was already a ``RenderableView`` in fact: both columns listed
+    both bases. This only writes that down.
+
+    The 2D asymmetry survives it, which is the reason the two were separate in the
+    first place: a 2D view is renderable and *not* packable. So the containment is
+    strict, and it is the strictness that carries the meaning.
+    """
+    from cortex.dataset import Dataview2D, Packable, RenderableView
+
+    assert issubclass(Packable, RenderableView)
+    assert not issubclass(Dataview2D, Packable)
+    assert issubclass(Dataview2D, RenderableView)
+
+    # and the MRO is unchanged by saying it: the column still precedes the
+    # spatial interface, which is what lets the column own `spatial_data`
+    assert [c.__name__ for c in cortex.Volume.__mro__[:5]] == [
+        "Volume", "ScalarView", "Packable", "VolumetricView", "RenderableView",
+    ]
+
+
 def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
     """``name`` must keep hashing the *stored* array, not ``spatial_data``.
 

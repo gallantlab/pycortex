@@ -24,7 +24,15 @@ class PackageMetadata(TypedDict):
 class Package(object):
     """Package the data into a form usable by javascript"""
 
-    def __init__(self, data):
+    def __init__(self, data: dataset.Dataset) -> None:
+        # Annotated so this body is *checked*. It was unannotated, which made mypy
+        # skip it entirely -- the same blind spot that hid the `spatial_data` fork
+        # here before, and that still hides `quickflat.make_movie`.
+        #
+        # `Dataset`, not `DatasetLike`: `normalize` accepts a dict or a path too,
+        # but `data.uniques` below is called on the *un-normalized* argument, so
+        # anything that is not already a Dataset or Dataview has never worked here.
+        # Left as-is rather than quietly widened to `self.dataset.uniques`.
         self.dataset = dataset.normalize(data)
         # `uniques` yields Packables -- the units of transport, each with the
         # content-addressed `name` used as the browser's key for it. It was

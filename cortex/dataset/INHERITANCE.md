@@ -186,18 +186,34 @@ defined; `Vertex` inherits it rather than declaring its own.
 
 ### `Packable`: the unit of transport
 
-`Packable` sits between `Dataview` and the two columns that own an array, and it is
-what `uniques()` yields. It answers a different question from the spatial axis:
+`Packable` is what `uniques()` yields: a view that ships as exactly one array. It
+**subclasses `RenderableView`**, so the two questions are nested rather than
+independent:
 
 | base | question | who has it |
 | --- | --- | --- |
-| `Packable` | "is this **one addressable array**?" | scalar and RGB columns |
-| `RenderableView` | "can a renderer **sample** this?" | every spatial interface |
+| `RenderableView` | "can a renderer **sample** this?" | all three columns |
+| `Packable` | "...and is it **one addressable array**?" | scalar and RGB columns |
 
-Neither implies the other, which is the point of keeping them separate. A 2D view
-is renderable but **not** packable: it owns no array, only the two channels it
-decomposes into, which is exactly why it has no `name`. Conversely a bare
-`ScalarView` subclass is packable but has no spatial interface.
+The containment is strict, and the strictness is the whole content: a 2D view is
+renderable and **not** packable, because it owns no array of its own -- only the
+two channels it decomposes into -- which is exactly why it has no `name`.
+
+It is a subclass rather than a sibling because `webgl.data.Package` reads *two*
+members off each unique: `name`, to key it by, and `spatial_data`, to ship.
+Promising only `Packable` promised half of what the one consumer needs, and
+Python has no intersection type, so the way to say "both" is for one base to
+subclass the other. Every `Packable` was already a `RenderableView` in fact --
+both columns list both bases -- so this only writes it down. Pinned by
+`test_a_packable_is_renderable_so_uniques_promises_both_members`, which also pins
+that the MRO is unchanged by saying it: the column still precedes the spatial
+interface, which is what lets the column own `spatial_data`.
+
+This was found by annotating `Package.__init__`. Its signature was bare, so mypy
+skipped the body entirely and never checked the loop that reads both members --
+the same blind spot that hid the `spatial_data` fork here before, and that still
+hides `quickflat.make_movie`. Annotating it reported
+`"Packable" has no attribute "spatial_data"` immediately.
 
 The one member is `name`, a content hash. That is what makes `Dataset.uniques()` a
 `set` rather than a list -- two views over identical data collapse to one entry and
