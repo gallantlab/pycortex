@@ -50,7 +50,7 @@ raw arrays rather than channel objects. Each of the four used to be passed a
 volumetric space is subject plus xfmname, and both are mandatory" was written into
 four view constructors instead of into `VolumeSpace`.
 
-Five more members are deliberately *not* in the list above, because all five are
+Six more members are deliberately *not* in the list above, because all six are
 concrete on `BrainSpace` and most spaces should inherit them:
 
 - `view_xfmname`, derived as `None if self.xfmname is None else [self.xfmname]`, so
@@ -75,6 +75,10 @@ concrete on `BrainSpace` and most spaces should inherit them:
   representation is legitimate; a space wanting one returns `MosaicTexture` or
   `VertexAttributes`. See "What a new spatial kind must implement to be rendered"
   below.
+- `to_dense(data, movie)`, the array over the whole geometry with a leading frame
+  axis -- what the scalar column returns as `renderer_data`. The default adds the
+  frame axis and nothing else. Override it only if the space has a sparse form, as
+  `VolumeSpace` does to unmask.
 - `align(first, second)`, two views' arrays in a layout where position *i* means
   the same place in both -- what a 2D view needs before it can colormap its two
   dimensions jointly. The stored arrays serve any space in which one array position
@@ -206,14 +210,6 @@ class MyView(ScalarView, MySpatial):
     @property                            # narrowing -- but load-bearing, since
     def space(self) -> MySpace:          # everything below reads space-specific
         return self._space               # members off it
-
-    @property                            # REQUIRED
-    def renderer_data(self) -> npt.NDArray:
-        """The array a renderer samples, with a leading frame axis.
-
-        Published as `volume` or `vertices` too, if MySpatial is one of the two
-        built-in spatial interfaces. Do *not* also implement those.
-        """
 
     @property                            # narrowing; ScalarView._build_raw does it
     def raw(self) -> MyViewRGB:

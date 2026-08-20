@@ -162,6 +162,18 @@ class BrainSpace(ABC):
         half-length array covered) -- a space belongs to exactly one view.
         """
 
+    def to_dense(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
+        """``data`` over the whole geometry, with a leading frame axis.
+
+        What the scalar column returns as
+        :attr:`~cortex.dataset.views.RenderableView.renderer_data`. Concrete
+        because most spaces store one value per location already, so all this owes
+        is the frame axis a single frame does not carry. Override it if the space
+        has a sparse form -- :class:`VolumeSpace` does, to unmask.
+        """
+        return data[:] if movie else data[:][np.newaxis]
+
+
     def align(
         self, first: "ScalarView", second: "ScalarView"
     ) -> tuple[npt.NDArray, npt.NDArray]:
@@ -517,19 +529,14 @@ class VolumeSpace(BrainSpace):
             return first.data, second.data
         return first.renderer_data, second.renderer_data
 
-    def unmask(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
-        """Expand ``data`` to a full 3D/4D volume, adding the time axis."""
+    def to_dense(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
+        """``data`` over the whole grid, unmasking a flat array first."""
         from cortex import volume
 
         if self.linear:
             assert self.mask is not None
-            expanded = volume.unmask(self.mask, data[:])
-        else:
-            expanded = data[:]
-
-        if not movie:
-            expanded = expanded[np.newaxis]
-        return expanded
+            data = volume.unmask(self.mask, data[:])
+        return super().to_dense(data, movie)
 
     def to_json(self) -> DataviewJSON:
         from .views import DataviewJSON as _JSON

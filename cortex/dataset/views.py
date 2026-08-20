@@ -846,6 +846,18 @@ class ScalarView(Packable, RenderableView):
         self._data = data
 
     @property
+    def renderer_data(self) -> npt.NDArray:
+        """The array a renderer consumes, with a leading frame axis.
+
+        One implementation for the whole column: the space says what "over the
+        whole geometry" means -- unmasking a flat volume, or nothing at all for a
+        space that already stores one value per location -- and adds the frame axis
+        a single frame does not carry. Republished under the name each space uses,
+        :attr:`VolumetricView.volume` and :attr:`SurfaceView.vertices`.
+        """
+        return self.space.to_dense(self.data, self.movie)
+
+    @property
     def name(self) -> str:
         """Content-addressed name, used as the HDF node name."""
         return "__%s" % _hash(self.data)[:16]
@@ -1208,15 +1220,6 @@ class Volume(ScalarView, VolumetricView):
         """Deprecated. Use :attr:`mask` for the array or :attr:`mask_name` for the name."""
         return self.space.mask_spec
 
-    @property
-    def renderer_data(self) -> npt.NDArray:
-        """A 3D or 4D volume, automatically unmasking masked data.
-
-        Also reachable as :attr:`~cortex.dataset.views.VolumetricView.volume`,
-        which is the name this has always had in user code.
-        """
-        return self.space.unmask(self.data, self.movie)
-
     def map(self, projection: str = "nearest") -> Vertex:
         """Convert this Volume into a Vertex using the given projection method.
 
@@ -1379,18 +1382,6 @@ class Vertex(ScalarView, SurfaceView):
         this records what was originally supplied.
         """
         return self.space.hem
-
-    @property
-    def renderer_data(self) -> npt.NDArray:
-        """The per-vertex data with a leading frame axis, added if absent.
-
-        Also reachable as :attr:`~cortex.dataset.views.SurfaceView.vertices`,
-        which is the name this has always had in user code.
-        """
-        verts = self.data
-        if not self.movie:
-            verts = verts[np.newaxis]
-        return verts
 
     @property
     def left(self) -> npt.NDArray:

@@ -913,14 +913,41 @@ def test_the_renderer_array_is_implemented_once_per_view():
 
     # each column class implements it exactly once, on the column and not on
     # either of its two spatial subclasses
-    for column in (DataviewRGB, Dataview2D):
+    from cortex.dataset.views import ScalarView
+
+    # all three columns, the scalar one included: its two views differed only in
+    # whether they unmasked, which is the space's question, so `space.to_dense`
+    # answers it and the column implements the array once like the other two.
+    for column in (ScalarView, DataviewRGB, Dataview2D):
         assert "renderer_data" in vars(column), column
         for sub in column.__subclasses__():
             assert "renderer_data" not in vars(sub), sub
 
-    # and the scalar column, whose two views differ in how they do it, is where
-    # the per-space implementations legitimately live
-    assert "renderer_data" in vars(Volume)
+
+def test_densifying_is_the_spaces_question_not_the_views():
+    """``space.to_dense`` is what lets one column serve every space.
+
+    The default adds the leading frame axis and nothing else; a space with a sparse
+    form overrides it. `VolumeSpace` is the only one that does, and only masked
+    volumes reach the sparse branch.
+    """
+    from cortex.dataset import BrainSpace, SurfaceSpace, VolumeSpace
+
+    assert "to_dense" in vars(BrainSpace)          # concrete, not abstract
+    assert "to_dense" not in BrainSpace.__abstractmethods__
+    assert "to_dense" in vars(VolumeSpace)         # overridden, to unmask
+    assert "to_dense" not in vars(SurfaceSpace)    # inherited unchanged
+
+    mask = db.get_mask(subj, xfmname, "thick")
+    flat = cortex.Volume(np.random.randn(int(mask.sum())), subj, xfmname, mask="thick")
+    dense = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    vtx = cortex.Vertex(np.random.randn(nverts), subj)
+
+    assert flat.volume.shape == (1,) + volshape    # unmasked by the space
+    assert dense.volume.shape == (1,) + volshape   # frame axis only
+    assert vtx.vertices.shape == (1, nverts)       # frame axis only, no sparse form
+    # and the frame axis is added exactly when it is absent
+    assert cortex.Volume(np.random.randn(3, *volshape), subj, xfmname).volume.shape[0] == 3
 
 
 def test_static_only_protocols_refuse_isinstance():
