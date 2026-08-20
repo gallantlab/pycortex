@@ -209,12 +209,6 @@ both columns list both bases -- so this only writes it down. Pinned by
 that the MRO is unchanged by saying it: the column still precedes the spatial
 interface, which is what lets the column own `spatial_data`.
 
-This was found by annotating `Package.__init__`. Its signature was bare, so mypy
-skipped the body entirely and never checked the loop that reads both members --
-the same blind spot that hid the `spatial_data` fork here before, and that still
-hides `quickflat.make_movie`. Annotating it reported
-`"Packable" has no attribute "spatial_data"` immediately.
-
 The one member is `name`, a content hash. That is what makes `Dataset.uniques()` a
 `set` rather than a list -- two views over identical data collapse to one entry and
 are stored and shipped once.
@@ -501,16 +495,8 @@ however many spaces are added. Leave `fallback` alone; test in `from_hdf` for
 something you write yourself in `write_hdf_attrs`, and you will be consulted
 ahead of the built-in catch-all.
 
-That last part is recent. `register_space` used to append, which meant a space
-registered by a third party -- necessarily after `cortex.dataset` has registered
-its own two -- landed *behind* `SurfaceSpace` and was never reached:
-`SurfaceSpace` claimed the node, `wrap` built a `Vertex`, `coerce` raised on the
-vertex count, and `cortex.load` swallowed that per view and returned an **empty**
-Dataset, so the data was silently gone. Writing was unaffected throughout. Nobody
-noticed because both built-in spaces are registered inside `_space.py`, in an
-order chosen by hand, so the append semantics were never exercised by a third
-registration. Pinned by `test_a_third_space_registers_ahead_of_the_catch_all`,
-which also checks that a *second* fallback still sorts behind every real space.
+Pinned by `test_a_third_space_registers_ahead_of_the_catch_all`, which also checks
+that a *second* fallback still sorts behind every real space.
 
 ### The three view classes, written out
 
@@ -1080,17 +1066,12 @@ spatial interface, so anything a spatial interface implements must stay off
 safe because both columns define it ahead of `Packable`.
 
 A synthesised alpha must carry the same frame axis as the channels it accompanies,
-or `_rgba_stack` cannot stack the four into one array. `VertexRGB` used to size it
-from `vertices.shape[1]`, the vertex count alone, so surface RGB *movies* were
-unconstructible; both columns now size from the channel's stored `data`, which
-carries the frame axis exactly when the channels do. Pinned by
+or `_rgba_stack` cannot stack the four into one array. Both columns size it from
+the channel's stored `data`, which carries the frame axis exactly when the channels
+do -- not from the sampled array, whose vertex count alone has no frame axis. Pinned by
 `test_rgb_default_alpha_tracks_the_channels_frame_count`, which also pins that a
 one-frame view keeps the shape it always had -- that shape feeds the content hash
-used as the HDF node name. (`VolumeRGB` previously sized from `volume`, the same
-values with the frame axis already prepended, so its auto-alpha was wrapped as a
-one-frame movie. That unmasks back to an identical array, and an auto-generated
-alpha is never written to HDF nor shipped on its own, so nothing outside the class
-could observe the difference.)
+used as the HDF node name.
 
 Note that `volume` and `vertices` mean different things down the scalar column
 than down the other two: `Volume.volume` is the scalar array, while
@@ -1290,26 +1271,13 @@ which is `json.dumps` with a `default=` that converts a numpy scalar via `.item(
 Eleven call sites across `views.py` and `view2D.py` use it, and so do the two in
 `webgl/view.py` that serialise `Package.metadata()`.
 
-It exists because a **float32 view could not be saved at all**.
-`ScalarView._write_cmap_slots` dumps `[self.vmin]`, and when `vmin` is left to
-default it holds whatever `np.percentile` returned -- an `np.float32` for float32
-data, which `json.dumps` refuses:
+It is needed because a defaulted `vmin`/`vmax` holds whatever `np.percentile`
+returned, which for float32 data is an `np.float32` -- and of the numpy scalar
+types only `np.float64` and `np.str_` subclass a builtin that json understands.
+`np.bool_` is not covered either, since Python's `bool` cannot be subclassed, so a
+boolean numpy scalar in `attrs` or `state` needs the same boundary.
 
-```
-TypeError: Object of type float32 is not JSON serializable
-```
-
-Of the numpy scalar types only `np.float64` and `np.str_` subclass a builtin that
-json understands, so float64 data worked purely by that accident. Note `np.bool_`
-is *not* covered for free -- Python's `bool` cannot be subclassed -- so a boolean
-numpy scalar in `attrs` or `state` failed for the same reason. The four view types
-carrying cmap bounds were affected (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`);
-the RGB views were not, since they have no `vmin`/`vmax` and their channels are
-written as bare data nodes. The same root cause broke `make_static` and `show`,
-where `to_json(simple=False)` puts the same defaulted bounds into the browser
-payload; only `serve.py`'s websocket path had an encoder (`NPEncode`) that coped.
-
-Two things about the shape of the fix:
+Two things about the shape of it:
 
 - It is **not** in `_resolve_percentiles`. The numpy scalar has to survive on the
   view -- see the numerics note above -- so converting there would silently rename
@@ -1328,81 +1296,5 @@ too (that `json.dumps` really does refuse those bounds),
 `test_dumps_converts_numpy_scalars_and_nothing_else` and
 `test_webgl_metadata_serialises_a_float32_view`.
 
-## Known bug: `mapper.py`
-
-`Mapper.__call__` does:
-
-```python
-if isinstance(data, dataset.Vertex):
-    llen = self.masks[0].shape[0]
-    if data.raw:                       # <-- always truthy
-        left, right = data.data[..., :llen, :], data.data[..., llen:, :]
-    else:
-        left, right = data[..., :llen], data[..., llen:]
-```
-
-`Vertex.raw` is a property that builds and returns a `VertexRGB`, so it is always
-truthy and the `else` branch is dead. Every scalar `Vertex` takes the RGB path,
-which indexes as if the data had a trailing channel axis. This looks like a
-leftover from a time when `raw` was a boolean flag.
-
-Not fixed here, because correcting it changes runtime behaviour and needs a
-regression test. It is now visible to mypy: `Vertex.__getitem__` returns `Self`
-rather than `Any`, so the checker reports that the dead branch yields `Vertex`
-objects where arrays are expected.
-
-## Other known issues, outside this package
-
-- `quickflat/composite.py`'s `add_connected_vertices` still reads
-  `dataview.xfmname` and tests `if xfmname is None` to emit a "you seem to have
-  provided vertex data" message. That branch is now dead rather than broken: the
-  parameter is typed `VolumetricView`, whose `xfmname` is a `str`, and the sole
-  caller guards with `isinstance`. It used to raise `AttributeError` before
-  reaching the intended `ValueError`, because `Vertex` has no `xfmname` at all.
-- `webgl/view.py`'s `JSMixer.addData` references `Dataset` and `_convert_dataset`,
-  neither of which exists; it is permanently broken and xfailed.
-- `volume.py`'s `epi2anatspace_fsl` calls `normalize(...).data` then `.subject` on
-  the resulting array. Unreachable -- the function raises `NotImplementedError`
-  first.
-- `Dataview2D.to_json` ignores its `simple` flag. Preserved deliberately: the webgl
-  packer only ever calls `to_json(simple=True)` on the scalar channels yielded by
-  `uniques()`, never on a 2D view.
-- `quickflat.make_movie` is `raise NotImplementedError` on its first line, with a
-  whole body behind it that has never run. That is true of `main` and `types-orig`
-  too, and no branch has ever had a test for it, so its contents have decayed
-  against the API around them unnoticed. It is nonetheless exported and documented
-  in `api_reference_flat.rst`.
-
-  Two of its calls had rotted. The `make_flatmap_image` one is now fixed: it passed
-  `(data, subject, xfmname, ...)` to a signature that has been
-  `(braindata, height, recache, nanmean, **kwargs)` since at least `main`, so
-  `subject` bound to `height` and the keywords then collided outright. Rebinding
-  alone was not enough — `make_flatmap_image` renders one frame and raises on a
-  longer leading axis, so a 4D dataset must go through it frame by frame, which is
-  what it now does.
-
-  `make_figure(ims[0], subject, vmin=..., vmax=...)` is still wrong and cannot be
-  repaired by rebinding: it takes a `Dataview` and renders it itself, so it cannot
-  accept a pre-rendered image; `subject` lands on `recache`; and it has neither
-  `vmin`/`vmax` nor `**kwargs`, because a view's colour range now lives on the
-  view. Fixing it is a design choice about how the movie should be assembled, and
-  any choice is unverifiable while the body is unreachable, so it is left annotated
-  in place.
-
-  mypy catches none of this: `make_movie` is unannotated, so its body is unchecked
-  — the same blind spot that hid the `spatial_data` fork in `webgl/data.py`.
-
-Fixed in passing while typing the callers, and recorded here only so the change is
-not mistaken for an unrelated edit:
-
-- `Database.get_cache` built its hash from `auxfile.h5.filename`; `md5` needs
-  bytes, so this raised an uncaught `TypeError` until it was given an `.encode()`.
-- `quickflat/view.py` read `dataview.xfmname` unguarded on both `with_dropout`
-  paths, raising `AttributeError` on surface data. Both now check
-  `isinstance(dataview, VolumetricView)` and raise a `TypeError` naming the class.
-- `Dataset.get_surf` and `Database.get_surf` take `merge` and `nudge` keyword-only
-  in every overload. Previously only the `merge=True` overload did, which made the
-  calling convention depend on the argument's value: a positional
-  `get_surf(s, t, 'both', True)` ran but matched no overload, and a positional
-  dynamic flag bound the wrong one. No caller in this repo passed either
-  positionally, but it is a break for anyone outside it who did.
+Bugs this restructure found, left behind, or fixed in passing are in
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md).
