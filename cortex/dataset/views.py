@@ -413,14 +413,12 @@ class Volume(VolumeData, Dataview):
         self.vmin: float = (
             self.vmin
             if self.vmin is not None
-            else cast(
-                float, np.percentile(np.nan_to_num(self.data), 1)
-            )  # NOTE: should have been fixed in https://github.com/numpy/numpy/pull/27334
+            else np.percentile(np.nan_to_num(self.data), 1).astype(float) 
         )
         self.vmax: float = (
             self.vmax
             if self.vmax is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 99))
+            else np.percentile(np.nan_to_num(self.data), 99).astype(float)
         )
 
     def _write_hdf(self, h5, name="data"):
@@ -501,12 +499,12 @@ class Vertex(VertexData, Dataview):
         self.vmin = (
             self.vmin
             if self.vmin is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 1))
+            else np.percentile(np.nan_to_num(self.data), 1).astype(float)
         )
         self.vmax = (
             self.vmax
             if self.vmax is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 99))
+            else np.percentile(np.nan_to_num(self.data), 99).astype(float)
         )
 
     def _write_hdf(self, h5, name="data"):
