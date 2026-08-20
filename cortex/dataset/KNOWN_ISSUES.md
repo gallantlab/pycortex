@@ -89,23 +89,35 @@ not mistaken for an unrelated edit:
   positionally, but it is a break for anyone outside it who did.
 
 
-### `quickflat.add_cutout` is broken on current SciPy and NumPy
-
-Two removed APIs, both on the path that resizes a cutout layer:
-
-- `composite.py:614` -- `from scipy.misc import imresize`, removed in SciPy 1.3
-  (2019).
-- `composite.py:622` -- `np.cast['float32']`, removed in NumPy 2.0.
-
-Confirmed against the pinned environment (SciPy 1.18.0, NumPy 2.5.2): the import
-raises `ImportError`, and `np.cast` raises `AttributeError` with NumPy's own
-"was removed in the NumPy 2.0 release" message. So `make_figure(..., cutout=...)`
-fails for anyone on a current install.
-
-No test covers it, which is why it went unnoticed. Both were invisible to mypy
-until `add_cutout` gained a signature: an unannotated function body is not checked.
 
 ## Fixed during the restructure
+
+### `quickflat.add_cutout` used two removed APIs
+
+`make_figure(..., cutout=...)` raised on any current install. Two APIs, both on the
+path that clips a layer to a cutout region:
+
+- `from scipy.misc import imresize`, removed in SciPy 1.3 (2019). Now
+  `PIL.Image.fromarray(mask, mode="F").resize(..., Image.Resampling.BILINEAR)`,
+  which resizes the float32 mask in place of a round trip through uint8 --
+  `imresize` bytescaled a float input, so the old code divided by 255 to undo it.
+  Two traps: PIL takes `(width, height)` where the layer's shape is
+  `(height, width)`, and `Image.BILINEAR` is a deprecated alias that Pillow's stubs
+  do not declare, so the `Resampling` spelling is the one that type-checks.
+- `np.cast['float32']`, removed in NumPy 2.0. Now
+  `np.asarray(im).astype(np.float32)`, which is what `np.cast[t]` was defined as.
+
+Neither was visible to mypy until `add_cutout` gained a signature: an unannotated
+body is not checked. Nothing covered it either, which is why it went unnoticed
+across two dependency removals. Two tests now do:
+`test_cutout_composites_a_figure` calls `make_figure(cutout=...)` end to end, and
+`test_cutout_resizes_a_layer_that_is_one_pixel_off` drives the resize branch --
+reachable only when two layers disagree by a pixel -- and asserts through a spy
+that the resize ran on float32, since a wrong dtype there would change transparency
+silently rather than raise.
+
+One incidental change: the `print(f'Resizing! ...')` on that branch is gone. It was
+a debug print to stdout from library code.
 
 ### `uniques()` promised half of what its consumer needs
 

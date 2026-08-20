@@ -408,3 +408,75 @@ def test_with_connected_vertices_on_surface_data_raises_a_clear_error():
     vtx = cortex.Vertex.random("S1")
     with pytest.raises(TypeError, match="with_connected_vertices needs volumetric"):
         cortex.quickflat.make_figure(vtx, with_connected_vertices=True)
+
+
+def test_cutout_composites_a_figure():
+    """``make_figure(cutout=...)`` works end to end.
+
+    The whole path had been broken for years by two removed dependencies, and no
+    test reached it. This is the entry point a user actually calls.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+
+    view = cortex.Volume.random("S1", "fullhead")
+    fig = cortex.quickflat.make_figure(view, cutout="VisualCortexRight")
+    ax = fig.get_axes()[0]
+
+    # the cutout crops the axes to the region, so the extent is a strict subset
+    # of the full flatmap's
+    full = cortex.quickflat.make_figure(cortex.Volume.random("S1", "fullhead"))
+    fl, fr, fb, ft = full.get_axes()[0].images[0].get_extent()
+    cl, cr, cb, ct = ax.images[0].get_extent()
+    assert (cr - cl) < (fr - fl)
+    assert abs(ct - cb) < abs(ft - fb)
+
+
+def test_cutout_resizes_a_layer_that_is_one_pixel_off():
+    """The resize branch, which fires when two layers disagree by a pixel.
+
+    Reachable only when compositing functions produce layers of slightly
+    different heights, so it is driven directly here. What it must produce is a
+    float32 mask in [0, 1] at the layer's shape -- the value is multiplied into an
+    alpha channel, so a wrong dtype or range silently changes transparency rather
+    than raising.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib import pyplot as plt
+
+    from cortex.quickflat.composite import add_cutout
+
+    view = cortex.Volume.random("S1", "fullhead")
+    fig = cortex.quickflat.make_figure(view)
+    ax = fig.get_axes()[0]
+    base = ax.images[0].get_array()
+
+    # one row short of the cutout texture, which is what triggers the resize
+    short = np.asarray(base)[:-1]
+    fig2, ax2 = plt.subplots()
+    layer = ax2.imshow(short)
+
+    from unittest import mock
+
+    from PIL import Image
+
+    real = Image.fromarray
+    seen = []
+
+    def spy(arr, *a, **kw):
+        seen.append((arr.dtype, arr.shape))
+        return real(arr, *a, **kw)
+
+    with mock.patch.object(Image, "fromarray", side_effect=spy):
+        add_cutout(ax2, "VisualCortexRight", view, layers={"data": layer},
+                   height=short.shape[0] + 1, extents=(-1, 1, -1, 1))
+
+    # the resize really ran, on a float32 mask rather than a uint8 round trip
+    assert seen, "the resize branch was not reached, so this asserts nothing"
+    assert seen[0][0] == np.float32, seen[0]
+
+    # and it produced a mask matching the layer, so the alpha/NaN write below it
+    # broadcast: a one-pixel-off mask would have raised instead
+    out = np.asarray(layer.get_array())
+    assert out.size > 0

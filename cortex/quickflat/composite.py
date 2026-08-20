@@ -611,15 +611,28 @@ def add_cutout(fig, name: str, dataview: HasSubject, layers=None, height=None,
         if not all([np.abs(aa - bb) <= 1 for aa, bb in zip(im.shape, co.shape)]):
             raise Exception("Shape mismatch btw cutout and data!")
         if any([np.abs(aa - bb) > 0 and np.abs(aa - bb) < 2 for aa, bb in zip(im.shape, co.shape)]):
-            from scipy.misc import imresize
-            print(f'Resizing! {co.shape} to {im.shape[:2]}')
-            layer_cutout = imresize(co, im.shape[:2]).astype(np.float32)/255.
+            from PIL import Image
+
+            # `co` is float32 in [0, 1] and stays that way. PIL's "F" mode resizes
+            # 32-bit float directly, so the mask is not quantised to 1/255 steps on
+            # the way through. Note the axis order: PIL takes (width, height) where
+            # `im.shape[:2]` is (height, width).
+            target = (int(im.shape[1]), int(im.shape[0]))
+            layer_cutout = np.asarray(
+                Image.fromarray(
+                    np.ascontiguousarray(co, dtype=np.float32), mode="F"
+                ).resize(target, Image.Resampling.BILINEAR),
+                dtype=np.float32,
+            )
         else:
             layer_cutout = copy.copy(co)
 
         # Handle different types of alpha layers. Useful for RGBVolumes if nothing else.
         if im.dtype == np.uint8:
-            im = np.cast['float32'](im)/255.
+            # `np.asarray` before `astype`, so a masked layer degrades to its data
+            # the way it always has rather than staying masked through the
+            # multiplication below.
+            im = np.asarray(im).astype(np.float32) / 255.0
             im[:,:,3] *= layer_cutout
             h, w, cdim = [float(v) for v in im.shape]
         else:
