@@ -5,7 +5,6 @@ import shutil
 import subprocess as sp
 import tempfile
 import warnings
-from builtins import input
 
 import numpy as np
 

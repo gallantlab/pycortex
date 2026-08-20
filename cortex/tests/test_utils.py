@@ -74,3 +74,17 @@ def test_download_subject_download_again(
     assert "fsaverage" in cortex.db.subjects
     cortex.utils.download_subject(subject_id='fsaverage', download_again=True)
     assert mock_retrieve.call_count == 2
+
+
+def test_get_roi_masks_missing_roi_does_not_fail_when_not_required():
+    # When fail_for_missing_rois=False and a requested ROI isn't in
+    # overlays.svg, get_roi_masks falls back to computing the missing-ROI
+    # list from all available ROIs. That fallback used to crash with
+    # `TypeError: unsupported operand type(s) for +: 'dict_keys' and 'list'`
+    # because dict.keys() (a dict_keys view) doesn't support `+` with a list.
+    result = cortex.utils.get_roi_masks(
+        "S1", "fullhead", roi_list=["V1", "NotARealROI"],
+        fail_for_missing_rois=False,
+    )
+    assert "V1" in result
+    assert "NotARealROI" not in result
