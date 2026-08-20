@@ -64,6 +64,13 @@ docs/_build
 docs/auto_examples
 docs/generated
 docs/colormaps.rst
+docs/sg_execution_times.rst
+
+# Outputs the example gallery writes into the source tree when docs are built
+examples/quickflat/flatmap_comparison.gif
+examples/quickflat/my_flatmap.png
+examples/quickflat/my_flatmap.svg
+examples/quickstart/S1_retinotopy.hdf
 
 # Python virtual environment
 .venv
