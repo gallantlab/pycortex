@@ -1,36 +1,53 @@
 """Affine transformation class
 """
 import os
+from typing import Optional, Union, cast, TYPE_CHECKING
 import numpy as np
+import numpy.typing as npt
 import subprocess
+
+if TYPE_CHECKING:
+    import nibabel
 
 class Transform:
     '''
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
     '''
-    def __init__(self, xfm, reference):
+    shape: tuple[int, int, int]
+    reference: Optional[Union[str, "nibabel.Nifti1Image", npt.NDArray]]
+
+    def __init__(self, xfm: npt.NDArray, reference: Union[str, tuple[int, int, int], npt.NDArray, "nibabel.Nifti1Image"]):
         self.xfm = xfm
         self.reference = None
 
         if isinstance(reference, str):
             import nibabel
             try:
-                self.reference = nibabel.load(reference)
-                self.shape = self.reference.shape[:3][::-1]
+                self.reference = cast(nibabel.Nifti1Image, nibabel.load(reference))
+                self.shape = self.reference.shape[:3][::-1] # type: ignore
             except IOError:
                 self.reference = reference
         elif isinstance(reference, tuple):
             self.shape = reference
         else:
             self.reference = reference
-            self.shape = self.reference.shape[:3][::-1]
+            self.shape = self.reference.shape[:3][::-1] # type: ignore
 
-    def __call__(self, pts):
+    @property
+    def reference_nifti(self) -> "nibabel.Nifti1Image":
+        """The reference as a loaded nifti image, for callers that need its
+        affine/header. Raises if the reference is absent or never loaded."""
+        import nibabel
+        if not isinstance(self.reference, nibabel.Nifti1Image):
+            raise ValueError('Transform has no loaded reference image')
+        return self.reference
+
+    def __call__(self, pts: npt.NDArray) -> npt.NDArray:
         return np.dot(self.xfm, np.hstack([pts, np.ones((len(pts),1))]).T)[:3].T
 
     @property
-    def inv(self):
+    def inv(self) -> "Transform":
         ref = self.reference
         if ref is None:
             ref = self.shape
@@ -172,6 +189,7 @@ class Transform:
         # transforms. Thus the anatomical file is the "infile" in FSL-speak.
         infile = anat_nii
 
+        inIm: nibabel.Nifti1Image
         try:
             inIm = nibabel.load(infile)
         except AttributeError:
@@ -260,7 +278,7 @@ class Transform:
         # Read vox2ras transform for the anatomical volume
         try:
             cmd = ('mri_info', '--vox2ras', anat_mgz)
-            L = decode(subprocess.check_output(cmd)).splitlines()
+            L = subprocess.check_output(cmd).decode().splitlines()
             anat_vox2ras = np.array([[np.float64(s) for s in ll.split() if s] for ll in L])
         except OSError:
             print ("Error occurred while executing:\n{}".format(' '.join(cmd)))
@@ -283,7 +301,7 @@ class Transform:
         return cls(coord, refIm)
 
 
-    def to_freesurfer(self, fs_register, subject, freesurfer_subject_dir=None):
+    def to_freesurfer(self, fs_register: str, subject: str, freesurfer_subject_dir: Optional[str]=None):
         """Converts a pycortex transform to a FreeSurfer transform.
 
         Converts a transform stored in pycortex xfm object to the FreeSurfer format
@@ -319,10 +337,10 @@ class Transform:
         anat_tkrvox2ras = _vox2ras_tkr(anat.get_filename())
 
         # Read tkvox2ras transform for the functional volume
-        func_tkrvox2ras = _vox2ras_tkr(self.reference.get_filename())
+        func_tkrvox2ras = _vox2ras_tkr(self.reference_nifti.get_filename())
 
         # Read voxel resolution of the functional volume
-        func_voxres = self.reference.header.get_zooms()
+        func_voxres = self.reference_nifti.header.get_zooms()
 
         # Calculate FreeSurfer transform
         fs_anat2func = np.dot(func_tkrvox2ras, np.dot(self.xfm, np.dot(anat_vox2ras, inv(anat_tkrvox2ras))))
@@ -340,13 +358,6 @@ class Transform:
 
         return fs_anat2func
 
-def isstr(obj):
-    """Check for stringy-ness in python 2.7 or 3"""
-    try:
-        return isinstance(obj, basestring)
-    except NameError:
-        return isinstance(obj, str)
-    
 def decode(obj):
     if isinstance(obj, bytes):
         obj = obj.decode()
@@ -365,7 +376,7 @@ def _vox2ras_tkr(image):
     output affine"""
     try:
         cmd = ('mri_info', '--vox2ras-tkr', image)
-        L = decode(subprocess.check_output(cmd)).splitlines()
+        L = subprocess.check_output(cmd).decode().splitlines()
         # Skip headers/additional information. Example output of
         # mri_info --vox2ras-tkr
         #

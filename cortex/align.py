@@ -5,6 +5,7 @@ import shutil
 import subprocess as sp
 import tempfile
 import warnings
+from typing import Literal, Optional
 
 import numpy as np
 
@@ -107,8 +108,17 @@ def fs_manual(subject, xfmname, **kwargs):
     return manual(subject, xfmname, **kwargs)
 
 
-def manual(subject, xfmname, output_name="register.lta", wm_color="yellow", 
-    pial_color="blue", wm_surface='white', noclean=False, reference=None, inspect_only=False):
+def manual(
+    subject: str,
+    xfmname: str,
+    output_name: str = "register.lta",
+    wm_color: str = "yellow",
+    pial_color: str = "blue",
+    wm_surface: str = "white",
+    noclean: bool = False,
+    reference: Optional[str] = None,
+    inspect_only: bool = False,
+) -> Optional[str]:
     """Open Freesurfer FreeView GUI for manually aligning/adjusting a functional
     volume to the cortical surface for `subject`. This creates a new transform
     called `xfmname`. The name of a nibabel-readable file (e.g. NIfTI) should be
@@ -191,7 +201,9 @@ def manual(subject, xfmname, output_name="register.lta", wm_color="yellow",
 
         if reference is None:
             # Load load extant transform-relevant things
-            reference = sub_xfm.reference.get_filename()
+            if sub_xfm.reference is None:
+                raise ValueError('Cannot inspect reference-free transform')
+            reference = sub_xfm.reference_nifti.get_filename()
             _ = sub_xfm.to_freesurfer(os.path.join(cache, "register.dat"), subject) # Transform in freesurfer .dat format
             # Command for FreeView and run
             cmd = ("freeview -v $SUBJECTS_DIR/{sub}/mri/orig.mgz "
@@ -347,15 +359,15 @@ def automatic_fsl(
 
 
 def automatic(
-    subject,
-    xfmname,
-    reference,
-    init="coreg",
-    epi_mask=False,
-    intermediate=None,
-    reference_contrast="t2",
-    noclean=False,
-):
+    subject: str,
+    xfmname: str,
+    reference: str,
+    init: str = "coreg",
+    epi_mask: bool = False,
+    intermediate: Optional[str] = None,
+    reference_contrast: Literal['t1', 't2'] = "t2",
+    noclean: bool = False,
+) -> Optional[str]:
     """Perform automatic alignment using Freesurfer's boundary-based registration.
     The `reference` image and resulting transform called `xfmname` will be automatically
     stored in the database.
