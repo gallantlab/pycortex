@@ -131,7 +131,7 @@ def add_curvature(fig: Axes, dataview: HasSubject, extents: Optional[tuple[float
                       zorder=0)
     return cvimg
 
-def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, thick: int=32, depth: float=0.5, pixelwise: bool=True,
+def add_data(fig: Figure, braindata: Union[dataset.Dataview, tuple], height: int=1024, thick: int=32, depth: float=0.5, pixelwise: bool=True,
              sampler: str='nearest', recache: bool=False, nanmean: bool=False) -> tuple[AxesImage, npt.NDArray]:
     """Add data to quickflat plot
 
@@ -139,7 +139,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
     ----------
     fig : figure or ax
         Figure into which to plot image of curvature
-    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}
+    braindata : cortex.Dataview, or a tuple that `normalize` accepts
         Object containing containing data to be plotted, subject (surface identifier),
         and transform.
     height : scalar
@@ -290,7 +290,8 @@ def add_hatch(fig: Axes, hatch_data: dataset.Dataview, extents: Optional[tuple[f
     ----------
     fig : matplotlib figure
         Figure into which to plot the hatches. Should have pycortex flatmap image in it already.
-    hatch_data : cortex.Volume
+    hatch_data : cortex.Dataview
+        Rendered through the flatmap, so it must be a renderable kind.
         cortex.Volume object created from data scaled from 0-1; locations with values of 1 will
         have hatching overlaid on them in the resulting image.
     extents : array-like
@@ -322,7 +323,7 @@ def add_hatch(fig: Axes, hatch_data: dataset.Dataview, extents: Optional[tuple[f
         extents = _get_extents(fig)
     if height is None:
         height = _get_height(fig)
-    hatchim = _make_hatch_image(hatch_data, height, sampler, recache=recache, 
+    hatchim = _make_hatch_image(as_renderable(hatch_data), height, sampler, recache=recache, 
                                 hatch_space=hatch_space)
     hatchim[:,:,0] = hatch_color[0]
     hatchim[:,:,1] = hatch_color[1]
@@ -557,7 +558,8 @@ def add_connected_vertices(fig: Axes, dataview: VolumetricView, exclude_border_w
     lc_object = ax.add_collection(lc)
     return lc_object
 
-def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, overlay_file=None):
+def add_cutout(fig, name: str, dataview: HasSubject, layers=None, height=None,
+               extents=None, overlay_file=None) -> None:
     """Apply a cutout mask to extant layers in flatmap figure
 
     Parameters
@@ -566,8 +568,8 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, over
         figure to which to add cutouts
     name : str
         name of cutout shape within cutouts layer to use to crop the rest of the figure
-    dataview : cortex.Volume
-        cortex.Volume object being plotted (only used to get subject name)
+    dataview : cortex.dataset.HasSubject
+        Any view; only its ``subject`` is read.
     layers : list of layers in svg object
         layers to which the cutout will be applied. None defaults to all.
         [unclear if it's worth it to keep this input.]

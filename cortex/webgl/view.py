@@ -328,7 +328,9 @@ def make_static(
 
 
 def show(
-    data: Union[dataset.Dataset, dataset.Dataview],
+    # The same set `make_static` accepts: both normalize and then wrap in a
+    # Dataset, so a dict or a path works here too.
+    data: Union[dataset.DatasetLike, dataset.Dataview],
     autoclose: Optional[bool]=None,
     open_browser: Optional[bool]=None,
     port: Optional[int]=None,

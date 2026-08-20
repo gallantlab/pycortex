@@ -337,7 +337,8 @@ def _get_height(fig):
         height = 1024
     return height
 
-def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, recache=False):
+def _make_hatch_image(hatch_data: RenderableView, height: int, sampler: str='nearest',
+                      hatch_space: int=4, recache: bool=False) -> npt.NDArray[np.floating]:
     """Make hatch image
 
     Parameters
