@@ -5,7 +5,6 @@ import glob
 import json
 import mimetypes
 import os
-import random
 import shutil
 import sys
 import threading
@@ -323,8 +322,8 @@ def show(
         If True, uses the webbrowser library to open the viewer in the default
         local browser. Default True
     port : int or None, optional
-        The port that will be used by the server. If None, a random port will be
-        selected from the range 1024-65536. Default None
+        The port that will be used by the server. If None, a free ephemeral
+        port is assigned by the operating system. Default None
     pickerfun : function or None, optional
         Should be a function that takes three arguments, a 3-D voxel vector, a
         vertex index, and the hemisphere ("left" or "right"). Is called whenever
@@ -1002,7 +1001,10 @@ def show(
             return JSMixer(self.srvsend, "window.viewer")
 
     if port is None:
-        port = random.randint(1024, 65536)
+        # Let the OS assign a guaranteed-free ephemeral port (WebApp binds
+        # port 0 and reads the real port back). This avoids the random-port
+        # collisions that made headless/CI runs intermittently hang.
+        port = 0
 
     server = WebApp([(r'/ctm/(.*)', CTMHandler),
                      (r'/data/(.*)', DataHandler),

@@ -4,7 +4,7 @@ Get Vertices for an ROI
 =======================
 
 In this example we show how to get the vertices that are inside an ROI that was
-defined in the SVG ROI file (see :doc:`/rois.rst`).
+defined in the SVG ROI file (see :doc:`/rois`).
 
 """
 import cortex

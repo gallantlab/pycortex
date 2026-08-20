@@ -580,7 +580,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, over
                                        linewidth=2))
     co = svgobject.get_texture('cutouts', height, labels=False, **svg_kws)[..., 0]
     if not np.any(co):
-        raise Exception('No pixels in cutout region {}!'.format(name))
+        raise Exception(f'No pixels in cutout region {name}!')
 
     # Bounding box indices
     LL, RR, BB, TT = np.nan, np.nan, np.nan, np.nan
@@ -594,7 +594,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, over
             raise Exception("Shape mismatch btw cutout and data!")
         if any([np.abs(aa - bb) > 0 and np.abs(aa - bb) < 2 for aa, bb in zip(im.shape, co.shape)]):
             from scipy.misc import imresize
-            print('Resizing! {} to {}'.format(co.shape, im.shape[:2]))
+            print(f'Resizing! {co.shape} to {im.shape[:2]}')
             layer_cutout = imresize(co, im.shape[:2]).astype(np.float32)/255.
         else:
             layer_cutout = copy.copy(co)

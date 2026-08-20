@@ -6,7 +6,7 @@ from .. import dataset
 import warnings
 warnings.simplefilter('ignore', sparse.SparseEfficiencyWarning)
 
-class Mapper(object):
+class Mapper:
     '''Maps data from epi volume onto surface using various projections'''
     def __init__(self, left, right, shape, subject, xfmname):
         self.idxmap = None

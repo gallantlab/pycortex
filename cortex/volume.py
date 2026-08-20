@@ -1,13 +1,17 @@
 """Contains functions for working with volume data
 """
 import os
+from typing import Literal, Optional, TypeVar, Union
 import numpy as np
+import numpy.typing as npt
 
 from . import dataset
 from .database import db
 from .xfm import Transform
 
-def unmask(mask, data):
+DType = TypeVar('DType', bound=np.generic)
+# TODO: MaskedArray typing might require newer numpy versions. If so, drop the generic typing.
+def unmask(mask: np.ndarray[tuple[int, int, int], np.dtype[np.bool_]], data: npt.NDArray[DType]) -> Union[np.ma.MaskedArray[tuple[int, ...], np.dtype[DType]], npt.NDArray[DType], npt.NDArray[np.uint8]]:
     """unmask(mask, data)
 
     Unmask the data, assuming it's been masked. Creates a volume
@@ -54,15 +58,15 @@ def unmask(mask, data):
 
     return output.squeeze()
 
-def detrend_median(data, kernel=15):
+def detrend_median(data: npt.NDArray, kernel: int=15) -> npt.NDArray:
     from scipy.signal import medfilt
     lowfreq = medfilt(data, [1, kernel, kernel])
     return data - lowfreq
 
-def detrend_gradient(data, diff=3):
+def detrend_gradient(data: npt.ArrayLike, diff: int=3) -> npt.NDArray:
     return (np.array(np.gradient(data, 1, diff, diff))**2).sum(0)
 
-def detrend_poly(data, polyorder = 10, mask=None):
+def detrend_poly(data: npt.NDArray, polyorder: int = 10, mask: Optional[npt.NDArray] = None) -> npt.NDArray:
     from scipy.special import legendre
     polys = [legendre(i) for i in range(polyorder)]
     s = data.shape
@@ -84,7 +88,7 @@ def detrend_poly(data, polyorder = 10, mask=None):
     else:
         return detrended.reshape(*s)
 
-def mosaic(data, dim=0, show=True, **kwargs):
+def mosaic(data: npt.NDArray[DType], dim: int=0, show: bool=True, **kwargs) -> tuple[Union[npt.NDArray[DType], npt.NDArray[np.uint8]], tuple[int, int]]:
     """
     Turns volume data into a mosaic, useful for quickly viewing volumetric data
     with radiological convention (left side of figure is right side of subject).
@@ -114,7 +118,7 @@ def mosaic(data, dim=0, show=True, **kwargs):
     else:
         output = (np.nan*np.ones(shape)).astype(data.dtype)
 
-    sl = [slice(None), slice(None), slice(None)]
+    sl: list[Union[int, slice]] = [slice(None), slice(None), slice(None)]
     for h in range(ntall):
         for w in range(nwide):
             sl[dim] = h*nwide+w
@@ -223,7 +227,7 @@ def epi2anatspace(volumedata, order=1):
     anatspace : ndarray
         The ND array of the anatomy space data
     """
-    from scipy.ndimage.interpolation import affine_transform
+    from scipy.ndimage import affine_transform
     ds = dataset.normalize(volumedata)
     volumedata = ds#.data
 
@@ -239,7 +243,7 @@ def epi2anatspace(volumedata, order=1):
                             offset=transpart, output_shape=anat.shape[::-1],
                             cval=np.nan, order=order).T
 
-def anat2epispace(anatdata, subject, xfmname, order=1):
+def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: Literal[0, 1, 2, 3, 4, 5]=1) -> npt.NDArray:
     """Resamples data from anatomical space into epi space
     
     Parameters
@@ -258,7 +262,7 @@ def anat2epispace(anatdata, subject, xfmname, order=1):
     epidata : ndarray
         data in EPI space
     """
-    from scipy.ndimage.interpolation import affine_transform
+    from scipy.ndimage import affine_transform
     anatref = db.get_anat(subject)
     target = db.get_xfm(subject, xfmname, "coord")
 

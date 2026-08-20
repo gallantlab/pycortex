@@ -6,7 +6,6 @@ import warnings
 import numpy as np
 import subprocess as sp
 import multiprocessing as mp
-from builtins import input
 
 from . import formats
 from . import blender
