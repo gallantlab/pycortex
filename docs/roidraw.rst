@@ -8,8 +8,8 @@ stroke is fitted to a smooth, re-editable bezier curve, drawn as a colored outli
 into the surface.
 
 ROIs are **closed** curves that carry per-hemisphere vertex membership and export to a portable
-JSON vertex set. Sulci are **open** curves that carry no vertex data and export as an
-``overlays.svg`` fragment — the same representation pycortex already uses for sulci.
+JSON vertex set. Sulci are **open** curves that carry no vertex data and export as a standalone SVG
+whose ``sulci`` layer is the same representation pycortex already uses for sulci.
 
 It ships as a single self-contained bundle (``roidraw.bundle.js``, CSS included) that can be added
 to **any** pycortex viewer — a static ``make_static`` export or a freshly generated dynamic viewer.
@@ -23,8 +23,8 @@ to **any** pycortex viewer — a static ``make_static`` export or a freshly gene
    Inkscape workflow when you need ROI masks in the pycortex Python API.
 
    Drawn **sulci** are different: they are exported as ``overlays.svg`` markup, so they *are* read
-   by pycortex's own machinery (``quickflat``'s sulci overlay, the WebGL viewer, Inkscape) once the
-   fragment is merged into a subject's overlay file.
+   by pycortex's own machinery (``quickflat``'s sulci overlay, the WebGL viewer, Inkscape) once
+   their shape groups are copied into a subject's overlay file — see :ref:`installing-drawn-sulci`.
 
 Adding it to a viewer
 ---------------------
@@ -76,15 +76,61 @@ vertex indices, an ordered boundary ring, a label vertex, and the editable bezie
 in view-independent flat-UV coordinates). It re-imports — here or in any viewer on the same
 surface — to the exact same outline, ready to re-edit.
 
-**Export sulci (SVG)** writes a ``sulci.svg`` fragment in pycortex's own overlay format: open,
-unfilled ``<path>`` elements in a ``sulci`` layer, one inkscape-labeled group per named sulcus.
-Trace a sulcus on each hemisphere and give both strokes the same name, and they merge into a single
-group with one ``<path>`` per hemisphere — exactly how a hand-authored sulcus such as ``CaS`` is
-stored. Merge the fragment into the subject's ``overlays.svg`` and ``quickflat``, the WebGL viewer,
-and Inkscape all read it.
+**Export sulci (SVG)** writes a standalone ``sulci.svg`` document whose ``sulci`` layer is in
+pycortex's own overlay format: open, unfilled ``<path>`` elements, one inkscape-labeled group per
+named sulcus. Trace a sulcus on each hemisphere and give both strokes the same name, and they merge
+into a single group with one ``<path>`` per hemisphere — exactly how a hand-authored sulcus such as
+``CaS`` is stored.
 
 Sulci carry no vertex data, matching pycortex: there is no ``get_sulci_verts``, and sulci are
-display geometry. Sulcus export is one-way — they are not re-imported from SVG.
+display geometry. The ``sulci_labels`` layer is deliberately left empty — pycortex derives each
+sulcus's label position from its path geometry when the overlay is loaded, so no label needs to be
+written. Sulcus export is one-way: sulci are not re-imported from SVG.
+
+.. _installing-drawn-sulci:
+
+Installing drawn sulci into a subject
+-------------------------------------
+
+.. warning::
+
+   Copy the ``<g inkscape:label="…">`` groups out of the exported file's ``sulci_shapes`` group and
+   into the **existing** ``sulci_shapes`` group of the subject's ``overlays.svg``.
+
+   Do **not** append the whole ``<g id="sulci">`` layer. ``SVGOverlay`` keys its layers by
+   ``inkscape:label``, so a second layer labelled ``sulci`` replaces the subject's own in
+   ``SVGOverlay.layers`` — every sulcus already in that file becomes invisible to pycortex.
+
+So, given an exported ``sulci.svg`` containing a group for the central sulcus:
+
+.. code-block:: xml
+
+   <!-- sulci.svg, as downloaded -->
+   <svg xmlns="http://www.w3.org/2000/svg"
+        xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" ...>
+     <g inkscape:groupmode="layer" id="sulci" inkscape:label="sulci" style="display:inline">
+       <g inkscape:groupmode="layer" id="sulci_shapes" inkscape:label="shapes">
+
+         <g inkscape:groupmode="layer" inkscape:label="CS">     <!-- copy THIS group ... -->
+           <path style="fill:none;stroke:white;..." d="M412.55,301.90C..." />
+           <path style="fill:none;stroke:white;..." d="M598.31,297.44C..." />
+         </g>
+
+       </g>
+       <g inkscape:groupmode="layer" id="sulci_labels" inkscape:label="labels" />
+     </g>
+   </svg>
+
+paste that one ``<g inkscape:label="CS">`` group inside the subject's own
+``<g id="sulci_shapes">``, alongside the sulci already there. Then::
+
+    import cortex
+    svg = cortex.db.get_overlay('S1')
+    svg.sulci['CS']                                   # the drawn sulcus, parsed
+    cortex.quickflat.make_figure(volume, with_sulci=True)
+
+The paths' coordinates are already in the overlay's own coordinate system, so nothing needs to be
+rescaled. Inkscape can also open the exported file directly.
 
 Full documentation
 ------------------
