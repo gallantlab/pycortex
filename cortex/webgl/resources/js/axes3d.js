@@ -20,18 +20,35 @@ var jsplot = (function (module) {
         this.controls.addEventListener("pick", this.pick.bind(this));
         this.controls.addEventListener("change", this.schedule.bind(this));
         
-        //These lights approximately match what's done by vtk
-        this.lights = [
-            new THREE.DirectionalLight(0xffffff, .47), 
-            new THREE.DirectionalLight(0xffffff, .29), 
-            new THREE.DirectionalLight(0xffffff, .24)
-        ];
-        this.lights[0].position.set( 1, -1, -1 ).normalize();
-        this.lights[1].position.set( -1, -.25, .75 ).normalize();
-        this.lights[2].position.set( 1, -.25, .75 ).normalize();
-        this.camera.add( this.lights[0] );
-        this.camera.add( this.lights[1] );
-        this.camera.add( this.lights[2] );
+        // Lights are children of the camera, so their positions are in camera
+        // space: +x is right, +y is up, +z is towards the viewer. Directional
+        // lights only care about the direction, which three.js normalizes.
+        var topleft_lighting = (typeof viewopts !== 'undefined' &&
+                                viewopts.topleft_lighting == 'true');
+        if (topleft_lighting) {
+            // Single grazing light from the upper left, following the top-left
+            // lighting convention used for shaded-relief topographic maps. This
+            // makes sulci read as valleys and gyri as ridges, which is the point
+            // of the bumpy flatmap. Note that a single near-tangential light is
+            // dimmer overall than the default three-light setup.
+            this.lights = [
+                new THREE.DirectionalLight(0xffffff, 1.0)
+            ];
+            this.lights[0].position.set( -100, 200, 10 ).normalize();
+        } else {
+            //These lights approximately match what's done by vtk
+            this.lights = [
+                new THREE.DirectionalLight(0xffffff, .47), 
+                new THREE.DirectionalLight(0xffffff, .29), 
+                new THREE.DirectionalLight(0xffffff, .24)
+            ];
+            this.lights[0].position.set( 1, -1, -1 ).normalize();
+            this.lights[1].position.set( -1, -.25, .75 ).normalize();
+            this.lights[2].position.set( 1, -.25, .75 ).normalize();
+        }
+        for (var i = 0; i < this.lights.length; i++) {
+            this.camera.add( this.lights[i] );
+        }
 
         this.views = [];
 
