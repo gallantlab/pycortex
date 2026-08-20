@@ -89,6 +89,22 @@ not mistaken for an unrelated edit:
   positionally, but it is a break for anyone outside it who did.
 
 
+### `quickflat.add_cutout` is broken on current SciPy and NumPy
+
+Two removed APIs, both on the path that resizes a cutout layer:
+
+- `composite.py:614` -- `from scipy.misc import imresize`, removed in SciPy 1.3
+  (2019).
+- `composite.py:622` -- `np.cast['float32']`, removed in NumPy 2.0.
+
+Confirmed against the pinned environment (SciPy 1.18.0, NumPy 2.5.2): the import
+raises `ImportError`, and `np.cast` raises `AttributeError` with NumPy's own
+"was removed in the NumPy 2.0 release" message. So `make_figure(..., cutout=...)`
+fails for anyone on a current install.
+
+No test covers it, which is why it went unnoticed. Both were invisible to mypy
+until `add_cutout` gained a signature: an unannotated function body is not checked.
+
 ## Fixed during the restructure
 
 ### `uniques()` promised half of what its consumer needs

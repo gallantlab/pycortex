@@ -359,6 +359,44 @@ One thing the type system cannot express here: nothing stops
 the channel would need higher-kinded types, so it stays a runtime constructor
 check.
 
+### Where per-space narrowing has to live
+
+`space` is typed `BrainSpace` on all three columns, so a composite view that reads
+a space-specific member off it narrows `space` itself. `VertexRGB` does, for
+`left`/`right`, which need `SurfaceSpace.split_hemispheres`; `VolumeRGB` does not,
+because nothing in it reads a `VolumeSpace` member off `self.space` -- it gets
+`xfmname` from `VolumetricView`. The body is identical to the base's
+(`return self.red.space`), so the override buys nothing at runtime: it exists only
+to state the type.
+
+Two places it cannot go instead, both worth knowing before trying:
+
+- **Not on the spatial interface.** `SurfaceView.space -> SurfaceSpace` looks
+  right -- the interface knows its space kind -- but the column precedes the
+  interface in every MRO, so the column's wider declaration wins and the narrowing
+  is dead. mypy does not merely ignore it either; it reports
+  `Definition of "space" in base class "DataviewRGB" is incompatible with
+  definition in base class "SurfaceView"`. Listing the interface first narrows
+  correctly and then breaks at runtime, since only the column knows where the
+  space comes from -- `self._space` for the scalar column, `self.red.space` for
+  RGB, `self.dim1.space` for 2D. This is the same constraint that puts
+  `spatial_data` on the column.
+- **Not inferred from the channel.** A second parameter works --
+  `DataviewRGB[ScalarT, SpaceT]` with `space -> SpaceT`, declared
+  `DataviewRGB[Vertex, SurfaceSpace]` -- and removes every such override. But the
+  two cannot collapse into one: `Volume`/`VolumeSpace` is a genuine 1-to-1 pairing,
+  yet naming it means naming *the type of* `ScalarT.space`, which is a type
+  projection. Supplying only the channel is `expects 2 type arguments, but 1
+  given`; deriving the space from the channel's bound yields `Any`. A PEP 696
+  default would silence the error and hand back the wide `BrainSpace`, which is
+  worse than the override.
+
+So the general rule, of which `raw`, `spatial_data` and `name` are the other
+instances: **per-space narrowing can only live where the member is defined, the
+columns define it, and a column can only name a type it has a parameter for.**
+Until a second space needs it, one three-line property on `VertexRGB` is cheaper
+than a type parameter on four concrete classes.
+
 ## Adding a new kind of brain data
 
 Four declarations. The three bases supply everything else.
