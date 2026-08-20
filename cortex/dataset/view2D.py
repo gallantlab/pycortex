@@ -190,7 +190,7 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
     # rendering
     # ------------------------------------------------------------------
     @property
-    def spatial_data(self) -> npt.NDArray[np.uint8]:
+    def renderer_data(self) -> npt.NDArray[np.uint8]:
         """The colormapped RGBA array, as produced by :attr:`raw`.
 
         A 2D view has no array of its own -- it is two channels plus a joint
@@ -199,7 +199,7 @@ class Dataview2D(RenderableView, Generic[ScalarT]):
         ``Volume2D.volume`` did not exist at all until recently, which forced
         every consumer to special-case it and reach for ``.raw.volume`` itself.
         """
-        return self.raw.spatial_data
+        return self.raw.renderer_data
 
     def _to_raw(
         self, data1: npt.NDArray, data2: npt.NDArray

@@ -888,8 +888,8 @@ def test_xfmname_comes_from_the_space_not_from_a_channel():
         assert view.xfmname == view.space.xfmname == xfmname, type(view)
 
 
-def test_the_spatial_array_is_implemented_once_per_view():
-    """``spatial_data`` is the abstract member; ``volume``/``vertices`` are aliases.
+def test_the_renderer_array_is_implemented_once_per_view():
+    """``renderer_data`` is the abstract member; ``volume``/``vertices`` are aliases.
 
     It used to be the other way round, which cost one property per space per
     column: ``VolumeRGB.volume`` and ``VertexRGB.vertices`` were the same
@@ -906,7 +906,7 @@ def test_the_spatial_array_is_implemented_once_per_view():
         VolumetricView,
     )
 
-    assert "spatial_data" in RenderableView.__abstractmethods__
+    assert "renderer_data" in RenderableView.__abstractmethods__
     for iface, alias in ((VolumetricView, "volume"), (SurfaceView, "vertices")):
         assert alias in vars(iface), alias
         assert alias not in iface.__abstractmethods__, alias
@@ -914,13 +914,13 @@ def test_the_spatial_array_is_implemented_once_per_view():
     # each column class implements it exactly once, on the column and not on
     # either of its two spatial subclasses
     for column in (DataviewRGB, Dataview2D):
-        assert "spatial_data" in vars(column), column
+        assert "renderer_data" in vars(column), column
         for sub in column.__subclasses__():
-            assert "spatial_data" not in vars(sub), sub
+            assert "renderer_data" not in vars(sub), sub
 
     # and the scalar column, whose two views differ in how they do it, is where
     # the per-space implementations legitimately live
-    assert "spatial_data" in vars(Volume)
+    assert "renderer_data" in vars(Volume)
 
 
 def test_static_only_protocols_refuse_isinstance():
@@ -1067,7 +1067,7 @@ def test_a_packable_is_renderable_so_uniques_promises_both_members():
     ``uniques()`` return type usable.
 
     ``webgl.data.Package`` reads *two* members off each unique -- ``name``, to key
-    it by, and ``spatial_data``, to ship -- so promising only ``Packable`` was
+    it by, and ``renderer_data``, to ship -- so promising only ``Packable`` was
     promising half of what the one consumer needs. Python has no intersection
     type, so the way to say "both" is for one to subclass the other, and every
     ``Packable`` was already a ``RenderableView`` in fact: both columns listed
@@ -1084,18 +1084,18 @@ def test_a_packable_is_renderable_so_uniques_promises_both_members():
     assert issubclass(Dataview2D, RenderableView)
 
     # and the MRO is unchanged by saying it: the column still precedes the
-    # spatial interface, which is what lets the column own `spatial_data`
+    # spatial interface, which is what lets the column own `renderer_data`
     assert [c.__name__ for c in cortex.Volume.__mro__[:5]] == [
         "Volume", "ScalarView", "Packable", "VolumetricView", "RenderableView",
     ]
 
 
 def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
-    """``name`` must keep hashing the *stored* array, not ``spatial_data``.
+    """``name`` must keep hashing the *stored* array, not ``renderer_data``.
 
     For an RGB view the two coincide, which makes hoisting ``name`` onto
     ``RenderableView`` look free. It is not: a masked ``Volume`` stores a flat
-    array while ``spatial_data`` is the unmasked 3-D one, so unifying them would
+    array while ``renderer_data`` is the unmasked 3-D one, so unifying them would
     silently rename every existing HDF node.
     """
     from cortex.dataset._hdf import _hash
@@ -1105,12 +1105,12 @@ def test_packable_name_is_not_hoisted_onto_the_spatial_interface():
                         mask=mask)
 
     assert vol.name == "__%s" % _hash(vol.data)[:16]
-    assert vol.name != "__%s" % _hash(vol.spatial_data)[:16]
+    assert vol.name != "__%s" % _hash(vol.renderer_data)[:16]
 
     # ...whereas for RGB the stored array *is* the sampled one, which is why the
     # two RGB classes could share one implementation.
     rgb = cortex.VolumeRGB(vol, vol, vol)
-    assert rgb.name == "__%s" % _hash(rgb.spatial_data)[:16]
+    assert rgb.name == "__%s" % _hash(rgb.renderer_data)[:16]
 
 
 def test_empty_and_random_take_their_shape_from_the_space():

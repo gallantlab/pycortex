@@ -63,7 +63,7 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
     inherits whichever spatial interface describes how its data is sampled -- no entry
     and no union to edit.
 
-    Note what it has to implement: ``spatial_data`` and nothing else about its
+    Note what it has to implement: ``renderer_data`` and nothing else about its
     array. ``vertices`` is the surface interface's name for that same array and
     arrives concrete, so a third-party view does not publish it twice.
     """
@@ -82,7 +82,7 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
         _array = np.zeros((1, 10))
 
         @property
-        def spatial_data(self):
+        def renderer_data(self):
             return self._array
 
         @property
@@ -98,7 +98,7 @@ def test_as_renderable_accepts_a_third_party_view_that_inherits_a_spatial_interf
     view = ThirdPartyView()
     assert as_renderable(view) is view
     assert isinstance(view, SurfaceView)
-    assert view.vertices is view.spatial_data
+    assert view.vertices is view.renderer_data
 
 
 def test_as_renderable_rejects_a_lookalike_that_merely_has_the_attributes():
@@ -172,7 +172,7 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
     ``make_flatmap_image`` used to fork on ``isinstance(braindata, SurfaceView)``
     with an ``else`` that silently assumed exactly two kinds existed -- a third
     would have taken the volumetric path and then failed on ``.xfmname``. It now
-    reads ``space.xfmname`` (what to sample through) and ``spatial_data`` (what to
+    reads ``space.xfmname`` (what to sample through) and ``renderer_data`` (what to
     sample), so a spatial kind it has never heard of is drawn by the same code.
     """
     import inspect
@@ -232,7 +232,7 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
             self._space = ThirdSpace(subj)
 
         @property
-        def spatial_data(self):
+        def renderer_data(self):
             return np.zeros((1, 4))
 
         @property
@@ -251,13 +251,13 @@ def test_a_third_spatial_kind_needs_no_change_to_the_renderer():
     assert not isinstance(view, (VolumetricView, SurfaceView))
     # and the two facts the renderer needs are both available
     assert view.space.xfmname is None
-    assert view.spatial_data.shape == (1, 4)
+    assert view.renderer_data.shape == (1, 4)
     # the renderer no longer asks which spatial kind it holds. (It still has
     # isinstance checks for np.ma.MaskedArray -- about the array, not the space.)
     src = inspect.getsource(qutils.make_flatmap_image)
     for banned in ("SurfaceView", "VolumetricView", "Volume2D", "Vertex2D"):
         assert banned not in src, banned
-    assert "spatial_data" in src and "space.xfmname" in src
+    assert "renderer_data" in src and "space.xfmname" in src
 
 
 def _third_space_family():
@@ -347,7 +347,7 @@ def _third_space_family():
             return self._space
 
         @property
-        def spatial_data(self):
+        def renderer_data(self):
             return self.data if self.movie else self.data[np.newaxis]
 
         @property
@@ -439,8 +439,8 @@ def test_the_documented_skeleton_for_a_new_space_actually_works():
     assert repr(view) == "<my data for (S1)>"
     assert view.subject == subj and view.nthings == nthings
     assert view.space.xfmname is None
-    assert view.spatial_data.shape == (1, nthings)          # frame axis added
-    assert MyView(np.random.randn(3, nthings), subj, "a").spatial_data.shape == (3, nthings)
+    assert view.renderer_data.shape == (1, nthings)          # frame axis added
+    assert MyView(np.random.randn(3, nthings), subj, "a").renderer_data.shape == (3, nthings)
     assert view.name.startswith("__") and len(view.name) == 18
     assert np.allclose((view + 1).data, arr + 1)            # inherited operators
     # Resolved by ScalarView.__init__ itself, so a new space inherits the
@@ -455,13 +455,13 @@ def test_the_documented_skeleton_for_a_new_space_actually_works():
     # --- raw, which goes out through space.wrap_rgb and comes back concrete
     raw = view.raw
     assert isinstance(raw, MyViewRGB)
-    assert raw.spatial_data.shape == (1, nthings, 4)
-    assert raw.spatial_data.dtype == np.uint8
+    assert raw.renderer_data.shape == (1, nthings, 4)
+    assert raw.renderer_data.dtype == np.uint8
 
     # --- the 2D view, from raw arrays and from built views
     twod = MyView2D(arr, arr, subj, "a")
     assert repr(twod) == "<2D my data for (S1)>"
-    assert twod.spatial_data.shape == (1, nthings, 4)
+    assert twod.renderer_data.shape == (1, nthings, 4)
     assert isinstance(twod.raw, MyViewRGB)
     assert isinstance(MyView2D(view, view).dim1, MyView)
     # the shared resolver enforces the space's spec keys
@@ -471,9 +471,9 @@ def test_the_documented_skeleton_for_a_new_space_actually_works():
     # --- the RGB view, single frame and movie
     rgb = MyViewRGB(arr, arr, arr, subj, "a")
     assert repr(rgb) == "<RGB my data for (S1)>"
-    assert rgb.spatial_data.shape == (1, nthings, 4)
+    assert rgb.renderer_data.shape == (1, nthings, 4)
     movie = MyViewRGB(*([np.random.randn(4, nthings)] * 3), subj, "a")
-    assert movie.spatial_data.shape == (4, nthings, 4)
+    assert movie.renderer_data.shape == (4, nthings, 4)
 
     # --- serialization, with the space contributing no layout keys of its own
     assert set(view.to_json(simple=True)) == {"name", "subject", "min", "max"}

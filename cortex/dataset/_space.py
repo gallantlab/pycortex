@@ -275,7 +275,7 @@ class BrainSpace(ABC):
         matching branch to ``webgl/resources/js/dataset.js``.
 
         Not abstract, because a space with no browser representation is a
-        legitimate thing to have -- ``quickflat`` needs only ``spatial_data`` --
+        legitimate thing to have -- ``quickflat`` needs only ``renderer_data`` --
         and the default says so with a message naming both encodings.
         """
         return no_encoding(self)
@@ -515,7 +515,7 @@ class VolumeSpace(BrainSpace):
             and np.all(self.mask == other.mask)
         ):
             return first.data, second.data
-        return first.spatial_data, second.spatial_data
+        return first.renderer_data, second.renderer_data
 
     def unmask(self, data: npt.NDArray, movie: bool) -> npt.NDArray:
         """Expand ``data`` to a full 3D/4D volume, adding the time axis."""

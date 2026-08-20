@@ -410,7 +410,7 @@ class RenderableView(Dataview):
     The common base of every spatial interface. Its purpose is to let callers stop
     enumerating the spatial kinds: :func:`as_renderable` is one
     ``isinstance`` against this, and the flatmap renderer reads
-    :attr:`spatial_data` instead of asking which spatial kind it holds.
+    :attr:`renderer_data` instead of asking which spatial kind it holds.
 
     That matters because an ``if volumetric / else surface`` fork silently encodes
     "there are exactly two spatial kinds". A third would have taken the ``else`` branch
@@ -421,20 +421,24 @@ class RenderableView(Dataview):
 
     @property
     @abstractmethod
-    def spatial_data(self) -> npt.NDArray:
-        """The array a renderer samples, with a leading time axis.
+    def renderer_data(self) -> npt.NDArray:
+        """The array a renderer consumes, with a leading frame axis.
 
-        This is *the* member a view implements to be renderable. Each spatial
-        interface then exposes it under the name its space has always used --
-        :attr:`VolumetricView.volume`, :attr:`SurfaceView.vertices` -- rather than
-        the reverse, which is how it was first written and which cost a property
-        per space per column: an RGB view and a 2D view each had to publish the
-        same array twice over, once as ``volume`` and once as ``vertices``, purely
-        to satisfy the interface it happened to inherit.
+        The one member a view must implement to be renderable, and the renderer's
+        entry point for the values themselves; ``view.space.xfmname`` says what to
+        sample them *through*, and :attr:`BrainSpace.spatial_shape` is the shape of
+        one frame.
 
-        Paired with ``view.space.xfmname``, which says what to sample *through*,
-        and named to match :attr:`BrainSpace.spatial_shape`, which is the shape of
-        one frame of it.
+        Named for its destination rather than its state, because the state differs
+        by column: the scalar column returns its stored values, while the 2D and
+        RGB columns return uint8 RGBA that has already been colormapped. Both are
+        what a renderer starts from, which is the only thing true of all three.
+
+        Renderer-agnostic. The per-renderer encoding is a separate step --
+        :meth:`BrainSpace.pack_for_webgl` turns this into a mosaicked texture or
+        per-vertex attributes -- and each spatial interface republishes this array
+        under the name its space uses, :attr:`VolumetricView.volume` and
+        :attr:`SurfaceView.vertices`.
         """
 
 
@@ -443,7 +447,7 @@ class Packable(RenderableView):
 
     Renderable *and* one array, which is why this subclasses
     :class:`RenderableView` rather than sitting beside it: a consumer needs both
-    :attr:`name` to key the array by and :attr:`~RenderableView.spatial_data` to
+    :attr:`name` to key the array by and :attr:`~RenderableView.renderer_data` to
     ship it. The scalar and RGB columns qualify -- an RGB view ships as one
     four-channel array -- and :class:`~cortex.dataset.view2D.Dataview2D` does not,
     owning no array of its own, only the two channels it decomposes into.
@@ -463,7 +467,7 @@ class Packable(RenderableView):
         that array. The two coincide for a scalar view; an RGB view writes its
         four channels as separate nodes, so for it this is only the browser key.
         That is why this promises the name alone and not what is hashed: hashing
-        :attr:`~RenderableView.spatial_data` instead would take a masked volume's
+        :attr:`~RenderableView.renderer_data` instead would take a masked volume's
         unmasked 3-D array rather than its flat stored one, renaming every node
         already on disk.
         """
@@ -517,12 +521,12 @@ class VolumetricView(RenderableView):
     def volume(self) -> npt.NDArray:
         """The data as a volume, with a leading time axis.
 
-        The volumetric name for :attr:`RenderableView.spatial_data`, and concrete
+        The volumetric name for :attr:`RenderableView.renderer_data`, and concrete
         for every volumetric view: scalar and automatically unmasked for
         :class:`Volume`, uint8 RGBA for the 2D and RGB views, whose data has
         already been colormapped.
         """
-        return self.spatial_data
+        return self.renderer_data
 
     @property
     @abstractmethod
@@ -546,11 +550,11 @@ class SurfaceView(RenderableView):
     def vertices(self) -> npt.NDArray:
         """The data per vertex, with a leading time axis.
 
-        The surface name for :attr:`RenderableView.spatial_data`, and concrete for
+        The surface name for :attr:`RenderableView.renderer_data`, and concrete for
         every surface view: scalar for :class:`Vertex`, uint8 RGBA for the 2D and
         RGB views, whose data has already been colormapped.
         """
-        return self.spatial_data
+        return self.renderer_data
 
     @property
     @abstractmethod
@@ -1205,7 +1209,7 @@ class Volume(ScalarView, VolumetricView):
         return self.space.mask_spec
 
     @property
-    def spatial_data(self) -> npt.NDArray:
+    def renderer_data(self) -> npt.NDArray:
         """A 3D or 4D volume, automatically unmasking masked data.
 
         Also reachable as :attr:`~cortex.dataset.views.VolumetricView.volume`,
@@ -1377,7 +1381,7 @@ class Vertex(ScalarView, SurfaceView):
         return self.space.hem
 
     @property
-    def spatial_data(self) -> npt.NDArray:
+    def renderer_data(self) -> npt.NDArray:
         """The per-vertex data with a leading frame axis, added if absent.
 
         Also reachable as :attr:`~cortex.dataset.views.SurfaceView.vertices`,

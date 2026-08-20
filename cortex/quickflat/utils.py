@@ -59,7 +59,7 @@ def make_flatmap_image(braindata: RenderableView, height: int=1024, recache: boo
                            height=height,
                            recache=recache,
                            **kwargs)
-    data = braindata.spatial_data
+    data = braindata.renderer_data
 
     if data.shape[0] > 1:
         raise ValueError("Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data")

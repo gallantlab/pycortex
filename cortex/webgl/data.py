@@ -26,7 +26,7 @@ class Package(object):
 
     def __init__(self, data: dataset.Dataset) -> None:
         # Annotated so this body is *checked*. It was unannotated, which made mypy
-        # skip it entirely -- the same blind spot that hid the `spatial_data` fork
+        # skip it entirely -- the same blind spot that hid the `renderer_data` fork
         # here before, and that still hides `quickflat.make_movie`.
         #
         # `Dataset`, not `DatasetLike`: `normalize` accepts a dict or a path too,
@@ -56,7 +56,7 @@ class Package(object):
             self.subjects.add(brain.subject)
             self.brains[name] = brain.to_json(simple=True)
             # Two questions, both answered by the view rather than by its class:
-            # `spatial_data` is the array to ship (each spatial interface points it
+            # `renderer_data` is the array to ship (each spatial interface points it
             # at its own storage), and `space.pack_for_webgl` is how that array
             # reaches the browser. This module used to answer the second itself, in
             # three `isinstance(brain, SurfaceView)` forks -- the premultiplied-alpha
@@ -65,7 +65,7 @@ class Package(object):
             # once per consequence and a space this module had not heard of hit
             # whichever `else` came first. See INHERITANCE.md.
             payload = brain.space.pack_for_webgl(
-                brain.spatial_data, raw=isinstance(brain, dataset.DataviewRGB)
+                brain.renderer_data, raw=isinstance(brain, dataset.DataviewRGB)
             )
             self._payloads[name] = payload
             self.images[name] = payload.frames

@@ -81,7 +81,7 @@ classDiagram
         +vmax
         +vmin2
         +vmax2
-        +spatial_data
+        +renderer_data
         +copy()
         +raw()
         +_to_raw()
@@ -93,7 +93,7 @@ classDiagram
         +blue: ScalarT
         +alpha: ScalarT
         +name
-        +spatial_data
+        +renderer_data
         +copy()
         +to_json()
         +color_voxels()$
@@ -104,7 +104,7 @@ classDiagram
         +linear
         +mask
         +mask_name
-        +spatial_data
+        +renderer_data
         +masked
         +map()
         +save_nii()
@@ -116,7 +116,7 @@ classDiagram
         +rlen
         +nverts
         +hem
-        +spatial_data
+        +renderer_data
         +left
         +right
         +volume()
@@ -142,7 +142,7 @@ classDiagram
     }
     class RenderableView {
         <<abstract>>
-        +spatial_data*
+        +renderer_data*
         +raw()*
     }
     class VolumetricView {
@@ -206,14 +206,14 @@ renderable and **not** packable, because it owns no array of its own -- only the
 two channels it decomposes into -- which is exactly why it has no `name`.
 
 It is a subclass rather than a sibling because `webgl.data.Package` reads *two*
-members off each unique: `name`, to key it by, and `spatial_data`, to ship.
+members off each unique: `name`, to key it by, and `renderer_data`, to ship.
 Promising only `Packable` promised half of what the one consumer needs, and
 Python has no intersection type, so the way to say "both" is for one base to
 subclass the other. Every `Packable` was already a `RenderableView` in fact --
 both columns list both bases -- so this only writes it down. Pinned by
 `test_a_packable_is_renderable_so_uniques_promises_both_members`, which also pins
 that the MRO is unchanged by saying it: the column still precedes the spatial
-interface, which is what lets the column own `spatial_data`.
+interface, which is what lets the column own `renderer_data`.
 
 The one member is `name`, a content hash. That is what makes `Dataset.uniques()` a
 `set` rather than a list -- two views over identical data collapse to one entry and
@@ -225,10 +225,10 @@ type-checked only because the list it built was `Any`; nothing warned that
 `Dataview` has no `name`.
 
 **Do not hoist `name` onto the spatial interface.** `VolumeRGB.name` and `VertexRGB.name` are both
-exactly `_hash(self.spatial_data)`, which makes a single definition on
+exactly `_hash(self.renderer_data)`, which makes a single definition on
 `RenderableView` look free. It is not: `ScalarView.name` hashes the *stored* array,
 and for a masked `Volume` that is the flat masked array, not the unmasked 3-D
-`spatial_data`. Unifying them silently renames every existing HDF node. Pinned by
+`renderer_data`. Unifying them silently renames every existing HDF node. Pinned by
 `test_packable_name_is_not_hoisted_onto_the_spatial_interface`.
 
 What *did* collapse is the two RGB definitions into one on `DataviewRGB`, since for
@@ -386,7 +386,7 @@ Two places it cannot go instead, both worth knowing before trying:
   correctly and then breaks at runtime, since only the column knows where the
   space comes from -- `self._space` for the scalar column, `self.red.space` for
   RGB, `self.dim1.space` for 2D. This is the same constraint that puts
-  `spatial_data` on the column.
+  `renderer_data` on the column.
 - **Not inferred from the channel.** A second parameter works --
   `DataviewRGB[ScalarT, SpaceT]` with `space -> SpaceT`, declared
   `DataviewRGB[Vertex, SurfaceSpace]` -- and removes every such override. But the
@@ -397,7 +397,7 @@ Two places it cannot go instead, both worth knowing before trying:
   default would silence the error and hand back the wide `BrainSpace`, which is
   worse than the override.
 
-So the general rule, of which `raw`, `spatial_data` and `name` are the other
+So the general rule, of which `raw`, `renderer_data` and `name` are the other
 instances: **per-space narrowing can only live where the member is defined, the
 columns define it, and a column can only name a type it has a parameter for.**
 Until a second space needs it, one three-line property on `VertexRGB` is cheaper
@@ -512,23 +512,23 @@ renderer asks for the two facts it needs instead of asking what it is holding:
 
 - `view.space.xfmname` — the transform to sample *through*, or `None`. Owned by the
   space, and HDF slot 7 derives from the same value.
-- `view.spatial_data` — the array to sample. Owned by the *view*, and the one
+- `view.renderer_data` — the array to sample. Owned by the *view*, and the one
   member a spatial kind implements. The spatial interfaces then publish it under
   the name their space has always used, `VolumetricView.volume` and
   `SurfaceView.vertices`, both concrete.
 
   This started out the other way round -- `volume`/`vertices` abstract and
-  `spatial_data` derived from whichever one the subclass inherited -- which cost a
+  `renderer_data` derived from whichever one the subclass inherited -- which cost a
   property per space per column, since a column holds one array and had to publish
   it under the name of each space it serves. Pinned by
-  `test_the_spatial_array_is_implemented_once_per_view`, because re-abstracting
+  `test_the_renderer_array_is_implemented_once_per_view`, because re-abstracting
   `volume`/`vertices` would quietly bring all four of those properties back.
 
 ```python
 def make_flatmap_image(braindata: RenderableView, ...):
     mask, extents = get_flatmask(braindata.subject, ...)
     pixmap = get_flatcache(braindata.subject, braindata.space.xfmname, ...)
-    data = braindata.spatial_data
+    data = braindata.renderer_data
 ```
 
 `as_renderable` is likewise one `isinstance(view, RenderableView)` rather than a
@@ -647,7 +647,7 @@ and carries the implementations; the spatial interface contributes only concrete
 names for what the column already holds (`volume`, `vertices`, `xfmname`) plus
 `blend_curvature`, none of which anything overrides.
 
-That order is load-bearing, and it is why `spatial_data` has to be implemented on
+That order is load-bearing, and it is why `renderer_data` has to be implemented on
 the *column* rather than on the interface. `DataviewRGB` precedes `SurfaceView` in
 `VertexRGB`'s MRO, so an implementation on the column wins over anything the
 interface offers -- which is exactly what is wanted here, and exactly what would

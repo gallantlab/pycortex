@@ -126,7 +126,7 @@ What deliberately did **not** move:
 
 `MySpatial` is the spatial interface — `VolumetricView` if the data samples through a
 transform, `SurfaceView` if it is per-vertex, or a new subclass of
-`RenderableView` supplying `spatial_data` if it is sampled some other way. A view
+`RenderableView` supplying `renderer_data` if it is sampled some other way. A view
 that inherits neither is still a perfectly good `Dataview`; it just cannot be
 passed to the flatmap renderers, and `as_renderable` will say so.
 
@@ -208,7 +208,7 @@ class MyView(ScalarView, MySpatial):
         return self._space               # members off it
 
     @property                            # REQUIRED
-    def spatial_data(self) -> npt.NDArray:
+    def renderer_data(self) -> npt.NDArray:
         """The array a renderer samples, with a leading frame axis.
 
         Published as `volume` or `vertices` too, if MySpatial is one of the two
@@ -245,7 +245,7 @@ class MyView(ScalarView, MySpatial):
 ```
 
 Filled in against a synthetic 10-element space, all three of these work: scalar
-construction from an array and from a movie, `spatial_data`, the arithmetic
+construction from an array and from a movie, `renderer_data`, the arithmetic
 operators, `empty`/`random`, `raw` (which round-trips through `space.wrap_rgb`),
 2D construction from both arrays and views, RGB construction including a movie,
 `to_json` in both modes, `uniques()` collapsed and expanded, `name`,
@@ -313,7 +313,7 @@ class MyView2D(Dataview2D[MyView], MySpatial):
         return "<2D my data for (%s)>" % self.dim1.subject
 ```
 
-That is the whole class. No `spatial_data`, no `volume`/`vertices`, no `to_json`,
+That is the whole class. No `renderer_data`, no `volume`/`vertices`, no `to_json`,
 no `_write_hdf` -- a 2D view owns no array of its own, so all of that is on
 `Dataview2D`. Override `_write_hdf` only if slot 7 needs something other than
 `space.view_xfmname`, as `Volume2D` does to record a transform name per dimension.
@@ -383,7 +383,7 @@ also what lets mypy flag it. A space's three view classes each have to declare a
 forward `attrs`, or metadata is dropped when the view is rebuilt from HDF; the
 skeleton test catches that omission.
 
-Also the whole class. `name`, `__hash__`, `spatial_data`, `to_json`, `_write_hdf`,
+Also the whole class. `name`, `__hash__`, `renderer_data`, `to_json`, `_write_hdf`,
 `alpha` and its NaN masking, `_default_alpha`, `_channel_stack`, `_rgba_stack`,
 `uniques`, `copy` and `color_voxels` are all on `DataviewRGB` -- 23 members, 155
 statements, and eleven of those members were per-subclass until recently.
@@ -400,7 +400,7 @@ Taking the surface family as one space's cost, of roughly 380 mechanical lines:
 | the three `__init__` signatures | 90 | **no** |
 | the three class docstrings | 123 | **no** |
 | the space's own vocabulary accessors | 17 | no -- it is new by definition |
-| genuinely new logic (`spatial_data`, cross-space maps, `__getitem__`) | 101 | no |
+| genuinely new logic (`renderer_data`, cross-space maps, `__getitem__`) | 101 | no |
 | narrowing properties (`space`, `raw` x 3) | 20 | **no** |
 | `empty`/`random` and three `__repr__`s | 24 | yes |
 
@@ -467,14 +467,14 @@ mask a flattened array matches, which hemisphere a half-length array covered), s
 ## What a new spatial kind must implement to be rendered
 
 The two renderers ask for different amounts, and the difference is not a matter of
-tidiness: `spatial_data` is enough to *draw a flatmap*, but not enough to *ship
+tidiness: `renderer_data` is enough to *draw a flatmap*, but not enough to *ship
 data to a browser*, because the browser needs to know how the bytes are laid out.
 Both are now open to a new spatial kind, but the webgl one is open only to the
 extent of picking between the two layouts `dataset.js` understands.
 
 ### `quickflat` — nothing beyond the spatial ABC
 
-Implement `spatial_data` and give the space an `xfmname` (`None` if the data is
+Implement `renderer_data` and give the space an `xfmname` (`None` if the data is
 not sampled through a transform) and `quickshow`/`make_flatmap_image` work. The
 renderer never asks what it is holding. Pinned by
 `test_a_third_spatial_kind_needs_no_change_to_the_renderer`.
@@ -487,8 +487,8 @@ could do with them.
 
 ### `webgl` / `webshow` — `space.pack_for_webgl`, returning one of two encodings
 
-`webgl/data.py`'s `Package` reads `spatial_data` like everything else, and then asks
-the space to encode it: `space.pack_for_webgl(spatial_data, raw=...)` returns a
+`webgl/data.py`'s `Package` reads `renderer_data` like everything else, and then asks
+the space to encode it: `space.pack_for_webgl(renderer_data, raw=...)` returns a
 `WebGLPayload`, of which exactly two exist because `dataset.js` can read exactly
 two. `raw` says the array is 4-channel uint8 from an RGB view rather than scalar
 floats.
@@ -525,7 +525,7 @@ samples differently).
 `BrainSpace.pack_for_webgl` is concrete rather than abstract, and its default
 raises a `TypeError` naming the space, both encodings and the JS file. A space with
 no browser representation is a legitimate thing to have — `quickflat` needs only
-`spatial_data` — so this is a capability the space declines rather than one it
+`renderer_data` — so this is a capability the space declines rather than one it
 forgets. Pinned by `test_a_space_with_no_webgl_encoding_says_so_once`, which also
 records what the old shape cost: a third kind fell through to `volume.mosaic` and
 died on "Invalid data shape", several frames deep, naming neither the view nor the

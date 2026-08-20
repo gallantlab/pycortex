@@ -71,7 +71,7 @@ objects where arrays are expected.
   in place.
 
   mypy catches none of this: `make_movie` is unannotated, so its body is unchecked
-  — the same blind spot that hid the `spatial_data` fork in `webgl/data.py`.
+  — the same blind spot that hid the `renderer_data` fork in `webgl/data.py`.
 
 Fixed in passing while typing the callers, and recorded here only so the change is
 not mistaken for an unrelated edit:
@@ -110,10 +110,10 @@ until `add_cutout` gained a signature: an unannotated function body is not check
 ### `uniques()` promised half of what its consumer needs
 
 `Packable` declared only `name`, but `webgl.data.Package` reads `name` *and*
-`spatial_data` off each unique. It went unnoticed because `Package.__init__` was
+`renderer_data` off each unique. It went unnoticed because `Package.__init__` was
 unannotated, so mypy skipped its body -- the same blind spot that still hides
 `quickflat.make_movie`. Annotating the signature reported
-`"Packable" has no attribute "spatial_data"` at once.
+`"Packable" has no attribute "renderer_data"` at once.
 
 Fixed by making `Packable` a subclass of `RenderableView`, which every packable
 column already was in fact.

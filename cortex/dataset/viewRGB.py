@@ -217,16 +217,16 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
 
         Both subclasses carried this, over ``volume`` and ``vertices``
         respectively -- the same array under two names. Hashing
-        :attr:`~cortex.dataset.views.RenderableView.spatial_data` is sound here in
+        :attr:`~cortex.dataset.views.RenderableView.renderer_data` is sound here in
         a way it would not be on :class:`~cortex.dataset.views.ScalarView` (see
         :attr:`~cortex.dataset.views.Packable.name`): an RGB view's name is only
         ever a browser key, because its channels are what get written as HDF
         nodes, each under its own name.
         """
-        return "__%s" % _hash(self.spatial_data)[:16]
+        return "__%s" % _hash(self.renderer_data)[:16]
 
     def __hash__(self) -> int:
-        return hash(_hash(self.spatial_data))
+        return hash(_hash(self.renderer_data))
 
     @property
     def raw(self) -> Self:
@@ -265,18 +265,18 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
     def _channel_stack(self) -> npt.NDArray:
         """The three channels stacked, for locating NaNs across them.
 
-        Reads :attr:`~cortex.dataset.views.RenderableView.spatial_data`, so it
+        Reads :attr:`~cortex.dataset.views.RenderableView.renderer_data`, so it
         does not matter whether the channels store volumes or vertices. For a
         single-frame surface view that adds a leading axis the stored arrays do
         not have; :meth:`_mask_alpha` already accepts a mask carrying one, which
         is what makes one implementation serve both spaces.
         """
         return np.array(
-            [c.spatial_data for c in (self.red, self.green, self.blue)]
+            [c.renderer_data for c in (self.red, self.green, self.blue)]
         )
 
     @property
-    def spatial_data(self) -> npt.NDArray[np.uint8]:
+    def renderer_data(self) -> npt.NDArray[np.uint8]:
         """The four channels as one uint8 RGBA array with a leading frame axis.
 
         ``(t, z, y, x, rgba)`` for a volumetric space, ``(t, v, rgba)`` for a
@@ -291,7 +291,7 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
         """Stack the four channels into a trailing RGBA axis.
 
         Each channel is read through
-        :attr:`~cortex.dataset.views.RenderableView.spatial_data`, which is why
+        :attr:`~cortex.dataset.views.RenderableView.renderer_data`, which is why
         this no longer takes the name of the accessor to use: it was passed the
         string ``"volume"`` or ``"vertices"`` by whichever subclass knew which of
         them its space stored. ``moveaxis`` rather than a hand-written transpose
@@ -300,7 +300,7 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
         wrong.
         """
         channels = [
-            _to_uint8(dv.spatial_data, dv.vmin, dv.vmax)
+            _to_uint8(dv.renderer_data, dv.vmin, dv.vmax)
             for dv in (self.red, self.green, self.blue, self.alpha)
         ]
         return np.moveaxis(np.array(channels), 0, -1)
@@ -398,7 +398,7 @@ class DataviewRGB(Packable, RenderableView, Generic[ScalarT]):
             sdict["subject"] = self.subject
             sdict["min"] = 0
             sdict["max"] = 255
-            sdict.update(self.space.describe_layout(self.spatial_data))
+            sdict.update(self.space.describe_layout(self.renderer_data))
         else:
             sdict["data"] = [self.name]
             sdict["cmap"] = [default_cmap]
