@@ -3,9 +3,15 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import Any, Optional, Union, cast, overload, Literal
+import sys
+from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
 
 import h5py
+from matplotlib.colors import Colormap
 import numpy as np
 import numpy.typing as npt
 
@@ -24,8 +30,11 @@ except ImportError:
     from matplotlib.cm import register_cmap
 
 
+JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
+
+
 @overload
-def normalize(data: tuple[Any, Any, Any]) -> Volume: ...
+def normalize(data: tuple[Any, Any, Any]) -> Union[Volume, VolumeRGB]: ...
 
 
 @overload
@@ -36,7 +45,7 @@ def normalize(data: tuple[Any, Any]) -> Vertex: ...
 def normalize(data: Dataview) -> Dataview: ...
 
 
-def normalize(data: Union[Dataview, tuple]) -> Union[Volume, Vertex, Dataview]:
+def normalize(data: Union[Dataview, tuple]) -> Union[Volume, VolumeRGB, Vertex, Dataview]:
     if isinstance(data, tuple):
         if len(data) == 3:
             if data[0].dtype == np.uint8:
@@ -154,7 +163,28 @@ def _from_hdf_view(
         raise ValueError("Invalid Dataview specification")
 
 
-class Dataview(object):
+class ColormapDict(TypedDict):
+    cmap: Colormap
+    vmin: Optional[float]
+    vmax: Optional[float]
+
+
+class DataviewJSON(TypedDict):
+    state: Any
+    attrs: dict[str, Any]
+    desc: str
+    cmap: Optional[list[str]]
+    vmin: Optional[list[float]]
+    vmax: Optional[list[float]]
+    name: NotRequired[str]
+    raw: NotRequired[bool]
+    mosaic: NotRequired[tuple[int, int]]
+    subject: NotRequired[str] # is this actually from BrainData?
+
+
+class Dataview:
+    _nan_mask: Optional[npt.NDArray[np.bool_]]
+
     def __init__(
         self,
         cmap: Optional[str] = None,
@@ -196,12 +226,12 @@ class Dataview(object):
     def priority(self, value):
         self.attrs["priority"] = value
 
-    def to_json(self, simple=False):
+    def to_json(self, simple: bool=False) -> DataviewJSON:
         if simple:
             return dict()
 
         desc = self.description
-        if hasattr(desc, "decode"):
+        if isinstance(desc, bytes):
             desc = desc.decode()
         sdict = dict(state=self.state, attrs=self.attrs.copy(), desc=desc)
         try:
@@ -287,7 +317,7 @@ class Dataview(object):
         view[7] = json.dumps(xfmname)
         return view
 
-    def get_cmapdict(self):
+    def get_cmapdict(self) -> ColormapDict:
         """Returns a dictionary with cmap information."""
 
         from matplotlib import colors
@@ -303,7 +333,7 @@ class Dataview(object):
             # unknown colormap, test whether it's in pycortex colormaps
             cmapdir = options.config.get("webgl", "colormaps")
             colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
-            colormaps = dict(((os.path.split(c)[1][:-4], c) for c in colormaps))
+            colormaps = {os.path.split(c)[1][:-4]: c for c in colormaps}
             if self.cmap not in colormaps:
                 raise ValueError("Unknown color map %s" % self.cmap)
             I = plt.imread(colormaps[self.cmap])
@@ -312,24 +342,26 @@ class Dataview(object):
             # Register colormap to matplotlib to avoid loading it again
             register_cmap(cmap)
 
-        # TODO: create namedtuple
-        return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
+        return ColormapDict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
-    def raw(self):
+    def raw(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.bool_]]:
         from matplotlib import cm, colors
 
         cmap = self.get_cmapdict()["cmap"]
         # Normalize colors according to vmin, vmax
         norm = colors.Normalize(self.vmin, self.vmax)
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
+        # Capture NaN mask before uint8 conversion (NaN info is lost after)
+        nan_mask: npt.NDArray[np.bool_] = np.isnan(self.data)
         # TODO: self.data relies on BrainData. Would need common inheritance for this to work.
         color_data = cmapper.to_rgba(self.data.flatten()).reshape(
             self.data.shape + (4,)
         )
         # rollaxis puts the last color dimension first, to allow output of separate channels: r,g,b,a = dataset.raw
         color_data = (np.clip(color_data, 0, 1) * 255).astype(np.uint8)
-        return np.rollaxis(color_data, -1)
+        color_data[nan_mask, 3] = 0
+        return np.rollaxis(color_data, -1), nan_mask
 
 
 class Multiview(Dataview):
@@ -395,7 +427,7 @@ class Volume(VolumeData, Dataview):
         description: str = "",
         **kwargs,
     ):
-        super(Volume, self).__init__(
+        super().__init__(
             data,
             subject,
             xfmname,
@@ -410,14 +442,12 @@ class Volume(VolumeData, Dataview):
         self.vmin: float = (
             self.vmin
             if self.vmin is not None
-            else cast(
-                float, np.percentile(np.nan_to_num(self.data), 1)
-            )  # NOTE: should have been fixed in https://github.com/numpy/numpy/pull/27334
+            else np.percentile(np.nan_to_num(self.data), 1).astype(float) 
         )
         self.vmax: float = (
             self.vmax
             if self.vmax is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 99))
+            else np.percentile(np.nan_to_num(self.data), 99).astype(float)
         )
 
     def _write_hdf(self, h5, name="data"):
@@ -428,9 +458,9 @@ class Volume(VolumeData, Dataview):
         return viewnode
 
     @property
-    def raw(self):
-        r, g, b, a = super(Volume, self).raw
-        return VolumeRGB(
+    def raw(self) -> VolumeRGB:
+        (r, g, b, a), nan_mask = super().raw
+        result = VolumeRGB(
             r,
             g,
             b,
@@ -441,6 +471,8 @@ class Volume(VolumeData, Dataview):
             state=self.state,
             priority=self.priority,
         )
+        result._nan_mask = nan_mask
+        return result
 
 
 class Vertex(VertexData, Dataview):
@@ -483,7 +515,7 @@ class Vertex(VertexData, Dataview):
         description: str = "",
         **kwargs,
     ):
-        super(Vertex, self).__init__(
+        super().__init__(
             data,
             subject,
             cmap=cmap,
@@ -496,12 +528,12 @@ class Vertex(VertexData, Dataview):
         self.vmin = (
             self.vmin
             if self.vmin is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 1))
+            else np.percentile(np.nan_to_num(self.data), 1).astype(float)
         )
         self.vmax = (
             self.vmax
             if self.vmax is not None
-            else cast(float, np.percentile(np.nan_to_num(self.data), 99))
+            else np.percentile(np.nan_to_num(self.data), 99).astype(float)
         )
 
     def _write_hdf(self, h5, name="data"):
@@ -510,9 +542,9 @@ class Vertex(VertexData, Dataview):
         return viewnode
 
     @property
-    def raw(self):
-        r, g, b, a = super(Vertex, self).raw
-        return VertexRGB(
+    def raw(self) -> VertexRGB:
+        (r, g, b, a), nan_mask = super().raw
+        result = VertexRGB(
             r,
             g,
             b,
@@ -522,6 +554,8 @@ class Vertex(VertexData, Dataview):
             state=self.state,
             priority=self.priority,
         )
+        result._nan_mask = nan_mask
+        return result
 
     def map(
         self,
@@ -530,7 +564,7 @@ class Vertex(VertexData, Dataview):
         hemi: Literal["lh", "rh", "both"] = "both",
         fs_subj: Optional[str] = None,
         **kwargs,
-    ) -> "Vertex":
+    ) -> Vertex:
         """Map this data from this surface to another surface
 
         Calls `cortex.freesurfer.vertex_to_vertex()`  with this

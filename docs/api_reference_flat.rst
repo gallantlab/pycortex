@@ -26,19 +26,19 @@ quickflat
 .. autosummary::
     :toctree:generated/
 
-    add_curvature
-    add_data
-    add_rois
-    add_sulci
-    add_hatch
-    add_colorbar
-    add_custom
-    add_cutout
     make_figure
     make_png
     make_svg
-    get_flatmask
-    get_flatcache
+    composite.add_curvature
+    composite.add_data
+    composite.add_rois
+    composite.add_sulci
+    composite.add_hatch
+    composite.add_colorbar
+    composite.add_custom
+    composite.add_cutout
+    utils.get_flatmask
+    utils.get_flatcache
 
 
 webgl

@@ -42,12 +42,56 @@ import concurrent.futures
 import contextlib
 import logging
 import threading
+import time
 from typing import Any, Mapping, Optional
 
 import cortex
 from .. import dataset
 
 logger = logging.getLogger(__name__)
+
+
+def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
+    """Block until ``window.viewer.loaded`` resolves in the browser.
+
+    The WebSocket "connect" message fires as soon as the page DOM is ready,
+    but the WebGL viewer's CTM mesh download, parse, and initial render
+    typically take a few more seconds. ``viewer.loaded`` is a jQuery
+    Deferred that resolves at the end of ``setData`` (mriview.js), so polling
+    its ``.state()`` is a faithful "the viewer is ready to be driven"
+    signal that replaces brittle fixed sleeps in callers and tests.
+
+    We bypass the JSProxy attribute machinery and call ``send`` directly so
+    each poll is exactly one WebSocket roundtrip (the JSProxy ``__getattr__``
+    path would issue an extra ``query`` call per poll).
+    """
+    deadline = time.monotonic() + timeout
+    poll_interval = 0.1
+    last_err: Optional[str] = None
+    while time.monotonic() < deadline:
+        try:
+            result = handle.send(
+                method="run", params=["window.viewer.loaded.state", []]
+            )
+        except Exception as exc:
+            last_err = repr(exc)
+            result = None
+        # WebApp.send always wraps its single per-client response in a list;
+        # unpack the leaf so the "resolved"/"pending"/error-dict check below
+        # is straightforward and last_err carries the actual value seen.
+        val = result[0] if isinstance(result, list) and result else result
+        if val == "resolved":
+            return
+        if val is not None:
+            last_err = (
+                str(val.get("error", val)) if isinstance(val, dict) else str(val)
+            )
+        time.sleep(poll_interval)
+    raise RuntimeError(
+        f"Viewer's .loaded deferred did not resolve within {timeout:.0f}s "
+        f"(last response: {last_err!r}). The CTM mesh may have failed to "
+        "download or parse, or mriview.js failed to initialise."
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -336,6 +380,12 @@ def headless_viewer(
         # Expose a live reference so callers can query browser errors at
         # any point during the session (each call returns a fresh snapshot).
         handle._pw_thread = pw_thread
+
+        # Block until the WebGL viewer has finished initialising (CTM mesh
+        # download + parse + first setData). Replaces ad-hoc time.sleep(10)
+        # calls in tests and callers, and shortens the wait when the
+        # browser is faster than the worst-case timeout.
+        _wait_for_viewer_loaded(handle, timeout=timeout)
 
         yield handle
 

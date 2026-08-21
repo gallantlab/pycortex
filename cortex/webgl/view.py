@@ -5,7 +5,6 @@ import glob
 import json
 import mimetypes
 import os
-import random
 import shutil
 import sys
 import threading
@@ -329,8 +328,8 @@ def show(
         If True, uses the webbrowser library to open the viewer in the default
         local browser. Default True
     port : int or None, optional
-        The port that will be used by the server. If None, a random port will be
-        selected from the range 1024-65536. Default None
+        The port that will be used by the server. If None, a free ephemeral
+        port is assigned by the operating system. Default None
     pickerfun : function or None, optional
         Should be a function that takes three arguments, a 3-D voxel vector, a
         vertex index, and the hemisphere ("left" or "right"). Is called whenever
@@ -418,7 +417,10 @@ def show(
             stims[sname] = view.attrs["stim"]
 
     package = Package(data)
-    metadata = json.dumps(package.metadata())
+    # Keep the metadata as a plain dict (rather than a JSON string) so that
+    # JSMixer.addData can merge newly added dataviews into it at runtime. It
+    # is serialized to JSON on demand, when the mixer page is generated.
+    metadata = package.metadata()
     images = package.images
     subjects = list(package.subjects)
 
@@ -548,7 +550,7 @@ def show(
         def get(self):
             self.set_header("Content-Type", "text/html")
             generated = html.generate(
-                data=metadata,
+                data=json.dumps(metadata),
                 colormaps=colormaps,
                 default_cmap="RdBu_r",
                 python_interface=True,
@@ -728,13 +730,80 @@ def show(
             view = db.get_view(self, subject, name)
 
         def addData(self, **kwargs):
-            Proxy = serve.JSProxy(self.send, "window.viewers.addData")
-            new_meta, new_ims = _convert_dataset(
-                Dataset(**kwargs), path="/data/", fmt="%s_%d.png"
-            )
-            metadata.update(new_meta)
-            images.update(new_ims)
-            return Proxy(metadata)
+            """Add (or replace) dataviews in the running viewer.
+
+            This makes it possible to push new data to an already open
+            viewer, without restarting the server::
+
+                client = cortex.webshow(volume)
+                client.addData(second=other_volume)
+
+            Parameters
+            ----------
+            kwargs : dict of str to Dataview
+                Named dataviews to add to the viewer. A name that is already
+                displayed replaces the corresponding dataview. The viewer
+                switches to the first of the newly added dataviews, mirroring
+                the behavior of the initial page load.
+
+            Returns
+            -------
+            The response of the javascript ``viewer.addData`` call.
+
+            Notes
+            -----
+            All new dataviews must belong to a subject that was already
+            present when the viewer was created: the surfaces (and the vertex
+            re-ordering they imply) are baked into the page at startup.
+            """
+            Proxy = serve.JSProxy(self.send, "window.viewer.addData")
+
+            new_data = dataset.Dataset(**kwargs)
+            new_package = Package(new_data)
+            unknown = set(new_package.subjects) - set(subjects)
+            if len(unknown) > 0:
+                raise ValueError(
+                    "Cannot add data for subject(s) %s: the viewer was "
+                    "started with subject(s) %s, and surfaces cannot be "
+                    "added to a running viewer."
+                    % (", ".join(sorted(unknown)), ", ".join(sorted(subjects))))
+
+            # Vertex data has to be reordered to match the vertex order of the
+            # CTM files that were generated when the viewer was started.
+            new_package.reorder(ctms)
+            new_metadata = new_package.metadata()
+
+            # Serve the images of the new dataviews, and make the new
+            # dataviews part of the metadata used to (re)generate the page, so
+            # that reloading the viewer shows everything that was added.
+            images.update(new_package.images)
+            new_names = set(view["name"] for view in new_metadata["views"])
+            metadata["views"] = [view for view in metadata["views"]
+                                 if view["name"] not in new_names]
+            metadata["views"].extend(new_metadata["views"])
+            metadata["data"].update(new_metadata["data"])
+            metadata["images"].update(new_metadata["images"])
+
+            # Forget the brains that no dataview refers to anymore, so that
+            # repeatedly refreshing the same dataview does not pile up unused
+            # image buffers in the server.
+            referenced = set()
+            for view in metadata["views"]:
+                for brain in view["data"]:
+                    # 2D dataviews refer to a pair of brains.
+                    referenced.update(brain if isinstance(brain, list) else [brain])
+            for brain in set(metadata["data"]) - referenced:
+                del metadata["data"][brain]
+                del metadata["images"][brain]
+                images.pop(brain, None)
+
+            for name, view in new_data:
+                if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
+                    stims[os.path.split(view.attrs['stim'])[1]] = view.attrs['stim']
+
+            # Only the new dataviews are sent over: the javascript side keeps
+            # the ones it already knows about.
+            return Proxy(new_metadata)
 
         def getImage(self, filename: str, size: tuple[int, int] = (1920, 1080)):
             """Saves currently displayed view to a .png image file
@@ -1009,7 +1078,10 @@ def show(
             return JSMixer(self.srvsend, "window.viewer")
 
     if port is None:
-        port = random.randint(1024, 65536)
+        # Let the OS assign a guaranteed-free ephemeral port (WebApp binds
+        # port 0 and reads the real port back). This avoids the random-port
+        # collisions that made headless/CI runs intermittently hang.
+        port = 0
 
     server = WebApp(
         [

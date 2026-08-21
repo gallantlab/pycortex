@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   run-tests:
     runs-on: ubuntu-latest
@@ -17,13 +21,13 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py', '**/pyproject.toml') }}
@@ -43,20 +47,22 @@ jobs:
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Cache Playwright browsers
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
 
     - name: Install Playwright Chromium
       run: playwright install --with-deps --only-shell chromium
 
     - name: Test with pytest
-      timeout-minutes: 20  # in case webviewer tests hang
+      timeout-minutes: 25  # in case webviewer tests hang
       run: pytest --cov=./
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         env_vars: OS,PYTHON
         fail_ci_if_error: true

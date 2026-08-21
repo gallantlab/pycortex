@@ -214,7 +214,7 @@ def user_log_dir(appname, appauthor=None, version=None, opinion=True):
     return path
 
 
-class AppDirs(object):
+class AppDirs:
     """Convenience wrapper for getting application dirs."""
     def __init__(self, appname, appauthor, version=None, roaming=False):
         self.appname = appname

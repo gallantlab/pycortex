@@ -47,7 +47,7 @@ class RotationWidget(HasTraits):
     def __init__(self, figure, callback, **traits):
         self._t = np.linspace(0, 2*np.pi, 32)
 
-        super(RotationWidget, self).__init__(**traits)
+        super().__init__(**traits)
         self.callback = callback
         self.figure = figure
 
@@ -150,7 +150,7 @@ class ThreeDScene(MayaviScene):
         elif key == "\x1a" and evt.CmdDown():
             self.aligner.undo()
         else:
-            super(ThreeDScene, self).OnKeyDown(evt)
+            super().OnKeyDown(evt)
         self.aligner.scene_3d.renderer.reset_camera_clipping_range()
         self.aligner.scene_3d.render()
 
@@ -161,7 +161,7 @@ try:
     class FlatScene(Scene):
         def OnKeyDown(self, event):
             #emulate behavior in QT
-            lookup = dict((i, (chr(i), None)) for i in range(256))
+            lookup = {i: (chr(i), None) for i in range(256)}
             lookup[315] = ('', 'Up')
             lookup[314] = ('', 'Left')
             lookup[316] = ('', 'Right')
@@ -261,7 +261,7 @@ class Axis(HasTraits):
     point_size = DelegatesTo('parent')
 
     def __init__(self, **kwargs):
-        super(Axis, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.slab
         self.outline
         self.ipw_3d
@@ -617,7 +617,7 @@ class XAxis(Axis):
     axis = 0
     scene = DelegatesTo('parent', 'scene_x')
     def _outline_default(self):
-        surf = super(XAxis, self)._outline_default()
+        surf = super()._outline_default()
         surf.children[0].filter.transform.rotate_x(-90)
         surf.children[0].filter.transform.rotate_y(-90)
         return surf
@@ -627,7 +627,7 @@ class YAxis(Axis):
     invert = True
     scene = DelegatesTo('parent', 'scene_y')
     def _outline_default(self):
-        surf = super(YAxis, self)._outline_default()
+        surf = super()._outline_default()
         surf.children[0].filter.transform.rotate_y(90)
         surf.children[0].filter.transform.rotate_x(90)
         return surf
@@ -700,7 +700,7 @@ class Align(HasTraits):
         self.pts, self.polys = pts, polys
         self._undolist = []
         self._redo = None
-        super(Align, self).__init__(**traits)
+        super().__init__(**traits)
 
     def load_epi(self, epifilename, xfm=None, xfmtype="magnet"):
         """Loads the EPI image from the specified epifilename.

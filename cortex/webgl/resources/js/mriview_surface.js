@@ -101,7 +101,7 @@ var mriview = (function(module) {
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
-            allow_tilt: {action:[this.uniforms.allowtilt, "value"]},
+            allow_tilt: {action:[this, "setAllowTilt"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
             changeInflation: {action: this.changeInflation.bind(this), wheel: true, modKeys: ['shiftKey'], hidden: true, help:'Change inflation'},
@@ -266,6 +266,7 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+                hemi.addAttribute("nanmask", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 //Queue contour overlay data attributes (pre-sized to vertex count for proper WebGL buffer allocation)
                 var nVerts = hemi.attributes.position.array.length / hemi.attributes.position.itemSize;
@@ -640,8 +641,17 @@ var mriview = (function(module) {
         viewer.schedule();
     };
     module.Surface.prototype.toggleOpacity = function() {
-        let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
-        surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
+        // Toggle between hidden (0) and the last visible opacity, so a slider
+        // value like 0.7 survives an off/on round trip instead of rounding to 1.
+        var current = this.uniforms.dataAlpha.value;
+        var newValue;
+        if (current > 0) {
+            this._savedOpacity = current;
+            newValue = 0;
+        } else {
+            newValue = this._savedOpacity || 1;
+        }
+        var surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
         viewer.ui.set('surface.' + surface + '.opacity', newValue)
         viewer.schedule();
     };
@@ -682,6 +692,13 @@ var mriview = (function(module) {
             return this._equivolume;
         this._equivolume = val;
         this.resetShaders();
+    }
+
+    module.Surface.prototype.setAllowTilt = function(val) {
+        if (val === undefined)
+            return this.uniforms.allowtilt.value;
+        this.uniforms.allowtilt.value = val;
+        this.dispatchEvent({type:'allowTilt', value:val});
     }
 
     module.Surface.prototype._makeMesh = function(geom, shader) {

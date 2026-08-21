@@ -1,7 +1,7 @@
 [build-system]
 # Minimum requirements for the build system to execute, according to PEP518
 # specification.
-requires = ["setuptools>=64", "setuptools-scm>=8", "build", "numpy", "cython", "wheel"]
+requires = ["setuptools>=64", "setuptools-scm>=8", "build", "numpy>=1.13.0", "cython", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,7 +11,7 @@ dynamic = ["authors", "license", "readme", "version", "classifiers", "dependenci
 [dependency-groups]
 dev = [
     {include-group = "test"},
-    "mypy",
+    {include-group = "types"},
 ]
 test = [
     "pycortex[headless]",
@@ -20,7 +20,13 @@ test = [
     "nbformat>=5.10.4",
     "pytest",
     "pytest-cov",
+    "pytest-timeout",
 ]
+types = [
+    "mypy",
+    "scipy-stubs",
+]
+
 
 [project.optional-dependencies]
 headless = [
@@ -39,4 +45,15 @@ ignore-words-list = 'nd,acount,anormal,fpt,coo,transpart,FO,lins'
 
 [tool.mypy]
 allow_redefinition = true
-disable_error_code = "import-untyped"
+disable_error_code = "import-untyped" # TODO: narrow to specific packages
+
+[[tool.mypy.overrides]]
+module = [
+    "bpy",
+    "bpy.ops",
+    "mayavi",
+    "progressbar",
+    "scikits.sparse.cholmod",
+    "tvtk.api",
+]
+ignore_missing_imports = true

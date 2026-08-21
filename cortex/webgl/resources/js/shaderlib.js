@@ -778,6 +778,7 @@ var Shaderlib = (function() {
             "attribute float data1;",
             "attribute float data2;",
             "attribute float data3;",
+            "attribute float nanmask;",
     "#endif",
 
             "attribute vec4 wm;",
@@ -822,6 +823,11 @@ var Shaderlib = (function() {
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
                 "vDataValue = mix(data0, data1, framemix);",
+                // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
+                // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
+                // For 2D vertex views the JS layer combines per-dim masks
+                // before dispatch, so a single shared attribute is enough.
+                "if (nanmask < 0.5) vColor = vec4(0.);",
         "#endif",
                 "vContourDataValue = mix(contourData0, contourData1, framemix);",
                 // Look up contour color in the overlay's own colormap
@@ -921,6 +927,16 @@ var Shaderlib = (function() {
                 "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
             "#endif",
 
+            // "#ifndef RGBCOLORS",
+            //     "vec4 vColor = texture2D(colormap, vValue);",
+            // "#endif",
+
+                // Data layer scaled by the opacity slider. vColor is a
+                // varying (read-only here), so scale into a local. Scaling
+                // all four channels keeps the premultiplied-alpha convention
+                // used by surface_pixel, so opacity 0 shows curvature only.
+                "vec4 dColor = vColor * dataAlpha;",
+
                 // Contour edge detection
                 "float contourEdge = contourOverlay > 0.5 ? fwidth(vContourDataValue) : fwidth(vDataValue);",
                 "bool isBorder = contourEdge > contourThreshold;",
@@ -930,7 +946,7 @@ var Shaderlib = (function() {
                 //              3=colored contours only, 4=colored contours+fill
                 "if (contourMode < 0.5) {",
                     // Mode 0: normal rendering, no contours
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "gl_FragColor = dColor + (1.-dColor.a)*gl_FragColor;",
                 "} else if (contourMode < 1.5) {",
                     // Mode 1: contours only (interior = curvature)
                     "if (isBorder) {",
@@ -939,7 +955,7 @@ var Shaderlib = (function() {
                     "}",
                 "} else if (contourMode < 2.5) {",
                     // Mode 2: data + contour borders on top
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "gl_FragColor = dColor + (1.-dColor.a)*gl_FragColor;",
                     "if (isBorder) {",
                         "vec4 borderColor = vec4(contourColor, 1.0);",
                         "gl_FragColor = borderColor + (1.-borderColor.a)*gl_FragColor;",
@@ -951,7 +967,7 @@ var Shaderlib = (function() {
                     "}",
                 "} else {",
                     // Mode 4: data + colored contour borders on top
-                    "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                    "gl_FragColor = dColor + (1.-dColor.a)*gl_FragColor;",
                     "if (isBorder) {",
                         "gl_FragColor = vContourColor + (1.-vContourColor.a)*gl_FragColor;",
                     "}",
@@ -981,6 +997,9 @@ var Shaderlib = (function() {
 
             attributes['contourData0'] = {type:'f', value:null};
             attributes['contourData1'] = {type:'f', value:null};
+
+            if (!opts.rgb)
+                attributes['nanmask'] = {type:'f', value:null};
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null };

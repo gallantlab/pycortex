@@ -879,11 +879,11 @@ def get_roi_masks(
                     subject, roi=None, mask=use_mapper, overlay_file=overlay_file
                 )
                 missing = [
-                    r for r in roi_list if not r in roi_verts.keys() + ["Cortex"]
+                    r for r in roi_list if not r in list(roi_verts.keys()) + ["Cortex"]
                 ]
-                roi_verts = dict(
-                    (roi, verts) for roi, verts in roi_verts.items() if roi in roi_list
-                )
+                roi_verts = {
+                    roi: verts for roi, verts in roi_verts.items() if roi in roi_list
+                }
                 roi_list = list(set(roi_list) - set(missing))
                 print("Requested ROI(s) {} not found in overlays.svg!".format(missing))
     # Get (a) indices for nearest vertex to each voxel
@@ -914,14 +914,12 @@ def get_roi_masks(
             )
             vert_in_scan = vert_in_scan[roi_verts[roi]]
         elif use_cortex_mask:
-            vox_in_roi = np.in1d(vox_idx.flatten(), roi_verts[roi]).reshape(
-                vox_idx.shape
-            )
+            vox_in_roi = np.isin(vox_idx, roi_verts[roi])
             roi_voxels[roi] = vox_in_roi & cortex_mask
             # This is not accurate... because vox_idx only contains the indices of the *nearest*
             # vertex to each voxel, it excludes many vertices. I can't think of a way to compute
             # this accurately for non-mapper gm_samplers for now... ML 2017.07.14
-            vert_in_scan = np.in1d(roi_verts[roi], vox_idx[cortex_mask])
+            vert_in_scan = np.isin(roi_verts[roi], vox_idx[cortex_mask])
         # Compute ROI coverage
         pct_coverage[roi] = vert_in_scan.mean() * 100
         if use_mapper:
@@ -1300,7 +1298,7 @@ def get_cmap(name):
     cmapdir = config.get("webgl", "colormaps")
     colormaps = os.listdir(cmapdir)
     colormaps = sorted([c for c in colormaps if ".png" in c])
-    colormaps = dict((c[:-4], os.path.join(cmapdir, c)) for c in colormaps)
+    colormaps = {c[:-4]: os.path.join(cmapdir, c) for c in colormaps}
     if name in colormaps:
         I = plt.imread(colormaps[name])
         cmap = colors.ListedColormap(np.squeeze(I), name=name)

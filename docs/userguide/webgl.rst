@@ -17,6 +17,11 @@ Pycortex can also display temporally varying time-series data on the cortical su
 It is simple to post pycortex visualizations to a web page for public viewing. These static visualizations are generated using a simple command that generates a single web page with most resources embedded directly. The surface structure, data, and the webpage can then be posted to any public facing web site. For example, the online Neurovault data repository (http://neurovault.org) now makes use of pycortex, and any fMRI data uploaded to Neurovault can be visualized automatically in pycortex. These visualizations are visible at a static web address that can be referenced in papers and shared with anyone with a web browser.
 
 
+.. seealso::
+
+   You can draw, edit, and export ROIs directly in the WebGL viewer with the
+   :doc:`pycortex-roidraw </roidraw>` add-on.
+
 Using the WebGL Viewer
 ----------------------
 
@@ -34,7 +39,8 @@ Key             Action
 f               flatten brain
 i 	            inflate brain
 k 	            inflate brain to surface cuts
-r               fold brain into original coordinates
+r               fold brain into original coordinates (without moving camera)
+t               reset entire view (fold brain, reset camera position, rotation, and zoom)
 shift + wheel   change inflation level
 p               show pial surface
 u               show fiducial surface
@@ -65,16 +71,17 @@ The **Open Controls** button in the upper right corner opens a control panel for
 Camera Controls
 ***************
 
-======== ===================================
+======== =====================================================
 name     description
-======== ===================================
+======== =====================================================
 azimuth  camera rotation within the xy plane
 altitude angle above the xy plane
 radius   zoom level
-reset    reset view to original position
+fold     fold brain into original coordinates
+reset    reset entire view (position, rotation, zoom, fold)
 inflate  inflate cortical surface
 flatten  flatten cortical surface
-======== ===================================
+======== =====================================================
 
 
 Surface Controls

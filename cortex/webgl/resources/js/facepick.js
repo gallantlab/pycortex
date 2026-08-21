@@ -82,8 +82,27 @@ function PickPosition(surf, posdata) {
 PickPosition.prototype = {
     //Set the transform for any voxels
     apply: function(dataview) {
-        if (dataview)
-            this.xfm.set.apply(this.xfm, dataview.xfm);
+        if (dataview) {
+            if (dataview.xfm) {
+                // For 2D volume dataviews, dataview.xfm is [xfm_dim1, xfm_dim2];
+                // both share xfmname (enforced server-side), so dim1's transform
+                // is correct for picker -> voxel conversion. For 1D volume,
+                // dataview.xfm is a flat 16-element array. Mirror the dataset.js
+                // volxfm length check (see VolumeData.init).
+                var xfm = (dataview.xfm.length === 16) ? dataview.xfm : dataview.xfm[0];
+                this.xfm.set.apply(this.xfm, xfm);
+            } else {
+                // Vertex dataviews have no xfm. Setting the matrix to NaN
+                // suppresses voxel-axis marker rendering (Three.js culls NaN
+                // positions). This mirrors the implicit pre-existing
+                // behavior where `set.apply(xfm, undefined)` invoked
+                // `Matrix4.set()` with no args, leaving the matrix
+                // un-numerable — voxel markers don't belong on a vertex
+                // view (you're picking a vertex, not a voxel).
+                this.xfm.set(NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN,
+                             NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN);
+            }
+        }
 
         for (var i = 0; i < this.axes.length; i++) {
             var ax = this.axes[i];

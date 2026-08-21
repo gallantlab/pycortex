@@ -30,6 +30,7 @@ var jsplot = (function (module) {
 
 		this._momentum = {change:[0,0]};
 		this._state = STATE.NONE;
+		this.allowTilt = false;
 
 		this.twodbutton = $(document.createElement('button'));
 		this.twodbutton.attr('id', 'twodbutton');
@@ -59,7 +60,7 @@ var jsplot = (function (module) {
 		if (this._state != STATE.NONE) {
 			if (this._state == STATE.ROTATE)
 				func = this.rotate
-			else if (this._state == STATE.PAN && this.mix == 1)
+			else if (this._state == STATE.PAN && this.mix == 1 && this.allowTilt)
 				func = this.rotate
 			else if (this._state == STATE.PAN)
 				func = this.pan
@@ -142,11 +143,16 @@ var jsplot = (function (module) {
 
 		az = az < 0 ? az + 360 : az % 360;
 		
-		if ( this.mix == 1.0 )
-			this._flatazimuth = az;
-		else
+		if ( this.mix == 1.0 ) {
+			if (this.allowTilt)
+				this._flatazimuth = az;
+			else
+				this._flatazimuth = 180;
+			this.azimuth = this._flatazimuth;
+		} else {
 			this._foldedazimuth = az;
-		this.azimuth = az;
+			this.azimuth = az;
+		}
 		this.update2Dbutton();
 	}
 	module.LandscapeControls.prototype.setAltitude = function(alt) {
@@ -154,7 +160,11 @@ var jsplot = (function (module) {
 			return this.altitude;
 
 		if ( this.mix == 1.0 ) {
-			this._flataltitude = Math.min(Math.max(alt, 0.1), 75);
+			if (this.allowTilt) {
+				this._flataltitude = Math.min(Math.max(alt, 0.1), 75);
+			} else {
+				this._flataltitude = 0.1;
+			}
 			this.altitude = this._flataltitude
 		}
 		else {

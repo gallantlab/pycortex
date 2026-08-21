@@ -15,7 +15,7 @@ from .polyutils import Surface, boundary_edges
 from .utils import add_roi
 from . import quickflat
 
-class ROIpack(object):
+class ROIpack:
     def __init__(self, subject, roifile):
         self.subject = subject
         self.roifile = roifile
@@ -58,7 +58,7 @@ class ROIpack(object):
     def to_npz(self, filename):
         """Saves npz file containing ROI masks.
         """
-        roidata = dict([(name,vd.data) for name,vd in self.rois.items()])
+        roidata = {name:vd.data for name,vd in self.rois.items()}
         np.savez(filename, **roidata)
 
     def to_svg(self, open_inkscape=False, filename=None):
@@ -117,8 +117,8 @@ class ROIpack(object):
                 # Find polys
                 allbpolys = np.unique(surf.connected[inbound+exbound].indices)
                 selbpolys = surf.polys[allbpolys]
-                inpolys = np.in1d(selbpolys, inbound).reshape(selbpolys.shape)
-                expolys = np.in1d(selbpolys, exbound).reshape(selbpolys.shape)
+                inpolys = np.isin(selbpolys, inbound)
+                expolys = np.isin(selbpolys, exbound)
                 badpolys = np.logical_or(inpolys.all(1), expolys.all(1))
                 boundpolys = np.logical_and(np.logical_or(inpolys, expolys).all(1), ~badpolys)
 

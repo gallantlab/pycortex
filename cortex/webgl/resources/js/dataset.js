@@ -109,34 +109,40 @@ var dataset = (function(module) {
 
         this._dispatch = this.dispatchEvent.bind(this);
 
-        //Aggregate all Volume/VertexData deferreds to determine when to resolve
+        // Aggregate all child Volume/VertexData deferreds to determine when
+        // to resolve. Each child is tracked separately by registering on its
+        // own .loaded — using $.when().progress and looping over data.length
+        // would mark every child ready on a single child's notify, since
+        // $.when's combined progress event doesn't say which source fired.
+        // That ordering bug caused setData → active.set() to dispatch
+        // verts/textures for a sibling that hadn't pushed yet.
         var allready = [];
         for (var i = 0; i < this.data.length; i++) {
             allready.push(false);
         }
-
-        var deferred = this.data.length == 1 ?
-            $.when(this.data[0].loaded) :
-            $.when(this.data[0].loaded, this.data[1].loaded);
-        deferred
-        .progress(function(available) {
-            for (var i = 0; i < this.data.length; i++) {
-                //TODO: fix this load order
-                if (available > this.delay && !allready[i]) {
-                    allready[i] = true;
-
-                    //Resolve this deferred if ALL the BrainData objects are loaded (for multiviews)
-                    var test = true;
-                    for (var i = 0; i < allready.length; i++)
-                        test = test && allready[i];
-                    if (test)
-                        this.loaded.resolve();
-                }
-            }
-        }.bind(this))
-        .done(function() {
+        var checkResolve = function() {
+            for (var j = 0; j < allready.length; j++)
+                if (!allready[j]) return;
             this.loaded.resolve();
-        }.bind(this));
+        }.bind(this);
+        var markReady = function(idx) {
+            if (!allready[idx]) {
+                allready[idx] = true;
+                checkResolve();
+            }
+        };
+        for (var i = 0; i < this.data.length; i++) {
+            (function(idx) {
+                this.data[idx].loaded
+                    .progress(function(available) {
+                        if (available > this.delay) markReady(idx);
+                    }.bind(this))
+                    .done(function() { markReady(idx); });
+            }.bind(this))(i);
+        }
+        // Handle the empty-data edge case so this.loaded still resolves
+        // (matches the pre-refactor $.when() semantics for no arguments).
+        checkResolve();
 
         this.ui = new jsplot.Menu();
 
@@ -275,6 +281,31 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
+        // Combine per-dim NaN masks into the single shared nanmask
+        // attribute. Vertex2D dispatches each dim's data separately
+        // (data0/1 vs data2/3) but shares one nanmask attribute in the
+        // shader; if either dim's value is NaN at a vertex, that vertex
+        // must be discarded.
+        if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
+            var dim0 = this.data[0].nanmasks[fframe];
+            var combined;
+            if (this.data.length === 1) {
+                combined = dim0;
+            } else {
+                combined = [0, 1].map(function(side) {
+                    var a = dim0[side].array;
+                    var b = this.data[1].nanmasks[fframe][side].array;
+                    var out = new Float32Array(a.length);
+                    for (var i = 0; i < a.length; i++) {
+                        out[i] = (a[i] < 0.5 || b[i] < 0.5) ? 0.0 : 1.0;
+                    }
+                    var attr = new THREE.BufferAttribute(out, 1);
+                    attr.needsUpdate = true;
+                    return attr;
+                }.bind(this));
+            }
+            this._dispatch({type:"attribute", name:"nanmask", value:combined});
+        }
     }
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
@@ -322,7 +353,7 @@ var dataset = (function(module) {
                     tex.premultiplyAlpha = false;
                 }
                 tex.minFilter = module.filtertypes[this._interp];
-                tex.magfilter = module.filtertypes[this._interp];
+                tex.magFilter = module.filtertypes[this._interp];
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
@@ -371,7 +402,7 @@ var dataset = (function(module) {
         var tex = new THREE.DataTexture(data.data, this._width, this._height, THREE.LuminanceFormat, THREE.FloatType);
         tex.premultiplyAlpha = false;
         tex.minFilter = module.filtertypes[this._interp];
-        tex.magfilter = module.filtertypes[this._interp];
+        tex.magFilter = module.filtertypes[this._interp];
         tex.needsUpdate = true;
         tex.flipY = false;
         this.textures[fframe] = tex;
@@ -391,6 +422,7 @@ var dataset = (function(module) {
         this.frames = json.frames;
 
         this.verts = [];
+        this.nanmasks = [];
         NParray.fromURL(this.data[0], function(array) {
             array.loaded.progress(function(available){
                 var data = array.view(available-1).data;
@@ -418,12 +450,34 @@ var dataset = (function(module) {
 			}
 
                     } else {
-                        for (var i = 0; i < sleft.length; i++) {
-                            sleft[i] = left[hemis.left.reverseIndexMap[i]];
-                        }
-                        for (var i = 0; i < sright.length; i++) {
-                            sright[i] = right[hemis.right.reverseIndexMap[i]];
-                        }
+                        // Remap indices and build the NaN mask in a single
+                        // pass. WebGL drivers may sanitize NaN in vertex
+                        // attributes, so we always build a mask attribute
+                        // (1=valid, 0=NaN) and replace NaN with 0 in the
+                        // data. The shader uses the mask to discard NaN
+                        // vertices. We always push a mask (all 1s when
+                        // there are no NaNs) so per-frame indexing in
+                        // VertexData.set stays aligned with this.verts.
+                        var masks = [
+                            {dest: sleft, src: left, map: hemis.left.reverseIndexMap},
+                            {dest: sright, src: right, map: hemis.right.reverseIndexMap}
+                        ].map(function(h) {
+                            var mask = new Float32Array(h.dest.length);
+                            for (var i = 0; i < h.dest.length; i++) {
+                                var val = h.src[h.map[i]];
+                                if (isNaN(val)) {
+                                    h.dest[i] = 0.0;
+                                    mask[i] = 0.0;
+                                } else {
+                                    h.dest[i] = val;
+                                    mask[i] = 1.0;
+                                }
+                            }
+                            var attr = new THREE.BufferAttribute(mask, 1);
+                            attr.needsUpdate = true;
+                            return attr;
+                        });
+                        this.nanmasks.push(masks);
                     }
                     var lattr = new THREE.BufferAttribute(sleft, this.raw?4:1);
                     var rattr = new THREE.BufferAttribute(sright, this.raw?4:1);
@@ -447,6 +501,8 @@ var dataset = (function(module) {
         var name = dim == 0 ? "data0":"data2";
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
         dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
+        // The combined nanmask is dispatched by DataView.setFrame after
+        // every dim's data has been set, so we don't dispatch it here.
     }
 
     return module;

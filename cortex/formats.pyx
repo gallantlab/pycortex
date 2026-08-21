@@ -8,6 +8,8 @@ from collections import OrderedDict
 
 cimport cython
 cimport numpy as np
+import numpy as _py_np
+import numpy.typing as npt
 from libc.string cimport strtok
 from libc.stdlib cimport atoi, atof
 
@@ -16,7 +18,7 @@ np.import_array()
 PY3 = sys.version_info[0] > 3
 
 
-def read(globname):
+def read(globname: str) -> tuple[npt.NDArray[_py_np.floating], npt.NDArray[_py_np.integer]]:
     readers = OrderedDict([('gii', read_gii), ('npz', read_npz), ('vtk', read_vtk), ('off', read_off), ('stl', read_stl)])
     for ext, func in readers.items():
         try:
@@ -68,7 +70,7 @@ def read_stl(filename):
         if header[:5] == "solid":
             raise TypeError("Cannot read ASCII STL files")
         npolys, = struct.unpack('I', fp.read(4))
-        data = np.fromstring(fp.read(), dtype=dtype)
+        data = np.frombuffer(fp.read(), dtype=dtype)
         if npolys != len(data):
             raise ValueError('File invalid')
 
