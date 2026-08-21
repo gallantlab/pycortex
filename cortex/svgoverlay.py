@@ -292,9 +292,11 @@ class SVGOverlay:
             cmd = [inkscape_cmd, '-z', '-h', str(height), '-e', pngfile, svgfile]
         else:
             cmd = [inkscape_cmd, '-h', str(height), '--export-filename', pngfile, svgfile]
-        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = proc.communicate()
-        os.unlink(svgfile)
+        try:
+            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
+            stdout, stderr = proc.communicate()
+        finally:
+            os.unlink(svgfile)
         
         suppressed_warnings = [
             'Format autodetect failed.',
