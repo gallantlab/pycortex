@@ -1031,6 +1031,9 @@ var mriview = (function(module) {
                 movie_ui = this.ui.addFolder("movie", true);
                 movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
                 movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
+                //Only a min is given, so dat.GUI renders an editable number box
+                //(passing both min and max yields a slider with no readout)
+                movie_ui.add({framerate: {action:[this, "setFramerate", 0.5]}});
             }
 
             if (this.movie) {

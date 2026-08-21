@@ -48,6 +48,8 @@ var jsplot = (function (module) {
         this.state = "pause";
         this._startplay = null;
         this._animation = null;
+        //Playback rate for data movies, in frames per second
+        this.framerate = 1;
 
         this._schedule = function() {
             this.draw();
@@ -60,10 +62,14 @@ var jsplot = (function (module) {
         //Figure registrations
         this.figure.register("playsync", this, function(time) {
             if (this._startplay != null)
-                this._startplay = (new Date()) - (time * 1000);
+                this._startplay = (new Date()) - (time * 1000 / this.framerate);
         });
         this.figure.register("playtoggle", this, this.playpause.bind(this));
         this.figure.register("setFrame", this, this.setFrame.bind(this));
+        //Look up setFramerate lazily, since the menu wraps it once a control exists
+        this.figure.register("setFramerate", this, function(rate) {
+            this.setFramerate(rate);
+        });
 
         this.root = new THREE.Group();
         this.root.name = 'root';
@@ -101,7 +107,7 @@ var jsplot = (function (module) {
     module.Axes3D.prototype.draw = function () {
         var now = new Date();
         if (this.state == "play")
-            this.setFrame((now - this._startplay) / 1000);
+            this.setFrame((now - this._startplay) / 1000 * this.framerate);
         
         if (this._animation) {
             var atime = (now - this._animation.start) / 1000;
@@ -240,11 +246,27 @@ var jsplot = (function (module) {
             this.state = "pause";
         } else {
             //Start playing
-            this._startplay = (new Date()) - (this.frame * 1000);
+            this._startplay = (new Date()) - (this.frame * 1000 / this.framerate);
             this.state = "play";
             this.schedule();
         }
         this.figure.notify("playtoggle", this, [this.state]);
+    };
+    module.Axes3D.prototype.setFramerate = function(rate) {
+        if (rate === undefined)
+            return this.framerate;
+
+        rate = parseFloat(rate);
+        if (!isFinite(rate) || rate <= 0)
+            return this.framerate;
+
+        this.framerate = rate;
+        //Rebase the playback clock so the current frame doesn't jump
+        if (this._startplay != null)
+            this._startplay = (new Date()) - ((this.frame || 0) * 1000 / rate);
+        this.figure.notify("setFramerate", this, [rate]);
+        this.schedule();
+        return this.framerate;
     };
     module.Axes3D.prototype.setGrid = function(m, n, idx) {
         //Establish of grid of views M rows by N columns
