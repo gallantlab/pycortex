@@ -593,8 +593,9 @@ class Vertex(VertexData, Dataview):
     ) -> Vertex:
         """Map this data from this surface to another surface
 
-        Calls `cortex.freesurfer.vertex_to_vertex()`  with this
-        vertex object as the first argument.
+        Builds a source-to-target vertex mapping matrix via
+        `cortex.freesurfer.get_mri_surf2surf_matrix()` and applies it to
+        this Vertex's data.
 
         NOTE: Requires either previous computation of mapping matrices
         (with `cortex.db.get_mri_surf2surf_matrix`) or active
@@ -607,7 +608,13 @@ class Vertex(VertexData, Dataview):
 
         Other Parameters
         ----------------
-        kwargs map to `cortex.freesurfer.vertex_to_vertex()`
+        kwargs map to `cortex.freesurfer.get_mri_surf2surf_matrix()`
+
+        Returns
+        -------
+        Vertex
+            This data, resampled onto `target_subj`'s vertices, with the
+            same `cmap`, `vmin`, and `vmax` as this Vertex.
         """
         # Input check
         if hemi not in ["lh", "rh", "both"]:
