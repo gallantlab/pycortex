@@ -13,7 +13,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..database import db
-
+from .. import polyutils
 
 class BrainData(object):
     """
@@ -450,11 +450,23 @@ class VertexData(BrainData):
         except IOError:
             left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
-        assert (random_type in ('uniform', 'low_frequency')), 'random_type must be one of ("low_frequency", "uniform")'
-        rdata = np.random.randn(nverts)
-        if random_type == 'low_frequency':
-            rdata = rdata # Smooth rdata_low_freq_noise((nverts,), falloff_exponent=falloff_exponent)
-        return cls(rdata, subject, **kwargs)
+        if random_type == 'uniform':
+            rdata = np.random.randn(nverts)
+        elif random_type == 'low_frequency':
+            # THis may be slow
+            if 'smooth_factor' in kwargs:
+                smooth_factor = kwargs.pop('smooth_factor')
+            else:
+                smooth_factor = 20
+            (lpts, lpolys), (rpts, rpolys) = db.get_surf(subject, 'fiducial', )
+            ldata = polyutils.Surface(lpts, lpolys).smooth(np.random.randn(len(lpts)), factor=smooth_factor)
+            rdata = polyutils.Surface(rpts, rpolys).smooth(np.random.randn(len(rpts)), factor=smooth_factor)
+            rand_data = np.hstack([ldata, rdata]) 
+        else:
+            left, right = db.get_surf(subject, "fiducial")
+            pass # Throw valueerror
+
+        return cls(rand_data, subject, **kwargs)
 
     def _set_data(self, data: npt.NDArray):
         """
