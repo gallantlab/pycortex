@@ -34,7 +34,7 @@ var jsplot = (function (module) {
             this.lights = [
                 new THREE.DirectionalLight(0xffffff, 1.0)
             ];
-            this.lights[0].position.set( -100, 200, 10 ).normalize();
+            this.lights[0].position.set( -100, 200, 10 ); //.normalize();
         } else {
             //These lights approximately match what's done by vtk
             this.lights = [
