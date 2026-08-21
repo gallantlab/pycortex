@@ -110,11 +110,11 @@ def test_rgb_rejects_unknown_kwargs():
     """VolumeRGB and VertexRGB should reject unknown keyword arguments."""
     red, green, blue = [np.random.randn(nverts) for _ in range(3)]
     with pytest.raises(TypeError):
-        dataset.VertexRGB(red, green, blue, subj, bogus_kwarg=True)
+        dataset.VertexRGB(red, green, blue, subj, bogus_kwarg=True)  # type: ignore
 
     red, green, blue = [np.random.randn(*volshape) for _ in range(3)]
     with pytest.raises(TypeError):
-        dataset.VolumeRGB(red, green, blue, subj, xfmname, bogus_kwarg=True)
+        dataset.VolumeRGB(red, green, blue, subj, xfmname, bogus_kwarg=True)  # type: ignore
 
 
 def test_volumergb_shared_range():
@@ -314,7 +314,7 @@ def test_blend_curvature():
 
     # blend_curvature is deprecated; the warning should fire on every call.
     with pytest.warns(DeprecationWarning, match="blend_curvature is deprecated"):
-        view_rgb = view.blend_curvature(alpha)
+        view_rgb: cortex.VertexRGB = view.blend_curvature(alpha)
     with pytest.warns(DeprecationWarning):
         view_rgb = view.blend_curvature(alpha > 0.3)
     # test that it returns a VertexRGB

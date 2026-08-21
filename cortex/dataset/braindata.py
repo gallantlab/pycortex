@@ -1,6 +1,7 @@
 import hashlib
 import warnings
 from copy import deepcopy
+import os
 import sys
 from typing import Generic, Optional, TypeVar, Union, cast
 if sys.version_info < (3, 11):
@@ -33,15 +34,12 @@ class BrainData:
             nib = nibabel.load(data)
             data = cast(npt.NDArray, nib.get_fdata().T)
         self._data = data
-        try:
-            basestring
-        except NameError:
-            subject = subject if isinstance(subject, str) else subject.decode('utf-8')
+        subject = subject if isinstance(subject, str) else subject.decode('utf-8')
         self.subject = subject
         super().__init__(**kwargs)
 
     @property
-    def data(self):
+    def data(self) -> npt.NDArray:
         if isinstance(self._data, h5py.Dataset):
             return self._data[()]
         return self._data
@@ -51,7 +49,7 @@ class BrainData:
         self._data = data
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Name of this BrainData, computed from hash of data.
         TODO:WHAT IS THIS USEFUL FOR
         """
@@ -70,7 +68,7 @@ class BrainData:
     def __hash__(self):
         return hash(_hash(self.data))
 
-    def _write_hdf(self, h5, name=None):
+    def _write_hdf(self, h5: Union[h5py.File, h5py.Group], name: Optional[str]=None) -> h5py.Dataset:
         if name is None:
             name = self.name
         dgrp = h5.require_group("/data")
@@ -107,7 +105,7 @@ class BrainData:
                  "__div__", "__pow__", "__neg__", "__abs__"]
 
         def make_opfun(op): # function nesting creates closure containing op
-            def opfun(self, *args):
+            def opfun(self: Self, *args):
                 return self.copy(getattr(self.data, op)(*args))
             return opfun
 
@@ -165,7 +163,7 @@ class VolumeData(BrainData):
         return sdict
 
     @classmethod
-    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs):
+    def empty(cls, subject: str, xfmname: str, value: float=0, **kwargs) -> Self:
         """
         Create a constant-valued VolumeData for the given subject and xfmname.
         Often useful for testing purposes.
@@ -192,7 +190,7 @@ class VolumeData(BrainData):
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, xfmname: str, **kwargs):
+    def random(cls, subject: str, xfmname: str, **kwargs) -> Self:
         """
         Create a random-valued VolumeData for the given subject and xfmname.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -247,7 +245,7 @@ class VolumeData(BrainData):
                 raise ValueError("Volumetric data (shape %s) is not the same shape as reference for transform (shape %s)" % (str(shape), str(xfm.shape)))
             self.shape = shape
 
-    def map(self, projection="nearest"):
+    def map(self, projection: str="nearest") -> Self:
         """Convert this VolumeData into VertexData using the given projection 
         method.
 
@@ -284,11 +282,12 @@ class VolumeData(BrainData):
         maskstr = maskstr[0].upper()+maskstr[1:]
         return "<%s data for (%s, %s)>"%(maskstr, self.subject, self.xfmname)
 
-    def copy(self, data):
+    def copy(self, data: npt.NDArray) -> Self:
         return super().copy(data, self.subject, self.xfmname, mask=self._mask)
 
+    # TODO: need to include np.ma.MaskedArra in return type?
     @property
-    def volume(self):
+    def volume(self) -> npt.NDArray:
         """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
         masked data.
         """
@@ -303,10 +302,9 @@ class VolumeData(BrainData):
 
         return data
 
-    def save(self, filename, name=None):
+    def save(self, filename: Union[str, h5py.Group], name: Optional[str]=None) -> None:
         """Save the dataset into the hdf file `filename` with the provided name.
         """
-        import os
         if isinstance(filename, str):
             fname, ext = os.path.splitext(filename)
             if ext in (".hdf", ".h5",".hf5"):
@@ -335,12 +333,12 @@ class VolumeData(BrainData):
 
         return node
 
-    def save_nii(self, filename):
+    def save_nii(self, filename: os.PathLike) -> None:
         """Save as a nifti file at the given filename. Nifti headers are
         copied from the reference image for this VolumeData's transform.
         """
         xfm = db.get_xfm(self.subject, self.xfmname)
-        affine = xfm.reference.affine
+        affine = xfm.reference_nifti.affine
         import nibabel
         new_nii = nibabel.Nifti1Image(self.volume.T, affine)
         nibabel.save(new_nii, filename)
@@ -468,7 +466,7 @@ class VertexData(BrainData):
         """
         return super().copy(data, self.subject)
 
-    def volume(self, xfmname, projection='nearest', **kwargs):
+    def volume(self, xfmname: str, projection: str='nearest', **kwargs) -> VolumeData:
         """
         Map this VertexData back to volume space, creating a VolumeData object.
         This uses the `mapper.backwards` function, which is not particularly
@@ -511,8 +509,9 @@ class VertexData(BrainData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
-
-    def to_json(self, simple: bool = False):
+    
+    # TODO: simple
+    def to_json(self, simple: bool = False) -> dict[str, list[str]]:
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super().to_json(simple=simple))
@@ -530,7 +529,7 @@ class VertexData(BrainData):
         return verts
 
     @property
-    def left(self):
+    def left(self) -> npt.NDArray:
         """Data for only the left hemisphere vertices.
         """
         if self.movie:
@@ -539,7 +538,7 @@ class VertexData(BrainData):
             return self.data[:self.llen]
 
     @property
-    def right(self):
+    def right(self) -> npt.NDArray:
         """Data for only the right hemisphere vertices.
         """
         if self.movie:
@@ -547,8 +546,8 @@ class VertexData(BrainData):
         else:
             return self.data[self.llen:]
 
-    def blend_curvature(self, alpha, threshold=0, brightness=0.5,
-                        contrast=0.25, smooth=20):
+    def blend_curvature(self, alpha: npt.NDArray[np.floating], threshold: float=0, brightness: float=0.5,
+                        contrast: float=0.25, smooth: float=20):
         """Blend the data with a curvature map depending on a transparency map.
 
         .. deprecated::
@@ -639,9 +638,8 @@ class VertexData(BrainData):
         return blended
 
 
-def _find_mask(nvox: int, subject: str, xfmname: str):
+def _find_mask(nvox: int, subject: str, xfmname: str) -> tuple[str, npt.NDArray[np.bool_]]:
     import glob
-    import os
     import re
 
     import nibabel
@@ -652,6 +650,7 @@ def _find_mask(nvox: int, subject: str, xfmname: str):
         if nvox == np.sum(mask):
             fname = os.path.split(fname)[1]
             name = re.compile(r'mask_(.+).nii.gz').search(fname)
+            assert name is not None, f"Mask filename {fname} does not match expected format"
             return name.group(1), mask
 
     raise ValueError('Cannot find a valid mask')
@@ -671,12 +670,12 @@ class _masker(Generic[T_masker]):
         mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
         return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
-def _hash(array):
+def _hash(array: npt.ArrayLike) -> str:
     '''A simple numpy hash function'''
     array = np.asarray(array)
     return hashlib.sha1(array.tobytes()).hexdigest()
 
-def _hdf_write(h5, data, name="data", group="/data"):
+def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="data", group: str="/data") -> h5py.Dataset:
     try:
         node = h5.require_dataset("%s/%s"%(group, name), data.shape, data.dtype, exact=True)
     except TypeError:
