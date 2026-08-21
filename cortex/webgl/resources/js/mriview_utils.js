@@ -29,6 +29,12 @@ var mriview = (function(module) {
     module.MultiView.prototype = Object.create(jsplot.GridFigure.prototype);
     module.MultiView.prototype.constructor = module.MultiView;
     module.MultiView.prototype.addData = function(dataviews) {
+        //Accept the raw metadata package sent by the python interface
+        //(see JSMixer.addData in cortex/webgl/view.py) as well as an array
+        //of already-instantiated dataset.DataView objects.
+        if (!(dataviews instanceof Array) && dataviews.images !== undefined)
+            dataviews = dataset.fromJSON(dataviews);
+
         var data = {}, subj, view;
         for (var i = 0; i < dataviews.length; i++) {
             view = dataviews[i];

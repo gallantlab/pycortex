@@ -7,8 +7,10 @@ states, and predefined panel layouts render correctly without a display server.
 All tests are skipped if playwright is not installed.
 """
 
+import json
 import os
 import time
+import urllib.request
 
 import numpy as np
 import pytest
@@ -600,18 +602,173 @@ def test_vertex2d_alpha_half_renders_correct_blend(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    reason="addData relies on _convert_dataset closure from show(), "
-    "which is not available in the headless code path",
-    raises=NameError,
-)
-def test_addData_no_crash():
-    """Adding a second dataset to an open viewer should not crash."""
+@pytest.fixture(scope="class")
+def _addData_viewer():
+    """A single headless viewer shared by the ``TestAddData`` sequence."""
+    np.random.seed(1)
     vol1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
-    vol2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol1, viewer_params={}) as handle:
+        yield handle
+
+
+def _served_metadata(handle):
+    """Return the dataset metadata embedded in the served ``mixer.html``.
+
+    ``show()`` regenerates the page from the same ``metadata`` dict that
+    ``addData`` merges into, so this is how we check that a reload of the
+    viewer would show everything that has been added so far.
+    """
+    url = "http://localhost:%d/mixer.html" % handle.server.port
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        page = resp.read().decode("utf-8")
+    marker = "dataset.fromJSON("
+    start = page.index(marker) + len(marker)
+    return json.JSONDecoder().raw_decode(page, start)[0]
+
+
+def _fetch(handle, path):
+    """GET ``path`` from the viewer's tornado server, returning the body."""
+    url = "http://localhost:%d%s" % (handle.server.port, path)
+    with urllib.request.urlopen(url, timeout=30) as resp:
+        return resp.read()
+
+
+def _active_name(handle):
+    """Name of the dataview the viewer currently displays.
+
+    ``handle.active.name`` cannot be used: ``JSProxy.name`` is the javascript
+    path of the proxy itself, so the dataview's own name has to be read out of
+    the queried attributes.
+    """
+    return handle.active.attrs["name"][1]
+
+
+def _image_array(handle, outfile, size=(512, 384)):
+    """Render the current view to ``outfile`` and return it as an array."""
+    from PIL import Image
+
+    handle.getImage(outfile, size)
+    _wait_for_file(outfile)
+    return np.asarray(Image.open(outfile).convert("RGB"), dtype=np.int16)
+
+
+class TestAddData:
+    """``JSMixer.addData`` pushes new data into an already running viewer.
+
+    The tests share one browser session and run in definition order: each one
+    builds on the dataviews added by the previous ones.
+    """
+
+    def test_adds_dataview(self, _addData_viewer):
+        """Adding a dataview registers it and makes it the active one."""
+        handle = _addData_viewer
+        vol2 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
         handle.addData(second=vol2)
         time.sleep(2)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+
+        # "data" is the name webshow gives to a bare Dataview.
+        assert set(handle.dataviews.attrs) == {"data", "second"}
+        # As on the initial page load, the viewer switches to the new data.
+        assert _active_name(handle) == "second"
+
+    def test_updates_served_metadata(self, _addData_viewer):
+        """The added dataview survives a page reload, images included."""
+        handle = _addData_viewer
+        metadata = _served_metadata(handle)
+        assert [view["name"] for view in metadata["views"]] == ["data", "second"]
+
+        # Every brain referenced by the (old and new) dataviews must still be
+        # served by the DataHandler.
+        assert len(metadata["images"]) == 2
+        for name, urls in metadata["images"].items():
+            assert name in metadata["data"]
+            for url in urls:
+                assert _fetch(handle, url)[1:4] == b"PNG"
+
+    def test_changes_rendered_image(self, _addData_viewer, tmp_path):
+        """Switching between the old and the new dataview changes the render."""
+        handle = _addData_viewer
+        added = _image_array(handle, str(tmp_path / "second.png"))
+
+        handle.setData("data")
+        time.sleep(2)
+        original = _image_array(handle, str(tmp_path / "data.png"))
+
+        assert _active_name(handle) == "data"
+        assert np.abs(added - original).mean() > 1, (
+            "The render did not change when switching to the dataview added "
+            "by addData; the new data was probably never loaded."
+        )
+
+    def test_replaces_existing_name(self, _addData_viewer):
+        """Re-adding a name replaces it instead of duplicating it."""
+        handle = _addData_viewer
+        previous_brains = set(_served_metadata(handle)["images"])
+        vol3 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        handle.addData(second=vol3)
+        time.sleep(2)
+
+        metadata = _served_metadata(handle)
+        names = [view["name"] for view in metadata["views"]]
+        assert names == ["data", "second"]
+        assert set(handle.dataviews.attrs) == {"data", "second"}
+        assert _active_name(handle) == "second"
+
+        # The images of the replaced dataview are dropped rather than piling
+        # up in the server on every refresh.
+        assert len(metadata["images"]) == 2
+        assert metadata["views"][1]["data"][0] not in previous_brains
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+
+    def test_rejects_unknown_subject(self, _addData_viewer):
+        """Surfaces cannot be added to a running viewer, so neither can subjects."""
+        handle = _addData_viewer
+        other = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        # The subject only has to differ from the one the viewer was started
+        # with; it never reaches the database because the check comes first.
+        other.subject = "not_a_loaded_subject"
+        with pytest.raises(ValueError, match="not_a_loaded_subject"):
+            handle.addData(third=other)
+
+        # The rejected dataview must not have leaked into the viewer state.
+        metadata = _served_metadata(handle)
+        assert [view["name"] for view in metadata["views"]] == ["data", "second"]
+        assert len(metadata["images"]) == 2
+
+
+def test_addData_vertex_data(tmp_path):
+    """Vertex data added at runtime is reordered to match the CTM surfaces.
+
+    Vertex data is uploaded as a raw vertex attribute array, so it has to go
+    through ``Package.reorder`` with the same ctm files the viewer was built
+    with. Getting this wrong renders a scrambled (but non-empty) brain, so the
+    check here is that the render changes and that no JS error is raised.
+    """
+    np.random.seed(2)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    vertex = cortex.Vertex(np.random.randn(nverts), subj)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        before = _image_array(handle, str(tmp_path / "before.png"))
+
+        handle.addData(vertexdata=vertex)
+        time.sleep(3)
+
+        assert _active_name(handle) == "vertexdata"
+        after = _image_array(handle, str(tmp_path / "after.png"))
+        assert np.abs(after - before).mean() > 1
+
+        # Vertex data is served as a raw .npy blob rather than a PNG mosaic.
+        metadata = _served_metadata(handle)
+        assert [view["name"] for view in metadata["views"]] == ["data", "vertexdata"]
+        vertex_name = metadata["views"][1]["data"][0]
+        assert "mosaic" not in metadata["data"][vertex_name]
+        assert _fetch(handle, metadata["images"][vertex_name][0])[1:6] == b"NUMPY"
+
         pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
 

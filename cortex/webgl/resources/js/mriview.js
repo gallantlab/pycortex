@@ -264,6 +264,12 @@ var mriview = (function(module) {
     // };
 
     module.Viewer.prototype.addData = function(data) {
+        //Accept the raw metadata package sent by the python interface
+        //(see JSMixer.addData in cortex/webgl/view.py). It is recognizable
+        //by its "images" key, and has to be turned into DataView objects
+        //(which also registers the new BrainData in dataset.brains).
+        if (!(data instanceof Array) && data.images !== undefined)
+            data = dataset.fromJSON(data);
         if (!(data instanceof Array))
             data = [data];
 
