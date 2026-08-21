@@ -21,22 +21,18 @@ def line_interpolation(u_l, v_l, u_r, v_r, gamma):
     v_gamma = gamma * v_l + (1 - gamma) * v_r
     return u_gamma, v_gamma
 
-def locate_depth_point(subject, u_x, v_x, alpha):
+def locate_depth_point(subject, u_x, v_x, alpha, dl, pia, wm):
     '''
     u_x, v_x: (N, 2) points in the flat space
     alpha: (N,) depth values in [0, 1]
     returns: (x, y, z) points in the 3D space
     '''
-    verts, faces = cortex.db.get_surf(subject, "flat", merge=True, nudge=True)
-    valid = np.unique(faces) # find vertices in flatmap triangles
-    dl = Delaunay(verts[valid,:2])
+    
     simp = dl.find_simplex([v_x, u_x])
     tf = dl.transform[simp]
     l_a, l_b = tf[:2,:2] @ (np.array([v_x, u_x]) - tf[2])
     l_c = 1 - l_a - l_b
     #idx, bary = find_triangle(verts, faces, np.vstack([u_x, v_x]).T)
-    pia, _ = cortex.db.get_surf(subject, "pia", merge=True, nudge=False)
-    wm, _ = cortex.db.get_surf(subject, "wm", merge=True, nudge=False)
     x_p = [l_a, l_b, l_c] @ pia[valid][dl.simplices][simp]
     x_w = [l_a, l_b, l_c] @ wm[valid][dl.simplices][simp]
     #x_p = p_verts[faces[idx, 0]] * bary[:, 0, None] + p_verts[faces[idx, 1]] * bary[:, 1, None] + p_verts[faces[idx, 2]] * bary[:, 2, None]
@@ -68,13 +64,20 @@ def make_laminar_profile(subject, xfmname, u_l, v_l, u_r, v_r, W, H, sampler="ne
     
     # Initialize an empty array to hold the cortical profile values
     profile_map = np.zeros((H, W))
+
+    verts, faces = cortex.db.get_surf(subject, "flat", merge=True, nudge=True)
+    valid = np.unique(faces) # find vertices in flatmap triangles
+    dl = Delaunay(verts[valid,:2])
+
+    pia, _ = cortex.db.get_surf(subject, "pia", merge=True, nudge=False)
+    wm, _ = cortex.db.get_surf(subject, "wm", merge=True, nudge=False)
     
     for i, alpha in enumerate(alpha_values):
         for j, gamma in enumerate(gamma_values):
             # Interpolate the flatmap coordinates
             u_gamma, v_gamma = line_interpolation(u_l, v_l, u_r, v_r, gamma)
             # Locate the depth point in 3D space
-            z = locate_depth_point(subject, u_gamma, v_gamma, alpha)
+            z = locate_depth_point(subject, u_gamma, v_gamma, alpha, dl, pia, wm)
             # Retrieve the value at that voxel (assuming a function get_voxel_value exists)
             _, _, profile_map[i, j] = sampclass(xfm.inv([z]), xfm.shape)
             
