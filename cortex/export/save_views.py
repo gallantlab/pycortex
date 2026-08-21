@@ -49,13 +49,13 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume : pycortex.Volume, pycortex.Vertex, or pycortex.Dataset
+    volume: pycortex.Volume, pycortex.Vertex, or pycortex.Dataset
         Data to be displayed.
 
-    base_name : str
+    base_name: str
         Base name for images.
 
-    list_angles : list of (str or dict)
+    list_angles: list of (str or dict)
         Views to be used. Should be of length one, or of the same length as
         `list_surfaces`. Choices are:
             'left', 'right', 'front', 'back', 'top', 'bottom', 'flatmap',
@@ -63,33 +63,33 @@ def save_3d_views(
             or tuple of (view_name, custom dictionary of parameters).
             See `angle_view_params` in this file for parameter dict examples.
 
-    list_surfaces : list of (str or dict)
+    list_surfaces: list of (str or dict)
         Surfaces to be used. Should be of length one, or of the same length as
         `list_angles`. Choices are:
             'inflated', 'flatmap', 'fiducial', 'inflated_cut',
             or a custom dictionary of parameters.
 
-    viewer_params : dict
+    viewer_params: dict
         Parameters passed to the viewer.
 
-    interpolation : str
+    interpolation: str
         Interpolation used to visualize the data. Possible choices are "nearest",
         "trilinear". (Default: "nearest").
 
-    layers : int
+    layers: int
         Number of layers between the white and pial surfaces to average prior to
         plotting the data. (Default: 1).
 
-    size : tuple of int
+    size: tuple of int
         Size of produced image (before trimming).
 
-    trim : bool
+    trim: bool
         Whether to trim the white borders of the image.
 
-    sleep : float > 0
+    sleep: float > 0
         Time in seconds, to let the viewer open.
 
-    headless : bool
+    headless: bool
         If True, render using a headless Chromium browser via Playwright instead
         of requiring the user to manually open a browser window.  This allows
         the function to run fully autonomously without any user interaction.
@@ -98,20 +98,20 @@ def save_3d_views(
         Software WebGL (SwiftShader) is used, so no GPU or display server is
         needed.  (Default: False)
 
-    contour_overlay : Dataview, str, or None
+    contour_overlay: Dataview, str, or None
         Parcellation data whose borders will be drawn as contour lines.
         Can be a Vertex/Dataview object (automatically bundled into a Dataset
         with ``volume``), or a string naming a view within an existing Dataset
         passed as ``volume``.  (Default: None)
 
-    contour_mode : str
+    contour_mode: str
         Contour rendering mode when ``contour_overlay`` is set.
         Options: "contours", "contours+fill", "colored", "colored+fill".
         (Default: "contours+fill")
 
     Returns
     -------
-    file_names : list of str
+    file_names: list of str
         Image paths.
     """
     msg = "list_angles and list_surfaces should have the same length."
