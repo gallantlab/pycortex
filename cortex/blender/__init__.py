@@ -67,27 +67,28 @@ def _call_blender(filename, code=None, background=True, blender_path=default_ble
     blender_path : str, optional
         Path to blender executable. If None, defaults to the path specified in pycortexconfig file.
     """
-    with tempfile.NamedTemporaryFile() as tf:
-        print("In new named temp file: %s"%tf.name)
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    print("In new named temp file: %s"%tf.name)
 
-        # Backup
-        if os.path.exists(filename):
-            _legacy_blender_backup(filename, blender_path=blender_path)
+    # Backup
+    if os.path.exists(filename):
+        _legacy_blender_backup(filename, blender_path=blender_path)
 
-        # Construct command
-        cmd = blender_path
-        if background:
-            cmd += " -b"
-        if os.path.exists(filename):
-            cmd += " " + filename
-        if code is not None:
-            wrapped_code = _wrap_code(code, filename)
-            tf.write(wrapped_code.encode())
-            tf.flush()
-            cmd += " -P {tfname}".format(tfname=tf.name)
+    # Construct command
+    cmd = blender_path
+    if background:
+        cmd += " -b"
+    if os.path.exists(filename):
+        cmd += " " + filename
+    if code is not None:
+        wrapped_code = _wrap_code(code, filename)
+        tf.write(wrapped_code.encode())
+        cmd += " -P {tfname}".format(tfname=tf.name)
+    tf.close()
 
-        print(f"Calling blender:\n    {cmd}")
-        sp.check_call([w.encode() for w in shlex.split(cmd)],)
+    print(f"Calling blender:\n    {cmd}")
+    sp.check_call([w.encode() for w in shlex.split(cmd)],)
+    os.unlink(tf.name)
 
 
 def _check_executable_blender_version(blender_path=default_blender):
@@ -192,10 +193,10 @@ def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh=
     p.pack_string(name)
     p.pack_array(lcolor.ravel(), p.pack_double)
     p.pack_array(rcolor.ravel(), p.pack_double)
-    with tempfile.NamedTemporaryFile() as tf:
-        tf.write(p.get_buffer())
-        tf.flush()
-        code = """with open('{tfname}', 'rb') as fp:
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    tf.write(p.get_buffer())
+    tf.close()
+    code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             mesh = u.unpack_string().decode('utf-8')
             name = u.unpack_string().decode('utf-8')
@@ -206,9 +207,10 @@ def add_cutdata(fname, braindata, name="retinotopy", projection="nearest", mesh=
             print(len(lcolor), len(rcolor))
             blendlib.add_vcolor((lcolor, rcolor), mesh, name)
         """.format(tfname=tf.name)
-        _call_blender(fname, code, blender_path=blender_path)
+    _call_blender(fname, code, blender_path=blender_path)
+    os.unlink(tf.name)
 
-    return 
+    return
 
 
 def gii_cut(fname, subject, hemi, blender_path=None):
@@ -231,10 +233,10 @@ def gii_cut(fname, subject, hemi, blender_path=None):
     p.pack_array(ipts.ravel(), p.pack_double)
     p.pack_array(polys.ravel(), p.pack_uint)
     p.pack_array(rcurv.ravel(), p.pack_double)
-    with tempfile.NamedTemporaryFile() as tf:
-        tf.write(p.get_buffer())
-        tf.flush()
-        code = """with open('{tfname}', 'rb') as fp:
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    tf.write(p.get_buffer())
+    tf.close()
+    code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             wpts = u.unpack_array(u.unpack_double)
             ipts = u.unpack_array(u.unpack_double)
@@ -242,7 +244,8 @@ def gii_cut(fname, subject, hemi, blender_path=None):
             curv = u.unpack_array(u.unpack_double)
             blendlib.init_subject(wpts, ipts, polys, curv)
         """.format(tfname=tf.name)
-        _call_blender(fname, code, blender_path=blender_path)
+    _call_blender(fname, code, blender_path=blender_path)
+    os.unlink(tf.name)
 
 
 def fs_cut_init(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=None):
@@ -271,10 +274,10 @@ def fs_cut_init(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=
     p.pack_array(ipts.ravel(), p.pack_double)
     p.pack_array(polys.ravel(), p.pack_uint)
     p.pack_array(rcurv.ravel(), p.pack_double)
-    with tempfile.NamedTemporaryFile() as tf:
-        tf.write(p.get_buffer())
-        tf.flush()
-        code = """with open('{tfname}', 'rb') as fp:
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    tf.write(p.get_buffer())
+    tf.close()
+    code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             wpts = u.unpack_array(u.unpack_double)
             ipts = u.unpack_array(u.unpack_double)
@@ -282,7 +285,8 @@ def fs_cut_init(fname, subject, hemi, freesurfer_subject_dir=None, blender_path=
             curv = u.unpack_array(u.unpack_double)
             blendlib.init_subject(wpts, ipts, polys, curv)
         """.format(tfname=tf.name)
-        _call_blender(fname, code, blender_path=blender_path)
+    _call_blender(fname, code, blender_path=blender_path)
+    os.unlink(tf.name)
 
 
 def fs_cut_open(fname, blender_path=None):
@@ -328,17 +332,18 @@ def write_volume_patch(bname, pname, hemi, mesh="hemi", blender_path=None):
     p.pack_string(pname.encode())
     p.pack_string(hemi.encode())
     p.pack_string(mesh.encode())
-    with tempfile.NamedTemporaryFile() as tf:
-        tf.write(p.get_buffer())
-        tf.flush()
-        code = """with open('{tfname}', 'rb') as fp:
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    tf.write(p.get_buffer())
+    tf.close()
+    code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             pname = u.unpack_string().decode('utf-8')
             hemi = u.unpack_string().decode('utf-8')
             mesh = u.unpack_string().decode('utf-8')
             blendlib.write_volume_patch(pname, hemi, mesh)
         """.format(tfname=tf.name)
-        _call_blender(bname, code, blender_path=blender_path)
+    _call_blender(bname, code, blender_path=blender_path)
+    os.unlink(tf.name)
     return True
 
 def write_flat_patch(bname, pname, hemi, mesh="hemi", method="MINIMUM_STRETCH", blender_path=None):
@@ -367,10 +372,10 @@ def write_flat_patch(bname, pname, hemi, mesh="hemi", method="MINIMUM_STRETCH", 
     p.pack_string(hemi.encode())
     p.pack_string(mesh.encode())
     p.pack_string(method.encode())
-    with tempfile.NamedTemporaryFile() as tf:
-        tf.write(p.get_buffer())
-        tf.flush()
-        code = """with open('{tfname}', 'rb') as fp:
+    tf = tempfile.NamedTemporaryFile(delete = False)
+    tf.write(p.get_buffer())
+    tf.close()
+    code = """with open('{tfname}', 'rb') as fp:
             u = xdrlib.Unpacker(fp.read())
             pname = u.unpack_string().decode('utf-8')
             hemi = u.unpack_string().decode('utf-8')
@@ -378,5 +383,6 @@ def write_flat_patch(bname, pname, hemi, mesh="hemi", method="MINIMUM_STRETCH", 
             method = u.unpack_string().decode('utf-8')
             blendlib.write_flat_patch(pname, hemi, mesh, method)
         """.format(tfname=tf.name)
-        _call_blender(bname, code, blender_path=blender_path)
+    _call_blender(bname, code, blender_path=blender_path)
+    os.unlink(tf.name)
     return True

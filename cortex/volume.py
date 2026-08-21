@@ -378,7 +378,8 @@ def fslview(*ims):
     for im in ims:
         if not (isinstance(im, str) and os.path.exists(im)):
             import nibabel
-            tf = tempfile.NamedTemporaryFile(suffix=".nii.gz")
+            tf = tempfile.NamedTemporaryFile(suffix = ".nii.gz", delete = False)
+            tf.close()
             tempfiles.append(tf)
             nib = nibabel.Nifti1Image(im.T, np.eye(4))
             nib.to_filename(tf.name)
@@ -387,3 +388,6 @@ def fslview(*ims):
             fnames.append(im)
 
     subprocess.call(["fslview"] + fnames)
+
+    for tf in tempfiles:
+        os.unlink(tf.name)

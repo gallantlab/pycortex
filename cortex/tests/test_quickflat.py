@@ -12,7 +12,8 @@ no_inkscape = not has_installed('inkscape')
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
 def test_quickflat():
-    tf = tempfile.NamedTemporaryFile(suffix=".png")
+    tf = tempfile.NamedTemporaryFile(suffix = ".png", delete = False)
+    tf.close()
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
     cortex.quickflat.make_png(tf.name, view)
 

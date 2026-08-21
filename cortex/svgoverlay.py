@@ -273,7 +273,8 @@ class SVGOverlay:
 
         pngfile = name
         if name is None:
-            png = tempfile.NamedTemporaryFile(suffix=".png")
+            png = tempfile.NamedTemporaryFile(suffix = ".png", delete = False)
+            png.close()
             pngfile = png.name
 
         inkscape_cmd = config.get('dependency_paths', 'inkscape')
@@ -300,15 +301,15 @@ class SVGOverlay:
             self.svg.getroot().remove(img)
 
         if name is None:
-            png.seek(0)
             try:
-                im = plt.imread(png)
+                im = plt.imread(pngfile)
             except SyntaxError as e:
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
                                    f" (inkscape version: {INKSCAPE_VERSION})"
                                    f" (inkscape command: {inkscape_cmd})"
                                    f" (stdout: {stdout})"
                                    f" (stderr: {stderr})")
+            os.unlink(pngfile)
             return im
 
 class Overlay:
@@ -752,7 +753,8 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         if not modify_svg_file:
             # To avoid modifying the svg file, we copy it in a temporary file
             import shutil
-            svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
+            svg_tmp = tempfile.NamedTemporaryFile(suffix = ".svg", delete = False)
+            svg_tmp.close()
             svgfile_tmp = svg_tmp.name
             shutil.copy2(svgfile, svgfile_tmp)
             svgfile = svgfile_tmp

@@ -666,10 +666,12 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     data_arrays = [gifti.GiftiDataArray(d, datatype=datatype) for d in data]
     gifti_image = gifti.GiftiImage(darrays=data_arrays)
 
-    tf_in = NamedTemporaryFile(suffix=".gii")
+    tf_in = NamedTemporaryFile(suffix=".gii", delete = False)
+    tf_in.close()
     nibabel.save(gifti_image, tf_in.name)
 
-    tf_out = NamedTemporaryFile(suffix='.gii')
+    tf_out = NamedTemporaryFile(suffix='.gii', delete = False)
+    tf_out.close()
     cmd = _mri_surf2surf_command(source_subj, target_subj,
                                    tf_in.name, tf_out.name, hemi)
     if subjects_dir is not None:
@@ -695,10 +697,10 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
         raise Exception(("Exit code {exit_code} means that "
             "mri_surf2surf failed").format(exit_code=exit_code))
 
-    tf_in.close()
+    os.unlink(tf_in.name)
     output_img = nibabel.load(tf_out.name)
     output_data = np.array([da.data for da in output_img.darrays])
-    tf_out.close()
+    os.unlink(tf_out.name)
     return output_data
 
 
