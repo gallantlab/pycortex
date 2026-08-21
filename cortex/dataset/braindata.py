@@ -195,7 +195,7 @@ class VolumeData(BrainData):
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, xfmname: str, **kwargs):
+    def random(cls, subject: str, xfmname: str, random_type='low_frequency', **kwargs) -> Self:
         """
         Create a random-valued VolumeData for the given subject and xfmname.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -207,6 +207,11 @@ class VolumeData(BrainData):
             Subject identifier. Must exist in the pycortex database.
         xfmname : str
             Transform name. Must exist in the pycortex database.
+        random_type : str, optional
+            type of random data to use. Default: uniform. One of
+            ('low_frequency', 'uniform')
+            'low_frequency' yields blobby, brain-like data
+            'uniform' yields uniform random noise. 
         **kwargs
             Other keyword arguments are passed to the init function for this 
             class.
@@ -218,7 +223,17 @@ class VolumeData(BrainData):
         """
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
-        return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
+        if random_type == 'uniform':
+            rdata = np.random.randn(*shape)
+        elif random_type == 'low_frequency':
+            if 'falloff_exponent' in kwargs:
+                falloff_exponent = kwargs.pop('falloff_exponent')
+            else:
+                falloff_exponent = -2.0
+            rdata = _low_freq_noise(shape, falloff_exponent=falloff_exponent)
+        else:
+            raise ValueError("random_type must be one of ('low_frequency', 'uniform')")
+        return cls(rdata, subject, xfmname, **kwargs)
 
     def _check_size(self, mask: Union[npt.NDArray, str, None]) -> None:
         if self.data.ndim not in (1, 2, 3, 4):
@@ -405,7 +420,8 @@ class VertexData(BrainData):
         return cls(np.ones((nverts,))*value, subject, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, **kwargs):
+    def random(cls, subject: str, random_type='low_frequency', 
+               **kwargs):
         """
         Create a random-valued VertexData for the given subject.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -415,6 +431,11 @@ class VertexData(BrainData):
         ----------
         subject : str
             Subject identifier. Must exist in the pycortex database.
+        random_type : str, optional
+            type of random data to use. Default: uniform. One of
+            ('low_frequency', 'uniform')
+            'low_frequency' yields blobby, brain-like data
+            'uniform' yields uniform random noise.
         **kwargs
             Other keyword arguments are passed to the init function for this 
             class.
@@ -429,7 +450,11 @@ class VertexData(BrainData):
         except IOError:
             left, right = db.get_surf(subject, "fiducial")
         nverts = len(left[0]) + len(right[0])
-        return cls(np.random.randn(nverts), subject, **kwargs)
+        assert (random_type in ('uniform', 'low_frequency')), 'random_type must be one of ("low_frequency", "uniform")'
+        rdata = np.random.randn(nverts)
+        if random_type == 'low_frequency':
+            rdata = rdata # Smooth rdata_low_freq_noise((nverts,), falloff_exponent=falloff_exponent)
+        return cls(rdata, subject, **kwargs)
 
     def _set_data(self, data: npt.NDArray):
         """
@@ -688,3 +713,31 @@ def _hdf_write(h5, data, name="data", group="/data"):
 
     node[:] = data
     return node
+
+
+# Make low frequency 3d data
+def _low_freq_noise(size, falloff_exponent=-2):
+    """Make low-frequency noise
+    
+    Parameters
+    ----------
+    size : scalar or tuple
+        size of array to generate
+    falloff_exponent: negative scalar
+        factor by which Fourier power falls off (falls off as `x**falloff_exponent`)
+        Higher numbers emphasize low frequencies more strongly.
+    """
+    if isinstance(size, tuple):
+        xd, yd, zd = size
+    else:
+        xd = yd = zd = size
+    x, y, z = np.meshgrid(np.linspace(-1, 1, xd), np.linspace(-1, 1, yd), np.linspace(-1, 1, zd))
+    C = (x**2 + y**2 + z**2)**0.5
+    C[C == 0] = np.min(C[C != 0])
+    r = np.random.rand(yd, xd, zd)
+    f = np.fft.fftshift(np.fft.fftn(r))
+    falloff = C**falloff_exponent - 1
+    falloff = (falloff - falloff.min()) / np.ptp(falloff)
+    fr = f * falloff
+    rr = np.fft.ifftn(np.fft.ifftshift(fr))
+    return rr.real
