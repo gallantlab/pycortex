@@ -216,7 +216,11 @@ def flat_border(outfile, subject):
         splitbounds.append(sb)
     
     ismwall = [[s.mean()>0.5 for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
-    
+
+    # FIXME: `height` is undefined -- this raises NameError as written.
+    # It was presumably meant to be a parameter (see the commented-out
+    # Image.new(...) call below, which used it as the output image height
+    # in pixels). Needs a reviewer decision on the right fix/default.
     aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
     lpts = (flatpts - flatpts.min(0)) * aspect
     rpts = (flatpts - flatpts.min(0)) * aspect
