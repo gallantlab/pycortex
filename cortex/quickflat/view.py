@@ -419,14 +419,19 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
         The destination for the created gif. If a str, saves to a file. If stream-like (file handle
         or io.BytesIO), writes to the stream
     volumes : dict of pycortex Volumes
-    duration : float
+        Mapping from frame title (used as the figure's suptitle) to the
+        pycortex Volume to plot in that frame, in iteration order.
+    frame_duration : float
         The duration of each frame in seconds
     **figure_kwargs
         Passed to `cortex.quickflat.make_figure`
 
     Returns
     -------
-    If output_destination is a file path, return the path. If stream-like, return the stream data.
+    output_destination : str or stream-like
+        The same `output_destination` that was passed in: the file path if
+        it was a str, or the stream (seeked back to position 0) if it was
+        stream-like.
     """
     import imageio
     from matplotlib import pyplot as plt
@@ -449,6 +454,8 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
 
     if hasattr(output_destination, 'seek'):
         output_destination.seek(0)
+
+    return output_destination
 
 
 def show(*args, **kwargs):
