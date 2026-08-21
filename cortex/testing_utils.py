@@ -30,6 +30,10 @@ def inkscape_version():
 
 
 INKSCAPE_VERSION = inkscape_version()
-
+if INKSCAPE_VERSION is None:
+    print(("Inkscape not found. Some tests will be skipped. " 
+    "If you are on a Mac or Windows machine, please specify "
+    "the path to the Inkscape binary in the config file "
+    f"(Here: {options.usercfg})."))
 
 
