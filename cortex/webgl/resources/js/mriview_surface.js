@@ -626,8 +626,17 @@ var mriview = (function(module) {
         viewer.schedule();
     };
     module.Surface.prototype.toggleOpacity = function() {
-        let newValue = 1 - Math.round(this.uniforms.dataAlpha.value)
-        surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
+        // Toggle between hidden (0) and the last visible opacity, so a slider
+        // value like 0.7 survives an off/on round trip instead of rounding to 1.
+        var current = this.uniforms.dataAlpha.value;
+        var newValue;
+        if (current > 0) {
+            this._savedOpacity = current;
+            newValue = 0;
+        } else {
+            newValue = this._savedOpacity || 1;
+        }
+        var surface = Object.keys(viewer.ui._desc.surface).filter((key) => key[0] != '_')[0]
         viewer.ui.set('surface.' + surface + '.opacity', newValue)
         viewer.schedule();
     };
