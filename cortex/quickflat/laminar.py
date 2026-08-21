@@ -21,7 +21,7 @@ def line_interpolation(u_l, v_l, u_r, v_r, gamma):
     v_gamma = gamma * v_l + (1 - gamma) * v_r
     return u_gamma, v_gamma
 
-def locate_depth_point(subject, u_x, v_x, alpha, dl, pia, wm, valid):
+def locate_depth_point(u_x, v_x, alpha, dl, pia, wm, valid):
     '''
     u_x, v_x: (N, 2) points in the flat space
     alpha: (N,) depth values in [0, 1]
@@ -77,7 +77,7 @@ def make_laminar_profile(subject, xfmname, u_l, v_l, u_r, v_r, W, H, sampler="ne
             # Interpolate the flatmap coordinates
             u_gamma, v_gamma = line_interpolation(u_l, v_l, u_r, v_r, gamma)
             # Locate the depth point in 3D space
-            z = locate_depth_point(subject, u_gamma, v_gamma, alpha, dl, pia, wm, valid)
+            z = locate_depth_point(u_gamma, v_gamma, alpha, dl, pia, wm, valid)
             # Retrieve the value at that voxel (assuming a function get_voxel_value exists)
             _, _, profile_map[i, j] = sampclass(xfm.inv([z]), xfm.shape)
             
