@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import tempfile
-from typing import Union, overload
+from typing import Iterator, Optional, Union, overload, Literal
 import numpy as np
+import numpy.typing as npt
 import h5py
 
 from ..database import db
@@ -10,7 +13,7 @@ from .braindata import _hdf_write
 from .views import normalize as _vnorm
 from .views import Dataview, Vertex, Volume, _from_hdf_data
 
-class Dataset(object):
+class Dataset:
     """
     Wrapper for multiple data objects. This often does not need to be used 
     explicitly--for example, if a dictionary of data objects is passed to 
@@ -19,13 +22,13 @@ class Dataset(object):
     # TODO: should be BrainData & Dataview, or just Dataview
     All kwargs should be `BrainData` or `Dataset` objects.
     """
-    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]):
-        self.h5 = None
+    def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> None:
+        self.h5: Optional[h5py.File] = None
         self.views: dict[str, Dataview] = {}
 
         self.append(**kwargs)
 
-    def append(self, **kwargs: Union[Dataview, dict, str, tuple, "Dataset"]) -> "Dataset":
+    def append(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> Dataset:
         """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
         dataset.
         """
@@ -41,7 +44,7 @@ class Dataset(object):
 
         return self
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str):
         if attr in self.__dict__:
             return self.__dict__[attr]
         elif attr in self.views:
@@ -49,10 +52,10 @@ class Dataset(object):
 
         raise AttributeError
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> Dataview:
         return self.views[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, Dataview]]:
         for name, dv in sorted(self.views.items(), key=lambda x: x[1].priority):
             yield name, dv
 
@@ -67,7 +70,7 @@ class Dataset(object):
         return list(self.__dict__.keys()) + list(self.views.keys())
 
     @classmethod
-    def from_file(cls, filename, subject=None):
+    def from_file(cls, filename: str, subject: Optional[str]=None) -> Dataset:
         """Load a pycortex Dataset (cortex.Dataset class) from a file
 
         Parameters
@@ -114,7 +117,7 @@ class Dataset(object):
 
         return ds
         
-    def uniques(self, collapse=False):
+    def uniques(self, collapse: bool=False) -> set[Dataview]:
         """Return the set of unique BrainData objects contained by this dataset"""
         uniques = set()
         for name, view in self:
@@ -124,7 +127,7 @@ class Dataset(object):
 
         return uniques
 
-    def save(self, filename=None, pack=False):
+    def save(self, filename: Optional[str]=None, pack: bool=False) -> None:
         if filename is not None:
             self.h5 = h5py.File(filename, 'a')
         elif self.h5 is None:
@@ -134,9 +137,9 @@ class Dataset(object):
             view._write_hdf(self.h5, name=name)
             
         if pack:
-            subjs = set()
-            xfms = set()
-            masks = set()
+            subjs: set[str] = set()
+            xfms: set[tuple[str, str]] = set()
+            masks: set[tuple[str, str, str]] = set()
             for view in self.views.values():
                 # .uniques() is provided by BrainData
                 for data in view.uniques():
@@ -154,7 +157,23 @@ class Dataset(object):
 
         self.h5.flush()
 
-    def get_surf(self, subject, type, hemi='both', merge=False, nudge=False):
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', *, merge: Literal[False]=False, nudge: bool=False) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', *, merge: Literal[True], nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['lh', 'rh'], *, merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+
+    # Fallthrough case for callers (e.g. Database.get_surf's auxfile delegation) that pass
+    # a non-literal hemi/merge, which can't be matched to any of the overloads above.
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
+
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+        pts: npt.NDArray[np.floating]
+        polys: npt.NDArray[np.integer]
         if hemi == 'both':
             left = self.get_surf(subject, type, "lh", nudge=nudge)
             right = self.get_surf(subject, type, "rh", nudge=nudge)
@@ -181,23 +200,23 @@ class Dataset(object):
         except (KeyError, TypeError):
             raise IOError('Subject not found in package')
 
-    def get_xfm(self, subject, xfmname):
+    def get_xfm(self, subject: str, xfmname: str) -> Transform:
         try:
-            group = self.h5['subjects'][subject]['transforms'][xfmname]
+            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
         except (KeyError, TypeError):
             raise IOError('Transform not found in package')
 
-    def get_mask(self, subject, xfmname, maskname):
+    def get_mask(self, subject: str, xfmname: str, maskname: str):
         try:
-            group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
+            group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
         except (KeyError, TypeError):
             raise IOError('Mask not found in package')
 
-    def get_overlay(self, subject, type='rois', **kwargs):
+    def get_overlay(self, subject: str, type: str='rois', **kwargs) -> tempfile._TemporaryFileWrapper:
         try:
-            group = self.h5['subjects'][subject]
+            group: h5py.Group = self.h5['subjects'][subject]
             if type == "rois":
                 tf = tempfile.NamedTemporaryFile()
                 tf.write(group['rois'][0])
@@ -218,6 +237,8 @@ class Dataset(object):
 
         return Dataset(**ds)
 
+DatasetLike = Union[Dataset, dict, str]
+
 @overload
 def normalize(data: Dataview) -> Dataview: ...
 
@@ -227,7 +248,7 @@ def normalize(data: Union[Dataset, dict, str]) -> Dataset: ...
 @overload
 def normalize(data: tuple) -> Union[Vertex, Volume]: ...
 
-def normalize(data: Union[Dataset, Dataview, dict, str, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
+def normalize(data: Union[DatasetLike, Dataview, tuple]) -> Union[Dataset, Dataview, Vertex, Volume]:
     if isinstance(data, (Dataset, Dataview)):
         return data
     elif isinstance(data, dict):
@@ -239,7 +260,7 @@ def normalize(data: Union[Dataset, Dataview, dict, str, tuple]) -> Union[Dataset
 
     raise TypeError('Unknown input type')
 
-def _pack_subjs(h5, subjects):
+def _pack_subjs(h5: h5py.File, subjects: set[str]) -> None:
     for subject in subjects:
         rois = db.get_overlay(subject, modify_svg_file=False)
         rnode = h5.require_dataset("/subjects/%s/rois"%subject, (1,),
@@ -254,14 +275,14 @@ def _pack_subjs(h5, subjects):
                 _hdf_write(h5, pts, "pts", group)
                 _hdf_write(h5, polys, "polys", group)
 
-def _pack_xfms(h5, xfms):
+def _pack_xfms(h5: h5py.File, xfms: set[tuple[str, str]]) -> None:
     for subj, xfmname in xfms:
         xfm = db.get_xfm(subj, xfmname, 'coord')
         group = "/subjects/%s/transforms/%s"%(subj, xfmname)
         node = _hdf_write(h5, np.array(xfm.xfm), "xfm", group)
         node.attrs['shape'] = xfm.shape
 
-def _pack_masks(h5, masks):
+def _pack_masks(h5: h5py.File, masks: set[tuple[str, str, str]]) -> None:
     for subj, xfm, maskname in masks:
         mask = db.get_mask(subj, xfm, maskname)
         group = "/subjects/%s/transforms/%s/masks"%(subj, xfm)

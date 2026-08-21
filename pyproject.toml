@@ -11,7 +11,7 @@ dynamic = ["authors", "license", "readme", "version", "classifiers", "dependenci
 [dependency-groups]
 dev = [
     {include-group = "test"},
-    "mypy",
+    {include-group = "types"},
 ]
 test = [
     "pycortex[headless]",
@@ -22,6 +22,11 @@ test = [
     "pytest-cov",
     "pytest-timeout",
 ]
+types = [
+    "mypy",
+    "scipy-stubs",
+]
+
 
 [project.optional-dependencies]
 headless = [
@@ -40,4 +45,15 @@ ignore-words-list = 'nd,acount,anormal,fpt,coo,transpart,FO,lins'
 
 [tool.mypy]
 allow_redefinition = true
-disable_error_code = "import-untyped"
+disable_error_code = "import-untyped" # TODO: narrow to specific packages
+
+[[tool.mypy.overrides]]
+module = [
+    "bpy",
+    "bpy.ops",
+    "mayavi",
+    "progressbar",
+    "scikits.sparse.cholmod",
+    "tvtk.api",
+]
+ignore_missing_imports = true

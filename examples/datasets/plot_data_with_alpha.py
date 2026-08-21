@@ -1,7 +1,7 @@
 """
-==========================
+===========================
 Plot Data with Alpha Values
-==========================
+===========================
 
 It is often useful to plot a primary map (the "data" you are interested in)
 masked or attenuated by a secondary map (a "confidence" or "weight"

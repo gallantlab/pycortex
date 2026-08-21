@@ -846,9 +846,14 @@ var Shaderlib = (function() {
             //     "vec4 vColor = texture2D(colormap, vValue);",
             // "#endif",
 
+                // Data layer scaled by the opacity slider. vColor is a
+                // varying (read-only here), so scale into a local. Scaling
+                // all four channels keeps the premultiplied-alpha convention
+                // used by surface_pixel, so opacity 0 shows curvature only.
+                "vec4 dColor = vColor * dataAlpha;",
 
                 "gl_FragColor = cColor;",
-                "gl_FragColor = vColor + (1.-vColor.a)*gl_FragColor;",
+                "gl_FragColor = dColor + (1.-dColor.a)*gl_FragColor;",
                 //"gl_FragColor = vec4(1., 0., 0., 1.);",
                 // "gl_FragColor = hColor + (1.-hColor.a)*gl_FragColor;",
             "#ifdef ROI_RENDER",
