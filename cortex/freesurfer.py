@@ -2,6 +2,7 @@
 """
 
 import copy
+import functools
 import os
 import shlex
 import shutil
@@ -9,15 +10,18 @@ import struct
 import subprocess as sp
 import tempfile
 import warnings
+from collections.abc import Mapping
 from tempfile import NamedTemporaryFile
+from typing import Optional, cast
 
 import nibabel
 import numpy as np
+import numpy.typing as npt
 from nibabel import gifti
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
 
-from . import anat, database
+from . import anat, appdirs, database
 
 
 def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
@@ -1159,9 +1163,84 @@ def stretch_mwall(pts, polys, mwall):
     return SpringLayout(pts, polys, inflated, pins=mwall)
 
 
+def _n_vertices_ico(icoorder: int) -> int:
+    return 4 ** icoorder * 10 + 2
+
+
+# Precomputed upsampling neighbor arrays bundled with pycortex (see
+# ``_get_upsample_neighbors``). ``NpzFile`` keyed by ``"{hemi}_ico{order}"``.
+_UPSAMPLE_NEIGHBORS_FILE = os.path.join(
+    os.path.dirname(__file__), "data", "upsample_fsaverage_neighbors.npz")
+
+
+@functools.lru_cache(maxsize=1)
+def _load_upsample_neighbors_bundle() -> Mapping[str, npt.NDArray]:
+    """Load (once) the neighbor arrays bundled with pycortex, or {} if absent."""
+    if os.path.exists(_UPSAMPLE_NEIGHBORS_FILE):
+        return np.load(_UPSAMPLE_NEIGHBORS_FILE)
+    return {}
+
+
+def _get_upsample_neighbors(
+        hemi: str, ico_order: int, freesurfer_subjects_dir: Optional[str] = None
+) -> npt.NDArray[np.integer]:
+    """Nearest low-res neighbor index for each extra fsaverage vertex.
+
+    Maps every full-``fsaverage`` vertex beyond the first ``n_ico`` (i.e. the
+    ones absent from ``fsaverage{ico_order}``) to its nearest ``fsaverage``
+    -sphere neighbor among those first ``n_ico`` vertices. This index array is a
+    fixed property of the standard fsaverage tessellation -- it depends only on
+    ``(hemi, ico_order)``, never on the data -- so it is precomputed.
+
+    Resolution order:
+
+    1. the arrays bundled with pycortex (covers the common fsaverage5/6 case, so
+       no FreeSurfer install or ``$SUBJECTS_DIR`` is required);
+    2. a previously cached array in the pycortex user cache dir;
+    3. otherwise it is computed from the fsaverage ``?h.sphere.reg`` (which needs
+       ``freesurfer_subjects_dir``/``$SUBJECTS_DIR``) and cached for next time.
+    """
+    key = f"{hemi}_ico{ico_order}"
+
+    # 1. Bundled with the package.
+    bundle = _load_upsample_neighbors_bundle()
+    if key in bundle:
+        return np.asarray(bundle[key])
+
+    # 2. User cache.
+    cache_dir = os.path.join(appdirs.user_cache_dir("pycortex"),
+                             "upsample_fsaverage")
+    cache_path = os.path.join(cache_dir, key + ".npy")
+    if os.path.exists(cache_path):
+        return np.load(cache_path)
+
+    # 3. Compute from the fsaverage sphere and cache.
+    if freesurfer_subjects_dir is None:
+        freesurfer_subjects_dir = os.environ.get("SUBJECTS_DIR", None)
+    if freesurfer_subjects_dir is None:
+        raise ValueError(
+            f"Upsampling neighbors for fsaverage{ico_order} are not bundled "
+            "with pycortex and have not been cached yet. Set $SUBJECTS_DIR (or "
+            "pass freesurfer_subjects_dir) so they can be computed from the "
+            "fsaverage ?h.sphere.reg.")
+    n_ico = _n_vertices_ico(ico_order)
+    pts, _ = nibabel.freesurfer.read_geometry(
+        os.path.join(freesurfer_subjects_dir, "fsaverage", "surf",
+                     f"{hemi}.sphere.reg"))
+    _, neighbors = KDTree(pts[:n_ico]).query(pts[n_ico:], k=1)
+    neighbors = cast(npt.NDArray[np.integer], neighbors)
+    dtype: type[np.integer] = np.uint16 if neighbors.max() < 65536 else np.int64
+    neighbors = neighbors.astype(dtype)
+    os.makedirs(cache_dir, exist_ok=True)
+    np.save(cache_path, neighbors)
+    return neighbors
+
+
 def upsample_to_fsaverage(
-        data, data_space="fsaverage6", freesurfer_subjects_dir=None
-):
+        data: npt.NDArray,
+        data_space: str = "fsaverage6",
+        freesurfer_subjects_dir: Optional[str] = None,
+) -> npt.NDArray:
     """Project data from fsaverage6 (or other fsaverage surface) to fsaverage to
     visualize it in pycortex.
 
@@ -1174,8 +1253,10 @@ def upsample_to_fsaverage(
     data_space : str
         One of fsaverage[1-6], corresponding to the source template space of `data`.
     freesurfer_subjects_dir : str or None
-        Path to Freesurfer subjects directory. If None, defaults to the value of the
-        environment variable $SUBJECTS_DIR.
+        Path to Freesurfer subjects directory. Only needed for source spaces
+        whose neighbor arrays are neither bundled with pycortex (fsaverage5 and
+        fsaverage6 are) nor already cached; in that case it defaults to the
+        ``$SUBJECTS_DIR`` environment variable.
 
     Returns
     -------
@@ -1185,19 +1266,19 @@ def upsample_to_fsaverage(
     Notes
     -----
     Data in the lower resolution fsaverage template is upsampled to the full resolution
-    fsaverage template by nearest-neighbor interpolation. To project the data from a 
-    lower resolution version of fsaverage, this code exploits the structure of fsaverage 
-    surfaces. (That is, each hemisphere in fsaverage6 corresponds to the first 
-    40,962 vertices of fsaverage; fsaverage5 corresponds to the first 10,242 vertices of 
+    fsaverage template by nearest-neighbor interpolation. To project the data from a
+    lower resolution version of fsaverage, this code exploits the structure of fsaverage
+    surfaces. (That is, each hemisphere in fsaverage6 corresponds to the first
+    40,962 vertices of fsaverage; fsaverage5 corresponds to the first 10,242 vertices of
     fsaverage, etc.)
+
+    The per-vertex nearest-neighbor mapping is a fixed property of the fsaverage
+    tessellation, so it is precomputed (see :func:`_get_upsample_neighbors`).
+    For the common fsaverage5/fsaverage6 sources the arrays ship with pycortex,
+    so neither FreeSurfer nor ``$SUBJECTS_DIR`` is required.
     """
-
-
-    def get_n_vertices_ico(icoorder):
-        return 4 ** icoorder * 10 + 2
-
     ico_order = int(data_space[-1])
-    n_ico_vertices = get_n_vertices_ico(ico_order)
+    n_ico_vertices = _n_vertices_ico(ico_order)
     ndim = data.ndim
     data = np.atleast_2d(data)
     _, n_vertices = data.shape
@@ -1207,28 +1288,13 @@ def upsample_to_fsaverage(
             f"are expected for both hemispheres in {data_space}"
         )
 
-    if freesurfer_subjects_dir is None:
-        freesurfer_subjects_dir = os.environ.get("SUBJECTS_DIR", None)
-    if freesurfer_subjects_dir is None:
-        raise ValueError(
-            "freesurfer_subjects_dir must be specified or $SUBJECTS_DIR must be set"
-        )
-    
     data_hemi = np.split(data, 2, axis=-1)
     hemis = ["lh", "rh"]
     projected_data = []
-    for i, (hemi, dt) in enumerate(zip(hemis, data_hemi)):
-        # Load fsaverage sphere for this hemisphere
-        pts, faces = nibabel.freesurfer.read_geometry(
-            os.path.join(
-                freesurfer_subjects_dir, "fsaverage", "surf", f"{hemi}.sphere.reg"
-            )
-        )
-        # build kdtree using only vertices in reduced fsaverage surface
-        kdtree = KDTree(pts[:n_ico_vertices])
-        # figure out neighbors in reduced version for all other vertices in fsaverage
-        _, neighbors = kdtree.query(pts[n_ico_vertices:], k=1)
-        # now simply fill remaining vertices with original values
+    for hemi, dt in zip(hemis, data_hemi):
+        neighbors = _get_upsample_neighbors(
+            hemi, ico_order, freesurfer_subjects_dir)
+        # Fill the extra fsaverage vertices from their nearest low-res neighbor.
         projected_data.append(
             np.concatenate([dt, dt[:, neighbors]], axis=-1)
         )
