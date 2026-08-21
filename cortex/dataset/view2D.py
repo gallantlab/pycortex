@@ -209,13 +209,19 @@ class Volume2D(Dataview2D):
         Colormap (or colormap name) to use. If not given defaults to the 
         `default_cmap2d` in your pycortex options.cfg file.
     vmin : float, optional
-        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT
+        Minimum value in colormap for dim1. If not given, the ``vmin`` of dim1
+        is used (its own ``vmin`` for a Volume/Vertex object, the 1st percentile
+        of the data for an array).
     vmax : float, optional
-        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT
+        Maximum value in colormap for dim1. If not given, the ``vmax`` of dim1
+        is used (its own ``vmax`` for a Volume/Vertex object, the 99th
+        percentile of the data for an array).
     vmin2 : float, optional
-        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT
+        Minimum value in colormap for dim2. If not given, the ``vmin`` of dim2
+        is used (same rule as ``vmin``).
     vmax2 : float, optional
-        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
+        Maximum value in colormap for dim2. If not given, the ``vmax`` of dim2
+        is used (same rule as ``vmax``).
     alpha : ndarray or Volume/Vertex, optional
         Per-voxel (per-vertex) opacity multiplied into the colormap alpha.
         Arrays are taken in [0, 1]; Volume/Vertex objects are normalized by
@@ -321,13 +327,19 @@ class Vertex2D(Dataview2D):
         Colormap (or colormap name) to use. If not given defaults to the 
         `default_cmap2d` in your pycortex options.cfg file.
     vmin : float, optional
-        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT
+        Minimum value in colormap for dim1. If not given, the ``vmin`` of dim1
+        is used (its own ``vmin`` for a Volume/Vertex object, the 1st percentile
+        of the data for an array).
     vmax : float, optional
-        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT
+        Maximum value in colormap for dim1. If not given, the ``vmax`` of dim1
+        is used (its own ``vmax`` for a Volume/Vertex object, the 99th
+        percentile of the data for an array).
     vmin2 : float, optional
-        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT
+        Minimum value in colormap for dim2. If not given, the ``vmin`` of dim2
+        is used (same rule as ``vmin``).
     vmax2 : float, optional
-        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
+        Maximum value in colormap for dim2. If not given, the ``vmax`` of dim2
+        is used (same rule as ``vmax``).
     alpha : ndarray or Volume/Vertex, optional
         Per-voxel (per-vertex) opacity multiplied into the colormap alpha.
         Arrays are taken in [0, 1]; Volume/Vertex objects are normalized by
