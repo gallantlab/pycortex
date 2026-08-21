@@ -3,9 +3,15 @@ from __future__ import annotations
 import glob
 import json
 import os
-from typing import Any, Optional, Union, cast, overload, Literal
+import sys
+from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
 
 import h5py
+from matplotlib.colors import Colormap
 import numpy as np
 import numpy.typing as npt
 
@@ -24,8 +30,11 @@ except ImportError:
     from matplotlib.cm import register_cmap
 
 
+JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
+
+
 @overload
-def normalize(data: tuple[Any, Any, Any]) -> Volume: ...
+def normalize(data: tuple[Any, Any, Any]) -> Union[Volume, VolumeRGB]: ...
 
 
 @overload
@@ -36,7 +45,7 @@ def normalize(data: tuple[Any, Any]) -> Vertex: ...
 def normalize(data: Dataview) -> Dataview: ...
 
 
-def normalize(data: Union[Dataview, tuple]) -> Union[Volume, Vertex, Dataview]:
+def normalize(data: Union[Dataview, tuple]) -> Union[Volume, VolumeRGB, Vertex, Dataview]:
     if isinstance(data, tuple):
         if len(data) == 3:
             if data[0].dtype == np.uint8:
@@ -154,7 +163,28 @@ def _from_hdf_view(
         raise ValueError("Invalid Dataview specification")
 
 
+class ColormapDict(TypedDict):
+    cmap: Colormap
+    vmin: Optional[float]
+    vmax: Optional[float]
+
+
+class DataviewJSON(TypedDict):
+    state: Any
+    attrs: dict[str, Any]
+    desc: str
+    cmap: Optional[list[str]]
+    vmin: Optional[list[float]]
+    vmax: Optional[list[float]]
+    name: NotRequired[str]
+    raw: NotRequired[bool]
+    mosaic: NotRequired[tuple[int, int]]
+    subject: NotRequired[str] # is this actually from BrainData?
+
+
 class Dataview:
+    _nan_mask: Optional[npt.NDArray[np.bool_]]
+
     def __init__(
         self,
         cmap: Optional[str] = None,
@@ -196,12 +226,12 @@ class Dataview:
     def priority(self, value):
         self.attrs["priority"] = value
 
-    def to_json(self, simple=False):
+    def to_json(self, simple: bool=False) -> DataviewJSON:
         if simple:
             return dict()
 
         desc = self.description
-        if hasattr(desc, "decode"):
+        if isinstance(desc, bytes):
             desc = desc.decode()
         sdict = dict(state=self.state, attrs=self.attrs.copy(), desc=desc)
         try:
@@ -287,7 +317,7 @@ class Dataview:
         view[7] = json.dumps(xfmname)
         return view
 
-    def get_cmapdict(self):
+    def get_cmapdict(self) -> ColormapDict:
         """Returns a dictionary with cmap information."""
 
         from matplotlib import colors
@@ -312,11 +342,10 @@ class Dataview:
             # Register colormap to matplotlib to avoid loading it again
             register_cmap(cmap)
 
-        # TODO: create namedtuple
-        return dict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
+        return ColormapDict(cmap=cmap, vmin=self.vmin, vmax=self.vmax)
 
     @property
-    def raw(self):
+    def raw(self) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.bool_]]:
         from matplotlib import cm, colors
 
         cmap = self.get_cmapdict()["cmap"]
@@ -324,7 +353,7 @@ class Dataview:
         norm = colors.Normalize(self.vmin, self.vmax)
         cmapper = cm.ScalarMappable(norm=norm, cmap=cmap)
         # Capture NaN mask before uint8 conversion (NaN info is lost after)
-        nan_mask = np.isnan(self.data)
+        nan_mask: npt.NDArray[np.bool_] = np.isnan(self.data)
         # TODO: self.data relies on BrainData. Would need common inheritance for this to work.
         color_data = cmapper.to_rgba(self.data.flatten()).reshape(
             self.data.shape + (4,)
