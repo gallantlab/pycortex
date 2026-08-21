@@ -227,7 +227,6 @@ utils
     get_roi_masks
     get_roi_verts
     get_vox_dist
-    make_movie
     vertex_to_voxel
  
 
