@@ -697,6 +697,8 @@ var Shaderlib = (function() {
                 header += "#define ROI_RENDER\n";
             if (opts.extratex)
                 header += "#define EXTRATEX\n";
+            if (opts.hasflat)
+                header += "#define HASFLAT\n"
             if (opts.equivolume)
                 header += "#define EQUIVOLUME\n"
 
@@ -708,6 +710,8 @@ var Shaderlib = (function() {
             "uniform float framemix;",
             // "uniform float thickmix;",
             utils.thickmixer,
+            "uniform int bumpyflat;",
+            "float f_bumpyflat = float(bumpyflat);",
 
             "varying vec4 vColor;",
     "#ifdef RGBCOLORS",
@@ -724,6 +728,11 @@ var Shaderlib = (function() {
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
+
+            "#ifdef HASFLAT",
+                "attribute vec3 flatBumpNorms;",
+                "attribute float flatheight;",
+            "#endif",
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -778,10 +787,19 @@ var Shaderlib = (function() {
                 "mixfunc(mpos, mnorm, pos, norm);",
 
             "#ifdef CORTSHEET",
-                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
+                "#ifdef HASFLAT",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                "#else",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
+                "#endif",
             "#endif",
 
-                "vNormal = normalMatrix * norm;",
+                "#ifdef HASFLAT",
+                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                "#else",
+                    "vNormal = normalMatrix * norm;",
+                "#endif",
+
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
             "}"
@@ -873,6 +891,11 @@ var Shaderlib = (function() {
                 wmarea: { type: 'f', value:null },
                 pialarea: { type: 'f', value:null },
             };
+
+            if (opts.hasflat) {
+                attributes.flatBumpNorms = { type: 'v3', value:null };
+                attributes.flatheight = { type: 'f', value:null };
+            }
 
             for (var i = 0; i < 4; i++)
                 attributes['data'+i] = {type:opts.rgb ? 'v4':'f', value:null};
