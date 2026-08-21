@@ -524,9 +524,23 @@ class VertexData(BrainData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
-    
-    # TODO: simple
+
     def to_json(self, simple: bool = False) -> dict[str, list[str]]:
+        """Serialize this vertex data to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary (hemisphere split point
+            and frame count) rather than the full webgl payload. Default
+            False.
+
+        Returns
+        -------
+        dict
+            Serialized data.
+        """
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super().to_json(simple=simple))
