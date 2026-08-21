@@ -614,6 +614,20 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
     viewer session and checks that the red pixels disappear at 0 and come
     back at 1.
     """
+    image_size = (512, 384)
+    n_pixels = image_size[0] * image_size[1]
+    # At this lateral/inflated view the brain fills ~30% of the frame and,
+    # with a saturated colormap at full opacity, ~27% of the frame is
+    # red-dominant (measured). Require a third of that so small view or
+    # lighting changes don't cause flakiness, while staying far above what a
+    # curvature-only render produces (0%).
+    min_visible_data_fraction = 0.10
+    # At opacity 0 the data layer must be gone: allow up to 1% of the visible
+    # count for anti-aliased edges (measured: 0).
+    max_hidden_to_visible_ratio = 0.01
+    # Toggling back to opacity 1 must reproduce the original render.
+    restore_tolerance = 0.05
+
     data = np.full(nverts, 5.0)
     vtx = cortex.Vertex(data, subj, vmin=0, vmax=1, cmap="Reds")
 
@@ -626,7 +640,7 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
     def render(handle, name):
         outfile = str(tmp_path / f"{name}.png")
         time.sleep(1)
-        handle.getImage(outfile, (512, 384))
+        handle.getImage(outfile, image_size)
         _wait_for_file(outfile)
         return _count_red_pixels(outfile)
 
@@ -644,17 +658,20 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
         handle._set_view(**{"surface.{subject}.opacity": 1.0})
         n_restored = render(handle, "opacity_1_again")
 
-    assert n_full > 1000, (
-        f"Vertex data at opacity 1 should render visibly (got {n_full} "
-        "red-dominant pixels)"
+    assert n_full >= min_visible_data_fraction * n_pixels, (
+        f"Vertex data at opacity 1 should cover at least "
+        f"{min_visible_data_fraction:.0%} of the frame; got {n_full} of "
+        f"{n_pixels} pixels ({n_full / n_pixels:.1%})"
     )
-    assert n_zero < 50, (
-        f"Vertex data at opacity 0 still renders {n_zero} red-dominant pixels; "
+    assert n_zero <= max_hidden_to_visible_ratio * n_full, (
+        f"Vertex data at opacity 0 still renders {n_zero} red-dominant pixels "
+        f"({n_zero / n_full:.1%} of the {n_full} visible at opacity 1); "
         "the surface_vertex shader is ignoring dataAlpha (#684)."
     )
-    assert n_restored > 1000, (
-        f"Vertex data should be visible again at opacity 1 (got {n_restored} "
-        "red-dominant pixels)"
+    assert abs(n_restored - n_full) <= restore_tolerance * n_full, (
+        f"Restoring opacity 1 should reproduce the original render within "
+        f"{restore_tolerance:.0%}; got {n_restored} vs {n_full} red-dominant "
+        "pixels"
     )
 
 
