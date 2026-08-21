@@ -2,6 +2,17 @@ var jsplot = (function (module) {
 
     var retina_scale = window.devicePixelRatio || 1;
 
+    //Fractional view options (top-left lighting, uniform illumination) used to
+    //be plain booleans, so accept both spellings.
+    module.parseFraction = function(val) {
+        if (val === undefined || val == 'false')
+            return 0;
+        if (val == 'true')
+            return 1;
+        var parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : Math.min(Math.max(parsed, 0), 1);
+    };
+
     module.Axes3D = function(figure) {
         if (this.canvas === undefined) {
             module.Axes.call(this, figure);
@@ -20,18 +31,43 @@ var jsplot = (function (module) {
         this.controls.addEventListener("pick", this.pick.bind(this));
         this.controls.addEventListener("change", this.schedule.bind(this));
         
-        //These lights approximately match what's done by vtk
+        // Lights are children of the camera, so their positions are in camera
+        // space: +x is right, +y is up, +z is towards the viewer. Directional
+        // lights only care about the direction, which three.js normalizes.
+        // Both lighting solutions live in the scene at once and are crossfaded
+        // by intensity: the number of lights is baked into the compiled
+        // shaders, so they can never be added or removed.
         this.lights = [
-            new THREE.DirectionalLight(0xffffff, .47), 
-            new THREE.DirectionalLight(0xffffff, .29), 
-            new THREE.DirectionalLight(0xffffff, .24)
+            //The default: a headlight straight down the view axis. This used to
+            //be written as three vtk-like lights at (1,-1,-1), (-1,-.25,.75)
+            //and (1,-.25,.75) with intensities .47/.29/.24, but because their
+            //directions were swamped by the camera's world position (see the
+            //note about light targets below) all three collapsed onto the view
+            //axis: a single intensity-1 headlight is what pycortex has always
+            //actually rendered, so say so.
+            new THREE.DirectionalLight(0xffffff, 1.),
+            //Light from the upper left, following the top-left lighting
+            //convention used for shaded-relief topographic maps: azimuth 315
+            //degrees, altitude 45 degrees above the view axis. This makes sulci
+            //read as valleys and gyri as ridges, which is the point of the
+            //bumpy flatmap. An off-axis light leaves part of the surface in
+            //shadow, so it is dimmer overall than the headlight.
+            new THREE.DirectionalLight(0xffffff, 0.)
         ];
-        this.lights[0].position.set( 1, -1, -1 ).normalize();
-        this.lights[1].position.set( -1, -.25, .75 ).normalize();
-        this.lights[2].position.set( 1, -.25, .75 ).normalize();
-        this.camera.add( this.lights[0] );
-        this.camera.add( this.lights[1] );
-        this.camera.add( this.lights[2] );
+        this.lights[0].position.set( 0, 0, 1 );
+        this.lights[1].position.set( -1, 1, Math.SQRT2 ).normalize();
+        for (var i = 0; i < this.lights.length; i++) {
+            //three.js takes a directional light's direction to be the vector
+            //from its target to its world position. The lights ride along with
+            //the camera, so aim them at the camera itself; otherwise the
+            //direction is dominated by the camera's own world position, which
+            //leaves every light pointing straight down the view axis and makes
+            //the lighting drift as the camera zooms.
+            this.lights[i].target = this.camera;
+            this.camera.add( this.lights[i] );
+        }
+        this.setTopLeftLighting(typeof viewopts === 'undefined' ? 0 :
+                                module.parseFraction(viewopts.topleft_lighting));
 
         this.views = [];
 
@@ -91,6 +127,20 @@ var jsplot = (function (module) {
 
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.schedule();
+    };
+    //Crossfades between the headlight (0) and the top-left light (1). The two
+    //intensities always sum to 1, though the image still darkens somewhat
+    //towards 1 because an off-axis light leaves part of the surface in shadow.
+    module.Axes3D.prototype.setTopLeftLighting = function(val) {
+        if (val === undefined)
+            return this._topleft_lighting;
+
+        this._topleft_lighting = val;
+        this.lights[0].intensity = 1 - val;
+        this.lights[1].intensity = val;
+        //guard against the initial call, which happens before _schedule exists
+        if (this._schedule !== undefined)
+            this.schedule();
     };
     module.Axes3D.prototype.schedule = function() {
         if (!this._scheduled) {

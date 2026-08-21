@@ -582,7 +582,20 @@ def show(
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
                                 'surface.{subject}.curvature.smoothness']
-            return _camera_props + _surface_props + _curvature_props
+            _lighting_props = ['surface.{subject}.lighting.topleft_lighting',
+                               'surface.{subject}.lighting.uniform_illumination',
+                               'surface.{subject}.lighting.specularity']
+            return _camera_props + _surface_props + _curvature_props + _lighting_props
+
+        # Lighting controls used to sit directly in the surface menu; they now
+        # live in its lighting sub-folder. Keep the old names working, both for
+        # user code and for views saved to the database before the move.
+        _legacy_props = {
+            'surface.{subject}.specularity':
+                'surface.{subject}.lighting.specularity',
+            'surface.{subject}.uniform_illumination':
+                'surface.{subject}.lighting.uniform_illumination',
+        }
 
         def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
@@ -598,6 +611,9 @@ def show(
             # Better to only self.view_props once; it interacts with javascript, 
             # don't want to do that too often, it leads to glitches.
             vw_props = copy.copy(self.view_props)
+            for old_key, new_key in self._legacy_props.items():
+                if old_key in kwargs and new_key not in kwargs:
+                    kwargs[new_key] = kwargs.pop(old_key)
             for subject in subject_list:
                 if 'surface.{subject}.unfold' in kwargs:
                     unfold = kwargs.pop('surface.{subject}.unfold')
