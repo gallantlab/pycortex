@@ -587,3 +587,132 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     color: #888;
     opacity: 0.5;
 }
+/*************************************************
+ * Depth profile (laminar) panel and line overlay
+ *************************************************/
+#laminar_overlay {
+    position:absolute;
+    top:0;
+    left:0;
+    z-index:9;
+    pointer-events:none;
+    display:none;
+    overflow:visible;
+}
+/* The line itself is painted onto the cortex by the surface shader; this is
+   just a fat invisible stroke over it, so it can be grabbed and dragged. */
+#laminar_overlay .laminar-hit {
+    stroke:transparent;
+    stroke-width:16;
+    pointer-events:stroke;
+    cursor:move;
+}
+#laminar_overlay .laminar-handle {
+    pointer-events:all;
+    cursor:crosshair;
+}
+#laminar_overlay .laminar-handle circle {
+    fill:rgba(255,204,51,.15);
+    stroke:rgba(255,255,255,.85);
+    stroke-width:1.5;
+}
+#laminar_overlay .laminar-handle:hover circle,
+#laminar_overlay.dragging .laminar-handle circle {
+    fill:rgba(255,204,51,.75);
+}
+#laminar_overlay .laminar-handle text {
+    fill:white;
+    font-size:11pt;
+    font-weight:bold;
+    text-shadow:0px 1px 3px black;
+    pointer-events:none;
+}
+
+#laminar_panel {
+    position:absolute;
+    z-index:110;
+    right:20px;
+    bottom:90px;
+    width:520px;
+    max-width:90vw;
+    padding:8px 10px 6px 10px;
+    border-radius:8px;
+    background:rgba(30,30,30,.8);
+    color:white;
+    display:none;
+    font-size:10pt;
+}
+#laminar_header {
+    cursor:move;
+    padding:0px 2px 6px 2px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    font-size:9pt;
+    color:#ccc;
+}
+#laminar_buttons span {
+    cursor:pointer;
+    padding:0px 4px;
+    color:#ccc;
+}
+#laminar_buttons span:hover {
+    color:white;
+}
+#laminar_plot {
+    position:relative;
+    margin-left:28px;
+    height:160px;
+}
+#laminar_canvas {
+    display:block;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,.45);
+    border-radius:3px;
+}
+.laminar-ylabel {
+    position:absolute;
+    left:-30px;
+    width:26px;
+    text-align:right;
+    font-size:8pt;
+    color:#bbb;
+    line-height:1;
+}
+#laminar_pial { top:1px; }
+#laminar_wm { bottom:1px; }
+#laminar_message {
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:0px 20px;
+    color:#ddd;
+    background:rgba(0,0,0,.45);
+    border-radius:3px;
+}
+#laminar_xaxis {
+    display:flex;
+    justify-content:space-between;
+    margin-left:28px;
+    padding-top:2px;
+    font-size:8pt;
+    color:#bbb;
+}
+#laminar_readout {
+    padding:2px 0px 0px 28px;
+    font-size:8pt;
+    color:#999;
+    font-family:monospace;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}

@@ -25,6 +25,7 @@
 <script type='text/javascript' src='resources/js/datamodel.js'></script>
 <script type='text/javascript' src='resources/js/dataset.js'></script>
 <script type='text/javascript' src='resources/js/sliceplane.js'></script>
+<script type='text/javascript' src='resources/js/laminar.js'></script>
 <script type='text/javascript' src='resources/js/svgoverlay.js'></script>
 <script type='text/javascript' src='resources/js/shaderlib.js'></script>
 <script type='text/javascript' src="resources/js/movement.js"></script>
@@ -107,6 +108,24 @@
 		</div>
 	</div>
 	<canvas id='brain'></canvas>
+	<svg id='laminar_overlay' xmlns='http://www.w3.org/2000/svg'></svg>
+	<div id='laminar_panel'>
+		<div id='laminar_header'>
+			<span id='laminar_title'>depth profile</span>
+			<span id='laminar_buttons'>
+				<span id='laminar_flip' title='Swap the ends of the line'>&#8646;</span>
+				<span id='laminar_close' title='Hide the depth profile'>&times;</span>
+			</span>
+		</div>
+		<div id='laminar_plot'>
+			<div class='laminar-ylabel' id='laminar_pial'>pia</div>
+			<div class='laminar-ylabel' id='laminar_wm'>wm</div>
+			<canvas id='laminar_canvas'></canvas>
+			<div id='laminar_message'></div>
+		</div>
+		<div id='laminar_xaxis'><span>A</span><span>B</span></div>
+		<div id='laminar_readout'></div>
+	</div>
 	<div id="colormaps">
 	{% for name, img in colormaps %}
 		<div class='cmap' id='{{name}}' {% if name != default_cmap %}style="display:none;"{%end%} ><img src='{{img}}'/></div>
