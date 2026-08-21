@@ -113,7 +113,7 @@ A NaN anywhere at a voxel or vertex means that its value is undefined, and pycor
 
 Where there is no NaN, the opacity (2D colormap alpha, ``alpha=`` keyword, RGB alpha channel) is honored as given. In the webgl viewer, NaN masks and opacity belong to each dataview and are not carried over when switching between datasets.
 
-When several voxels contribute to one pixel (quickflat averages across cortical thickness; the webgl viewer when ``layers`` > 1), NaN voxels are left out of the average by default and the pixel is transparent only if every contributing voxel is NaN. This is ``nanmean=True`` in :func:`cortex.quickflat.make_figure` and the ``nanmean`` toggle in the webgl surface controls; switch either off to make any NaN contribution transparent.
+When several voxels contribute to one pixel (quickflat averages across cortical thickness; the webgl viewer when ``layers`` > 1), NaN voxels are left out of the average by default and the pixel is transparent only if every contributing voxel is NaN. This is ``nanmean=True`` in :func:`cortex.quickflat.make_figure` and the ``nanmean`` toggle in the webgl surface controls; switch either off to make any NaN contribution transparent. For :class:`VolumeRGB` / :class:`VertexRGB` the NaN has already become alpha 0 when the data is converted to RGBA, so there fully transparent voxels count as missing: ``nanmean`` skips them, and switching it off gives the alpha-weighted average instead.
 
 Dataset
 -------

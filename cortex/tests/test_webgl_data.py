@@ -220,3 +220,20 @@ def test_package_deduplicates_identical_brains():
     pkg.reorder({subj: ctm})
     for name in names:
         assert pkg.images[name][0][1:6] == b"NUMPY"
+
+
+def test_package_rejects_same_bytes_different_metadata():
+    """Same data bytes give the same content-hash name; if the metadata
+    differs the package cannot represent both and must say so."""
+    import numpy as np
+    import pytest
+    import cortex
+    from cortex.webgl.data import Package
+
+    nverts = cortex.db.get_surf("S1", "fiducial", merge=True)[0].shape[0]
+    x = np.zeros(nverts)
+    a = cortex.Vertex(x, "S1")
+    b = cortex.Vertex(x, "S1")
+    b.subject = "S2"  # never reaches the database: the check comes first
+    with pytest.raises(ValueError, match="identical bytes"):
+        Package(cortex.Dataset(a=a, b=b))

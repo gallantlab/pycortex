@@ -280,16 +280,15 @@ def test_color_voxels_does_not_mutate_caller_alpha():
 def test_make_flatmap_image_rgb_averages_premultiplied():
     """Transparent (alpha 0 / NaN) voxels must not darken neighbouring pixels.
 
-    quickflat averages RGBA over the voxels that fall into a pixel (cortical
-    thickness); the WebGL viewer does this in premultiplied space. Averaging
-    straight RGBA gave dark halos around transparent regions in quickflat only.
-    A voxel checkerboard of alpha 0/1 makes almost every pixel a mix.
+    In alpha-weighted mode (``nanmean=False`` for RGB data) quickflat averages
+    RGBA over the voxels of a pixel; the WebGL viewer does this in
+    premultiplied space. Averaging straight RGBA gave dark halos around
+    transparent regions in quickflat only. Opaque voxels are pure red, the
+    others are NaN in the red channel (transparent, and black after the
+    uint8 conversion), so straight averaging would give R ~ 128.
     """
     zz, yy, xx = _vol_grid()
     checker = ((xx + yy + zz) % 2).astype(bool)
-    # Opaque voxels are pure red; the others are NaN in the red channel (so
-    # they become transparent, and black in the uint8 conversion). Straight
-    # averaging mixes that black into neighbouring pixels (R ~ 128).
     r = np.where(checker, 1.0, np.nan).astype(np.float32)
     red = cortex.VolumeRGB(
         cortex.Volume(r, subj, xfmname, vmin=0, vmax=1),
@@ -298,9 +297,9 @@ def test_make_flatmap_image_rgb_averages_premultiplied():
         subj,
         xfmname,
     )
-    img, _ = cortex.quickflat.utils.make_flatmap_image(red)
+    img, _ = cortex.quickflat.utils.make_flatmap_image(red, nanmean=False)
     a = img[..., 3]
-    partial = (a > 0) & (a < 255)  # pixels straddling the alpha edge
+    partial = (a > 0) & (a < 255)  # pixels mixing transparent and opaque voxels
     assert partial.sum() > 100
     # Color must stay pure bright red regardless of partial coverage
     assert img[partial][:, 0].min() >= 250
@@ -346,3 +345,90 @@ def test_quickflat_nanmean_is_default():
         cortex.quickflat.composite.add_data,
     ):
         assert inspect.signature(func).parameters["nanmean"].default is True, func
+
+
+def test_rgb_uint8_alpha_nan_channel_is_transparent():
+    """A uint8 alpha map bypasses normalization and its inferred vmin is a
+    percentile of the bytes (255 for a constant map); NaN must still give 0."""
+    rng = np.random.default_rng(13)
+    r = rng.uniform(0, 1, volshape)
+    r[:, :35] = np.nan
+    alpha = cortex.Volume(np.full(volshape, 255, np.uint8), subj, xfmname)
+    rgb = cortex.VolumeRGB(
+        cortex.Volume(r, subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(rng.uniform(0, 1, volshape), subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(rng.uniform(0, 1, volshape), subj, xfmname, vmin=0, vmax=1),
+        subj, xfmname, alpha=alpha,
+    )
+    a = rgb.volume[0][..., 3]
+    assert a[np.isnan(r)].max() == 0
+    assert a[~np.isnan(r)].min() == 255
+
+
+def _alpha_stats(view, nanmean):
+    img, _ = cortex.quickflat.utils.make_flatmap_image(view, nanmean=nanmean)
+    a = img[..., 3]
+    return a
+
+
+@pytest.mark.parametrize("kind", ["Volume2D", "VolumeRGB"])
+def test_quickflat_nanmean_applies_to_rgba_dataviews(kind):
+    """quickflat's nanmean must also act on dataviews that reach the RGBA
+    (uint8) branch. 2D views carry an exact NaN mask (nanmean=False hides
+    any pixel touched by a NaN voxel); for RGB views NaN has become alpha 0,
+    so nanmean=False is the alpha-weighted average, like WebGL RGB textures.
+    """
+    zz, yy, xx = _vol_grid()
+    scattered = (xx + yy + zz) % 3 == 0  # a third of the voxels, everywhere
+    ones = np.ones(volshape)
+    d = ones.copy()
+    d[scattered] = np.nan
+    kw2d = dict(cmap="RdBu_covar", vmin=-1, vmax=1, vmin2=0, vmax2=1)
+    if kind == "Volume2D":
+        clean = cortex.Volume2D(ones, ones, subj, xfmname, **kw2d)
+        view = cortex.Volume2D(d, ones, subj, xfmname, **kw2d)
+    else:
+        zeros = np.zeros(volshape)
+        clean = cortex.VolumeRGB(
+            cortex.Volume(ones, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1), subj, xfmname)
+        view = cortex.VolumeRGB(
+            cortex.Volume(d, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1), subj, xfmname)
+
+    a_clean = _alpha_stats(clean, True)
+    brain = a_clean == 255  # pixels fully covered by (valid) cortex
+    assert brain.sum() > 10000
+    a_mean = _alpha_stats(view, True)
+    a_strict = _alpha_stats(view, False)
+    # nanmean: the NaN voxels are ignored -> (almost) every brain pixel is
+    # still fully opaque, exactly like the NaN-free data
+    assert (a_mean[brain] == 255).mean() > 0.95
+    if kind == "Volume2D":
+        # any NaN voxel hides the pixel -> most pixels disappear, no middle ground
+        assert (a_strict[brain] == 0).mean() > 0.5
+        assert not ((a_strict[brain] > 0) & (a_strict[brain] < 255)).any()
+    else:
+        # alpha-weighted average: roughly a third of the opacity is lost
+        assert 0.4 < a_strict[brain].mean() / 255. < 0.9
+        assert ((a_strict[brain] > 0) & (a_strict[brain] < 255)).mean() > 0.5
+
+
+def test_quickflat_nanmean_native_rgb_without_nan_is_unchanged():
+    """For RGB data with intentional alpha (no NaN), nanmean=False keeps the
+    alpha-weighted average; nanmean=True skips fully transparent voxels."""
+    zz, yy, xx = _vol_grid()
+    checker = ((xx + yy + zz) % 2).astype(np.float32)
+    red = cortex.VolumeRGB(
+        cortex.Volume(np.ones(volshape, np.float32), subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(np.zeros(volshape, np.float32), subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(np.zeros(volshape, np.float32), subj, xfmname, vmin=0, vmax=1),
+        subj, xfmname, alpha=cortex.Volume(checker, subj, xfmname, vmin=0, vmax=1),
+    )
+    a_weighted = _alpha_stats(red, False)
+    a_mean = _alpha_stats(red, True)
+    partial = (a_weighted > 0) & (a_weighted < 255)
+    assert partial.sum() > 1000
+    assert (a_mean[partial] == 255).mean() > 0.95

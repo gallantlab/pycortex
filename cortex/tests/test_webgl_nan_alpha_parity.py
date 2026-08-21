@@ -215,3 +215,102 @@ def test_multilayer_nanmean_toggle(tmp_path):
     assert counts[(8, True)] >= 0.9 * counts[(1, True)], counts
     # toggle off: any NaN among the 8 layers hides the fragment
     assert counts[(8, False)] < 0.6 * counts[(8, True)], counts
+
+
+def test_multilayer_nanmean_toggle_rgb(tmp_path):
+    """Same as above for RGB data: NaN became alpha 0 in the texture, so with
+    ``nanmean`` fully transparent layer samples are left out of the average."""
+    zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
+    r = np.ones(volshape)
+    r[(xx + yy + zz) % 3 == 0] = np.nan
+    zeros = np.zeros(volshape)
+    vol = cortex.VolumeRGB(
+        cortex.Volume(r, subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1),
+        cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1), subj, xfmname,
+    )
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    def _red(path):
+        """Total redness: sum of R - max(G, B) over red-dominant pixels, so
+        that a partially transparent red (alpha-weighted average) scores
+        lower than an opaque one covering the same pixels."""
+        from PIL import Image
+
+        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
+        redness = rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2])
+        return int(redness[redness > 50].sum())
+
+    counts = {}
+    with cortex.export.headless_viewer(
+        vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
+    ) as handle:
+        handle._set_view(**view)
+        time.sleep(2)
+        for layers, nanmean in [(1, True), (8, True), (8, False)]:
+            handle.ui.set("surface.%s.layers" % subj, layers)
+            handle.ui.set("surface.%s.nanmean" % subj, nanmean)
+            time.sleep(2.5)
+            path = str(tmp_path / ("rgb_layers%d_nanmean%s.png" % (layers, nanmean)))
+            handle.getImage(path, (512, 384))
+            for _ in range(300):
+                if os.path.exists(path) and os.path.getsize(path) > 0:
+                    break
+                time.sleep(0.1)
+            time.sleep(0.3)
+            counts[(layers, nanmean)] = _red(path)
+        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+    assert not errors, errors
+    assert counts[(1, True)] > 5000 * 50
+    assert counts[(8, True)] >= 0.9 * counts[(1, True)], counts
+    # alpha-weighted average: the NaN layers dilute the red (about a third)
+    assert counts[(8, False)] < 0.85 * counts[(8, True)], counts
+
+
+def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path):
+    """Between two frames the vertex shader mixes frame f and f+1. A vertex
+    that is NaN in f+1 (replaced by 0 in the GPU buffer) must be masked while
+    interpolating, not fade towards a fake 0."""
+    nverts = cortex.db.get_surf(subj, "fiducial", merge=True)[0].shape[0]
+    nl = cortex.db.get_surf(subj, "fiducial")[0][0].shape[0]
+    movie = np.full((2, nverts), 5.0)
+    movie[1, :nl] = np.nan  # left hemisphere undefined in frame 1 only
+    vtx = cortex.Vertex(movie, subj, cmap="Reds", vmin=0, vmax=1)
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    def _red(path):
+        from PIL import Image
+
+        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
+        return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+
+    counts = {}
+    with cortex.export.headless_viewer(
+        vtx, viewer_params=dict(labels_visible=[], overlays_visible=[])
+    ) as handle:
+        handle._set_view(**view)
+        time.sleep(2)
+        for frame in (0.0, 0.5, 1.0):
+            handle.setFrame(frame)
+            time.sleep(2)
+            path = str(tmp_path / ("frame_%.1f.png" % frame))
+            handle.getImage(path, (512, 384))
+            for _ in range(300):
+                if os.path.exists(path) and os.path.getsize(path) > 0:
+                    break
+                time.sleep(0.1)
+            time.sleep(0.3)
+            counts[frame] = _red(path)
+        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+    assert not errors, errors
+    assert counts[1.0] < 0.8 * counts[0.0], counts  # left hemisphere hidden in frame 1
+    # while blending towards frame 1 the NaN vertices are already masked
+    assert abs(counts[0.5] - counts[1.0]) <= 0.1 * counts[1.0], counts

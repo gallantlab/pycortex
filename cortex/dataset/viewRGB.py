@@ -104,9 +104,14 @@ def _mask_alpha(alpha, mask):
     mask = np.asarray(mask, dtype=bool)
     if not mask.any():
         return alpha
-    fill = 0.0 if alpha.vmin is None else alpha.vmin
-
     data = np.asarray(alpha.data)
+    if data.dtype == np.uint8:
+        # uint8 alpha bypasses the vmin/vmax normalization later on, and its
+        # inferred vmin is a percentile of the bytes (255 for a constant map):
+        # transparent is byte 0.
+        fill = 0
+    else:
+        fill = 0.0 if alpha.vmin is None else alpha.vmin
     try:
         shape = np.broadcast_shapes(mask.shape, data.shape)
     except ValueError:

@@ -563,8 +563,8 @@ var Shaderlib = (function() {
                 "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
             "#else",
                 "vec4 values = vec4(0.);",
-                "float nvalid = 0.;", // number of layer samples averaged into values
             "#endif",
+                "float nvalid = 0.;", // number of layer samples averaged in
             "#ifdef DATAALPHA",
                 "vec2 avals = vec2(0.);",
             "#endif",
@@ -573,11 +573,26 @@ var Shaderlib = (function() {
 
             //Create samplers for texture volume sampling
             var fragMid = "";      
-            var factor = layers > 1 ? (1/layers).toFixed(6) : "1.";
             var sampling = [
         "#ifdef RGBCOLORS",
-                "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
+                // RGBA textures: NaN already became alpha 0 on the Python side,
+                // so with NANMEAN a fully transparent sample counts as missing
+                // and is left out of the (premultiplied) average.
+                "{",
+                "vec4 c0 = "+sampler+"_x(data[0], coord_x);",
+                "vec4 c1 = "+sampler+"_x(data[1], coord_x);",
+            "#ifdef NANMEAN",
+                // current frame only: for single-frame data, data[1] is an
+                // unbound sampler, which reads as opaque black (alpha 1).
+                "if (c0.a > 0.) {",
+            "#else",
+                "{",
+            "#endif",
+                    "color[0] += c0;",
+                    "color[1] += c1;",
+                    "nvalid += 1.;",
+                "}",
+                "}",
         "#else",
                 // One layer sample. With NANMEAN (default, matching quickflat's
                 // nanmean=True) a sample containing NaN in any frame/dimension
@@ -660,14 +675,17 @@ var Shaderlib = (function() {
             }
 
             var fragTail = [
-        "#ifndef RGBCOLORS",
                 "if (nvalid > 0.) {",
+        "#ifdef RGBCOLORS",
+                    "color[0] /= nvalid;",
+                    "color[1] /= nvalid;",
+        "#else",
                     "values /= nvalid;",
             "#ifdef DATAALPHA",
                     "avals /= nvalid;",
             "#endif",
-                "}",
         "#endif",
+                "}",
     "#ifdef HALO_RENDER",
                 "if (vMedial < .999) {",
                     "float dweight = gl_FragCoord.w;",

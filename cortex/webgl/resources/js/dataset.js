@@ -314,15 +314,26 @@ var dataset = (function(module) {
         // the 16 guaranteed vertex attributes, and exceeding the limit makes
         // the program fail to link silently.
         if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
-            var masks = [this.data[0].nanmasks[fframe]];
-            if (this.data.length > 1)
-                masks.push(this.data[1].nanmasks[fframe]);
+            // The shader mixes frame fframe with the next one (framemix), and
+            // NaN was replaced by 0 in the buffers, so both adjacent frames
+            // must be valid for every dim (and the alpha map).
+            var masks = [];
+            var fmix = frame - fframe;
+            var pushFrames = function(nanmasks) {
+                if (nanmasks === undefined || nanmasks.length === 0) return;
+                var f0 = fframe.mod(nanmasks.length), f1 = (fframe + 1).mod(nanmasks.length);
+                masks.push(nanmasks[f0]);
+                // the next frame only matters while actually blending into it
+                if (fmix > 0 && f1 !== f0) masks.push(nanmasks[f1]);
+            };
+            for (var d = 0; d < this.data.length; d++)
+                pushFrames(this.data[d].nanmasks);
             var a0 = null, a1 = null, amix = 0.0;
             if (alpha !== null && alpha.verts.length > 0) {
-                masks.push(alpha.nanmasks[fframe.mod(alpha.nanmasks.length)]);
+                pushFrames(alpha.nanmasks);
                 a0 = alpha.verts[fframe.mod(alpha.verts.length)];
                 a1 = alpha.verts[(fframe+1).mod(alpha.verts.length)];
-                amix = frame - fframe;
+                amix = fmix;
             }
             var combined;
             if (masks.length === 1 && a0 === null) {
