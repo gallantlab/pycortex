@@ -207,6 +207,23 @@ class Dataview:
         self.description = description
 
     def copy(self, *args, **kwargs):
+        """Create a new instance of this Dataview's class, reusing its
+        display settings (cmap, vmin, vmax, description, state, attrs).
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to the subclass constructor (e.g.
+            new `red`/`green`/`blue` data for a VolumeRGB).
+        **kwargs
+            Additional keyword arguments; merged with (and overriding) this
+            Dataview's own `attrs`.
+
+        Returns
+        -------
+        Dataview
+            A new instance of `self.__class__`.
+        """
         kwargs.update(self.attrs)
         return self.__class__(
             *args,
@@ -256,6 +273,23 @@ class Dataview:
 
     @staticmethod
     def from_hdf(node, subject=None):
+        """Reconstruct a Dataview from a `/views/<name>` node in an HDF5
+        file previously written by `Dataview._write_hdf`.
+
+        Parameters
+        ----------
+        node : h5py.Dataset
+            The view node to decode.
+        subject : str, optional
+            Subject to use instead of the one stored in the file (e.g. if
+            the subject has been renamed since the file was written).
+
+        Returns
+        -------
+        Dataview
+            The decoded Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, or
+            Vertex2D object.
+        """
         data = json.loads(u(node[0]))
         desc = node[1]
         try:
@@ -473,6 +507,14 @@ class Volume(VolumeData, Dataview):
 
     @property
     def raw(self) -> VolumeRGB:
+        """Colormap this Volume's data into an RGBA VolumeRGB.
+
+        Returns
+        -------
+        VolumeRGB
+            This Volume's data, mapped through `cmap`/`vmin`/`vmax` into
+            per-voxel RGB colors, with alpha set to 0 for NaN voxels.
+        """
         (r, g, b, a), nan_mask = super().raw
         result = VolumeRGB(
             r,
@@ -569,6 +611,14 @@ class Vertex(VertexData, Dataview):
 
     @property
     def raw(self) -> VertexRGB:
+        """Colormap this Vertex's data into an RGBA VertexRGB.
+
+        Returns
+        -------
+        VertexRGB
+            This Vertex's data, mapped through `cmap`/`vmin`/`vmax` into
+            per-vertex RGB colors, with alpha set to 0 for NaN vertices.
+        """
         (r, g, b, a), nan_mask = super().raw
         result = VertexRGB(
             r,
