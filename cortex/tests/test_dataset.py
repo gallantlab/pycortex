@@ -4,11 +4,11 @@ import tempfile
 import pytest
 
 from cortex import db, dataset
-from cortex.testing_utils import has_installed
+from cortex.testing_utils import inkscapePath
 
 subj, xfmname, nverts, volshape = "S1", "fullhead", 304380, (31, 100, 100)
 
-no_inkscape = not has_installed("inkscape")
+no_inkscape = inkscapePath() is None
 
 
 def test_braindata():

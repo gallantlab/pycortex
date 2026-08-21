@@ -4,10 +4,10 @@ import tempfile
 import pytest
 
 from cortex import dataset
-from cortex.testing_utils import has_installed
+from cortex.testing_utils import inkscapePath
 from cortex.webgl.data import Package
 
-no_inkscape = not has_installed('inkscape')
+no_inkscape = inkscapePath() is None
 
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
