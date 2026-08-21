@@ -791,6 +791,11 @@ var mriview = (function(module) {
                         let vertex = indexMap[coords.vertex]
                         // Now access the data for each channel (1 for 1D, 2 for 2D)
                         values = this.active.data.map(function (d) {
+                            // NaN was replaced by 0 in the GPU buffer (dataset.js); report
+                            // NaN from the mask instead of a fake 0.
+                            if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
+                                d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
+                                return NaN
                             return d.verts[0][hemiIdx].array[vertex]
                         })
                     }
@@ -989,6 +994,11 @@ var mriview = (function(module) {
                 let vertex = indexMap[coords.vertex]
                 // Now access the data for each channel (1 for 1D, 2 for 2D)
                 values = this.active.data.map(function (d) {
+                    // NaN was replaced by 0 in the GPU buffer (dataset.js); report
+                    // NaN from the mask instead of a fake 0.
+                    if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
+                        d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
+                        return NaN
                     return d.verts[0][hemiIdx].array[vertex]
                 })
             }

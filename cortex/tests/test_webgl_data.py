@@ -192,3 +192,31 @@ def test_volumergb_alpha_is_NOT_premultiplied_in_package():
         )
         > 5
     ), "VolumeRGB Package output looks premultiplied; Three.js will then double-attenuate"
+
+
+def test_package_deduplicates_identical_brains():
+    """Two dims/channels with byte-identical data share one content-hash name;
+    the package must contain that brain once, and ``reorder`` must not choke
+    on it (it used to re-index the already-serialized bytes)."""
+    import numpy as np
+    import cortex
+    from cortex import utils
+    from cortex.webgl.data import Package
+
+    subj = "S1"
+    nverts = cortex.db.get_surf(subj, "fiducial", merge=True)[0].shape[0]
+    x = np.random.default_rng(0).standard_normal(nverts)
+    twod = cortex.Vertex2D(x, x, subj)
+    rgb = cortex.VertexRGB(x, x, x, subj)
+    pkg = Package(cortex.Dataset(twod=twod, rgb=rgb))
+    names = [b.name for b in pkg.uniques]
+    assert len(names) == len(set(names)) == 2
+
+    # reorder with the same ctm pack the viewer uses (cortex.webgl.make_static)
+    ctm = utils.get_ctmpack(
+        subj, ("inflated",), method="mg2", level=9, recache=False,
+        external_svg=None, overlays_available=None,
+    )
+    pkg.reorder({subj: ctm})
+    for name in names:
+        assert pkg.images[name][0][1:6] == b"NUMPY"

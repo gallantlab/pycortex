@@ -23,7 +23,17 @@ class Package(object):
 
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = list(data.uniques(collapse=True))
+        # Dataset.uniques() is a set of BrainData objects, but equality is
+        # identity: two distinct objects with byte-identical data (e.g.
+        # Vertex2D(x, x) or VertexRGB(r, r, r)) share the same content-hash
+        # name and would be packaged -- and reordered -- twice. Keep one per
+        # name.
+        seen = set()
+        self.uniques = []
+        for brain in data.uniques(collapse=True):
+            if brain.name not in seen:
+                seen.add(brain.name)
+                self.uniques.append(brain)
         self.subjects = set()
 
         self.brains = dict()

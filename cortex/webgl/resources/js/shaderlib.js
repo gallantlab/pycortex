@@ -213,6 +213,8 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            if (opts.dataalpha)
+                header += "#define DATAALPHA\n";
             if (!opts.viewspace)
                 header += "#define SAMPLE_WORLD\n";
             if (opts.lights !== undefined && !opts.lights)
@@ -270,6 +272,9 @@ var Shaderlib = (function() {
             "uniform vec2 mosaic[2];",
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
+        "#ifdef DATAALPHA",
+            "uniform sampler2D dataalpha[2];",
+        "#endif",
 
             "varying vec3 vPos_x;",
             "varying vec3 vPos_y;",
@@ -289,6 +294,9 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 values = vec4(0.);",
             "#endif",
+            "#ifdef DATAALPHA",
+                "vec2 avals = vec2(0.);",
+            "#endif",
         
         "#ifdef RGBCOLORS",
                 "color[0] += "+sampler+"_x(data[0], vPos_x);",
@@ -301,10 +309,21 @@ var Shaderlib = (function() {
                 "values.w += "+sampler+"_y(data[3], vPos_y).r;",
             "#endif",
         "#endif",
+            "#ifdef DATAALPHA",
+                "avals.x += "+sampler+"_x(dataalpha[0], vPos_x).r;",
+                "avals.y += "+sampler+"_x(dataalpha[1], vPos_x).r;",
+            "#endif",
             "#ifdef RGBCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
                 "vec4 vColor = colorlut(values);",
+            "#endif",
+            "#ifdef DATAALPHA",
+                // alpha map: NaN (neither <=0 nor >0) -> transparent, else
+                // scale all four (premultiplied) channels by the alpha value.
+                "bvec2 avalid = notEqual(lessThanEqual(avals, vec2(0.)), lessThan(vec2(0.), avals));",
+                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
+                "vColor = all(avalid) ? vColor * aval : vec4(0.);",
             "#endif",
                 "vColor *= dataAlpha;",
 
@@ -333,6 +352,8 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            if (opts.dataalpha)
+                header += "#define DATAALPHA\n";
 
             var sampler = opts.sampler || "nearest";
             var morphs = opts.morphs;
@@ -478,6 +499,9 @@ var Shaderlib = (function() {
             "uniform vec2 mosaic[2];",
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
+        "#ifdef DATAALPHA",
+            "uniform sampler2D dataalpha[2];",
+        "#endif",
 
             "uniform vec3 slicexn;", // normal vector for the x sliceplane
             "uniform vec3 sliceyn;",
@@ -538,6 +562,9 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 values = vec4(0.);",
             "#endif",
+            "#ifdef DATAALPHA",
+                "vec2 avals = vec2(0.);",
+            "#endif",
                 "",
             ].join("\n");
 
@@ -555,6 +582,10 @@ var Shaderlib = (function() {
                 "values.z += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
                 "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
             "#endif",
+        "#endif",
+        "#ifdef DATAALPHA",
+                "avals.x += "+factor+"*"+sampler+"_x(dataalpha[0], coord_x).r;",
+                "avals.y += "+factor+"*"+sampler+"_x(dataalpha[1], coord_x).r;",
         "#endif",
             ].join("\n");
 
@@ -622,6 +653,13 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 vColor = colorlut(values);",
             "#endif",
+            "#ifdef DATAALPHA",
+                // alpha map: NaN (neither <=0 nor >0) -> transparent, else
+                // scale all four (premultiplied) channels by the alpha value.
+                "bvec2 avalid = notEqual(lessThanEqual(avals, vec2(0.)), lessThan(vec2(0.), avals));",
+                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
+                "vColor = all(avalid) ? vColor * aval : vec4(0.);",
+            "#endif",
                 "vColor *= dataAlpha;",
                 //"vColor.a = (values.x - vmin[0]) / (vmax[0] - vmin[0]);",
 
@@ -688,6 +726,9 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            // Note: no DATAALPHA define here. For vertex data the alpha map
+            // is folded into the nanmask attribute by dataset.js (adding
+            // attributes would exceed MAX_VERTEX_ATTRIBS for 2D views).
 
             var morphs = opts.morphs;
             var volume = opts.volume || 0;
@@ -753,11 +794,12 @@ var Shaderlib = (function() {
                 "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
-                // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
-                // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
-                // For 2D vertex views the JS layer combines per-dim masks
-                // before dispatch, so a single shared attribute is enough.
-                "if (nanmask < 0.5) vColor = vec4(0.);",
+                // Data mask: WebGL drivers sanitize NaN in vertex attributes,
+                // so dataset.js detects NaN in JavaScript and passes a mask
+                // (0 = NaN in any dim or in the alpha map, otherwise the
+                // per-vertex alpha, 1 when there is no alpha map). Scaling
+                // all four channels keeps the premultiplied convention.
+                "vColor *= clamp(nanmask, 0., 1.);",
         "#endif",
 
         "#ifdef CORTSHEET",

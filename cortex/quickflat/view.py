@@ -343,8 +343,11 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     ## Render PNG file & retrieve image data
     arr, extents = make_flatmap_image(braindata, height=height, **kwargs)
     # Set nans to alpha = 0. to enable transparency when saving as PNG
-    mask_nans = np.isnan(arr[..., 3])
-    arr[mask_nans, 3] = 0.
+    if arr.ndim == 3 and np.issubdtype(arr.dtype, np.floating):
+        # RGBA image: NaN alpha -> fully transparent. (2-D scalar images have
+        # no alpha channel; matplotlib's bad color handles their NaNs.)
+        mask_nans = np.isnan(arr[..., 3])
+        arr[mask_nans, 3] = 0.
 
     if hasattr(braindata, 'cmap'):
         imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)

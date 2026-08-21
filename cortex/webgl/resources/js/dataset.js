@@ -59,6 +59,12 @@ var dataset = (function(module) {
                 this.data.push(module.brains[json.data[i]]);
             }
         }
+        // Optional per-voxel/vertex alpha map (Volume2D/Vertex2D alpha=).
+        // Shipped as a regular float brain; multiplied into the colormapped
+        // color by the shaders (#define DATAALPHA). NaN in it -> transparent.
+        this.alphaData = null;
+        if (json.alpha !== undefined && json.alpha !== null && json.alpha.length > 0)
+            this.alphaData = module.brains[json.alpha[0]];
         this.name = json.name;
         this.description = json.desc;
         this.frames = this.data[0].frames;
@@ -105,6 +111,9 @@ var dataset = (function(module) {
             this.uniforms.mosaic = { type:'v2v', value:[new THREE.Vector2(6, 6), new THREE.Vector2(6, 6)]};
             this.uniforms.dshape = { type:'v2v', value:[new THREE.Vector2(100, 100), new THREE.Vector2(100, 100)]};
             this.uniforms.volxfm = { type:'m4v', value:[new THREE.Matrix4(), new THREE.Matrix4()] };
+            // alpha map textures (frame, next frame); sampled with dim1's
+            // transform/mosaic since the alpha map shares dim1's xfm.
+            this.uniforms.dataalpha = { type:'tv', value:[null, null]};
         }
 
         this._dispatch = this.dispatchEvent.bind(this);
@@ -116,8 +125,11 @@ var dataset = (function(module) {
         // $.when's combined progress event doesn't say which source fired.
         // That ordering bug caused setData → active.set() to dispatch
         // verts/textures for a sibling that hadn't pushed yet.
+        var children = this.data.slice();
+        if (this.alphaData !== null)
+            children.push(this.alphaData);
         var allready = [];
-        for (var i = 0; i < this.data.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             allready.push(false);
         }
         var checkResolve = function() {
@@ -131,9 +143,9 @@ var dataset = (function(module) {
                 checkResolve();
             }
         };
-        for (var i = 0; i < this.data.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             (function(idx) {
-                this.data[idx].loaded
+                children[idx].loaded
                     .progress(function(available) {
                         if (available > this.delay) markReady(idx);
                     }.bind(this))
@@ -247,6 +259,8 @@ var dataset = (function(module) {
             opts.sampler = module.samplers[this.filter];
             opts.rgb = this.data[0].raw;
             opts.twod = this.data.length > 1;
+            // volumes only: vertex alpha is folded into the nanmask attribute
+            opts.dataalpha = this.alphaData !== null && !this.vertex;
             opts.voxline = (viewopts.voxlines==='true');
             var shadecode = shaderfunc(opts);
             var shader = new THREE.ShaderMaterial({
@@ -271,6 +285,8 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].init(this.uniforms, i, this.xfm, this.filter);
         }
+        if (this.alphaData !== null)
+            this.alphaData.setFilter(this.filter);
         this.setFrame(0);
     };
     module.DataView.prototype.setFrame = function(time) {
@@ -281,28 +297,53 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
         }
-        // Combine per-dim NaN masks into the single shared nanmask
-        // attribute. Vertex2D dispatches each dim's data separately
-        // (data0/1 vs data2/3) but shares one nanmask attribute in the
-        // shader; if either dim's value is NaN at a vertex, that vertex
-        // must be discarded.
+        // Optional alpha map (volumes): bind the alpha textures for this
+        // frame and the next. A single-frame alpha is reused for every frame
+        // of a movie (both slots point at the same texture).
+        var alpha = this.alphaData;
+        if (alpha !== null && !this.vertex && alpha.textures.length > 0) {
+            var at = alpha.textures;
+            this.uniforms.dataalpha.value[0] = at[fframe.mod(at.length)];
+            this.uniforms.dataalpha.value[1] = at[(fframe+1).mod(at.length)];
+        }
+        // Vertex data: build the single shared "nanmask" attribute, which the
+        // shader multiplies into the color. It is 0 wherever any dim (or the
+        // alpha map) is NaN, otherwise the frame-mixed alpha value (1 when
+        // there is no alpha map). Folding alpha into this attribute instead
+        // of adding attributes matters: a 2D vertex view already uses 15 of
+        // the 16 guaranteed vertex attributes, and exceeding the limit makes
+        // the program fail to link silently.
         if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
-            var dim0 = this.data[0].nanmasks[fframe];
+            var masks = [this.data[0].nanmasks[fframe]];
+            if (this.data.length > 1)
+                masks.push(this.data[1].nanmasks[fframe]);
+            var a0 = null, a1 = null, amix = 0.0;
+            if (alpha !== null && alpha.verts.length > 0) {
+                masks.push(alpha.nanmasks[fframe.mod(alpha.nanmasks.length)]);
+                a0 = alpha.verts[fframe.mod(alpha.verts.length)];
+                a1 = alpha.verts[(fframe+1).mod(alpha.verts.length)];
+                amix = frame - fframe;
+            }
             var combined;
-            if (this.data.length === 1) {
-                combined = dim0;
+            if (masks.length === 1 && a0 === null) {
+                combined = masks[0];
             } else {
                 combined = [0, 1].map(function(side) {
-                    var a = dim0[side].array;
-                    var b = this.data[1].nanmasks[fframe][side].array;
-                    var out = new Float32Array(a.length);
-                    for (var i = 0; i < a.length; i++) {
-                        out[i] = (a[i] < 0.5 || b[i] < 0.5) ? 0.0 : 1.0;
+                    var n = masks[0][side].array.length;
+                    var out = new Float32Array(n);
+                    for (var i = 0; i < n; i++) {
+                        var ok = 1.0;
+                        for (var m = 0; m < masks.length; m++) {
+                            if (masks[m][side].array[i] < 0.5) { ok = 0.0; break; }
+                        }
+                        if (ok > 0 && a0 !== null)
+                            ok = (1.0 - amix) * a0[side].array[i] + amix * a1[side].array[i];
+                        out[i] = ok;
                     }
                     var attr = new THREE.BufferAttribute(out, 1);
                     attr.needsUpdate = true;
                     return attr;
-                }.bind(this));
+                });
             }
             this._dispatch({type:"attribute", name:"nanmask", value:combined});
         }

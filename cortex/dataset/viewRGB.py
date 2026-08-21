@@ -73,6 +73,70 @@ def HSV2RGB(color: Color[float] | npt.NDArray) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
+def _warn_alpha_range(alpha):
+    """Warn when a raw (non-uint8) alpha array lies outside [0, 1]."""
+    alpha = np.asarray(alpha)
+    if alpha.dtype == np.uint8 or alpha.size == 0:
+        return
+    finite = alpha[np.isfinite(alpha)]
+    if finite.size and (finite.min() < 0 or finite.max() > 1):
+        warnings.warn(
+            "Some alpha values are outside the range of [0, 1]. "
+            "Consider passing a Volume/Vertex object as alpha with explicit "
+            "vmin, vmax keyword arguments.",
+            Warning,
+        )
+
+
+def _mask_alpha(alpha, mask):
+    """Return a copy of ``alpha`` (Volume or Vertex) with ``alpha.vmin`` written
+    wherever ``mask`` is True.
+
+    ``mask`` may live either in the same space as ``alpha.data`` (masked/linear
+    or full) or, for volumes, in full ``(z, y, x)`` / ``(t, z, y, x)`` space.
+    Leading (time) axes are broadcast, so a single-frame alpha combined with a
+    multi-frame NaN mask yields a multi-frame alpha (#629).
+
+    The masked values are never written into a temporary: ``VolumeData.volume``
+    returns a freshly unmasked array for linear volumes, so the previous
+    ``alpha.volume[mask] = vmin`` silently did nothing for those.
+    """
+    mask = np.asarray(mask, dtype=bool)
+    if not mask.any():
+        return alpha
+    fill = 0.0 if alpha.vmin is None else alpha.vmin
+
+    data = np.asarray(alpha.data)
+    try:
+        shape = np.broadcast_shapes(mask.shape, data.shape)
+    except ValueError:
+        shape = None
+    if shape is not None and shape[-data.ndim:] == data.shape:
+        new = np.array(np.broadcast_to(data, shape))  # copy, keep dtype
+        new[np.broadcast_to(mask, shape)] = fill
+        return alpha.copy(new)
+
+    if hasattr(alpha, "volume"):
+        vol = np.asarray(alpha.volume)  # (t, z, y, x), fresh copy if linear
+        try:
+            shape = np.broadcast_shapes(mask.shape, vol.shape)
+        except ValueError:
+            shape = None
+        if shape is not None and shape[-3:] == vol.shape[-3:]:
+            new = np.array(np.broadcast_to(vol, shape))  # copy, keep dtype
+            new[np.broadcast_to(mask, shape)] = fill
+            if new.shape[0] == 1 and not alpha.movie:
+                new = new[0]
+            return Volume(
+                new, alpha.subject, alpha.xfmname, vmin=alpha.vmin, vmax=alpha.vmax
+            )
+
+    raise ValueError(
+        "alpha of shape %s is incompatible with data NaN mask of shape %s"
+        % (data.shape, mask.shape)
+    )
+
+
 class DataviewRGB(Dataview):
     """Abstract base class for RGB data views."""
 
@@ -119,11 +183,8 @@ class DataviewRGB(Dataview):
         in Dataview.raw and stored as ``_nan_mask``."""
         nan_mask = getattr(self, "_nan_mask", None)
         if nan_mask is None:
-            return
-        if nan_mask.shape == alpha.data.shape:
-            alpha.data[nan_mask] = alpha.vmin
-        elif hasattr(alpha, "volume") and nan_mask.shape == alpha.volume.shape:
-            alpha.volume[nan_mask] = alpha.vmin
+            return alpha
+        return _mask_alpha(alpha, nan_mask)
 
     def _write_hdf(self, h5, name="data", xfmname=None):
         self._cls._write_hdf(self.red, h5)
@@ -345,10 +406,16 @@ class DataviewRGB(Dataview):
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
 
-        # Now make an alpha volume
+        # Now make an alpha volume. NaN in any channel forces alpha to its
+        # minimum. Never write into the caller's array.
         if alpha is None:
             alpha = np.ones_like(red, np.uint8) * 255
-        alpha[mask] = 0
+            alpha[mask] = 0
+        elif isinstance(alpha, (VolumeData, VertexData)):
+            alpha = _mask_alpha(alpha, mask)
+        else:
+            alpha = np.array(alpha, copy=True)
+            alpha[mask] = 0
 
         return red, green, blue, alpha
 
@@ -570,21 +637,15 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
         if not isinstance(alpha, Volume):
-            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
-                warnings.warn(
-                    "Some alpha values are outside the range of [0, 1]. "
-                    "Consider passing a Volume object as alpha with explicit vmin, vmax "
-                    "keyword arguments.",
-                    Warning,
-                )
+            _warn_alpha_range(alpha)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
 
+        # NaN in any color channel -> alpha at its minimum (transparent)
         rgb = np.array([self.red.volume, self.green.volume, self.blue.volume])
         mask = np.isnan(rgb).any(axis=0)
-        alpha.volume[mask] = alpha.vmin
+        alpha = _mask_alpha(alpha, mask)
 
-        self._apply_nan_mask(alpha)
-        return alpha
+        return self._apply_nan_mask(alpha)
 
     @alpha.setter
     def alpha(self, alpha: Optional[Union[npt.NDArray, Volume]]):
@@ -626,6 +687,8 @@ class VolumeRGB(DataviewRGB):
                 else:
                     vol /= dv.vmax - dv.vmin
 
+                # NaN (e.g. in a user-supplied alpha map) -> 0, never UB cast
+                vol = np.nan_to_num(vol, nan=0.0)
                 vol = (np.clip(vol, 0, 1) * 255).astype(np.uint8)
             else:
                 vol = dv.volume.copy()
@@ -846,21 +909,15 @@ class VertexRGB(DataviewRGB):
             alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
-            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
-                warnings.warn(
-                    "Some alpha values are outside the range of [0, 1]. "
-                    "Consider passing a Vertex object as alpha with explicit vmin, vmax "
-                    "keyword arguments.",
-                    Warning,
-                )
+            _warn_alpha_range(alpha)
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
 
+        # NaN in any color channel -> alpha at its minimum (transparent)
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
-        alpha.data[mask] = alpha.vmin
+        alpha = _mask_alpha(alpha, mask)
 
-        self._apply_nan_mask(alpha)
-        return alpha
+        return self._apply_nan_mask(alpha)
 
     @alpha.setter
     def alpha(self, alpha: Optional[Union[npt.NDArray, Vertex]]):
@@ -887,6 +944,8 @@ class VertexRGB(DataviewRGB):
                 else:
                     vert /= dv.vmax - dv.vmin
 
+                # NaN (e.g. in a user-supplied alpha map) -> 0, never UB cast
+                vert = np.nan_to_num(vert, nan=0.0)
                 vert = (np.clip(vert, 0, 1) * 255).astype(np.uint8)
             else:
                 vert = dv.vertices.copy()

@@ -70,8 +70,21 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         # Convert data to float to avoid image artifacts
         data = data.astype(float)
     if data.dtype == np.uint8:
+        # RGBA data. Average across cortical thickness in *premultiplied*
+        # space, as the WebGL viewer does (textures are uploaded with
+        # premultiplyAlpha=true), then un-premultiply. Averaging straight RGBA
+        # lets transparent voxels (NaN, alpha=0) bleed their (black) color
+        # into neighbouring pixels, producing dark halos in quickflat only.
+        rgba = data.reshape(-1, 4).astype(np.float64) / 255.
+        alpha = rgba[:, 3:4]
+        premult = np.concatenate([rgba[:, :3] * alpha, alpha], axis=1)
+        avg = np.asarray(pixmap.dot(premult))
+        out = np.zeros_like(avg)
+        opaque = avg[:, 3] > 0
+        out[opaque, :3] = avg[opaque, :3] / avg[opaque, 3:4]
+        out[:, 3] = avg[:, 3]
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
-        img[mask] = pixmap * data.reshape(-1, 4)
+        img[mask] = np.round(np.clip(out, 0, 1) * 255).astype(np.uint8)
         img = img.transpose(1,0,2)[::-1]
         # Make img a c-contiguous array or pil will complain when saving it
         if not img.flags["C_CONTIGUOUS"]:
