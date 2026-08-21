@@ -34,6 +34,20 @@ class Dataview2D(Dataview):
         self.description = description
 
     def uniques(self, collapse=False):
+        """Yield the two underlying Dataview objects (dim1, dim2) that make
+        up this composite 2D view.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            Unused here; accepted for interface compatibility with
+            `Dataview.uniques`.
+
+        Returns
+        -------
+        generator
+            Yields `self.dim1`, then `self.dim2`.
+        """
         yield self.dim1
         yield self.dim2
 
@@ -48,6 +62,22 @@ class Dataview2D(Dataview):
         return viewnode
 
     def to_json(self, simple=False):
+        """Serialize this 2D dataview to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            Unused here; accepted for interface compatibility with
+            `Dataview.to_json`.
+
+        Returns
+        -------
+        dict
+            Serialized view data, including both dims' names, cmap,
+            vmin/vmax pairs, state, attrs, description, and (if the
+            underlying dims are Volumes) the shared xfm.
+        """
         sdict = dict(data=[[self.dim1.name, self.dim2.name]],
             state=self.state, 
             attrs=self.attrs, 
