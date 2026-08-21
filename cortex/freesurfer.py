@@ -40,7 +40,7 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
     -------
     path : str
         Path template (with an unfilled `{name}` field) for the requested
-        file type. `None` is returned if `type` does not match any of
+        file type. Raises `ValueError` if `type` does not match any of
         'patch', 'surf', 'curv', or 'slim'.
     """
     if freesurfer_subject_dir is None:
@@ -54,6 +54,8 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
     elif type == "slim":
         return os.path.join(base, "surf", hemi+".{name}_slim.obj")
+    else:
+        raise ValueError("Unknown type: {}. Must be one of 'patch', 'surf', 'curv', or 'slim'.".format(type))
 
 
 def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
@@ -353,13 +355,18 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
 
 def _remove_disconnected_polys(polys):
     """Remove polygons that are not in the main connected component.
-    
+
     This function creates a sparse graph based on edges in the input.
     Then it computes the connected components, and returns only the polygons
     that are in the largest component.
-    
+
     This filtering is useful to remove disconnected vertices resulting from a
     poor surface cut.
+
+    Parameters
+    ----------
+    polys : ndarray
+        Triangle faces of the mesh, as vertex indices.
 
     Returns
     -------
@@ -397,10 +404,18 @@ def _remove_disconnected_polys(polys):
 
 def _move_disconnect_points_to_zero(pts, polys):
     """Change coordinates of points not in polygons to zero.
-    
+
     This cleaning step is useful after _remove_disconnected_polys, to
     avoid using this points in boundaries computations (through pts.max(axis=0)
     here and there).
+
+    Parameters
+    ----------
+    pts : ndarray
+        Vertex coordinates of the mesh.
+    polys : ndarray
+        Triangle faces of the mesh, used to determine which vertices are
+        referenced.
 
     Returns
     -------
@@ -416,6 +431,14 @@ def _move_disconnect_points_to_zero(pts, polys):
 
 def make_fiducial(fs_subject, freesurfer_subject_dir=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
+
+    Parameters
+    ----------
+    fs_subject : str
+        Freesurfer subject identifier.
+    freesurfer_subject_dir : str, optional
+        Directory for Freesurfer subjects (defaults to the value of the
+        environment variable $SUBJECTS_DIR if None).
     """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(fs_subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
@@ -454,6 +477,17 @@ def parse_surf(filename):
 
 def write_surf(filename, pts, polys, comment=''):
     """Write freesurfer surface file
+
+    Parameters
+    ----------
+    filename : str
+        Path to write the freesurfer surface file to.
+    pts : ndarray
+        Vertex coordinates.
+    polys : ndarray
+        Triangle faces, as vertex indices into `pts`.
+    comment : str, optional
+        Comment string to store in the file header. Default is ''.
     """
     with open(filename, 'wb') as fp:
         fp.write(b'\xff\xff\xfe')
@@ -541,6 +575,28 @@ def parse_patch(filename):
 def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subject_dir=None):
     """Read freesurfer surface file
 
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject identifier.
+    hemi : str
+        'lh' or 'rh' for left or right hemisphere, respectively.
+    type : str
+        Which surface to load, e.g. 'smoothwm', 'pial', 'inflated', or
+        'fiducial'. Use 'patch' to load a flattened patch instead (in which
+        case `patch` must also be given; the surface underlying the patch is
+        always 'smoothwm').
+    patch : str, optional
+        Name of the patch file to load (e.g. 'flatten'), used only when
+        `type` is "patch".
+    flatten_step : int, optional
+        If given, selects one of the intermediate patch snapshots saved
+        during flattening (see the `save_every` argument to `flatten`),
+        appended as a zero-padded 4-digit suffix to the patch filename.
+    freesurfer_subject_dir : str, optional
+        Directory for Freesurfer subjects (defaults to the value of the
+        environment variable $SUBJECTS_DIR if None).
+
     Returns
     -------
     pts : ndarray
@@ -588,7 +644,23 @@ def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subj
 
 
 def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subject='fsaverage'):
-    """subject is a freesurfer subject"""
+    """Move a label file from another freesurfer subject to this subject's
+    label directory, via freesurfer's `mri_label2label`.
+
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject ID to move the label to.
+    label : str
+        Label name (without hemisphere prefix or `.label` suffix).
+    hemisphere : tuple or list, optional
+        Hemispheres to move the label for. Default is ('lh', 'rh').
+    fs_dir : str, optional
+        Freesurfer subjects directory. Defaults to the environment variable
+        $SUBJECTS_DIR if None.
+    src_subject : str, optional
+        Freesurfer subject ID to move the label from. Default is 'fsaverage'.
+    """
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
     for hemi in hemisphere:
@@ -628,6 +700,15 @@ def _parse_labels(label_files, cx_subject):
         full paths to label file or files to load
     cx_subject : str
         pycortex subject ID
+
+    Returns
+    -------
+    verts : ndarray
+        Vertex indices (into the pycortex fiducial surface) that have label
+        values, with right-hemisphere indices (identified by an '/rh.' path
+        component) offset by the number of left-hemisphere vertices.
+    values : ndarray
+        Label value for each vertex in `verts`.
     """
     if not isinstance(label_files, (list, tuple)):
         label_files = [label_files]
@@ -821,6 +902,16 @@ def _read_sphere_reg(subject, hemi, subjects_dir=None):
 
     These are the coordinates on which freesurfer's spherical registration
     defines the cross-subject vertex correspondence used by ``mri_surf2surf``.
+
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject name.
+    hemi : str in ("lh", "rh")
+        Hemisphere.
+    subjects_dir : str, optional
+        Freesurfer subjects directory. Defaults to the environment variable
+        $SUBJECTS_DIR if None.
 
     Returns
     -------
@@ -1098,8 +1189,8 @@ def write_dot(fname, pts, polys, name="test"):
     Returns
     -------
     None
-        Writes `fname` as a side effect; has no return value.
     """
+    
     import networkx as nx
     def iter_surfedges(tris):
         for a,b,c in tris:
