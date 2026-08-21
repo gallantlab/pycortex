@@ -1,17 +1,20 @@
 """Module containing utils for testing"""
 import subprocess as sp
 from shutil import which
+from . import options
+import os
 
 
 def has_installed(name):
-    return which(name) is not None
+    binary_file = options.config.get('dependency_paths', name)
+    return os.path.exists(binary_file) or which(name) is not None
 
 
 def inkscape_version():
     if not has_installed('inkscape'):
         return None
-    cmd = 'inkscape --version'
-    result = sp.run(cmd.split(), stdout=sp.PIPE, stderr=sp.PIPE, check=True)
+    binary_file = options.config.get('dependency_paths', 'inkscape')
+    result = sp.run([binary_file, '--version'], stdout=sp.PIPE, stderr=sp.PIPE, check=True)
     # Combine stdout and stderr; some systems print diagnostic messages
     # (e.g. "Setting _INKSCAPE_GC=disable …") before the version line.
     combined = result.stdout + result.stderr
@@ -27,5 +30,6 @@ def inkscape_version():
 
 
 INKSCAPE_VERSION = inkscape_version()
+
 
 
