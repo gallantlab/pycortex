@@ -46,7 +46,7 @@ def locate_depth_point(u_x, v_x, alpha, dl, pia, wm, valid):
                                         wm[valid][dl.simplices][simp][2] - wm[valid][dl.simplices][simp][0]))
 
     beta = 1-(1/(A_p - A_w) *(- A_w + np.sqrt((1 - alpha)*A_p**2 + alpha*A_w**2)))
-    z = beta*x_p + (1-beta)*x_w
+    z = (1-beta)*x_p + beta*x_w
     return z
 
 def make_laminar_profile(subject, xfmname, u_l, v_l, u_r, v_r, W, H, sampler="nearest"):
