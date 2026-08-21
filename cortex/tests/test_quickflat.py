@@ -239,6 +239,7 @@ def test_with_dropout():
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
 @pytest.mark.slow
+@pytest.mark.timeout(600)  # override global timeout
 def test_with_connected_vertices():
     """Test with_connected_vertices parameter"""
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
