@@ -45,8 +45,17 @@ def init_subject(subject, filenames, do_import_subject=False, **kwargs):
         editing) into pycortex. False by default, since we recommend editing
         (or at least inspecting) the brain mask and white matter segmentations
         prior to importing into pycortex.
-    kwargs : keyword arguments passed to cortex.freesurfer.autorecon()
-        useful ones: parallel=True, n_cores=4 (or more, if you have them)
+    **kwargs
+        Additional keyword arguments are forwarded to
+        `cortex.freesurfer.autorecon`. The deprecated `run_all` kwarg is
+        also accepted as an alias for `do_import_subject`.
+
+        parallel : bool, optional
+            Whether to run autorecon-all in parallel (only applies to the
+            '2', 'wm', or 'all' autorecon steps). Default True.
+        n_cores : int, optional
+            Number of cores to use for parallelization, if `parallel` is
+            True. Defaults to all available CPU cores.
     """
     if "run_all" in kwargs:
         warnings.warn(
@@ -193,6 +202,26 @@ def cut_surface(
     auto_overwrite : bool
         Whether to overwrite existing flatmaps. If True, the flatmap will be
         overwritten without asking for confirmation.
+    **kwargs
+        Additional keyword arguments are forwarded to the flattening backend
+        selected by `flatten_with`:
+
+        save_every : int, optional
+            Only used when `flatten_with` is 'freesurfer'. If not None, saves
+            a version of the mesh every `save_every` iterations of the
+            flattening process (via `freesurfer.flatten`). Useful for
+            determining why a flattening fails.
+        n_iterations : int, optional
+            Only used when `flatten_with` is 'SLIM'. Number of iterations for
+            the SLIM flattening algorithm. Default is 20.
+        slim_path : str, optional
+            Only used when `flatten_with` is 'SLIM'. Path to the SLIM
+            executable. Defaults to the path specified in the pycortex
+            config file.
+        do_flatten : bool, optional
+            Only used when `flatten_with` is 'SLIM'. Whether to proceed with
+            flattening. If None (default), prompts for confirmation
+            interactively.
     """
 
     if fs_subject is None:
