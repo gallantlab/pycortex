@@ -2,12 +2,15 @@
 import os
 import subprocess as sp
 from shutil import which
+from . import options
+import os
 
 from .options import config
 
 
 def has_installed(name):
-    return which(name) is not None
+    binary_file = options.config.get('dependency_paths', name)
+    return os.path.exists(binary_file) or which(name) is not None
 
 
 def inkscapePath():
@@ -48,5 +51,10 @@ def inkscape_version():
 
 INKSCAPE_PATH = inkscapePath()
 INKSCAPE_VERSION = inkscape_version()
+if INKSCAPE_VERSION is None:
+    print(("Inkscape not found. Some tests will be skipped. " 
+    "If you are on a Mac or Windows machine, please specify "
+    "the path to the Inkscape binary in the config file "
+    f"(Here: {options.usercfg})."))
 
 

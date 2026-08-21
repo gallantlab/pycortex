@@ -22,11 +22,11 @@ test = [
     "pytest-cov",
     "pytest-timeout",
 ]
+
 types = [
     "mypy",
     "scipy-stubs",
 ]
-
 
 [project.optional-dependencies]
 headless = [
