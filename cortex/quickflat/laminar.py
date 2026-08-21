@@ -63,22 +63,25 @@ def make_laminar_profile(subject, xfmname, u_l, v_l, u_r, v_r, W, H, sampler="ne
     alpha_values = np.linspace(0, 1, H)
     
     # Initialize an empty array to hold the cortical profile values
-    profile_map = np.zeros((H, W))
+    profile_map = np.zeros((H, W), int)
 
     verts, faces = cortex.db.get_surf(subject, "flat", merge=True, nudge=True)
     valid = np.unique(faces) # find vertices in flatmap triangles
     dl = Delaunay(verts[valid,:2])
 
-    pia, _ = cortex.db.get_surf(subject, "pia", merge=True, nudge=False)
-    wm, _ = cortex.db.get_surf(subject, "wm", merge=True, nudge=False)
+    pia = xfm(cortex.db.get_surf(subject, "pia", merge=True, nudge=False)[0])
+    wm = xfm(cortex.db.get_surf(subject, "wm", merge=True, nudge=False)[0])
     
     for i, alpha in enumerate(alpha_values):
+        print(i)
         for j, gamma in enumerate(gamma_values):
+            print(j)
             # Interpolate the flatmap coordinates
             u_gamma, v_gamma = line_interpolation(u_l, v_l, u_r, v_r, gamma)
             # Locate the depth point in 3D space
             z = locate_depth_point(u_gamma, v_gamma, alpha, dl, pia, wm, valid)
             # Retrieve the value at that voxel (assuming a function get_voxel_value exists)
-            _, _, profile_map[i, j] = sampclass(xfm.inv([z]), xfm.shape)
+            _, vox, _ = sampclass(np.array([z]), xfm.shape)
+            profile_map[i, j] = vox[0]
             
     return profile_map
