@@ -87,8 +87,10 @@ def _call_blender(filename, code=None, background=True, blender_path=default_ble
     tf.close()
 
     print(f"Calling blender:\n    {cmd}")
-    sp.check_call([w.encode() for w in shlex.split(cmd)],)
-    os.unlink(tf.name)
+    try:
+        sp.check_call(shlex.split(cmd))
+    finally:
+        os.unlink(tf.name)
 
 
 def _check_executable_blender_version(blender_path=default_blender):
