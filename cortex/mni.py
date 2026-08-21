@@ -49,7 +49,11 @@ def compute_mni_transform(subject, xfm,
         Transformation matrix from the space specified by `xfm` to MNI space.
     """
     # Set up some paths
-    anat_to_mni_xfm = tempfile.mktemp()
+    # mkstemp (unlike deprecated mktemp) opens the file itself to avoid a
+    # race condition; close its fd immediately since only the path is
+    # needed here (flirt writes to it as an external process).
+    anat_to_mni_fd, anat_to_mni_xfm = tempfile.mkstemp()
+    os.close(anat_to_mni_fd)
 
     # Get anatomical image
     anat_filename = db.get_anat(subject, "brainmask").get_filename()
@@ -96,9 +100,15 @@ def transform_to_mni(volumedata, func_to_mni,
         `volumedata` after transformation to MNI space.
     """
     # Set up paths
-    func_nii = tempfile.mktemp(".nii.gz")
-    func_to_mni_xfm = tempfile.mktemp(".mat")
-    func_in_mni = tempfile.mktemp(".nii.gz")
+    # mkstemp (unlike deprecated mktemp) opens the file itself to avoid a
+    # race condition; close its fd immediately since only the path is
+    # needed here (flirt/nibabel write to it directly).
+    func_nii_fd, func_nii = tempfile.mkstemp(".nii.gz")
+    os.close(func_nii_fd)
+    func_to_mni_xfm_fd, func_to_mni_xfm = tempfile.mkstemp(".mat")
+    os.close(func_to_mni_xfm_fd)
+    func_in_mni_fd, func_in_mni = tempfile.mkstemp(".nii.gz")
+    os.close(func_in_mni_fd)
 
     # Save out relevant things
     volumedata.save_nii(func_nii)
@@ -178,9 +188,15 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
 
     """
     # Set up paths
-    mnispace_func_nii = tempfile.mktemp(".nii.gz")
-    mni_to_func_xfm = tempfile.mktemp(".mat")
-    funcspace_nii = tempfile.mktemp(".nii.gz")
+    # mkstemp (unlike deprecated mktemp) opens the file itself to avoid a
+    # race condition; close its fd immediately since only the path is
+    # needed here (flirt/nibabel write to it directly).
+    mnispace_func_nii_fd, mnispace_func_nii = tempfile.mkstemp(".nii.gz")
+    os.close(mnispace_func_nii_fd)
+    mni_to_func_xfm_fd, mni_to_func_xfm = tempfile.mkstemp(".mat")
+    os.close(mni_to_func_xfm_fd)
+    funcspace_nii_fd, funcspace_nii = tempfile.mkstemp(".nii.gz")
+    os.close(funcspace_nii_fd)
 
     # Save out relevant things
     affine = nibabel.load(template).affine
