@@ -315,6 +315,7 @@ class SVGOverlay:
             try:
                 im = plt.imread(pngfile)
             except SyntaxError as e:
+                os.unlink(pngfile)
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
                                    f" (inkscape version: {INKSCAPE_VERSION})"
                                    f" (inkscape command: {inkscape_cmd})"
