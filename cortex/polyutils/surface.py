@@ -136,16 +136,25 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     def laplace_operator(self):
         """Laplace-Beltrami operator for this surface. A sparse adjacency matrix with
         edge weights determined by the cotangents of the angles opposite each edge.
-        Returns a 4-tuple (B,D,W,V) where D is the 'lumped mass matrix', W is the weighted
-        adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
-        The 'stiffness matrix', A, can be computed as V - W.
 
-        The full LB operator can be computed as D^{-1} (V - W).
-        
-        B is the finite element method (FEM) 'mass matrix', which replaces D in FEM analyses.
-        
+        The full LB operator can be computed as D^{-1} (V - W). The 'stiffness matrix',
+        A, can be computed as V - W.
+
         See 'Discrete Laplace-Beltrami operators for shape analysis and segmentation'
         by Reuter et al., 2009 for details.
+
+        Returns
+        -------
+        B : sparse matrix
+            Finite element method (FEM) 'mass matrix', which replaces D in FEM
+            analyses.
+        D : sparse matrix, dia
+            'Lumped mass matrix'.
+        W : sparse matrix
+            Weighted adjacency matrix, with edge weights given by
+            `cotangent_weights`.
+        V : sparse matrix, dia
+            Diagonal matrix that normalizes the adjacencies (row sums of W).
         """
         ## Lumped mass matrix
         D = self.connected.dot(self.face_areas) / 3.0
@@ -686,6 +695,19 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
 
     @property
     def iter_surfedges(self):
+        """Iterate over all edges of the surface, one triangle at a time.
+
+        For each triangle (a, b, c) in `polys`, yields the edges (a, b),
+        (b, c), (a, c). An edge shared by two triangles is yielded once per
+        incident triangle, so non-border edges appear twice and border
+        edges once -- the same order used by `iter_surfedges_weighted` and
+        `edge_lengths`.
+
+        Yields
+        ------
+        edge : tuple of int
+            A pair of vertex indices forming one edge of one triangle.
+        """
         for a, b, c in self.polys:
             yield a, b
             yield b, c
@@ -717,6 +739,17 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
         return graph
 
     def get_graph(self):
+        """Get a NetworkX undirected graph representing this surface.
+
+        Equivalent to the `graph` property; provided as a method for
+        callers that need a callable rather than a property access.
+
+        Returns
+        -------
+        graph : networkx.Graph
+            Undirected graph with an edge for every edge in the surface
+            mesh.
+        """
         return self.graph
 
     @property
@@ -743,13 +776,45 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     @property
     @_memo
     def weighted_distance_graph(self):
+        """NetworkX undirected graph representing this Surface, with each
+        edge weighted by its length (see `edge_lengths`).
+        """
         import networkx as nx
         weighted_graph = nx.Graph()
         weighted_graph.add_weighted_edges_from(self.iter_surfedges_weighted)
         return weighted_graph
 
     def extract_chunk(self, nfaces=100, seed=None, auxpts=None):
-        '''Extract a chunk of the surface using breadth first search, for testing purposes'''
+        """Extract a chunk of the surface using breadth-first search, for
+        testing purposes.
+
+        Starting from `seed` (or a random vertex), grows a set of faces by
+        breadth-first traversal of face adjacency until at least `nfaces`
+        faces have been collected, then returns the sub-mesh induced by
+        those faces with vertex indices remapped to be contiguous.
+
+        Parameters
+        ----------
+        nfaces : int, optional
+            Minimum number of faces to include in the extracted chunk.
+            Default is 100.
+        seed : int, optional
+            Vertex index to start the breadth-first search from. If None
+            (default), a random vertex is chosen.
+        auxpts : ndarray, optional
+            Auxiliary per-vertex data (e.g. an alternate set of point
+            coordinates) to subset and return alongside the chunk.
+
+        Returns
+        -------
+        pts : ndarray
+            Vertex coordinates of the extracted chunk.
+        aux : ndarray
+            Corresponding rows of `auxpts` for the extracted chunk's
+            vertices. Only returned if `auxpts` is not None.
+        polys : ndarray
+            Triangle faces of the extracted chunk, as indices into `pts`.
+        """
         node = seed
         if seed is None:
             node = np.random.randint(len(self.pts))
@@ -786,6 +851,24 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
     def extract_geodesic_chunk(self, origin, radius):
         """Extract a chunk of the surface that is within radius of the origin by
         geodesic distance.
+
+        Parameters
+        ----------
+        origin : int
+            Vertex index to measure geodesic distance from.
+        radius : float
+            Maximum geodesic distance (in mm) from `origin` for a vertex to
+            be included in the chunk.
+
+        Returns
+        -------
+        sel_pts : ndarray
+            Vertex coordinates of the extracted chunk (all vertices within
+            `radius` of `origin`).
+        sel_polys : ndarray
+            Triangle faces of the extracted chunk, as indices into
+            `sel_pts`. Includes only faces whose vertices are all within
+            `radius` of `origin`.
         """
         dist = self.geodesic_distance([origin])
         sel = np.nonzero(dist < radius)[0]
@@ -807,7 +890,27 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
 
 
     def polyhedra(self, wm):
-        '''Iterates through the polyhedra that make up the closest volume to a certain vertex'''
+        """Iterate through the polyhedra that make up the closest volume to
+        each vertex.
+
+        For each vertex, builds the small polyhedron bounded by the
+        midpoints of its incident faces and edges (on both this surface and
+        the corresponding white matter surface `wm`), which approximates
+        the volume of cortex closest to that vertex.
+
+        Parameters
+        ----------
+        wm : ndarray, shape (total_verts, 3)
+            Vertex coordinates of the corresponding white matter surface
+            (same connectivity/vertex order as this surface).
+
+        Yields
+        ------
+        pts : ndarray
+            Vertex coordinates of the polyhedron for one vertex.
+        polys : ndarray
+            Triangle faces of the polyhedron, as indices into `pts`.
+        """
         for p, facerow in enumerate(self.connected):
             faces = facerow.indices
             pts, polys = _ptset(), _quadset()
@@ -837,6 +940,29 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
             yield pts.points, np.array(list(polys.triangles))
 
     def patches(self, auxpts=None, n=1):
+        """Iterate over a small local patch of geometry around each vertex.
+
+        For each vertex `p` with at least one incident face, yields a
+        patch of points sampled from `p`'s neighborhood, sized by `n`.
+
+        Parameters
+        ----------
+        auxpts : ndarray, optional
+            Auxiliary per-vertex data (e.g. an alternate set of point
+            coordinates) to stack alongside the patch's own points.
+        n : {1, 0.5}, optional
+            Size of the patch to extract around each vertex. If 1
+            (default), yields the coordinates of every vertex in `p`'s
+            incident faces. If 0.5, yields only the half-edge points
+            (face midpoints and edge midpoints) immediately surrounding
+            `p`. Any other value raises `ValueError`.
+
+        Yields
+        ------
+        patch : ndarray or None
+            Points making up the patch around each vertex, in vertex order.
+            `None` for vertices with no incident faces.
+        """
         def align_polys(p, polys):
             x, y = np.nonzero(polys == p)
             y = np.vstack([y, (y+1)%3, (y+2)%3]).T
@@ -881,6 +1007,19 @@ class Surface(exact_geodesic.ExactGeodesicMixin, subsurface.SubsurfaceMixin):
                 yield None
 
     def edge_collapse(self, p1, p2, target):
+        """Collapse the edge between vertices `p1` and `p2` into `target`.
+
+        Not yet implemented.
+
+        Parameters
+        ----------
+        p1 : int
+            Index of one endpoint vertex of the edge to collapse.
+        p2 : int
+            Index of the other endpoint vertex of the edge to collapse.
+        target : array-like
+            Coordinates the collapsed vertex should be placed at.
+        """
         raise NotImplementedError
         face1 = self.connected[p1]
         face2 = self.connected[p2]
