@@ -153,6 +153,22 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
     np.savez(outfile, left=tissots[0], right=tissots[1], centers=allcenters)
 
 def flat_border(outfile, subject):
+    """
+    Compute the boundary of the flatmap as a set of line segments, split into
+    segments that lie along the medial wall and segments that don't, and
+    save the result to `outfile`.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the border map will be saved as an npz file, with `lines`
+        (a list of boundary line segments, each an array of 2D points) and
+        `ismwalls` (a boolean flag for each segment indicating whether it
+        lies along the medial wall) arrays.
+    subject : str
+        Subject in the pycortex database for whom the flatmap border will be
+        computed.
+    """
     flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set([tuple(x) for x in flatpolys])
     
