@@ -123,6 +123,12 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         figure into which to plot flatmap
     nanmean : bool, optional (default = False)
         If True, NaNs in the data will be ignored when averaging across layers.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure `braindata` was plotted into (either the newly created
+        figure, or the one passed in via `fig`).
     """
     from matplotlib import pyplot as plt
 
@@ -252,21 +258,12 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
         resolves some errors. Useful if you've made changes to the alignment
     pixelwise : bool
         Use pixel-wise mapping
-    thick : int
-        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
-    sampler : str
-        Name of sampling function used to sample underlying volume data
-    height : int
-        Height of the image to render. Automatically scales the width for the aspect of
-        the subject's flatmap
-    depth : float
-        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
-        boundary, 1 = pial surface)
-    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
-        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include
         'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of
+        the subject's flatmap
 
     Other Parameters
     ----------------
@@ -275,18 +272,34 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
         specifically the colormap
     bgcolor : matplotlib colorspec
         Color of background of image. `None` gives transparent background.
-    linewidth : int, optional
-        Width of ROI lines. Defaults to roi options in your local `options.cfg`
-    linecolor : tuple of float, optional
-        (R, G, B, A) specification of line color
-    roifill : tuple of float, optional
-        (R, G, B, A) specification for the fill of each ROI region
-    shadow : int, optional
-        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
-    labelsize : str, optional
-        Font size for the label, e.g. "16pt"
-    labelcolor : tuple of float, optional
-        (R, G, B, A) specification for the label color
+    **kwargs
+        Additional keyword arguments are forwarded to `make_figure`. These include:
+
+        thick : int
+            Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+        depth : float
+            Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+            boundary, 1 = pial surface)
+        with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
+            Display the rois, labels, colorbar, annotated flatmap borders, cross-hatch dropout, and curvature
+        linewidth : int, optional
+            Width of ROI lines. Defaults to roi options in your local `options.cfg`
+        linecolor : tuple of float, optional
+            (R, G, B, A) specification of line color
+        roifill : tuple of float, optional
+            (R, G, B, A) specification for the fill of each ROI region
+        shadow : int, optional
+            Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+        labelsize : str, optional
+            Font size for the label, e.g. "16pt"
+        labelcolor : tuple of float, optional
+            (R, G, B, A) specification for the label color
+        cutout : str, optional
+            Name of flatmap cutout with which to clip the full flatmap
+        overlay_file : str, optional
+            Custom ROI overlays file to use
+        fig : figure or ax, optional
+            Figure into which to plot flatmap
     """
     from matplotlib import pyplot as plt
     fig = make_figure(braindata,
