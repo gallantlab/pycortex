@@ -463,6 +463,41 @@ def _get_neighbors_dict(polys):
     return neighbors_dict
 
 
+def get_contour_vertices(data, subject, surface="fiducial"):
+    """Find vertices at borders of parcellation labels.
+
+    A vertex is a border vertex if any of its mesh neighbors has a different
+    label value. This is useful for drawing contour lines around parcellation
+    regions on the cortical surface.
+
+    Parameters
+    ----------
+    data : array_like, shape (n_vertices,)
+        Label values per vertex (e.g., parcellation integers).
+    subject : str
+        Subject name in the pycortex database.
+    surface : str
+        Surface type for adjacency computation (default: 'fiducial').
+
+    Returns
+    -------
+    border_mask : ndarray, shape (n_vertices,), dtype bool
+        True at border vertices, False elsewhere.
+    """
+    _, polys = db.get_surf(subject, surface, merge=True)
+    neighbors = _get_neighbors_dict(polys)
+    data = np.asarray(data)
+    border = np.zeros(len(data), dtype=bool)
+    for v, neighs in neighbors.items():
+        if v >= len(data):
+            continue
+        for n in neighs:
+            if n < len(data) and data[v] != data[n]:
+                border[v] = True
+                break
+    return border
+
+
 def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
     """Return vertices for the given ROIs, or all ROIs if none are given.
 
@@ -1165,7 +1200,7 @@ def get_cmap(name):
         try:
             cmap = plt.cm.get_cmap(name)
         except:
-            raise Exception('Unkown color map!')
+            raise Exception('Unknown color map!')
     return cmap
 
 def add_cmap(cmap, name, cmapdir=None):

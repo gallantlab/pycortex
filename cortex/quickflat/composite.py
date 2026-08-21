@@ -641,3 +641,127 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, over
     fig.set_size_inches(inch_size[0], inch_size[1])
 
     return
+
+
+def _detect_label_borders(label_img):
+    """Detect border pixels in a 2D label image.
+
+    A pixel is a border if any of its 4-connected neighbors has a different
+    value. NaN pixels (outside brain mask) are not borders.
+
+    Parameters
+    ----------
+    label_img : ndarray, shape (H, W) or (H, W, C)
+        Label image. If 3D (e.g. RGBA), the first channel is used.
+
+    Returns
+    -------
+    border : ndarray, shape (H, W), dtype bool
+        True at border pixels.
+    """
+    if label_img.ndim == 3:
+        vals = label_img[:, :, 0]
+    else:
+        vals = label_img
+
+    valid = ~np.isnan(vals)
+    border = np.zeros(vals.shape, dtype=bool)
+    for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        shifted = np.roll(np.roll(vals, di, axis=0), dj, axis=1)
+        shifted_valid = ~np.isnan(shifted)
+        # Invalidate wrapped edges to avoid false borders from np.roll
+        if di == -1:
+            shifted_valid[-1, :] = False
+        elif di == 1:
+            shifted_valid[0, :] = False
+        if dj == -1:
+            shifted_valid[:, -1] = False
+        elif dj == 1:
+            shifted_valid[:, 0] = False
+        border |= (vals != shifted) & valid & shifted_valid
+    return border
+
+
+def add_contours(
+    fig,
+    contour_data,
+    extents=None,
+    height=None,
+    linewidth=1,
+    linecolor=(0, 0, 0, 1),
+    sampler="nearest",
+    recache=False,
+):
+    """Add contour borders of parcellation data to a quickflat plot.
+
+    Parameters
+    ----------
+    fig : matplotlib figure or axes
+        Figure or axes to plot into.
+    contour_data : cortex.Dataview
+        Parcellation/label data whose borders will be drawn.
+    extents : array-like, optional
+        [Left, Right, Top, Bottom] extents. None uses extents from existing images.
+    height : int, optional
+        Height of the flatmap image. None uses height of existing images.
+    linewidth : int
+        Width of contour lines in pixels (default: 1).
+    linecolor : tuple of float
+        (R, G, B, A) color for contour lines (default: black).
+    sampler : str
+        Sampling method (default: 'nearest' to preserve label boundaries).
+    recache : bool
+        Whether to recache intermediate files.
+
+    Returns
+    -------
+    img : matplotlib.image.AxesImage
+        Axes image object for plotted contour overlay.
+    """
+    dataview = dataset.normalize(contour_data)
+    if not isinstance(dataview, dataset.Dataview):
+        raise TypeError("Please provide a Dataview (e.g. cortex.Vertex), not a Dataset")
+
+    try:
+        if extents is None:
+            extents = _get_extents(fig)
+    except ValueError:
+        extents = None
+    if height is None:
+        try:
+            height = _get_height(fig)
+        except (ValueError, IndexError):
+            height = 1024
+
+    # Generate flatmap image of the label data
+    label_img, extents_out = make_flatmap_image(
+        dataview, height=height, recache=recache, sampler=sampler
+    )
+
+    if extents is None:
+        extents = extents_out
+
+    # Detect borders
+    border = _detect_label_borders(label_img)
+
+    # Optionally dilate for thicker lines
+    if linewidth > 1:
+        from scipy.ndimage import binary_dilation
+
+        struct = np.ones((linewidth, linewidth))
+        border = binary_dilation(border, structure=struct)
+
+    # Create RGBA overlay image
+    rgba = np.zeros(label_img.shape[:2] + (4,), dtype=np.float32)
+    rgba[border] = linecolor
+
+    _, ax = _get_fig_and_ax(fig)
+    img = ax.imshow(
+        rgba,
+        aspect="equal",
+        extent=extents,
+        interpolation="nearest",
+        zorder=4,
+        label="contours",
+    )
+    return img

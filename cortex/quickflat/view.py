@@ -4,7 +4,7 @@ import tempfile
 import binascii
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Union, IO
+from typing import Literal, Optional, Union, IO
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -42,7 +42,8 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
                 colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
-                nanmean: bool=False) -> Figure:
+                nanmean: bool=False, with_contours: Union[Literal[False], dataset.Dataview]=False,
+                contour_linewidth: Optional[int]=None, contour_linecolor: Optional[ColorType]=None) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Parameters
@@ -123,6 +124,14 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         figure into which to plot flatmap
     nanmean : bool, optional (default = False)
         If True, NaNs in the data will be ignored when averaging across layers.
+    with_contours : cortex.Dataview or False, optional
+        Parcellation data whose label boundaries will be drawn as contour
+        lines on top of the plotted data. Pass a Vertex (or other Dataview)
+        with discrete labels. False (default) disables contours.
+    contour_linewidth : int, optional
+        Width of contour lines in pixels. None defaults to 1.
+    contour_linecolor : tuple of float, optional
+        (R, G, B, A) color for contour lines. None defaults to black.
     """
     from matplotlib import pyplot as plt
 
@@ -199,6 +208,16 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                                          linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize,
                                          labelcolor=labelcolor, with_labels=with_labels)
         layers['custom'] = custom_im
+    # Add contours
+    if with_contours is not False:
+        contour_kw = {}
+        if contour_linewidth is not None:
+            contour_kw['linewidth'] = contour_linewidth
+        if contour_linecolor is not None:
+            contour_kw['linecolor'] = contour_linecolor
+        contour_im = composite.add_contours(ax, with_contours, extents=extents, height=height,
+                                            recache=recache, **contour_kw)
+        layers['contours'] = contour_im
     # Add connector lines btw connected vertices
     if with_connected_vertices:
         vertex_lines = composite.add_connected_vertices(ax, dataview, recache=recache)

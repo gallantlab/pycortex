@@ -582,13 +582,24 @@ def show(
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
                                 'surface.{subject}.curvature.smoothness']
-            return _camera_props + _surface_props + _curvature_props
+            _contour_props = ['surface.{subject}.contours.mode',
+                              'surface.{subject}.contours.threshold',
+                              'surface.{subject}.contours.overlay']
+            return _camera_props + _surface_props + _curvature_props + _contour_props
 
         def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
 
             Sets each the state of each keyword argument provided. View parameters
             that can be set include all parameters in the data.gui in the html view.
+
+            Contour-related parameters:
+                surface.{subject}.contours.mode : int
+                    0=off, 1=contours only, 2=contours+fill
+                surface.{subject}.contours.threshold : float
+                    Edge detection threshold (0.001-0.5)
+                surface.{subject}.contours.overlay : str
+                    Dataset name to use as contour overlay, or "none"
 
             """
             # Set unfolding level first, as it interacts with other arguments
