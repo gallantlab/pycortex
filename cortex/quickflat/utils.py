@@ -12,7 +12,7 @@ from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **kwargs):
+def make_flatmap_image(braindata, height=1024, recache=False, nanmean=True, **kwargs):
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -27,7 +27,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. Useful if you've made changes to the alignment.
-    nanmean : bool, optional (default = False)
+    nanmean : bool, optional (default = True)
         If True, NaNs in the data will be ignored when averaging across layers.
     kwargs : idk
         idk

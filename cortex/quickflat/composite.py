@@ -121,7 +121,7 @@ def add_curvature(fig, dataview, extents=None, height=None, threshold=True, cont
     return cvimg
 
 def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
-             sampler='nearest', recache=False, nanmean=False):
+             sampler='nearest', recache=False, nanmean=True):
     """Add data to quickflat plot
 
     Parameters
@@ -143,7 +143,7 @@ def add_data(fig, braindata, height=1024, thick=32, depth=0.5, pixelwise=True,
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include
         'trilinear','nearest','lanczos'; see functions in cortex.mapper.samplers.py for all options
-    nanmean : bool, optional (default = False)
+    nanmean : bool, optional (default = True)
         If True, NaNs in the data will be ignored when averaging across layers.
 
     Returns

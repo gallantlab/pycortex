@@ -30,6 +30,7 @@ var mriview = (function(module) {
         this.volume = 0;
         this._layers = 1;
         this._dither = false;
+        this._nanmean = true;  // average only non-NaN layers (matches quickflat nanmean=True)
         this._pivot = 0;
         this._shift = 0;
         this._specular = parseFloat(viewopts.specularity);
@@ -107,6 +108,7 @@ var mriview = (function(module) {
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
             toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
+            nanmean: {action:[this, "setNanmean"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
             uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
@@ -380,6 +382,7 @@ var mriview = (function(module) {
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
                 dither: this._dither,
+                nanmean: this._nanmean,
                 equivolume: this._equivolume,
                 sampler: this._sampler,
             });
@@ -663,6 +666,12 @@ var mriview = (function(module) {
         if (val === undefined)
             return this._dither;
         this._dither = val;
+        this.resetShaders();
+    }
+    module.Surface.prototype.setNanmean = function(val) {
+        if (val === undefined)
+            return this._nanmean;
+        this._nanmean = val;
         this.resetShaders();
     }
     module.Surface.prototype.setSampler = function(val) {

@@ -168,3 +168,50 @@ def test_visible_fraction_matches(name, cases, tmp_path):
         "%s: quickshow shows data on %.0f%% of the cortex, WebGL on %.0f%%"
         % (name, 100 * f_qs, 100 * f_wg)
     )
+
+
+def test_multilayer_nanmean_toggle(tmp_path):
+    """With several layers, NaN voxels are left out of the average (like
+    quickflat's ``nanmean=True``) unless the surface's ``nanmean`` toggle is
+    off, in which case one NaN at any depth makes the fragment transparent."""
+    zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
+    d = np.full(volshape, 5.0)
+    d[(xx + yy + zz) % 3 == 0] = np.nan  # a third of the voxels, scattered
+    vol = cortex.Volume(d, subj, xfmname, cmap="Reds", vmin=0, vmax=1)
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    def _red(path):
+        from PIL import Image
+
+        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
+        return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+
+    counts = {}
+    with cortex.export.headless_viewer(
+        vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
+    ) as handle:
+        handle._set_view(**view)
+        time.sleep(2)
+        for layers, nanmean in [(1, True), (8, True), (8, False)]:
+            handle.ui.set("surface.%s.layers" % subj, layers)
+            handle.ui.set("surface.%s.nanmean" % subj, nanmean)
+            time.sleep(2.5)
+            path = str(tmp_path / ("layers%d_nanmean%s.png" % (layers, nanmean)))
+            handle.getImage(path, (512, 384))
+            for _ in range(300):
+                if os.path.exists(path) and os.path.getsize(path) > 0:
+                    break
+                time.sleep(0.1)
+            time.sleep(0.3)
+            counts[(layers, nanmean)] = _red(path)
+        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+    assert not errors, errors
+    assert counts[(1, True)] > 5000
+    # nanmean: averaging over the valid layers shows at least as much cortex
+    assert counts[(8, True)] >= 0.9 * counts[(1, True)], counts
+    # toggle off: any NaN among the 8 layers hides the fragment
+    assert counts[(8, False)] < 0.6 * counts[(8, True)], counts

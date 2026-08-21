@@ -333,3 +333,16 @@ def test_make_svg_scalar_with_nan():
         assert os.path.getsize(tf.name) > 0
     finally:
         os.unlink(tf.name)
+
+
+def test_quickflat_nanmean_is_default():
+    """quickflat ignores NaN voxels when averaging across thickness by
+    default, like the WebGL viewer's ``nanmean`` surface toggle."""
+    import inspect
+
+    for func in (
+        cortex.quickflat.make_figure,
+        cortex.quickflat.utils.make_flatmap_image,
+        cortex.quickflat.composite.add_data,
+    ):
+        assert inspect.signature(func).parameters["nanmean"].default is True, func

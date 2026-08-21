@@ -354,6 +354,8 @@ var Shaderlib = (function() {
                 header += "#define TWOD\n";
             if (opts.dataalpha)
                 header += "#define DATAALPHA\n";
+            if (opts.nanmean === undefined || opts.nanmean)
+                header += "#define NANMEAN\n";
 
             var sampler = opts.sampler || "nearest";
             var morphs = opts.morphs;
@@ -561,6 +563,7 @@ var Shaderlib = (function() {
                 "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
             "#else",
                 "vec4 values = vec4(0.);",
+                "float nvalid = 0.;", // number of layer samples averaged into values
             "#endif",
             "#ifdef DATAALPHA",
                 "vec2 avals = vec2(0.);",
@@ -576,16 +579,38 @@ var Shaderlib = (function() {
                 "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
                 "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
         "#else",
-                "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
-                "values.y += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
+                // One layer sample. With NANMEAN (default, matching quickflat's
+                // nanmean=True) a sample containing NaN in any frame/dimension
+                // (or in the alpha map) is left out of the average and the
+                // fragment is transparent only if no layer was valid. Without
+                // it, one NaN at any depth makes the whole fragment transparent.
+                "{",
+                "vec4 s = vec4(0.);",
+                "s.x = "+sampler+"_x(data[0], coord_x).r;",
+                "s.y = "+sampler+"_x(data[1], coord_x).r;",
             "#ifdef TWOD",
-                "values.z += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
+                "s.z = "+sampler+"_y(data[2], coord_y).r;",
+                "s.w = "+sampler+"_y(data[3], coord_y).r;",
             "#endif",
-        "#endif",
-        "#ifdef DATAALPHA",
-                "avals.x += "+factor+"*"+sampler+"_x(dataalpha[0], coord_x).r;",
-                "avals.y += "+factor+"*"+sampler+"_x(dataalpha[1], coord_x).r;",
+            "#ifdef DATAALPHA",
+                "vec2 sa = vec2("+sampler+"_x(dataalpha[0], coord_x).r, "+sampler+"_x(dataalpha[1], coord_x).r);",
+            "#endif",
+            "#ifdef NANMEAN",
+                "bool ok = all(notEqual(lessThanEqual(s, vec4(0.)), lessThan(vec4(0.), s)));",
+                "#ifdef DATAALPHA",
+                "ok = ok && all(notEqual(lessThanEqual(sa, vec2(0.)), lessThan(vec2(0.), sa)));",
+                "#endif",
+            "#else",
+                "bool ok = true;",
+            "#endif",
+                "if (ok) {",
+                    "values += s;",
+                    "nvalid += 1.;",
+                "#ifdef DATAALPHA",
+                    "avals += sa;",
+                "#endif",
+                "}",
+                "}",
         "#endif",
             ].join("\n");
 
@@ -635,6 +660,14 @@ var Shaderlib = (function() {
             }
 
             var fragTail = [
+        "#ifndef RGBCOLORS",
+                "if (nvalid > 0.) {",
+                    "values /= nvalid;",
+            "#ifdef DATAALPHA",
+                    "avals /= nvalid;",
+            "#endif",
+                "}",
+        "#endif",
     "#ifdef HALO_RENDER",
                 "if (vMedial < .999) {",
                     "float dweight = gl_FragCoord.w;",
@@ -651,7 +684,7 @@ var Shaderlib = (function() {
             "#ifdef RGBCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
-                "vec4 vColor = colorlut(values);",
+                "vec4 vColor = nvalid > 0. ? colorlut(values) : vec4(0.);",
             "#endif",
             "#ifdef DATAALPHA",
                 // alpha map: NaN (neither <=0 nor >0) -> transparent, else
