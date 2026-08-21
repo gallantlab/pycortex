@@ -178,6 +178,53 @@ def import_subj(
     halfway between the white matter and pial surfaces. The surfaces will be stored
     in the freesurfer subject's directory. These fiducial surfaces are used for 
     cutting and flattening.
+
+    **Imported files**
+
+    Only the files listed below are copied over. They are read from the freesurfer
+    subject directory, ``{freesurfer_subject_dir}/{freesurfer_subject}/``, and written
+    into the pycortex filestore entry for the subject,
+    ``{pycortex_filestore}/{pycortex_subject}/``. Flat surfaces are *not* imported by
+    this function; use `import_flat` for those. Labels and annotations are not imported
+    either; use `get_label` for those.
+
+    Anatomical volumes, converted with ``mri_convert``:
+
+    ======================  =============================  ==========================
+    freesurfer file         pycortex file                  contents
+    ======================  =============================  ==========================
+    ``mri/T1.mgz``          ``anatomicals/raw.nii.gz``     T1-weighted anatomical
+    ``mri/aseg.mgz``        ``anatomicals/aseg.nii.gz``    automatic segmentation
+    ``mri/wm.mgz``          ``anatomicals/raw_wm.nii.gz``  white matter segmentation
+    ======================  =============================  ==========================
+
+    Surfaces, for both hemispheres (``lh`` and ``rh``), converted with
+    ``mris_convert --to-scanner`` so that they share the coordinate system of the
+    anatomical volumes rather than freesurfer's TKR coordinate system:
+
+    ==========================  =============================  ======================
+    freesurfer file             pycortex file                  contents
+    ==========================  =============================  ======================
+    ``surf/?h.smoothwm``        ``surfaces/wm_?h.gii``         white matter surface
+    ``surf/?h.pial``            ``surfaces/pia_?h.gii``        pial surface
+    ``surf/?h.inflated``        ``surfaces/inflated_?h.gii``   inflated surface
+    ==========================  =============================  ======================
+
+    The white matter surface that is imported as ``wm`` is whichever surface is named
+    by the `whitematter_surf` parameter (``smoothwm`` by default), so the first row
+    above reads ``surf/?h.{whitematter_surf}``.
+
+    Surface info, where both hemispheres are stored together in a single ``.npz`` file
+    with the keys ``left`` and ``right``. Note that the values are stored **negated**
+    with respect to the freesurfer values:
+
+    ==========================  ================================  ==================
+    freesurfer files            pycortex file                     contents
+    ==========================  ================================  ==================
+    ``surf/?h.sulc``            ``surface-info/sulcaldepth.npz``  sulcal depth
+    ``surf/?h.thickness``       ``surface-info/thickness.npz``    cortical thickness
+    ``surf/?h.curv``            ``surface-info/curvature.npz``    curvature
+    ==========================  ================================  ==================
     """
     # Check if freesurfer is sourced or if subjects dir is passed
     if freesurfer_subject_dir is None:

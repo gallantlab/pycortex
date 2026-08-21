@@ -28,7 +28,7 @@ Surfaces
 
 Pycortex fundamentally operates on triangular mesh geometry computed from a subject's anatomy. Surface geometries are usually created from a `marching cubes`_ reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries and is morphed by an energy metric to be on a flattened 2D surface.
 
-Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user-friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, documented '''HERE'''.
+Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is Freesurfer_. Another package which is generally more user-friendly is Caret_. pycortex includes some utility functions to interact with Freesurfer_, which are documented in :ref:`database-freesurfer-import` below and in the ``cortex.freesurfer`` module.
 
 A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces may be stored in any one of **OFF**, **VTK**, or **npz** formats. The highest performance is achieved with **npz** since it is binary and compressed. VTK is also efficient, having a `Cython` module to read files. Inside the filestore, surface names are formatted as ``{type}_{hemisphere}.{format}``. Surfaces generally have three variables associated:
 
@@ -100,6 +100,85 @@ Surface management is implemented through your file manager. To add a new surfac
 
 In order to adequately utilize all the functions in pycortex, please add the **fiducial**, **inflated**, and **flat** geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!
 
+
+
+.. _database-freesurfer-import:
+
+Importing a subject from Freesurfer
+-----------------------------------
+
+The usual way to create a subject in the pycortex database is to import one that has
+already been segmented with Freesurfer_::
+
+    import cortex
+    cortex.freesurfer.import_subj(freesurfer_subject, pycortex_subject=None,
+                                  freesurfer_subject_dir=None,
+                                  whitematter_surf='smoothwm')
+
+This reads from the Freesurfer subject directory,
+``$SUBJECTS_DIR/{freesurfer_subject}/``, and writes into the pycortex filestore entry
+for the subject, ``{filestore}/{pycortex_subject}/``. Only the files listed below are
+copied over. Note that ``import_subj`` overwrites any pre-existing pycortex subject
+of the same name, including all blender cuts, masks and transforms, and deletes all
+cached files for that subject.
+
+Anatomical volumes are converted with ``mri_convert``:
+
+======================  =============================  ==========================
+Freesurfer file         pycortex file                  Contents
+======================  =============================  ==========================
+``mri/T1.mgz``          ``anatomicals/raw.nii.gz``     T1-weighted anatomical
+``mri/aseg.mgz``        ``anatomicals/aseg.nii.gz``    Automatic segmentation
+``mri/wm.mgz``          ``anatomicals/raw_wm.nii.gz``  White matter segmentation
+======================  =============================  ==========================
+
+Surfaces are imported for both hemispheres (``lh`` and ``rh``) and are converted with
+``mris_convert --to-scanner``, so that they are stored in the same coordinate system
+as the anatomical volumes rather than in the Freesurfer TKR coordinate system (whose
+center is set to FOV/2). As a consequence, the imported surfaces will look misaligned
+with the anatomical volumes if you load them in ``freeview``, which expects TKR
+coordinates. This is expected: the surfaces in the pycortex database are only meant to
+be used by pycortex.
+
+==========================  =============================  ======================
+Freesurfer file             pycortex file                  Contents
+==========================  =============================  ======================
+``surf/?h.smoothwm``        ``surfaces/wm_?h.gii``         White matter surface
+``surf/?h.pial``            ``surfaces/pia_?h.gii``        Pial surface
+``surf/?h.inflated``        ``surfaces/inflated_?h.gii``   Inflated surface
+==========================  =============================  ======================
+
+The surface imported as ``wm`` is whichever surface is named by the
+``whitematter_surf`` argument, so the first row above is really
+``surf/?h.{whitematter_surf}``. It defaults to ``smoothwm``, but that surface is
+smoothed and may not be appropriate for every use; ``white`` is a good alternative.
+
+Surface info files hold one value per vertex. Both hemispheres are stored together in
+a single ``.npz`` file, under the keys ``left`` and ``right``. Note that the values are
+stored **negated** with respect to the Freesurfer values.
+
+==========================  ================================  ==================
+Freesurfer files            pycortex file                     Contents
+==========================  ================================  ==================
+``surf/?h.sulc``            ``surface-info/sulcaldepth.npz``  Sulcal depth
+``surf/?h.thickness``       ``surface-info/thickness.npz``    Cortical thickness
+``surf/?h.curv``            ``surface-info/curvature.npz``    Curvature
+==========================  ================================  ==================
+
+``import_subj`` also (re-)generates the fiducial surfaces, halfway between the white
+matter and the pial surfaces, which are used for cutting and flattening. Those are
+written back into the *Freesurfer* subject directory as ``surf/?h.fiducial``, not into
+the pycortex filestore.
+
+Nothing else is imported. In particular, flat surfaces are not imported by
+``import_subj``; once a surface has been cut and flattened in Freesurfer, import it
+separately with::
+
+    cortex.freesurfer.import_flat(fs_subject, patch, hemis=['lh', 'rh'],
+                                  cx_subject=None)
+
+which writes ``surfaces/flat_lh.gii`` and ``surfaces/flat_rh.gii``. Labels and
+annotations are not imported either; see ``cortex.freesurfer.get_label``.
 
 
 Transforms
@@ -185,7 +264,7 @@ If you use a custom mask for any reason, it is highly recommended that you load 
 Surface info
 ------------
 
-The filestore also manages several important quantifications about the surfaces. These include Tissot's Indicatrix and the flatmap surface distortion. There are stored in the ``/surface_info`` directory.
+The filestore also manages several important quantifications about the surfaces. These include Tissot's Indicatrix and the flatmap surface distortion. There are stored in the ``/surface-info`` directory. This is also where the per-vertex curvature, sulcal depth and thickness imported from Freesurfer_ are stored (see :ref:`database-freesurfer-import`). Each file is an ``.npz`` file holding one array per hemisphere, under the keys ``left`` and ``right``, and can be loaded with ``cortex.db.get_surfinfo``.
 
 
 Views
@@ -221,7 +300,9 @@ Here is an example entry into the filestore...
     filestore/db
     └── S1
         ├── anatomicals
-        │   └── raw.nii.gz
+        │   ├── aseg.nii.gz
+        │   ├── raw.nii.gz
+        │   └── raw_wm.nii.gz
         ├── cache
         │   ├── flatmask_1024.npz
         │   ├── flatpixel_fullhead_1024_nearest_l32.npz
@@ -230,8 +311,11 @@ Here is an example entry into the filestore...
         ├── overlays.svg
         ├── rois.svg
         ├── surface-info
+        │   ├── curvature.npz
         │   ├── distortion[dist_type=areal].npz
-        │   └── distortion[dist_type=metric].npz
+        │   ├── distortion[dist_type=metric].npz
+        │   ├── sulcaldepth.npz
+        │   └── thickness.npz
         ├── surfaces
         │   ├── flat_lh.gii
         │   ├── flat_rh.gii
