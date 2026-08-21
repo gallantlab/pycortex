@@ -2,6 +2,7 @@ import numpy as np
 from matplotlib.tri import Triangulation
 import cortex
 from cortex.mapper import samplers
+from scipy.spatial import Delaunay
 
 def find_triangle(verts, faces, pts):
     """verts (V,2), faces (F,3), pts (N,2) -> (tri_idx, bary); tri_idx = -1 if outside.
@@ -27,14 +28,27 @@ def locate_depth_point(subject, u_x, v_x, alpha):
     returns: (x, y, z) points in the 3D space
     '''
     verts, faces = cortex.db.get_surf(subject, "flat", merge=True, nudge=True)
-    idx, bary = find_triangle(verts, faces, np.vstack([u_x, v_x]).T)
-    p_verts, _ = cortex.db.get_surf(subject, "pial", merge=True, nudge=False)
-    w_verts, _ = cortex.db.get_surf(subject, "wm", merge=True, nudge=False)
-    x_p = p_verts[faces[idx, 0]] * bary[:, 0, None] + p_verts[faces[idx, 1]] * bary[:, 1, None] + p_verts[faces[idx, 2]] * bary[:, 2, None]
-    x_w = w_verts[faces[idx, 0]] * bary[:, 0, None] + w_verts[faces[idx, 1]] * bary[:, 1, None] + w_verts[faces[idx, 2]] * bary[:, 2, None]
+    valid = np.unique(faces) # find vertices in flatmap triangles
+    dl = Delaunay(verts[valid,:2])
+    simp = dl.find_simplex([v_x, u_x])
+    tf = dl.transform[simp]
+    l_a, l_b = tf[:2,:2] @ (np.array([v_x, u_x]) - tf[2])
+    l_c = 1 - l_a - l_b
+    #idx, bary = find_triangle(verts, faces, np.vstack([u_x, v_x]).T)
+    pia, _ = cortex.db.get_surf(subject, "pia", merge=True, nudge=False)
+    wm, _ = cortex.db.get_surf(subject, "wm", merge=True, nudge=False)
+    x_p = [l_a, l_b, l_c] @ pia[valid][dl.simplices][simp]
+    x_w = [l_a, l_b, l_c] @ wm[valid][dl.simplices][simp]
+    #x_p = p_verts[faces[idx, 0]] * bary[:, 0, None] + p_verts[faces[idx, 1]] * bary[:, 1, None] + p_verts[faces[idx, 2]] * bary[:, 2, None]
+    #x_w = w_verts[faces[idx, 0]] * bary[:, 0, None] + w_verts[faces[idx, 1]] * bary[:, 1, None] + w_verts[faces[idx, 2]] * bary[:, 2, None]
     #Compute area of pial and white matter triangles
-    A_p = 0.5 * np.linalg.norm(np.cross(p_verts[faces[idx, 1]] - p_verts[faces[idx, 0]], p_verts[faces[idx, 2]] - p_verts[faces[idx, 0]]), axis=1)
-    A_w = 0.5 * np.linalg.norm(np.cross(w_verts[faces[idx, 1]] - w_verts[faces[idx, 0]], w_verts[faces[idx, 2]] - w_verts[faces[idx, 0]]), axis=1)
+    #A_p = 0.5 * np.linalg.norm(np.cross(p_verts[faces[idx, 1]] - p_verts[faces[idx, 0]], p_verts[faces[idx, 2]] - p_verts[faces[idx, 0]]), axis=1)
+    #A_w = 0.5 * np.linalg.norm(np.cross(w_verts[faces[idx, 1]] - w_verts[faces[idx, 0]], w_verts[faces[idx, 2]] - w_verts[faces[idx, 0]]), axis=1)
+    A_p = 0.5 * np.linalg.norm(np.cross(pia[valid][dl.simplices][simp][1] - pia[valid][dl.simplices][simp][0],
+                                    pia[valid][dl.simplices][simp][2] - pia[valid][dl.simplices][simp][0]))
+    A_w = 0.5 * np.linalg.norm(np.cross(wm[valid][dl.simplices][simp][1] - wm[valid][dl.simplices][simp][0],
+                                        wm[valid][dl.simplices][simp][2] - wm[valid][dl.simplices][simp][0]))
+
     beta = 1-(1/(A_p - A_w) *(- A_w + np.sqrt((1 - alpha)*A_p**2 + alpha*A_w**2)))
     z = beta*x_p + (1-beta)*x_w
     return z
@@ -62,6 +76,6 @@ def make_laminar_profile(subject, xfmname, u_l, v_l, u_r, v_r, W, H, sampler="ne
             # Locate the depth point in 3D space
             z = locate_depth_point(subject, u_gamma, v_gamma, alpha)
             # Retrieve the value at that voxel (assuming a function get_voxel_value exists)
-            _, _, profile_map[i, j] = sampclass(xfm.inv(z), xfm.shape)
+            _, _, profile_map[i, j] = sampclass(xfm.inv([z]), xfm.shape)
             
     return profile_map
