@@ -61,7 +61,22 @@ class BrainData:
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
-        """TODO: WHAT IS THIS
+        """Yield the underlying BrainData object(s) this view is built from.
+
+        For a plain Volume/Vertex, that's just itself; composite views
+        (VolumeRGB, VertexRGB, Volume2D, Vertex2D) override this to yield
+        their individual channels instead.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            Unused here; accepted for interface compatibility with the
+            composite-view overrides of this method.
+
+        Returns
+        -------
+        generator
+            Yields `self`.
         """
         yield self
 
