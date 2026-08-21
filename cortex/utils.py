@@ -27,7 +27,7 @@ from .database import db
 from .freesurfer import fs_aseg_dict
 from .options import config
 from .polyutils import Surface
-from .testing_utils import INKSCAPE_VERSION
+from .testing_utils import INKSCAPE_PATH, INKSCAPE_VERSION
 from .volume import anat2epispace
 
 # register_cmap is deprecated in matplotlib > 3.7.0 and replaced by colormaps.register
@@ -445,7 +445,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
     svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode('utf-8'), add_path)
 
     if open_inkscape:
-        inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        inkscape_cmd = INKSCAPE_PATH
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
             cmd = [inkscape_cmd, '-f', svg.svgfile]
         else:

@@ -4,15 +4,16 @@ import tempfile
 import pytest
 
 from cortex import dataset
-from cortex.testing_utils import has_installed
+from cortex.testing_utils import inkscapePath
 from cortex.webgl.data import Package
 
-no_inkscape = not has_installed('inkscape')
+no_inkscape = inkscapePath() is None
 
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
 def test_quickflat():
-    tf = tempfile.NamedTemporaryFile(suffix=".png")
+    tf = tempfile.NamedTemporaryFile(suffix = ".png", delete = False)
+    tf.close()
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
     cortex.quickflat.make_png(tf.name, view)
 

@@ -16,7 +16,7 @@ from lxml import etree
 from lxml.builder import E
 
 from .options import config
-from .testing_utils import INKSCAPE_VERSION
+from .testing_utils import INKSCAPE_PATH, INKSCAPE_VERSION
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -273,18 +273,30 @@ class SVGOverlay:
 
         pngfile = name
         if name is None:
-            png = tempfile.NamedTemporaryFile(suffix=".png")
+            png = tempfile.NamedTemporaryFile(suffix = ".png", delete = False)
+            png.close()
             pngfile = png.name
 
-        inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        # The svg is written to a temporary file rather than piped through
+        # /dev/stdin, which does not exist on Windows.
+        svgtemp = tempfile.NamedTemporaryFile(suffix = ".svg", delete = False)
+        svgtemp.write(etree.tostring(self.svg))
+        svgtemp.close()
+        svgfile = svgtemp.name
+
+        inkscape_cmd = INKSCAPE_PATH
+        # The command is built as an argument list rather than as a string that
+        # is then split, so that a configured inkscape path containing spaces
+        # or backslashes is passed through unchanged.
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
-            cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+            cmd = [inkscape_cmd, '-z', '-h', str(height), '-e', pngfile, svgfile]
         else:
-            cmd = "{inkscape_cmd} -h {height} --export-filename {outfile} " \
-                  "/dev/stdin"
-        cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
-        proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = proc.communicate(etree.tostring(self.svg))
+            cmd = [inkscape_cmd, '-h', str(height), '--export-filename', pngfile, svgfile]
+        try:
+            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
+            stdout, stderr = proc.communicate()
+        finally:
+            os.unlink(svgfile)
         
         suppressed_warnings = [
             'Format autodetect failed.',
@@ -300,15 +312,16 @@ class SVGOverlay:
             self.svg.getroot().remove(img)
 
         if name is None:
-            png.seek(0)
             try:
-                im = plt.imread(png)
+                im = plt.imread(pngfile)
             except SyntaxError as e:
+                os.unlink(pngfile)
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
                                    f" (inkscape version: {INKSCAPE_VERSION})"
                                    f" (inkscape command: {inkscape_cmd})"
                                    f" (stdout: {stdout})"
                                    f" (stderr: {stderr})")
+            os.unlink(pngfile)
             return im
 
 class Overlay:
@@ -752,7 +765,8 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         if not modify_svg_file:
             # To avoid modifying the svg file, we copy it in a temporary file
             import shutil
-            svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
+            svg_tmp = tempfile.NamedTemporaryFile(suffix = ".svg", delete = False)
+            svg_tmp.close()
             svgfile_tmp = svg_tmp.name
             shutil.copy2(svgfile, svgfile_tmp)
             svgfile = svgfile_tmp
