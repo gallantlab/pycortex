@@ -157,17 +157,21 @@ class Dataset:
 
         self.h5.flush()
 
-    # TODO: forcing '*' WILL cause issues. Look for all instances of merge=True !
     @overload
-    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', merge: Literal[False]=False, nudge: bool=False) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
+    def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', *, merge: Literal[False]=False, nudge: bool=False) -> tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
 
     @overload
     def get_surf(self, subject: str, type: str, hemi: Literal['both']='both', *, merge: Literal[True], nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
 
     @overload
-    def get_surf(self, subject: str, type: str, hemi: Literal['lh', 'rh'], merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
+    def get_surf(self, subject: str, type: str, hemi: Literal['lh', 'rh'], *, merge: bool=False, nudge: bool=False) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]: ...
 
-    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+    # Fallthrough case for callers (e.g. Database.get_surf's auxfile delegation) that pass
+    # a non-literal hemi/merge, which can't be matched to any of the overloads above.
+    @overload
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
+
+    def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
         pts: npt.NDArray[np.floating]
         polys: npt.NDArray[np.integer]
         if hemi == 'both':
