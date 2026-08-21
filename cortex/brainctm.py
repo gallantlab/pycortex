@@ -202,7 +202,7 @@ class Hemi:
         # the Python handle is open, so close it and let the CTM library open it
         self.tf = tempfile.NamedTemporaryFile(delete = False)
         self.tf.close()
-        self.tfName = bytes(self.tf.name, 'ascii')
+        self.tfName = os.fsencode(self.tf.name)
         self.ctm = CTMfile(self.tfName, "w")
 
         self.ctm.setMesh(pts.astype(np.float32),
