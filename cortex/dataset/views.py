@@ -411,7 +411,21 @@ class Volume(VolumeData, Dataview):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
-        All additional arguments in kwargs are passed to the VolumeData and Dataview
+        All additional arguments in kwargs are passed to the VolumeData and Dataview.
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str 
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+
+
 
     """
 
@@ -502,6 +516,18 @@ class Vertex(VertexData, Dataview):
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
 
     """
 

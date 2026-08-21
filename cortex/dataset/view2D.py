@@ -143,7 +143,20 @@ class Volume2D(Dataview2D):
         Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
-
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str (default  = "nearest")
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+            alpha : ndarray or Volume
+                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D
     """
     _cls = VolumeData
     dim1: Volume
@@ -238,7 +251,20 @@ class Vertex2D(Dataview2D):
         Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
-
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str (default  = "nearest")
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+            alpha : ndarray or Volume
+                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D
     """
     _cls = VertexData
     blend_curvature = _cls.blend_curvature  # hacky inheritance
