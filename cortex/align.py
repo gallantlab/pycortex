@@ -38,12 +38,13 @@ def mayavi_manual(subject, xfmname, reference=None, **kwargs):
         If given the default value of None, this function will attempt to load an existing reference
         image from the database.
     kwargs : dict
-        Passed to mayavi_aligner.get_aligner.
+        Unused; retained for backward-compatible call signatures.
 
-    Returns
-    -------
-    m : 2D ndarray, shape (4, 4)
-        Transformation matrix.
+    Raises
+    ------
+    RuntimeError
+        Always. The `mayavi_aligner` module this GUI depended on was
+        removed from pycortex; this function can no longer work.
     """
 
     warnings.warn("This is the old cortex.align.manual(), and has been "
@@ -52,52 +53,12 @@ def mayavi_manual(subject, xfmname, reference=None, **kwargs):
                   "the `freeview` program in the freesurfer suite, to "
                   "perform manual alignment.", DeprecationWarning
                   )
-    from .database import db
-    from .mayavi_aligner import get_aligner
-    def save_callback(aligner):
-        db.save_xfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
-        print("saved xfm")
-
-    def view_callback(aligner):
-        print('view-only mode! ignoring changes')
-
-    # Check whether transform w/ this xfmname already exists
-    view_only_mode = False
-    try:
-        db.get_xfm(subject, xfmname)
-        # Transform exists, make sure that reference is None
-        if reference is not None:
-            raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
-
-        # if masks have been cached, quit! user must remove them by hand
-        from glob import glob
-        if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
-            print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
-            checked = False
-            while not checked:
-                resp = input("Do you want to continue in view-only mode? (Y/N) ").lower().strip()
-                if resp in ["y", "yes", "n", "no"]:
-                    checked = True
-                    if resp in ["y", "yes"]:
-                        view_only_mode = True
-                        print("Continuing in view-only mode...")
-                    else:
-                        raise ValueError("Exiting...")
-                else:
-                    print("Didn't get that, please try again..")
-    except IOError:
-        # Transform does not exist, make sure that reference exists
-        if reference is None or not os.path.exists(reference):
-            raise ValueError('Reference image file (%s) does not exist' % reference)
-
-
-
-
-    m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
-    m.save_callback = view_callback if view_only_mode else save_callback
-    m.configure_traits()
-
-    return m
+    raise RuntimeError(
+        "cortex.align.mayavi_manual() no longer works: the mayavi_aligner "
+        "module it depended on was removed from pycortex. Use "
+        "cortex.align.manual() (formerly fs_manual()) instead, which uses "
+        "the `freeview` program in the freesurfer suite."
+    )
 
 
 def fs_manual(subject, xfmname, **kwargs):
