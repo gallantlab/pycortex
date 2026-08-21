@@ -15,12 +15,16 @@ from .views import Dataview, Vertex, Volume, _from_hdf_data
 
 class Dataset:
     """
-    Wrapper for multiple data objects. This often does not need to be used 
-    explicitly--for example, if a dictionary of data objects is passed to 
-    `cortex.webshow`, it will automatically be converted into a `Dataset`.
+    Wrapper for a named collection of Dataview objects (Volume, Vertex, VolumeRGB,
+    etc.). Provides a standard way to save/load that collection as an HDF5 file,
+    and lets a single Dataview be treated the same as a full Dataset elsewhere in
+    pycortex (e.g. `cortex.webshow`).
 
-    # TODO: should be BrainData & Dataview, or just Dataview
-    All kwargs should be `BrainData` or `Dataset` objects.
+    Each keyword argument names one view; its value can be a Dataview, a tuple
+    (implicitly converted to a Volume or Vertex), a filename string (loaded from
+    an .hdf file), a dict (converted to a nested Dataset), or another Dataset
+    (merged in).
+
     """
     def __init__(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> None:
         self.h5: Optional[h5py.File] = None
@@ -29,8 +33,16 @@ class Dataset:
         self.append(**kwargs)
 
     def append(self, **kwargs: Union[Dataview, dict, str, tuple, Dataset]) -> Dataset:
-        """Add the `BrainData` or `Dataset` objects in `kwargs` into this 
-        dataset.
+        """Add the views in `kwargs` into this dataset. Each keyword names
+        one view; its value can be a Dataview, a tuple (implicitly converted
+        to a Volume or Vertex), a filename string (loaded from an .hdf
+        file), a dict (converted to a nested Dataset), or another Dataset
+        (merged in). See the `Dataset` class docstring for details.
+
+        Returns
+        -------
+        Dataset
+            This dataset, with the new views added, for chaining.
         """
         for name, data in kwargs.items():
             norm = normalize(data)
