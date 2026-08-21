@@ -18,7 +18,9 @@ ViewParams = TypedDict(
         "surface.{subject}.unfold": float,
         "surface.{subject}.pivot": float,
         "surface.{subject}.shift": float,
-        "surface.{subject}.specularity": float,
+        "surface.{subject}.lighting.specularity": float,
+        "surface.{subject}.lighting.uniform_illumination": float,
+        "surface.{subject}.lighting.topleft_lighting": float,
     },
     total=False,
 )
@@ -227,7 +229,7 @@ default_view_params: ViewParams = {
     "surface.{subject}.unfold": 0,
     "surface.{subject}.pivot": 0,
     "surface.{subject}.shift": 0,
-    "surface.{subject}.specularity": 0,
+    "surface.{subject}.lighting.specularity": 0,
 }
 
 angle_view_params: dict[str, ViewParams] = {

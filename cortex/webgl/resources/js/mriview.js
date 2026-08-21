@@ -69,6 +69,12 @@ var mriview = (function(module) {
             this.controls.allowTilt = evt.value;
         }.bind(this);
 
+        //the lights are children of the camera, so the surface has to ask the
+        //viewer to switch lighting modes for it
+        this._lighting = function(evt){
+            this.setTopLeftLighting(evt.topleft);
+        }.bind(this);
+
         //Initialize all the html
         $(this.object).html($("#mriview_html").html())
 
@@ -744,6 +750,7 @@ var mriview = (function(module) {
         var surf = new surftype(this.active, opts);
         surf.addEventListener("mix", this._mix);
         surf.addEventListener("allowTilt", this._allowTilt);
+        surf.addEventListener("lighting", this._lighting);
         // The SVG overlay (ROIs/sulci/labels) re-bakes its texture asynchronously, then dispatches
         // "update" on the surface once the new texture is committed. Redraw when that lands --
         // otherwise a toggle (or a freshly-loaded label texture) is not visible until the next
@@ -940,6 +947,7 @@ var mriview = (function(module) {
                 this.removeEventListener("resize", this.surfs[i]._resize);
                 this.surfs[i].removeEventListener("mix", this._mix);
                 this.surfs[i].removeEventListener("allowTilt", this._allowTilt);
+                this.surfs[i].removeEventListener("lighting", this._lighting);
 
                 this.root.remove(this.surfs[i].object);
             } else
