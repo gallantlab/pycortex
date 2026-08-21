@@ -9,6 +9,8 @@ All tests are skipped if playwright is not installed.
 
 import json
 import os
+import pathlib
+import shutil
 import time
 import urllib.request
 
@@ -852,25 +854,91 @@ def test_addData_vertex_data(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Group 10: Manual visual A/B comparison across all alpha-bearing dataviews
+# Group 10: Visual regression across all alpha-bearing dataviews
 # ---------------------------------------------------------------------------
 
+#: Stored renders this test asserts against. See that directory's README for how
+#: they were produced and how to regenerate them.
+REFERENCE_DIR = pathlib.Path(__file__).parent / "reference_images" / "alpha_dataviews"
 
-@pytest.mark.skipif(
-    not os.environ.get("RUN_VISUAL_COMPARISON"),
-    reason="Manual visual comparison; set RUN_VISUAL_COMPARISON=1 to run.",
-)
+#: Lossless WebP: bit-exact after decode and 59% the size of optimized PNG. AVIF
+#: is smaller still but Pillow cannot write it losslessly -- it was measured at
+#: max|difference| 27-29, larger than DIFF_THRESHOLD below, so it would corrupt
+#: the comparison it is meant to feed. Higher PNG compression levels are pointless
+#: here: level 6 and level 9 produce byte-identical output.
+REFERENCE_SUFFIX = ".webp"
+
+#: Rewrite the references from this run instead of comparing against them.
+REGENERATE_REFERENCES = bool(os.environ.get("REGENERATE_REFERENCE_IMAGES"))
+
+# Tolerances. The renders are deterministic -- repeated runs on one machine are
+# bit-identical -- so these are not absorbing noise. They exist because the
+# references are coupled to the Chromium and matplotlib builds that produced them,
+# and an upgrade can shift anti-aliasing and rasterization slightly. They are far
+# tighter than any real regression: a wrong colormap, a dropped alpha channel or
+# swapped colour channels all move large areas of the image by much more.
+MAX_MEAN_ABS_DIFF = 2.0        # mean |difference| over all pixels/channels, of 255
+DIFF_THRESHOLD = 16            # a pixel "differs" if any channel moves by more
+MAX_FRACTION_DIFFERING = 0.02  # at most this fraction of pixels may differ
+
+
+def _check_against_reference(name, actual_path, debug_dir):
+    """Compare one render to its reference.
+
+    Returns a description of the mismatch, or None if it matches. On mismatch,
+    writes the actual render and an amplified difference image into ``debug_dir``
+    so the change can be inspected rather than guessed at.
+    """
+    from PIL import Image
+
+    ref_path = REFERENCE_DIR / f"{name}{REFERENCE_SUFFIX}"
+
+    if REGENERATE_REFERENCES:
+        REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
+        Image.open(actual_path).convert("RGBA").save(
+            ref_path, format="WEBP", lossless=True, method=6, quality=100, exact=True
+        )
+        return None
+
+    actual = np.asarray(Image.open(actual_path).convert("RGBA")).astype(np.int16)
+    ref = np.asarray(Image.open(ref_path).convert("RGBA")).astype(np.int16)
+    if actual.shape != ref.shape:
+        return f"{name}: render is {actual.shape}, reference is {ref.shape}"
+
+    diff = np.abs(actual - ref)
+    mean_abs = float(diff.mean())
+    fraction = float((diff.max(axis=-1) > DIFF_THRESHOLD).mean())
+    if mean_abs <= MAX_MEAN_ABS_DIFF and fraction <= MAX_FRACTION_DIFFERING:
+        return None
+
+    shutil.copyfile(actual_path, debug_dir / f"actual_{name}.png")
+    amplified = np.clip(diff[..., :3] * 8, 0, 255).astype("uint8")
+    Image.fromarray(amplified).save(debug_dir / f"diff_{name}.png")
+    return (
+        f"{name}: mean|diff|={mean_abs:.3f} (limit {MAX_MEAN_ABS_DIFF}), "
+        f"{fraction:.2%} of pixels differ by more than {DIFF_THRESHOLD} "
+        f"(limit {MAX_FRACTION_DIFFERING:.0%})"
+    )
+
+
 def test_visual_comparison_alpha_dataviews(tmp_path):
-    """Render all 6 dataview types via quickshow + webgl, side-by-side.
+    """Render all 6 dataview types via quickshow + webgl, and assert they match.
 
-    Skipped by default — set ``RUN_VISUAL_COMPARISON=1`` to run. Builds a
-    grid where each row is one dataview type (Volume, Vertex, Volume2D,
-    Vertex2D, VolumeRGB, VertexRGB) and the two columns are the matplotlib
-    (``cortex.quickshow``) reference vs the headless WebGL flatmap render.
-    Used as a manual smoke check that the alpha-blend fix
-    (``Package``-side premultiply for VertexRGB + cmap-LUT
-    ``premultiplyAlpha=true`` for the 2D-cmap path) keeps both viewers in
-    visual agreement across every alpha-encoding pattern.
+    Each of the six public dataview classes is rendered twice -- through
+    matplotlib (``cortex.quickshow``) and through the headless WebGL viewer
+    (``cortex.export.plot_panels``) -- and both renders are compared against a
+    stored reference produced on ``main``. Together they cover every way pycortex
+    encodes alpha, so this is the test that notices if a change to
+    ``cortex.dataset`` alters what actually gets drawn.
+
+    It also still writes the side-by-side composite, which is the useful artifact
+    when something *has* changed: the printed path opens a grid of all twelve
+    renders. Mismatches additionally dump ``actual_*.png`` and an amplified
+    ``diff_*.png`` next to it.
+
+    Previously this was gated behind ``RUN_VISUAL_COMPARISON`` and asserted only
+    that a file had been written, which meant a rendering regression could only be
+    caught by a human looking at the picture.
 
     Plain Volume / Vertex have no native per-element alpha (pycortex's
     bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
@@ -1005,6 +1073,26 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
         }
     ]
 
+    # Absent references are a skip, not a failure: the wheel ships this test but
+    # deliberately not the images (they are test fixtures, of no use at runtime),
+    # so an installed-package test run must degrade gracefully rather than error.
+    # Checked before rendering, which would otherwise waste ~30s to reach it.
+    if not REGENERATE_REFERENCES:
+        missing = [
+            f"{prefix}_{name}{REFERENCE_SUFFIX}"
+            for name, _ in dataviews
+            for prefix in ("qs", "wg")
+            if not (REFERENCE_DIR / f"{prefix}_{name}{REFERENCE_SUFFIX}").exists()
+        ]
+        if missing:
+            pytest.skip(
+                "No reference images in %s (missing %d, e.g. %s). They ship in the "
+                "source tarball but not the wheel; see that directory's README."
+                % (REFERENCE_DIR, len(missing), missing[0])
+            )
+
+    rendered: list[tuple[str, pathlib.Path]] = []
+
     for row, (name, view) in enumerate(dataviews):
         # quickshow → low-res PNG
         qs_path = tmp_path / f"qs_{name}.png"
@@ -1020,6 +1108,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
         )
         qs_fig.savefig(qs_path, bbox_inches="tight", pad_inches=0, dpi=80)
         plt.close(qs_fig)
+        rendered.append((f"qs_{name}", qs_path))
 
         # webgl → trimmed flatmap PNG via plot_panels (single flatmap panel)
         wg_path = str(tmp_path / f"wg_{name}.png")
@@ -1034,6 +1123,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
             headless=True,
         )
         plt.close(wg_fig)
+        rendered.append((f"wg_{name}", pathlib.Path(wg_path)))
 
         ax_qs, ax_wg = axes[row]
         ax_qs.imshow(plt.imread(qs_path))
@@ -1054,3 +1144,32 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
     print(f"\nVisual comparison saved to:\n  {out_path}\n")
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+
+    # Every render is compared, so a failure reports all of them at once rather
+    # than stopping at the first -- knowing whether one view or all six moved is
+    # most of the diagnosis.
+    failures = [
+        msg
+        for msg in (
+            _check_against_reference(rendered_name, rendered_path, tmp_path)
+            for rendered_name, rendered_path in rendered
+        )
+        if msg is not None
+    ]
+    if REGENERATE_REFERENCES:
+        pytest.skip(
+            f"Regenerated {len(rendered)} reference images in {REFERENCE_DIR}. "
+            "Review the diff before committing."
+        )
+    assert not failures, (
+        "%d of %d renders differ from their reference:\n  %s\n\n"
+        "Renders, and amplified diffs, are in %s\nIf the change is intended, see "
+        "%s/README.md for how to regenerate."
+        % (
+            len(failures),
+            len(rendered),
+            "\n  ".join(failures),
+            tmp_path,
+            REFERENCE_DIR.parent,
+        )
+    )
