@@ -29,10 +29,7 @@ try:
 except ImportError:
     pass
 
-try:
-    from cortex import hcp
-except ImportError:
-    pass
+from cortex import hcp
 
 # Create deprecated interface for database
 class dep:
