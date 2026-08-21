@@ -4,22 +4,25 @@ import os
 import string
 import warnings
 from functools import reduce
+from typing import Literal, Optional, Union, cast
 
 import numpy as np
+import numpy.typing as npt
+from scipy import sparse # TODO: remove if loading is slow
 
 from .. import dataset, utils
 from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **kwargs):
+def make_flatmap_image(braindata: Union[dataset.Volume, dataset.Vertex, dataset.Dataview], height: int=1024, recache: bool=False, nanmean: bool=False, **kwargs) -> tuple[npt.NDArray[np.uint8], npt.NDArray[np.floating]]:
     """Generate flatmap image from volumetric brain data
 
     This 
 
     Parameters
     ----------
-    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview)
+    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}
         Object containing containing data to be plotted, subject (surface identifier), 
         and transform.
     height : scalar 
@@ -34,9 +37,10 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
 
     Returns
     -------
-    image : 
-
-    extents :
+    image : numpy.ndarray[np.uint8]
+        The generated flatmap image.
+    extents : numpy.ndarray[np.floating]
+        The extents of the generated flatmap image.
 
     """
     mask, extents = get_flatmask(braindata.subject, height=height, recache=recache)
@@ -100,7 +104,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
             averaged_data = pixmap.dot(np.nan_to_num(data.ravel()))
             ignored = np.isnan(data.ravel())
             if isinstance(data, np.ma.MaskedArray):
-                ignored = ignored.filled()  # masked voxels are also ignored
+                ignored = cast(np.ma.MaskedArray, ignored).filled()  # masked voxels are also ignored
 
         if ignored is not None:
             weights_not_ignored = pixmap.dot((~ignored).astype(data.dtype))
@@ -117,7 +121,7 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
 
         return img, extents
 
-def get_flatmask(subject, height=1024, recache=False):
+def get_flatmask(subject: str, height: int=1024, recache: bool=False) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
     """
     Parameters
     ----------
@@ -141,8 +145,8 @@ def get_flatmask(subject, height=1024, recache=False):
 
     return mask, extents
 
-def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
-                  recache=False, height=1024, depth=0.5):
+def get_flatcache(subject: str, xfmname: Optional[str], pixelwise: bool=True, thick: int=32, sampler: str='nearest',
+                  recache: bool=False, height: int=1024, depth: float=0.5):
     """
     
     Parameters
@@ -188,8 +192,14 @@ def get_flatcache(subject, xfmname, pixelwise=True, thick=32, sampler='nearest',
 
     if not pixelwise and xfmname is not None:
         from scipy import sparse
+        from ..mapper import Mapper
         mapper = utils.get_mapper(subject, xfmname, sampler)
-        pixmap = pixmap * sparse.vstack(mapper.masks)
+        # get_mapper isn't typed yet (Mapper's typing PR lands after this one), so
+        # mapper is currently just Any. TODO: once that PR types cortex/mapper,
+        # get_mapper's own return annotation makes this redundant -- remove this
+        # import and assert.
+        assert isinstance(mapper, Mapper)
+        pixmap = cast(sparse.csr_matrix, pixmap * sparse.vstack(mapper.masks))
 
     return pixmap
 
@@ -254,23 +264,26 @@ def _convert_svg_kwargs(kwargs):
                for k,v in kwargs.items() if v is not None}
     return out
 
-def _parse_defaults(section):
-    defaults = dict(config.items(section))
-    for k in defaults.keys():
+def _parse_defaults(section: str) -> dict[str, Union[float, list[float], None, str]]:
+    raw = dict(config.items(section))
+    defaults: dict[str, Union[float, list[float], None, str]] = dict(raw)
+    for k, v in raw.items():
         # Convert numbers to floating point numbers
-        if defaults[k][0] in string.digits + '.':
-            if ',' in defaults[k]:
-                defaults[k] = [float(x) for x in defaults[k].split(',')]
+        if v[0] in string.digits + '.':
+            if ',' in v:
+                defaults[k] = [float(x) for x in v.split(',')]
             else:
-                defaults[k] = float(defaults[k])
+                defaults[k] = float(v)
         # Convert 'None' to None
-        if defaults[k] == 'None':
+        if v == 'None':
             defaults[k] = None
         # Special case formatting
         if k=='stroke' or k=='fill':
-            defaults[k] = _color2hex(defaults[k])
-        elif k=='stroke-dasharray' and isinstance(defaults[k], (list,tuple)):
-            defaults[k] = '{}, {}'.format(*defaults[k])
+            defaults[k] = _color2hex(v)
+        elif k=='stroke-dasharray':
+            dasharray = defaults[k]
+            if isinstance(dasharray, (list, tuple)):
+                defaults[k] = '{}, {}'.format(*dasharray)
     return defaults
 
 def _get_fig_and_ax(fig):
@@ -353,7 +366,7 @@ def _make_hatch_image(hatch_data, height, sampler='nearest', hatch_space=4, reca
 
     return hatchim
 
-def _make_flatmask(subject, height=1024):
+def _make_flatmask(subject: str, height: int=1024) -> tuple[npt.NDArray[np.bool_], npt.NDArray[np.floating]]:
     from PIL import Image, ImageDraw
 
     from .. import polyutils
@@ -368,11 +381,11 @@ def _make_flatmask(subject, height=1024):
     draw = ImageDraw.Draw(im)
     draw.polygon(lpts[:,:2].ravel().tolist(), fill=255)
     draw.polygon(rpts[:,:2].ravel().tolist(), fill=255)
-    extents = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
+    extents: npt.NDArray[np.floating] = np.hstack([pts.min(0), pts.max(0)])[[0,3,1,4]]
 
     return np.array(im).T > 0, extents
 
-def _make_vertex_cache(subject, height=1024):
+def _make_vertex_cache(subject: str, height: int=1024) -> sparse.csr_matrix:
     from scipy import sparse
     from scipy.spatial import cKDTree
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
@@ -388,10 +401,11 @@ def _make_vertex_cache(subject, height=1024):
 
     kdt = cKDTree(flat[valid,:2])
     dist, vert = kdt.query(grid.T[mask.ravel()])
+    vert = np.asarray(vert)
     dataij = (np.ones((len(vert),)), np.array([np.arange(len(vert)), valid[vert]]))
     return sparse.csr_matrix(dataij, shape=(mask.sum(), len(flat)))
 
-def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sampler='nearest'):
+def _make_pixel_cache(subject: str, xfmname: str, height: int=1024, thick: int=32, depth: float=0.5, sampler: str='nearest') -> sparse.csr_matrix:
     from scipy import sparse
     from scipy.spatial import Delaunay
     flat, polys = db.get_surf(subject, "flat", merge=True, nudge=True)
@@ -441,7 +455,7 @@ def _make_pixel_cache(subject, xfmname, height=1024, thick=32, depth=0.5, sample
 
         valid = np.logical_and(valid_p, valid_w)
         vidx = np.nonzero(valid)[0]
-        mapper = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
+        mapper: sparse.csr_matrix = sparse.csr_matrix((mask.sum(), np.prod(xfm.shape)))
         if thick == 1:
             i, j, data = sampclass(piacoords[valid]*depth + wmcoords[valid]*(1-depth), xfm.shape)
             mapper = mapper + sparse.csr_matrix((data / float(thick), (vidx[i], j)),
