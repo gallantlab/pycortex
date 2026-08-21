@@ -598,6 +598,67 @@ def test_vertex2d_alpha_half_renders_correct_blend(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Group 8b: opacity slider for vertex data (#684)
+# ---------------------------------------------------------------------------
+
+
+def test_vertex_opacity_slider_fades_data(tmp_path):
+    """The ``opacity`` control must fade Vertex data into the curvature.
+
+    Regression test for #684: the ``surface_vertex`` fragment shader declared
+    the ``dataAlpha`` uniform (driven by the dat.GUI opacity slider and the
+    ``o`` shortcut) but never used it, so opacity changes were a no-op for
+    Vertex / Vertex2D / VertexRGB data while working for Volume data.
+
+    Renders a constant, saturated-red Vertex at opacity 1 → 0 → 1 within one
+    viewer session and checks that the red pixels disappear at 0 and come
+    back at 1.
+    """
+    data = np.full(nverts, 5.0)
+    vtx = cortex.Vertex(data, subj, vmin=0, vmax=1, cmap="Reds")
+
+    view = {
+        **default_view_params,
+        **angle_view_params["lateral_pivot"],
+        **unfold_view_params["inflated"],
+    }
+
+    def render(handle, name):
+        outfile = str(tmp_path / f"{name}.png")
+        time.sleep(1)
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+        return _count_red_pixels(outfile)
+
+    # No ROI/sulci overlays or labels: their anti-aliased colored edges would
+    # otherwise add stray red-dominant pixels.
+    with cortex.export.headless_viewer(
+        vtx, viewer_params=dict(overlays_visible=[], labels_visible=[])
+    ) as handle:
+        handle._set_view(**view)
+        n_full = render(handle, "opacity_1")
+
+        handle._set_view(**{"surface.{subject}.opacity": 0.0})
+        n_zero = render(handle, "opacity_0")
+
+        handle._set_view(**{"surface.{subject}.opacity": 1.0})
+        n_restored = render(handle, "opacity_1_again")
+
+    assert n_full > 1000, (
+        f"Vertex data at opacity 1 should render visibly (got {n_full} "
+        "red-dominant pixels)"
+    )
+    assert n_zero < 50, (
+        f"Vertex data at opacity 0 still renders {n_zero} red-dominant pixels; "
+        "the surface_vertex shader is ignoring dataAlpha (#684)."
+    )
+    assert n_restored > 1000, (
+        f"Vertex data should be visible again at opacity 1 (got {n_restored} "
+        "red-dominant pixels)"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Group 9: addData dataset switching
 # ---------------------------------------------------------------------------
 
