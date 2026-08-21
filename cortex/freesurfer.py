@@ -10,10 +10,13 @@ import struct
 import subprocess as sp
 import tempfile
 import warnings
+from collections.abc import Mapping
 from tempfile import NamedTemporaryFile
+from typing import Optional, cast
 
 import nibabel
 import numpy as np
+import numpy.typing as npt
 from nibabel import gifti
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
@@ -1160,7 +1163,7 @@ def stretch_mwall(pts, polys, mwall):
     return SpringLayout(pts, polys, inflated, pins=mwall)
 
 
-def _n_vertices_ico(icoorder):
+def _n_vertices_ico(icoorder: int) -> int:
     return 4 ** icoorder * 10 + 2
 
 
@@ -1171,14 +1174,16 @@ _UPSAMPLE_NEIGHBORS_FILE = os.path.join(
 
 
 @functools.lru_cache(maxsize=1)
-def _load_upsample_neighbors_bundle():
+def _load_upsample_neighbors_bundle() -> Mapping[str, npt.NDArray]:
     """Load (once) the neighbor arrays bundled with pycortex, or {} if absent."""
     if os.path.exists(_UPSAMPLE_NEIGHBORS_FILE):
         return np.load(_UPSAMPLE_NEIGHBORS_FILE)
     return {}
 
 
-def _get_upsample_neighbors(hemi, ico_order, freesurfer_subjects_dir=None):
+def _get_upsample_neighbors(
+        hemi: str, ico_order: int, freesurfer_subjects_dir: Optional[str] = None
+) -> npt.NDArray[np.integer]:
     """Nearest low-res neighbor index for each extra fsaverage vertex.
 
     Maps every full-``fsaverage`` vertex beyond the first ``n_ico`` (i.e. the
@@ -1199,8 +1204,7 @@ def _get_upsample_neighbors(hemi, ico_order, freesurfer_subjects_dir=None):
 
     # 1. Bundled with the package.
     bundle = _load_upsample_neighbors_bundle()
-    bundle_keys = getattr(bundle, "files", list(bundle))
-    if key in bundle_keys:
+    if key in bundle:
         return np.asarray(bundle[key])
 
     # 2. User cache.
@@ -1224,16 +1228,19 @@ def _get_upsample_neighbors(hemi, ico_order, freesurfer_subjects_dir=None):
         os.path.join(freesurfer_subjects_dir, "fsaverage", "surf",
                      f"{hemi}.sphere.reg"))
     _, neighbors = KDTree(pts[:n_ico]).query(pts[n_ico:], k=1)
-    neighbors = neighbors.astype(np.uint16 if neighbors.max() < 65536
-                                 else np.int64)
+    neighbors = cast(npt.NDArray[np.integer], neighbors)
+    dtype: type[np.integer] = np.uint16 if neighbors.max() < 65536 else np.int64
+    neighbors = neighbors.astype(dtype)
     os.makedirs(cache_dir, exist_ok=True)
     np.save(cache_path, neighbors)
     return neighbors
 
 
 def upsample_to_fsaverage(
-        data, data_space="fsaverage6", freesurfer_subjects_dir=None
-):
+        data: npt.NDArray,
+        data_space: str = "fsaverage6",
+        freesurfer_subjects_dir: Optional[str] = None,
+) -> npt.NDArray:
     """Project data from fsaverage6 (or other fsaverage surface) to fsaverage to
     visualize it in pycortex.
 

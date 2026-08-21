@@ -31,12 +31,14 @@ conventions of, :func:`cortex.freesurfer.get_mri_surf2surf_matrix`.
 
 import logging
 from pathlib import Path
+from typing import Literal, Optional, Union, cast
 from urllib.error import URLError
 from urllib.request import urlretrieve
 
 import numpy as np
 import nibabel as nib
-from scipy.sparse import coo_matrix, load_npz, save_npz
+import numpy.typing as npt
+from scipy.sparse import coo_matrix, csr_matrix, load_npz, save_npz
 from scipy.spatial import KDTree
 
 from cortex import appdirs
@@ -91,10 +93,15 @@ _SPHERE_FILES = {
 }
 
 
-_HEMI_ALIASES = {"L": "L", "lh": "L", "R": "R", "rh": "R"}
+_HEMI_ALIASES: dict[str, Literal["L", "R"]] = {
+    "L": "L",
+    "lh": "L",
+    "R": "R",
+    "rh": "R",
+}
 
 
-def _normalize_hemi(hemi):
+def _normalize_hemi(hemi: str) -> Literal["L", "R"]:
     """Normalize a hemisphere name to ``"L"``/``"R"`` (accepts ``lh``/``rh``)."""
     try:
         return _HEMI_ALIASES[hemi]
@@ -104,12 +111,17 @@ def _normalize_hemi(hemi):
         ) from None
 
 
-def _default_cache_dir():
+def _default_cache_dir() -> Path:
     """Directory for downloaded spheres and cached projection matrices."""
     return Path(appdirs.user_cache_dir("pycortex")) / "hcp"
 
 
-def ensure_sphere_files(space, hemi, cache_dir=None, download=True):
+def ensure_sphere_files(
+    space: str,
+    hemi: str,
+    cache_dir: Optional[Union[str, Path]] = None,
+    download: bool = True,
+) -> Path:
     """Return the path to a standard-mesh sphere GIFTI, downloading if needed.
 
     Parameters
@@ -172,7 +184,9 @@ def ensure_sphere_files(space, hemi, cache_dir=None, download=True):
 # ---------------------------------------------------------------------------
 
 
-def download_fs_lr(pycortex_store=None, download_again=False):
+def download_fs_lr(
+    pycortex_store: Optional[str] = None, download_again: bool = False
+) -> None:
     """Download the ``32k_fs_LR`` pycortex subject into the filestore.
 
     Thin wrapper around :func:`cortex.download_subject` for the HCP fs_LR 32k
@@ -203,7 +217,9 @@ def download_fs_lr(pycortex_store=None, download_again=False):
 # ---------------------------------------------------------------------------
 
 
-def get_cifti_vertex_indices(cifti):
+def get_cifti_vertex_indices(
+    cifti: Union[str, Path, nib.Cifti2Image],
+) -> tuple[npt.NDArray[np.integer], npt.NDArray[np.integer]]:
     """Left/right surface-vertex indices for a CIFTI file's cortical models.
 
     HCP CIFTI files store only non-medial-wall cortical grayordinates. This
@@ -238,7 +254,7 @@ def get_cifti_vertex_indices(cifti):
     if bm_axis is None:
         raise ValueError("CIFTI file has no BrainModelAxis (grayordinate axis).")
 
-    indices = {}
+    indices: dict[str, npt.NDArray[np.integer]] = {}
     for name, data_slice, model in bm_axis.iter_structures():
         if name == "CIFTI_STRUCTURE_CORTEX_LEFT":
             indices["L"] = np.asarray(model.vertex)
@@ -253,7 +269,11 @@ def get_cifti_vertex_indices(cifti):
     return indices.get("L", empty), indices.get("R", empty)
 
 
-def cifti_to_surface(data, left_indices, right_indices):
+def cifti_to_surface(
+    data: npt.ArrayLike,
+    left_indices: npt.ArrayLike,
+    right_indices: npt.ArrayLike,
+) -> npt.NDArray:
     """Expand CIFTI cortical grayordinates onto the full fs_LR 32k surface.
 
     Parameters
@@ -299,24 +319,34 @@ def cifti_to_surface(data, left_indices, right_indices):
 # ---------------------------------------------------------------------------
 
 
-def _read_sphere(path):
+def _read_sphere(
+    path: Union[str, Path],
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.int64]]:
     """Return (points, triangles) from a sphere ``.surf.gii`` file."""
-    gii = nib.load(str(path))
+    gii = cast(nib.GiftiImage, nib.load(str(path)))
     pts = gii.get_arrays_from_intent("NIFTI_INTENT_POINTSET")[0].data
     tris = gii.get_arrays_from_intent("NIFTI_INTENT_TRIANGLE")[0].data
     return np.asarray(pts, dtype=np.float64), np.asarray(tris, dtype=np.int64)
 
 
-def _vertex_to_triangles(triangles, n_vertices):
+def _vertex_to_triangles(
+    triangles: npt.NDArray[np.integer], n_vertices: int
+) -> list[list[int]]:
     """List of incident triangle indices for each vertex."""
-    incident = [[] for _ in range(n_vertices)]
+    incident: list[list[int]] = [[] for _ in range(n_vertices)]
     for ti, tri in enumerate(triangles):
         for v in tri:
             incident[v].append(ti)
     return incident
 
 
-def _ray_triangle_bary(direction, a, b, c, tol=1e-6):
+def _ray_triangle_bary(
+    direction: npt.NDArray[np.float64],
+    a: npt.NDArray[np.float64],
+    b: npt.NDArray[np.float64],
+    c: npt.NDArray[np.float64],
+    tol: float = 1e-6,
+) -> Optional[tuple[float, float, float]]:
     """Barycentric weights where the ray ``t*direction`` (from 0) hits triangle abc.
 
     Uses the Moller-Trumbore intersection. Returns ``(wa, wb, wc)`` summing to 1
@@ -350,7 +380,9 @@ def _ray_triangle_bary(direction, a, b, c, tol=1e-6):
     return tuple(weights / total)
 
 
-def _barycentric_resample_matrix(src_sphere, tgt_sphere, k=15):
+def _barycentric_resample_matrix(
+    src_sphere: Union[str, Path], tgt_sphere: Union[str, Path], k: int = 15
+) -> csr_matrix:
     """Build a sparse barycentric resampling matrix between two spheres.
 
     For every target-sphere vertex, the containing triangle on the *source*
@@ -385,6 +417,7 @@ def _barycentric_resample_matrix(src_sphere, tgt_sphere, k=15):
     tree = KDTree(src_unit)
     k = min(k, n_src)
     _, nn = tree.query(tgt_unit, k=k)
+    nn = cast(npt.NDArray[np.integer], nn)
     if nn.ndim == 1:
         nn = nn[:, np.newaxis]
 
@@ -396,8 +429,8 @@ def _barycentric_resample_matrix(src_sphere, tgt_sphere, k=15):
 
     for t in range(n_tgt):
         direction = tgt_unit[t]
-        found = None
-        seen = set()
+        found: Optional[tuple[int, int, int, tuple[float, float, float]]] = None
+        seen: set[int] = set()
         for v in nn[t]:
             for ti in incident[v]:
                 if ti in seen:
@@ -446,7 +479,12 @@ def _barycentric_resample_matrix(src_sphere, tgt_sphere, k=15):
     return matrix
 
 
-def get_fslr_to_fsaverage_matrix(hemi, target="fsaverage6", cache_dir=None, cache=True):
+def get_fslr_to_fsaverage_matrix(
+    hemi: str,
+    target: str = "fsaverage6",
+    cache_dir: Optional[Union[str, Path]] = None,
+    cache: bool = True,
+) -> csr_matrix:
     """Sparse fs_LR 32k -> fsaverage matrix for one hemisphere.
 
     Parameters
@@ -479,7 +517,7 @@ def get_fslr_to_fsaverage_matrix(hemi, target="fsaverage6", cache_dir=None, cach
     cache_path = cache_dir / "mappers" / f"{hemi}_fs_LR_32k_to_{target}.npz"
     if cache and cache_path.exists():
         logger.info("Loading cached matrix from %s", cache_path)
-        return load_npz(str(cache_path))
+        return cast(csr_matrix, load_npz(str(cache_path)))
 
     src_sphere = ensure_sphere_files("fs_LR_32k", hemi, cache_dir=cache_dir)
     tgt_sphere = ensure_sphere_files(target, hemi, cache_dir=cache_dir)
@@ -497,7 +535,9 @@ def get_fslr_to_fsaverage_matrix(hemi, target="fsaverage6", cache_dir=None, cach
 # ---------------------------------------------------------------------------
 
 
-def _project_hemi(matrix, hemi_data, nanmean):
+def _project_hemi(
+    matrix: csr_matrix, hemi_data: npt.NDArray, nanmean: bool
+) -> npt.NDArray:
     """Apply one hemisphere's resampling matrix with NaN-aware weighting."""
     nan_mask = np.isnan(hemi_data)
     hemi_clean = np.where(nan_mask, 0.0, hemi_data)
@@ -516,8 +556,12 @@ def _project_hemi(matrix, hemi_data, nanmean):
 
 
 def project_fslr_to_fsaverage(
-    data, target="fsaverage", cache_dir=None, freesurfer_subjects_dir=None, nanmean=True
-):
+    data: npt.ArrayLike,
+    target: str = "fsaverage",
+    cache_dir: Optional[Union[str, Path]] = None,
+    freesurfer_subjects_dir: Optional[str] = None,
+    nanmean: bool = True,
+) -> npt.NDArray:
     """Project fs_LR 32k data to an fsaverage surface.
 
     Parameters
@@ -585,12 +629,12 @@ def project_fslr_to_fsaverage(
 
 
 def to_fsaverage(
-    cifti,
-    target="fsaverage",
-    cache_dir=None,
-    freesurfer_subjects_dir=None,
-    nanmean=True,
-):
+    cifti: Union[str, Path, nib.Cifti2Image],
+    target: str = "fsaverage",
+    cache_dir: Optional[Union[str, Path]] = None,
+    freesurfer_subjects_dir: Optional[str] = None,
+    nanmean: bool = True,
+) -> npt.NDArray:
     """Project HCP CIFTI cortical data straight to an fsaverage surface.
 
     Convenience wrapper chaining :func:`get_cifti_vertex_indices`,
