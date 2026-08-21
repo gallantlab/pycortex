@@ -130,7 +130,19 @@ class Dataset:
         return ds
         
     def uniques(self, collapse: bool=False) -> set[Dataview]:
-        """Return the set of unique BrainData objects contained by this dataset"""
+        """Return the set of unique BrainData objects contained by this dataset
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            Passed through to each view's own `uniques()`. Default False.
+
+        Returns
+        -------
+        uniques : set
+            The distinct BrainData objects (e.g. Volume/Vertex channels)
+            referenced across all views in this dataset.
+        """
         uniques = set()
         for name, view in self:
             # .uniques() is provided by BrainData
@@ -140,6 +152,24 @@ class Dataset:
         return uniques
 
     def save(self, filename: Optional[str]=None, pack: bool=False) -> None:
+        """Write this dataset's views out to an HDF5 file.
+
+        Parameters
+        ----------
+        filename : str, optional
+            Path to write to. If omitted, writes to the file this dataset
+            was already opened from (raises if there is none).
+        pack : bool, optional
+            If True, also bundle each view's subject surfaces, transforms,
+            and masks into the file, so it can be opened without access to
+            the pycortex filestore/database. Default False.
+
+        Returns
+        -------
+        None
+            Writes `filename` (or the already-open file) as a side effect;
+            has no return value.
+        """
         if filename is not None:
             self.h5 = h5py.File(filename, 'a')
         elif self.h5 is None:
@@ -184,6 +214,32 @@ class Dataset:
     def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]: ...
 
     def get_surf(self, subject: str, type: str, hemi: Literal['both', 'lh', 'rh']='both', *, merge: bool=False, nudge: bool=False) -> Union[tuple[tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]], tuple[npt.NDArray[np.floating], npt.NDArray[np.integer]]]:
+        """Retrieve a subject's surface geometry from this (packed) dataset file.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier, as packed into this dataset.
+        type : str
+            Surface type, e.g. 'wm', 'pia', or 'fiducial' (averaged from
+            'wm' and 'pia').
+        hemi : str, optional
+            'lh', 'rh', or 'both'. Default 'both'.
+        merge : bool, optional
+            If True (and `hemi='both'`), stack both hemispheres into a
+            single (pts, polys) pair with right-hemisphere face indices
+            offset. Default False.
+        nudge : bool, optional
+            If True, shift each hemisphere so they don't overlap along the
+            x-axis. Default False.
+
+        Returns
+        -------
+        (pts, polys) or ((lpts, lpolys), (rpts, rpolys))
+            Vertex coordinates and triangle faces for the requested
+            surface. If `hemi='both'` and `merge=False`, a pair of
+            (pts, polys) tuples, one per hemisphere, is returned instead.
+        """
         pts: npt.NDArray[np.floating]
         polys: npt.NDArray[np.integer]
         if hemi == 'both':
@@ -213,6 +269,20 @@ class Dataset:
             raise IOError('Subject not found in package')
 
     def get_xfm(self, subject: str, xfmname: str) -> Transform:
+        """Retrieve a subject's transform from this (packed) dataset file.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier, as packed into this dataset.
+        xfmname : str
+            Transform name, as packed into this dataset.
+
+        Returns
+        -------
+        Transform
+            The requested transform.
+        """
         try:
             group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]
             return Transform(group['xfm'][:], tuple(group['xfm'].attrs['shape']))
@@ -220,6 +290,22 @@ class Dataset:
             raise IOError('Transform not found in package')
 
     def get_mask(self, subject: str, xfmname: str, maskname: str):
+        """Retrieve a subject's voxel mask from this (packed) dataset file.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier, as packed into this dataset.
+        xfmname : str
+            Transform name the mask belongs to, as packed into this dataset.
+        maskname : str
+            Name of the mask to retrieve.
+
+        Returns
+        -------
+        h5py.Dataset
+            The requested mask array, as stored in the HDF5 file.
+        """
         try:
             group: h5py.Group = self.h5['subjects'][subject]['transforms'][xfmname]['masks']
             return group[maskname]
@@ -227,6 +313,23 @@ class Dataset:
             raise IOError('Mask not found in package')
 
     def get_overlay(self, subject: str, type: str='rois', **kwargs) -> tempfile._TemporaryFileWrapper:
+        """Retrieve a subject's overlay (currently only ROIs) from this
+        (packed) dataset file.
+
+        Parameters
+        ----------
+        subject : str
+            Subject identifier, as packed into this dataset.
+        type : str, optional
+            Overlay type to retrieve. Only 'rois' is currently supported.
+            Default 'rois'.
+
+        Returns
+        -------
+        tempfile.NamedTemporaryFile
+            A temporary file containing the overlay's SVG data, seeked to
+            the start.
+        """
         try:
             group: h5py.Group = self.h5['subjects'][subject]
             if type == "rois":
