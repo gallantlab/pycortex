@@ -21,6 +21,9 @@ var jsplot = (function (module) {
 		this.rotateSpeed = 0.4;
 		this.panSpeed = 0.3;
 		this.zoomSpeed = 0.002;
+		//Trackpad pinches arrive much more finely grained than wheel
+		//notches, and zoom multiplicatively, so they get their own speed.
+		this.pinchZoomSpeed = 0.005;
 		this.clickTimeout = 200; // milliseconds
 
 		this.friction = .9;
@@ -118,6 +121,17 @@ var jsplot = (function (module) {
 
 	module.LandscapeControls.prototype.zoom = function(x, y) {
 		this.setRadius(this.radius * (1 + this.zoomSpeed * y));
+	}
+
+	//Zoom for a pinch expressed as a normalized wheel delta, which is how every
+	//browser but Safari reports a trackpad pinch. Positive delta (fingers
+	//coming together) zooms out, negative zooms in. The zoom is multiplicative
+	//so that a pinch moves the camera by the same proportion however far in or
+	//out it already is, and the delta is clamped because a real ctrl+wheel
+	//notch is far bigger than any single step of a pinch.
+	module.LandscapeControls.prototype.pinch = function(delta) {
+		delta = Math.min(Math.max(delta, -100), 100);
+		this.setRadius(this.radius * Math.exp(this.pinchZoomSpeed * delta));
 	}
 
 	module.LandscapeControls.prototype.setMix = function(mix) {
@@ -306,32 +320,115 @@ var jsplot = (function (module) {
 		};
 
 
+		//Wheel deltas are in pixels, lines or pages depending on the browser
+		//and the device; normalize them all to pixels.
+		function wheelDelta( event ) {
+			var delta = event.deltaY;
+			if (event.deltaMode == 1)       //WheelEvent.DOM_DELTA_LINE
+				delta *= 18;
+			else if (event.deltaMode == 2)  //WheelEvent.DOM_DELTA_PAGE
+				delta *= 180;
+			return delta;
+		};
+
+		//Safari reports trackpad pinches as its own gesture events rather than
+		//as ctrl+wheel, with a scale relative to the start of the gesture.
+		var _gestureradius = null;
+
 		function mousewheel( event ) {
-			if (!event.altKey) {
-				delta = event.deltaY
+			if (event.altKey)
+				return;
 
-				// normalize across browsers
-				if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1){
-					delta = delta * 18
-				}
+			var delta = wheelDelta(event);
 
-			    this.setRadius(this.radius + this.zoomSpeed * delta * 110.0);
-			    this.dispatchEvent( changeEvent );
+			if (event.ctrlKey) {
+				//Trackpad pinch-to-zoom (and a plain ctrl+wheel) shows up as a
+				//wheel event with ctrlKey set. Swallow it so the browser zooms
+				//the brain rather than the whole page.
+				event.preventDefault();
+				if (_gestureradius !== null)
+					return; //already handling this pinch as a gesture
+				this.pinch(delta);
+			} else {
+				this.setRadius(this.radius + this.zoomSpeed * delta * 110.0);
 			}
+			this.dispatchEvent( changeEvent );
+		};
+
+		function gesturestart( event ) {
+			event.preventDefault();
+			_gestureradius = this.radius;
+		};
+
+		function gesturechange( event ) {
+			event.preventDefault();
+			if (_gestureradius === null || !(event.scale > 0))
+				return;
+			this.setRadius(_gestureradius / event.scale);
+			this.dispatchEvent( changeEvent );
+		};
+
+		function gestureend( event ) {
+			event.preventDefault();
+			_gestureradius = null;
+		};
+
+		//Two-finger pinch on a touchscreen. The single-touch-to-mouse shim
+		//below ignores anything with more than one finger down, so the two
+		//never fight over the same gesture.
+		var _pinchdist = null, _pinchradius = null;
+
+		function touchdist( event ) {
+			var dx = event.touches[0].clientX - event.touches[1].clientX;
+			var dy = event.touches[0].clientY - event.touches[1].clientY;
+			return Math.sqrt(dx*dx + dy*dy);
+		};
+
+		function touchpinchstart( event ) {
+			if (event.touches.length != 2)
+				return;
+			event.preventDefault();
+			_pinchdist = touchdist(event);
+			_pinchradius = this.radius;
+			this._state = STATE.NONE; //cancel the drag the first finger began
+		};
+
+		function touchpinchmove( event ) {
+			if (event.touches.length != 2 || _pinchdist === null)
+				return;
+			event.preventDefault();
+			var dist = touchdist(event);
+			if (dist <= 0)
+				return;
+			this.setRadius(_pinchradius * _pinchdist / dist);
+			this.dispatchEvent( changeEvent );
+		};
+
+		function touchpinchend( event ) {
+			if (event.touches.length < 2)
+				_pinchdist = null;
 		};
 
 		//code from http://vetruvet.blogspot.com/2010/12/converting-single-touch-events-to-mouse.html
 		var touchToMouse=function(b){if(!(b.touches.length>1)){var a=b.changedTouches[0],c="";switch(b.type){case "touchstart":c="mousedown";break;case "touchmove":c="mousemove";break;case "touchend":c="mouseup";break;default:return}var d=document.createEvent("MouseEvent");d.initMouseEvent(c,true,true,window,1,a.screenX,a.screenY,a.clientX,a.clientY,false,false,false,false,0,null);a.target.dispatchEvent(d);b.preventDefault()}};
-		object.addEventListener( 'touchstart', touchToMouse );
-		object.addEventListener( 'touchmove', touchToMouse );
-		object.addEventListener( 'touchend', touchToMouse );
+		object.addEventListener( 'touchstart', touchToMouse, {passive: false} );
+		object.addEventListener( 'touchmove', touchToMouse, {passive: false} );
+		object.addEventListener( 'touchend', touchToMouse, {passive: false} );
+
+		object.addEventListener( 'touchstart', touchpinchstart.bind(this), {passive: false} );
+		object.addEventListener( 'touchmove', touchpinchmove.bind(this), {passive: false} );
+		object.addEventListener( 'touchend', touchpinchend.bind(this), false );
+		object.addEventListener( 'touchcancel', touchpinchend.bind(this), false );
 
 		object.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); }, false );
 
 		object.addEventListener( 'mousemove', mousemove.bind(this), false );
 		object.addEventListener( 'mousedown', mousedown.bind(this), false );
 		object.addEventListener( 'mouseup', mouseup.bind(this), false );
-		object.addEventListener( 'wheel', mousewheel.bind(this), false);
+		object.addEventListener( 'wheel', mousewheel.bind(this), {passive: false});
+		object.addEventListener( 'gesturestart', gesturestart.bind(this), {passive: false});
+		object.addEventListener( 'gesturechange', gesturechange.bind(this), {passive: false});
+		object.addEventListener( 'gestureend', gestureend.bind(this), {passive: false});
 		object.addEventListener( 'mouseout', mouseup.bind(this), false );
 
 		window.addEventListener( 'keydown', keydown.bind(this), false );

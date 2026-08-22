@@ -63,6 +63,24 @@ shift + s       save current view as png
 =============   ====================================
 
 
+Mouse and Trackpad Controls
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The camera is driven directly from the 3D view.
+
+============================   ====================================
+Action                         Effect
+============================   ====================================
+left-click and drag            rotate the brain (pan, when flattened)
+shift or middle-click + drag   pan the view
+ctrl or right-click + drag     zoom in and out
+scroll wheel                   zoom in and out
+pinch                          zoom in and out
+============================   ====================================
+
+Pinch-to-zoom works both on laptop trackpads and on touchscreens, and zooms the
+brain rather than the surrounding web page.
+
 View Controls
 ^^^^^^^^^^^^^
 
