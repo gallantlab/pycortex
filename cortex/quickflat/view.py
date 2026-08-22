@@ -42,7 +42,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
                 colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
-                nanmean: bool=False) -> Figure:
+                nanmean: bool=True) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
     Parameters
@@ -121,7 +121,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         vmin, vmax specified in the Volume2D object.
     fig : figure or ax
         figure into which to plot flatmap
-    nanmean : bool, optional (default = False)
+    nanmean : bool, optional (default = True)
         If True, NaNs in the data will be ignored when averaging across layers.
     """
     from matplotlib import pyplot as plt
@@ -343,8 +343,11 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
     ## Render PNG file & retrieve image data
     arr, extents = make_flatmap_image(braindata, height=height, **kwargs)
     # Set nans to alpha = 0. to enable transparency when saving as PNG
-    mask_nans = np.isnan(arr[..., 3])
-    arr[mask_nans, 3] = 0.
+    if arr.ndim == 3 and np.issubdtype(arr.dtype, np.floating):
+        # RGBA image: NaN alpha -> fully transparent. (2-D scalar images have
+        # no alpha channel; matplotlib's bad color handles their NaNs.)
+        mask_nans = np.isnan(arr[..., 3])
+        arr[mask_nans, 3] = 0.
 
     if hasattr(braindata, 'cmap'):
         imsave(fp, arr, cmap=braindata.cmap, vmin=braindata.vmin, vmax=braindata.vmax)
