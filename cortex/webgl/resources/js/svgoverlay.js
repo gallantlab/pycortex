@@ -39,9 +39,12 @@ var svgoverlay = (function(module) {
         this.layers = {};
         this.surf = surf;
 
+        //hasflat has to match what the surface shaders were built with, otherwise
+        //labels get occluded against geometry that isn't the one being drawn.
         var shader = Shaders.depth({
             morphs:surf.names.length,
             volume:surf.volume,
+            hasflat:surf.flatlims !== undefined,
         });
         this.depthshade = new THREE.ShaderMaterial({
             vertexShader: shader.vertex, 
@@ -49,6 +52,9 @@ var svgoverlay = (function(module) {
             uniforms: {
                 thickmix:surf.uniforms.thickmix,
                 surfmix:surf.uniforms.surfmix,
+                //Shared object, not a copy, so the depth pass follows the
+                //bumpy flatmap toggle without having to listen for it.
+                bumpyflat:surf.uniforms.bumpyflat,
             },
             attributes: shader.attrs,
             blending: THREE.CustomBlending,

@@ -192,6 +192,38 @@ var Shaderlib = (function() {
                 "float use_thickmix = thickmix;",
             "#endif",
         ].join("\n"),
+
+        // bumpyflat: header code declaring what cortsheet_displace needs beyond
+        // the plain surface attributes. Required by every vertex shader that
+        // displaces the cortical sheet, whether or not it goes on to shade it.
+        bumpyflat: [
+            "uniform int bumpyflat;",
+            "float f_bumpyflat = float(bumpyflat);",
+        "#ifdef HASFLAT",
+            "attribute float flatheight;",
+        "#endif",
+        ].join("\n"),
+
+        // cortsheet_displace: pushes the mixed surface position `pos` off the
+        // cortical sheet along `norm`. Every shader that needs to agree on
+        // where the surface actually is has to apply the identical expression:
+        // pick and depth test against geometry that must match what is drawn,
+        // and they drifted away from the surface shaders precisely because
+        // each shader carried its own copy of this (gh-704).
+        // `thickmix` names the mixing variable in the calling shader; shaders
+        // that use utils.thickmixer_main get the default.
+        cortsheet_displace: function(morphs, thickmix) {
+            thickmix = thickmix || "use_thickmix";
+            return [
+        "#ifdef CORTSHEET",
+            "#ifdef HASFLAT",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., "+thickmix+") * flatheight * f_bumpyflat;",
+            "#else",
+                "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., "+thickmix+");",
+            "#endif",
+        "#endif",
+            ].join("\n");
+        },
     }
 
     var module = function() {
@@ -360,8 +392,7 @@ var Shaderlib = (function() {
             "uniform mat4 volxfm[2];",
             // "uniform float thickmix;",
             utils.thickmixer,
-            "uniform int bumpyflat;",
-            "float f_bumpyflat = float(bumpyflat);",
+            utils.bumpyflat,
 
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
@@ -369,7 +400,6 @@ var Shaderlib = (function() {
 
             "#ifdef HASFLAT",
                 "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
             "#endif",
             // "attribute float dropout;",
             
@@ -428,14 +458,7 @@ var Shaderlib = (function() {
                 // "norm = mix(flatBumpNorms, normalize(onorm), thickmix);",
                 // "norm = normalize(flatBumpNorms);",
 
-            "#ifdef CORTSHEET",
-                // 
-                "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
-                "#else",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
-                "#endif",
-            "#endif",
+            utils.cortsheet_displace(morphs),
 
                 "#ifdef HASFLAT",
                     "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
@@ -710,8 +733,7 @@ var Shaderlib = (function() {
             "uniform float framemix;",
             // "uniform float thickmix;",
             utils.thickmixer,
-            "uniform int bumpyflat;",
-            "float f_bumpyflat = float(bumpyflat);",
+            utils.bumpyflat,
 
             "varying vec4 vColor;",
     "#ifdef RGBCOLORS",
@@ -731,7 +753,6 @@ var Shaderlib = (function() {
 
             "#ifdef HASFLAT",
                 "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
             "#endif",
             // "attribute float dropout;",
             
@@ -786,13 +807,7 @@ var Shaderlib = (function() {
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
 
-            "#ifdef CORTSHEET",
-                "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
-                "#else",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
-                "#endif",
-            "#endif",
+            utils.cortsheet_displace(morphs),
 
                 "#ifdef HASFLAT",
                     "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
@@ -944,10 +959,13 @@ var Shaderlib = (function() {
             var morphs = opts.morphs;
             if (opts.volume > 0)
                 header += "#define CORTSHEET\n";
+            if (opts.hasflat)
+                header += "#define HASFLAT\n";
 
             var vertShade = [
                 // "uniform float thickmix;",
                 utils.thickmixer,
+                utils.bumpyflat,
 
                 utils.mixer(morphs),
                 "attribute vec4 wm;",
@@ -972,9 +990,7 @@ var Shaderlib = (function() {
                     "vec3 pos, norm;",
                     "mixfunc(mpos, mnorm, pos, norm);",
 
-                "#ifdef CORTSHEET",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
-                "#endif",
+                utils.cortsheet_displace(morphs),
 
                     "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
                 "}",
@@ -1004,6 +1020,10 @@ var Shaderlib = (function() {
                 auxdat: { type: 'v4', value:null },
             };
 
+            if (opts.hasflat) {
+                attributes.flatheight = { type: 'f', value:null };
+            }
+
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
                 attributes['mixNorms'+i] = { type:'v3', value:null};
@@ -1017,9 +1037,12 @@ var Shaderlib = (function() {
             var morphs = opts.morphs;
             if (opts.volume > 0)
                 header += "#define CORTSHEET\n";
+            if (opts.hasflat)
+                header += "#define HASFLAT\n";
 
             var vertShade = [
                 "uniform float thickmix;",
+                utils.bumpyflat,
 
                 utils.mixer(morphs),
                 "attribute vec4 wm;",
@@ -1037,9 +1060,7 @@ var Shaderlib = (function() {
                     "vec3 pos, norm;",
                     "mixfunc(mpos, mnorm, pos, norm);",
 
-                "#ifdef CORTSHEET",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., thickmix);",
-                "#endif",
+                utils.cortsheet_displace(morphs, "thickmix"),
 
                     "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
                 "}",
@@ -1059,6 +1080,10 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
             };
+
+            if (opts.hasflat) {
+                attributes.flatheight = { type: 'f', value:null };
+            }
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
