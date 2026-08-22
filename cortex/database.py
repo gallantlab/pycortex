@@ -94,9 +94,25 @@ class SurfaceDB:
     def __dir__(self):
         return list(self.types.keys())
 
+    def __getitem__(self, name: str) -> 'Surf':
+        """Return the surface named `name`.
+
+        Item access works for any surface name, including names that are not
+        valid python identifiers (e.g. ``surfaces['flat-orig']``).
+        """
+        try:
+            return self.types[name]
+        except KeyError:
+            raise KeyError("Subject {subj} has no surface '{name}'. Available "
+                           "surfaces: {avail}".format(subj=self.subject, name=name,
+                                                      avail=', '.join(sorted(self.types.keys()))))
+
     def __getattr__(self, attr: str):
-        if attr in self.types:
-            return self.types[attr]
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError(attr)
+        types = self.__dict__.get('types', {})
+        if attr in types:
+            return types[attr]
         raise AttributeError(attr)
 
 class Surf:
@@ -119,9 +135,26 @@ class XfmDB:
         self.xfms: list[str] = Database(self.filestore).get_paths(subj)['xfms']
 
     def __getitem__(self, name: str) -> 'XfmSet':
+        """Return the transform set named `name`.
+
+        Item access works for any transform name, including names that are not
+        valid python identifiers.
+        """
         if name in self.xfms:
             return XfmSet(self.subject, name, filestore=self.filestore)
-        raise AttributeError
+        raise KeyError("Subject {subj} has no transform '{name}'. Available "
+                       "transforms: {avail}".format(subj=self.subject, name=name,
+                                                    avail=', '.join(sorted(self.xfms))))
+
+    def __dir__(self):
+        return list(self.xfms)
+
+    def __getattr__(self, attr: str) -> 'XfmSet':
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError(attr)
+        if attr in self.__dict__.get('xfms', []):
+            return XfmSet(self.subject, attr, filestore=self.filestore)
+        raise AttributeError(attr)
     
     def __repr__(self):
         xfms = "\n".join(sorted(self.xfms))
@@ -137,10 +170,24 @@ class XfmSet:
         self.masks = MaskSet(subj, name, filestore=filestore)
         self.db = Database(filestore)
     
+    def __getitem__(self, name: str) -> Transform:
+        """Return the transform of type `name` (e.g. ``'coord'`` or ``'magnet'``)."""
+        if name in self._jsdat:
+            return self.db.get_xfm(self.subject, self.name, name)
+        raise KeyError("Transform {xfm} for subject {subj} has no type '{name}'. "
+                       "Available types: {avail}".format(xfm=self.name, subj=self.subject,
+                                                         name=name,
+                                                         avail=', '.join(sorted(self._jsdat.keys()))))
+
+    def __dir__(self):
+        return list(self._jsdat.keys())
+
     def __getattr__(self, attr: str) -> Transform:
-        if attr in self._jsdat:
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError(attr)
+        if attr in self.__dict__.get('_jsdat', {}):
             return self.db.get_xfm(self.subject, self.name, attr)
-        raise AttributeError
+        raise AttributeError(attr)
     
     def __repr__(self):
         return "Types: {types}".format(types=", ".join(self._jsdat.keys()))
@@ -182,14 +229,42 @@ class Database:
         subjs = "\n   ".join(sorted(self.subjects.keys()))
         return """Pycortex database\n  Subjects:\n   {subjs}""".format(subjs=subjs)
     
+    def __getitem__(self, subject: str) -> SubjectDB:
+        """Return a handle to `subject`.
+
+        Unlike attribute access (``db.S1``), item access works for any subject
+        name, including names that are not valid python identifiers::
+
+            db['S1-test']
+        """
+        try:
+            subj = self.subjects[subject]
+        except KeyError:
+            raise KeyError("Subject '{subj}' not found in filestore {store}. Available "
+                           "subjects: {avail}".format(subj=subject, store=self.filestore,
+                                                      avail=', '.join(sorted(self.subjects.keys()))))
+        if subj._warning is not None:
+            warnings.warn(subj._warning)
+        return subj
+
+    def __contains__(self, subject: str) -> bool:
+        return subject in self.subjects
+
+    def __iter__(self):
+        return iter(sorted(self.subjects.keys()))
+
     def __getattr__(self, attr: str):
+        # Never look up dunder attributes in the filestore: doing so would
+        # recurse through `subjects` while the object is being constructed,
+        # copied, or pickled.
+        if attr.startswith('__') and attr.endswith('__'):
+            raise AttributeError(attr)
         if attr in self.subjects:
-            _warning = self.subjects[attr]._warning
-            if _warning is not None:
-                warnings.warn(_warning)
-            return self.subjects[attr]
-        else:
-            raise AttributeError
+            return self[attr]
+        raise AttributeError(
+            "'{attr}' is not an attribute of the pycortex database, and no such subject "
+            "exists in the filestore. Note that subject names that are not valid python "
+            "identifiers (e.g. 'S1-test') must be accessed as db['{attr}'].".format(attr=attr))
     
     def __dir__(self):
         return ["save_xfm","get_xfm", "get_surf", "get_anat", "get_surfinfo", "subjects", # "get_paths", # Add?
