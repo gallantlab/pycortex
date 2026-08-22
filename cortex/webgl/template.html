@@ -46,6 +46,11 @@
 {% if python_interface %}
 <script type='text/javascript' src='resources/js/python_interface.js'></script>
 {% end %}
+
+{% if tour %}
+<script type='text/javascript' src="resources/js/tour.js"></script>
+<link rel="stylesheet" href="resources/css/tour.css" type='text/css' />
+{% end %}
 {% block javascripts %}
 {% end %}
 
