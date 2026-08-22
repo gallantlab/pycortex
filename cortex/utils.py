@@ -106,7 +106,10 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
 
     Returns
     -------
-    ctmfile :
+    ctmfile : str
+        Path to the generated (or already-cached, if `recache` is False and
+        a matching file already exists) .json ctm pack file for this
+        subject.
     """
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
@@ -143,9 +146,31 @@ def get_ctmmap(subject, **kwargs):
     ----------
     subject : str
         Subject name
-    kwargs : dict
-        Keyword arguments to pass to get_ctmpack. The most relevant keyword for this
-        function is the `method` kwarg (either `mg2` or `raw`).
+    **kwargs
+        Additional keyword arguments are forwarded to `get_ctmpack`:
+
+        types : tuple, optional
+            Surfaces between which to interpolate. Default ("inflated",).
+        method : str, optional
+            Method for computing inverse transforms for labels (determines
+            how labels are displayed on the 3D viewer). One of 'mg2', 'raw'.
+            Default 'raw'.
+        level : int, optional
+            Level-of-detail value used (together with `decimate`) to build a
+            distinct cache filename for the generated ctm pack. Default 0.
+        recache : bool, optional
+            Whether to re-generate .ctm files. Can resolve some errors but
+            takes more time to re-generate cached files. Default False.
+        decimate : bool, optional
+            Whether to decimate the mesh geometry of the hemispheres to
+            reduce file size. Default False.
+        external_svg : str, optional
+            File path for an .svg file containing alternative overlays for
+            the brain viewer. If None, the subject's own overlays.svg file
+            is used.
+        overlays_available : tuple, optional
+            Which overlays in the svg file to include in the viewer. If
+            None, all layers in the relevant svg file are included.
 
     Returns
     -------
@@ -350,6 +375,9 @@ def get_vox_dist(subject, xfmname, surface="fiducial", max_dist=np.inf):
         Name of the subject
     xfmname : str
         Name of the transform
+    surface : str, optional
+        Name of the surface to compute voxel distances to. Default
+        "fiducial".
     max_dist : nonnegative float, optional
         Limit computation to only voxels within `max_dist` mm of the surface.
         Makes computation orders of magnitude faster for high-resolution volumes.
@@ -389,10 +417,17 @@ def get_hemi_masks(subject, xfmname, type='nearest'):
         Name of subject
     xfmname : str
         Name of transform
-    type : str
+    type : str, optional
+        Mapping method to use for projecting between volume and surface
+        space. One of 'nearest', 'trilinear', 'gaussian', 'lanczos',
+        'const_patch_nn', 'const_patch_trilin', 'const_patch_lanczos'.
 
     Returns
     -------
+    masks : list of ndarray
+        Two boolean masks, [left, right], each with the shape of the
+        functional volume for `xfmname`, True where a voxel is covered by
+        that hemisphere's surface vertices.
 
     '''
     return get_mapper(subject, xfmname, type=type).hemimasks
@@ -426,8 +461,36 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
     overlay_file : str, optional
         Custom overlays.svg file to use instead of the default one for this
         subject (if not None). Default None.
-    kwargs : dict
-        Passed to cortex.quickflat.make_png
+    **kwargs
+        Additional keyword arguments are forwarded to
+        `cortex.quickflat.make_png` (note that `height`, `with_rois`, and
+        `with_labels` are already set by this function and cannot be
+        overridden):
+
+        recache : bool, optional
+            Whether to re-generate intermediate files. Takes longer to plot
+            this way, but can resolve some errors.
+        pixelwise : bool, optional
+            Use pixel-wise mapping.
+        sampler : str, optional
+            Name of sampling function used to sample underlying volume data.
+        bgcolor : matplotlib colorspec, optional
+            Color of background of image. `None` (default) gives
+            transparent background.
+        dpi : int, optional
+            DPI of the generated image.
+
+        Further keyword arguments accepted by `make_png`'s own `**kwargs`
+        (forwarded on to `cortex.quickflat.make_figure`, e.g. `depth`,
+        `with_colorbar`, `with_borders`, `with_dropout`, `with_curvature`,
+        `linewidth`, `linecolor`, `roifill`, `shadow`, `labelsize`,
+        `labelcolor`, `cutout`) are also accepted here.
+
+    Returns
+    -------
+    returncode : int or None
+        If `open_inkscape` is True, the return code from launching Inkscape
+        (via `subprocess.call`). If `open_inkscape` is False, returns None.
     """
     import subprocess as sp
 
@@ -631,6 +694,12 @@ def get_aseg_mask(subject, aseg_name, xfmname=None, order=1, threshold=None, **k
         Threshold value for aseg mask. If None, function returns result of spline
         interpolation of mask as transformed to functional space (will have continuous
         float values from 0-1)
+    **kwargs
+        Currently non-functional: these are forwarded to
+        `cortex.volume.anat2epispace`, but that function's signature only
+        accepts `anatdata`, `subject`, `xfmname`, and `order` (all already
+        supplied explicitly above), so passing anything here raises
+        `TypeError`.
 
     Returns
     -------
@@ -895,7 +964,10 @@ def get_dropout(subject: str, xfmname: str, power: float = 20):
         Name of subject
     xfmname : str
         Name of transform
-    power :
+    power : float, optional
+        Exponent applied to the normalized (inverted) signal intensity;
+        larger values make the dropout mask more conservative (only the
+        lowest-signal voxels are marked as dropout). Default 20.
 
     Returns
     -------
@@ -924,18 +996,15 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
 
     Parameters
     ----------
-    stim :
-
+    stim : str
+        Path to the input image sequence or video file (ffmpeg `-i` input).
     outfile : str
-
+        Path (without extension) to write the output movie to; ".ogv" is
+        appended.
     fps : float
         refresh rate of the stimulus
     size : str
         resolution of the movie out
-
-    Returns
-    -------
-
     """
     import shlex
     import subprocess as sp
@@ -944,7 +1013,9 @@ def make_movie(stim, outfile, fps=15, size="640x480"):
     sp.call(shlex.split(fcmd))
 
 def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
-    """
+    """For each functional voxel, find the index of the nearest surface
+    vertex, considering the fiducial, white matter, and pial surfaces.
+
     Parameters
     ----------
     subject : str
@@ -952,6 +1023,11 @@ def vertex_to_voxel(subject):  # Am I deprecated in favor of mappers??? Maybe?
 
     Returns
     -------
+    all_verts : ndarray (z, y, x)
+        Array with the same shape as the reference image for the subject's
+        identity transform, containing for each voxel the index of the
+        closest vertex on any of the fiducial, white matter, or pial
+        surfaces.
     """
     max_thickness = db.get_surfinfo(subject, "thickness").data.max()
 
