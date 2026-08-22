@@ -38,7 +38,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 with_labels: bool=True, with_colorbar: bool=True, with_borders: bool=False,
                 with_dropout: Union[bool, float]=False, with_curvature: bool=False, extra_disp: Optional[tuple[str, str]]=None,
                 with_connected_vertices: bool=False, overlay_file: Optional[str]=None,
-                linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
+                linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, 
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
                 colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
@@ -84,8 +84,6 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         (R, G, B, A) specification of line color
     roifill : tuple of float, optional
         (R, G, B, A) specification for the fill of each ROI region
-    shadow : int, optional
-        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
     labelsize : str, optional
         Font size for the label, e.g. "16pt"
     labelcolor : tuple of float, optional
@@ -182,21 +180,21 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
     # Add rois
     if with_rois:
         roi_im = composite.add_rois(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-                                    roifill=roifill, shadow=shadow, labelsize=labelsize, labelcolor=labelcolor,
+                                    roifill=roifill, labelsize=labelsize, labelcolor=labelcolor,
                                     with_labels=with_labels, overlay_file=overlay_file,
                                     roi_list=roi_list)
         layers['rois'] = roi_im
     # Add sulci
     if with_sulci:
         sulc_im = composite.add_sulci(ax, dataview, extents=extents, height=height, linewidth=linewidth, linecolor=linecolor,
-                                      shadow=shadow, labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels,
+                                      labelsize=labelsize, labelcolor=labelcolor, with_labels=with_labels,
                                       overlay_file=overlay_file, sulci_list=sulci_list)
         layers['sulci'] = sulc_im
     # Add custom
     if extra_disp is not None:
         svgfile, layer = extra_disp
         custom_im = composite.add_custom(ax, dataview, svgfile, layer, height=height, extents=extents,
-                                         linewidth=linewidth, linecolor=linecolor, shadow=shadow, labelsize=labelsize,
+                                         linewidth=linewidth, linecolor=linecolor, labelsize=labelsize,
                                          labelcolor=labelcolor, with_labels=with_labels)
         layers['custom'] = custom_im
     # Add connector lines btw connected vertices
@@ -442,46 +440,3 @@ def show(*args, **kwargs):
     """Wrapper for make_figure()"""
     return make_figure(*args, **kwargs)
 
-def make_movie(name, data, subject, xfmname, recache=False, height=1024,
-               sampler='nearest', dpi=100, tr=2, interp='linear', fps=30,
-               vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
-    """Create a movie of an 4D data set"""
-    raise NotImplementedError
-    import sys
-    import shlex
-    import shutil
-    import tempfile
-    import subprocess as sp
-    import multiprocessing as mp
-
-    from scipy.interpolate import interp1d
-
-    # Make the flatmaps
-    ims, extents = make_flatmap_image(data, subject, xfmname, recache=recache, height=height, sampler=sampler)
-    if vmin is None:
-        vmin = np.nanmin(ims)
-    if vmax is None:
-        vmax = np.nanmax(ims)
-
-    # Create the matplotlib figure
-    fig = make_figure(ims[0], subject, vmin=vmin, vmax=vmax, **kwargs)
-    fig.set_size_inches(np.array([ims.shape[2], ims.shape[1]]) / float(dpi))
-    img = fig.axes[0].images[0]
-
-    # Set up interpolation
-    times = np.arange(0, len(ims)*tr, tr)
-    interp = interp1d(times, ims, kind=interp, axis=0, copy=False)
-    frames = np.linspace(0, times[-1], (len(times)-1)*tr*fps+1)
-
-    try:
-        path = tempfile.mkdtemp()
-        impath = os.path.join(path, "im{:09d}.png")
-        for frame, frame_time in enumerate(frames):
-            img.set_data(interp(frame_time))
-            fig.savefig(impath.format(frame), transparent=True, dpi=dpi)
-        # avconv might not be relevant function for all operating systems.
-        # Introduce operating system check here?
-        cmd = "avconv -i {path} -vcodec {vcodec} -r {fps} -b {br} {name}".format(path=impath, vcodec=vcodec, fps=fps, br=bitrate, name=name)
-        sp.call(shlex.split(cmd))
-    finally:
-        shutil.rmtree(path)

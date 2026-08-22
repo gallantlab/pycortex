@@ -101,6 +101,17 @@ def mosaic(data: npt.NDArray[DType], dim: int=0, show: bool=True, **kwargs) -> t
         Dimension across which to mosaic. Default 0.
     show : bool
         Display mosaic with matplotlib? Default True.
+    **kwargs
+        Additional keyword arguments are passed to `matplotlib.pyplot.imshow`
+        (e.g. `cmap`, `vmin`, `vmax`, `interpolation`, `alpha`) when `show`
+        is True.
+
+    Returns
+    -------
+    mosaic : ndarray
+        2D mosaic image formed by tiling slices of `data` along `dim`.
+    grid_shape : tuple of int
+        (nwide, ntall) grid dimensions used to tile the mosaic.
     """
     if data.ndim not in (3, 4):
         raise ValueError("Invalid data shape")
@@ -140,6 +151,27 @@ def mosaic(data: npt.NDArray[DType], dim: int=0, show: bool=True, **kwargs) -> t
     return output, (nwide, ntall)
 
 def show_slice(dataview, **kwargs):
+    """Interactively display a single anatomical slice with a functional
+    volume overlaid, letting the viewed slice and axis be changed with the
+    mouse.
+
+    Scroll to move through slices along the current axis; click to switch
+    to the next axis (cycling through the three spatial dimensions).
+
+    Parameters
+    ----------
+    dataview : Volume
+        Volumetric data to overlay on the subject's anatomical image.
+    **kwargs
+        Additional keyword arguments are passed to `matplotlib.pyplot.imshow`
+        for the functional overlay (e.g. `cmap`, `vmin`, `vmax`), overriding
+        the defaults taken from `dataview`.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The interactive figure.
+    """
     import nibabel
     from matplotlib import cm
     import matplotlib.pyplot as plt
@@ -188,7 +220,22 @@ def show_slice(dataview, **kwargs):
     return fig
 
 def show_mip(data, **kwargs):
-    '''Display a maximum intensity projection for the data, using three subplots'''
+    '''Display a maximum intensity projection for the data, using three subplots
+
+    Parameters
+    ----------
+    data : ndarray
+        3D volumetric data to project.
+    **kwargs
+        Additional keyword arguments are passed to `matplotlib.pyplot.imshow`
+        for each subplot (e.g. `cmap`, `vmin`, `vmax`).
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure containing the three maximum-intensity-projection subplots
+        (one per axis).
+    '''
     import matplotlib.pyplot as plt
     fig = plt.figure()
     fig.add_subplot(221).imshow(data.max(0), **kwargs)
@@ -197,7 +244,15 @@ def show_mip(data, **kwargs):
     return fig
 
 def show_glass(dataview, pad=10):
-    '''Create a classic "glass brain" view of the data, with the outline'''
+    '''Create a classic "glass brain" view of the data, with the outline
+
+    Parameters
+    ----------
+    dataview : Dataview
+        Volumetric data to display.
+    pad : int, optional
+        Padding (in voxels) around the brain outline. Default 10.
+    '''
     import nibabel
     nib = db.get_anat(subject, 'fiducial')
     mask = nib.get_fdata()
@@ -278,6 +333,18 @@ def anat2epispace(anatdata: npt.NDArray, subject: str, xfmname: str, order: Lite
 def epi2anatspace_fsl(volumedata):
     """Resamples epi-space [data] into the anatomical space for the given [subject]
     using the given transformation [xfm].
+
+    Currently broken -- always raises NotImplementedError. Do not use.
+
+    Parameters
+    ----------
+    volumedata : VolumeData
+        Data in EPI (functional) space to resample into anatomical space.
+
+    Returns
+    -------
+    anatspace : ndarray
+        `volumedata` resampled into anatomical space.
     """
     #This function is currently broken! do not use it!
     raise NotImplementedError
@@ -328,7 +395,22 @@ def epi2anatspace_fsl(volumedata):
 
 def anat2epispace_fsl(data,subject,xfmname):
     """Resamples anat-space data into the epi space for the given [subject]
-    and transformation [xfm] 
+    and transformation [xfm]
+
+    Parameters
+    ----------
+    data : ndarray
+        Data in anatomical space to resample into EPI (functional) space.
+    subject : str
+        Name of subject.
+    xfmname : str
+        Name of transform.
+
+    Returns
+    -------
+    outdata : ndarray
+        `data` resampled into EPI space, at the resolution/orientation of
+        the transform's reference functional image.
     """
     import tempfile
     import subprocess
