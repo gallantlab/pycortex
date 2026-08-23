@@ -1073,3 +1073,77 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
     print(f"\nVisual comparison saved to:\n  {out_path}\n")
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+
+
+# ---------------------------------------------------------------------------
+# Group 6: Bumpy flatmap
+# ---------------------------------------------------------------------------
+
+
+def _ensure_bumpy_flatmap(max_iter=15):
+    """Put a bumpy flatmap in the database for the test subject if there is none.
+
+    The real relaxation runs for minutes per hemisphere and is normally done
+    once, when a flatmap is imported. This only needs a plausible non-zero
+    offset field to check that it reaches the shader, so it stops the solve long
+    before it has converged.
+    """
+    from cortex.polyutils import FlatSlab
+
+    path = cortex.db.get_paths(subj)['surfinfo'].format(type='bumpy_flatmap',
+                                                        opts='')
+    if os.path.exists(path):
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    offsets = []
+    for hemi in ("lh", "rh"):
+        wm, _ = cortex.db.get_surf(subj, "wm", hemi)
+        pia, _ = cortex.db.get_surf(subj, "pia", hemi)
+        flat, flatpolys = cortex.db.get_surf(subj, "flat", hemi)
+        slab = FlatSlab(flat, wm, pia, flatpolys, max_iter=max_iter)
+        offsets.append(slab.relaxed)
+    np.savez(path, bump_left=offsets[0], bump_right=offsets[1])
+
+
+@pytest.mark.timeout(900)
+def test_bumpy_flatmap_changes_the_render(tmp_path):
+    """The relaxed relief reaches the shader and visibly changes the flatmap.
+
+    This is the end-to-end check on the whole path: the relaxation in
+    `cortex.polyutils.FlatSlab`, the cached surface info, the ``flatoffset``
+    attribute in the ctm, the components javascript packs into ``flatbump``,
+    ``wm`` and the flat morph target, and the displacement the vertex shader
+    applies. Any break in that chain shows up here as two identical images.
+    """
+    from PIL import Image
+
+    _ensure_bumpy_flatmap()
+    # The pack may predate the offsets, in which case it has no flatoffset map.
+    cortex.utils.get_ctmpack(subj, recache=True)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    original = cortex.options.config.get("webgl_viewopts", "bumpy_flatmap")
+    images = {}
+    try:
+        for bumpy in (False, True):
+            cortex.options.config.set("webgl_viewopts", "bumpy_flatmap",
+                                      "true" if bumpy else "false")
+            with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+                handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["flatmap"]})
+                outfile = str(tmp_path / ("bumpy_%s.png" % bumpy))
+                handle.getImage(outfile, (512, 384))
+                _wait_for_file(outfile)
+                _assert_not_blank(outfile)
+                pageerrors = [e for e in handle._pw_thread.browser_errors
+                              if "[pageerror]" in e]
+                assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+                images[bumpy] = np.asarray(Image.open(outfile).convert("RGB"))
+    finally:
+        cortex.options.config.set("webgl_viewopts", "bumpy_flatmap", original)
+
+    assert not np.array_equal(images[True], images[False]), (
+        "the bumpy flatmap rendered identically to the flat one; the relief "
+        "never reached the shader"
+    )

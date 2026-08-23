@@ -251,7 +251,8 @@ class Database:
         from . import volume
         return volume.anat2epispace(anatnib.get_fdata().T.astype(float), subject, xfmname, order=order)
 
-    def get_surfinfo(self, subject: str, type: str="curvature", recache: bool=False, **kwargs) -> Vertex:
+    def get_surfinfo(self, subject: str, type: str="curvature", recache: bool=False,
+                     generate: bool=True, **kwargs) -> Optional[Vertex]:
         """Return auxiliary surface information from the filestore. Surface info is defined as 
         anatomical information specific to a subject in surface space. A Vertex class will be returned
         as necessary. Info not found in the filestore will be automatically generated.
@@ -266,6 +267,11 @@ class Database:
             Type of surface info returned, IE. curvature, distortion, sulcaldepth, etc.
         recache: bool
             Regenerate the information
+        generate: bool
+            Whether to compute the information if the filestore does not already
+            hold it. True by default. Pass False for info that is expensive
+            enough that silently spending minutes on it would be worse than
+            going without: None is returned instead.
 
         Returns
         -------
@@ -276,6 +282,11 @@ class Database:
         
         npz : npzfile
             Otherwise, an npz object is returned. Remember to close it!
+
+        - OR -
+
+        None
+            If `generate` is False and the information has not been computed yet.
         """
         opts = ""
         if len(kwargs) > 0:
@@ -291,6 +302,8 @@ class Database:
                 os.makedirs(os.path.join(self.filestore, subject, "surface-info"))
 
         if not os.path.exists(surfifile) or recache:
+            if not generate:
+                return None
             print ("Generating %s surface info..."%type)
             from . import surfinfo
             getattr(surfinfo, type)(surfifile, subject, **kwargs)

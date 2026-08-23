@@ -219,3 +219,108 @@ def flat_border(outfile, subject):
             lines.append(pts[pbnd,:2])
     
     np.savez(outfile, lines=lines, ismwalls=ismwalls)
+
+def bumpy_flatmap(outfile, subject, poisson_ratio=0.45):
+    """
+    Relax the cortical slab onto the flatmap and save the resulting pial offsets.
+
+    The white matter surface is pinned to the flatmap and the pial surface is
+    allowed to settle as an elastic solid, so the flatmap gets relief that
+    reflects cortical thickness and folding: gyri, which flattening compresses,
+    end up thicker, and sulci, which it stretches, thinner. See
+    `cortex.polyutils.FlatSlab` for the model and for why Poisson's ratio is the
+    only material parameter that matters.
+
+    This is the expensive one -- it is a nonlinear optimisation over every pial
+    vertex, so it takes minutes rather than seconds. It is generated
+    automatically when a flatmap is imported (see `cortex.freesurfer.import_flat`)
+    so that the viewer does not have to wait for it.
+
+    Subjects with no flat surface get an array of zeros rather than an error.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the offsets will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database for whom the flatmap will be relaxed.
+    poisson_ratio : float, optional
+        How strictly the tissue preserves volume, in [0, 0.5). Default 0.45.
+
+    Notes
+    -----
+    The arrays are stored under ``bump_left`` and ``bump_right`` rather than
+    ``left`` and ``right`` on purpose: `cortex.database.Database.get_surfinfo`
+    turns a file with ``left`` and ``right`` keys into a `Vertex` by
+    concatenating them, which assumes one value per vertex and would quietly
+    mangle these three-component offsets. With these names it hands back the npz
+    itself.
+    """
+    offsets = []
+    for hemi in ["lh", "rh"]:
+        wm, polys = db.get_surf(subject, "wm", hemi)
+        pia, _ = db.get_surf(subject, "pia", hemi)
+        try:
+            flat, flatpolys = db.get_surf(subject, "flat", hemi)
+        except IOError:
+            offsets.append(np.zeros_like(wm))
+            continue
+
+        slab = polyutils.FlatSlab(flat, wm, pia, flatpolys,
+                                  poisson_ratio=poisson_ratio)
+        offsets.append(slab.relaxed)
+        info = slab.info
+        print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations, "
+              "volume %+.2f%%" % (subject, hemi, info['n_tets'],
+                                  info['energy_initial'], info['energy_final'],
+                                  info['iterations'],
+                                  100 * (info['volume_relaxed']
+                                         / info['volume_folded'] - 1)))
+
+    np.savez(outfile, bump_left=offsets[0], bump_right=offsets[1])
+
+def equivolume_areas(outfile, subject, smooth=1.0):
+    """
+    Compute smoothed vertex areas on the white matter and pial surfaces.
+
+    These are what the webgl viewer's equivolume depth sampling needs in order to
+    turn a requested volume fraction through the cortical sheet into a position
+    between the two surfaces. They used to be recomputed in javascript on every
+    viewer load with a uniform "umbrella" smoothing; computing them here instead
+    means they are cached, and lets them be smoothed with the cotangent-weighted
+    operator in `cortex.polyutils.Surface.smooth`, which respects the varying
+    size of the triangles rather than treating every neighbour equally.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the areas will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database for whom the areas will be computed.
+    smooth : float, optional
+        Amount of smoothing to apply. Default 1.0. Pass 0 for the raw
+        barycentric vertex areas.
+
+    Notes
+    -----
+    Stored under ``wm_left`` / ``wm_right`` / ``pia_left`` / ``pia_right``; see
+    the note in `bumpy_flatmap` for why ``left`` and ``right`` are avoided.
+
+    Changing the smoothing operator does move the depths the viewer samples at,
+    slightly: against the five umbrella iterations the javascript used, the
+    depth equivolume sampling picks for a requested fraction of 0.5 shifts by
+    about 0.01 of the cortical thickness at the median on S1. The tail is larger,
+    but it is concentrated where the two areas are nearly equal and the depth is
+    poorly determined either way.
+    """
+    areas = dict()
+    for hemi, side in zip(["lh", "rh"], ["left", "right"]):
+        for name in ["wm", "pia"]:
+            pts, polys = db.get_surf(subject, name, hemi)
+            surf = polyutils.Surface(pts, polys)
+            # The lumped mass matrix of the Laplace-Beltrami operator is exactly
+            # the barycentric vertex area, i.e. a third of each incident face.
+            _, vertex_area, _, _ = surf.laplace_operator
+            areas["%s_%s" % (name, side)] = surf.smooth(vertex_area, smooth)
+
+    np.savez(outfile, **areas)
