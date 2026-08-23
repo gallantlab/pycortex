@@ -23,8 +23,19 @@ result needs no smoothing.
 Each triangular prism between the two surfaces is split into three tetrahedra
 carrying the stable Neo-Hookean energy of Smith et al. (2018), which stays
 finite and correctly signed under element inversion. The energy is minimised
-with L-BFGS-B (Byrd et al., 1995) over the pial vertex positions, started from a
-vertical-prism solution regularised by one screened-Poisson solve in log-height.
+with L-BFGS-B (Byrd et al., 1995) over the pial vertex positions.
+
+The minimisation runs coarse to fine. A quasi-Newton method takes far longer to
+resolve the long wavelength part of the answer -- how the sheet as a whole
+slides as it settles -- than the local detail, and on a mesh of 150,000 vertices
+that dominates the cost. Because a flatmap is planar, coarser meshes can be had
+cheaply: take a maximal independent set of the vertices and retriangulate it in
+two dimensions, rejecting the triangles Delaunay throws across the medial wall
+and the relaxation cuts. Each level is about three to four times smaller than
+the one above, so solving it costs a fraction as much, and its solution is
+prolonged onto the next level by barycentric interpolation. The coarsest level
+starts from a vertical-prism solution regularised by one screened-Poisson solve
+in log-height.
 
 Body forces are omitted: for gray matter the ratio of gravitational to elastic
 stress over a 2.5 mm slab, ``rho * g * t / mu``, is of order 0.03. Without a
@@ -47,6 +58,8 @@ for bound constrained optimization. SIAM Journal on Scientific Computing 16(5),
 import numpy as np
 from scipy import sparse
 from scipy.optimize import minimize
+from scipy.spatial import Delaunay, cKDTree
+from scipy.spatial import QhullError
 
 try:
     from scipy.sparse.linalg import factorized as _factorized
@@ -56,8 +69,9 @@ except ImportError:
 from .misc import _memo
 from .surface import Surface
 
-__all__ = ["FlatSlab", "face_prism_volumes", "lame_parameters",
-           "legacy_js_height", "naive_prism_height"]
+__all__ = ["FlatSlab", "coarsen_flat_mesh", "face_prism_volumes",
+           "lame_parameters", "legacy_js_height", "naive_prism_height",
+           "prolongation_matrix"]
 
 
 # Decomposition of a triangular prism into three tetrahedra. Nodes 0, 1, 2 are
@@ -184,6 +198,156 @@ def _energy_and_stress(F, mu, lam, alpha):
     P = ((mu * (1.0 - 1.0 / (I1 + 1.0)))[:, None, None] * F
          + (lam * (J - alpha))[:, None, None] * cof)
     return psi, P
+
+
+def _planar_area(pts, polys):
+    """Total area of a triangulation, using only the first two coordinates."""
+    p = np.asarray(pts)[np.asarray(polys)][:, :, :2]
+    e1, e2 = p[:, 1] - p[:, 0], p[:, 2] - p[:, 0]
+    return float(np.abs(e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]).sum() / 2.0)
+
+
+def coarsen_flat_mesh(pts, polys, max_hops=8, area_tol=0.005):
+    """Build a coarser triangulation of the same flat region.
+
+    Keeps a maximal independent set of the vertices -- so no two survivors were
+    neighbours, which thins the mesh by a factor of three to four -- and
+    retriangulates them. Retriangulating is only this easy because a flatmap is
+    planar: the vertices can go straight into a two dimensional Delaunay
+    triangulation instead of needing a surface-aware decimation.
+
+    Delaunay triangulates the convex hull, though, so it bridges the medial wall
+    and every relaxation cut. Those bridges join vertices that are close
+    together in the plane but far apart across the surface, so a triangle is
+    kept only if its vertices are within a few steps of each other in the *fine
+    mesh's* own graph. How many steps that should be depends on how regular the
+    mesh is, so it is chosen by measuring: the number picked is the one whose
+    coarse mesh covers the same total area as the fine one.
+
+    Parameters
+    ----------
+    pts : 2D ndarray, shape (total_verts, 2) or (total_verts, 3)
+        Vertex positions. Only the first two columns are used.
+    polys : 2D ndarray, shape (total_polys, 3)
+        Triangle vertex indices.
+    max_hops : int, optional
+        Largest neighbourhood, in steps through the fine mesh, that a coarse
+        triangle may span. Default 8.
+    area_tol : float, optional
+        Stop widening the neighbourhood once the coarse mesh covers more than
+        this fraction of extra area, which means it has started bridging.
+        Default 0.005.
+
+    Returns
+    -------
+    index : 1D ndarray
+        Indices into `pts` of the vertices that were kept.
+    coarse_polys : 2D ndarray, shape (n_coarse_polys, 3)
+        Triangles of the coarse mesh, indexing into `index`.
+    """
+    pts = np.asarray(pts, dtype=np.double)
+    polys = np.asarray(polys)
+    nverts = len(pts)
+    xy = np.column_stack([pts[:, 0], pts[:, 1], np.zeros(nverts)])
+
+    surf = Surface(xy, polys)
+    adj = surf.adj.astype(bool)
+
+    # Boundary vertices go first so that coarsening keeps the outline of the
+    # flatmap and of its cuts rather than eating into them.
+    boundary = surf.boundary_vertices
+    order = np.concatenate([np.nonzero(boundary)[0], np.nonzero(~boundary)[0]])
+
+    status = np.zeros(nverts, np.int8)
+    indptr, indices = adj.indptr, adj.indices
+    for vert in order:
+        if status[vert] == 0:
+            status[vert] = 1
+            status[indices[indptr[vert]:indptr[vert + 1]]] = 2
+    index = np.nonzero(status == 1)[0]
+
+    if len(index) < 4:
+        raise ValueError("mesh is too small to coarsen: %d vertices survive"
+                         % len(index))
+
+    simplices = Delaunay(pts[index, :2]).simplices
+    fine_area = _planar_area(pts, polys)
+
+    reach = (adj + sparse.eye(nverts, dtype=bool, format='csr')).tocsr()
+    step = (reach @ reach).astype(bool)
+    best = None
+    for hops in range(3, max_hops + 1):
+        step = (step @ reach).astype(bool)
+        near = step[index][:, index].tocsr()
+        keep = np.ones(len(simplices), bool)
+        for a, b in ((0, 1), (1, 2), (0, 2)):
+            keep &= np.asarray(near[simplices[:, a], simplices[:, b]]).ravel()
+
+        error = _planar_area(pts[index], simplices[keep]) / fine_area - 1.0
+        if best is None or abs(error) < abs(best[0]):
+            best = (error, keep)
+        if error > area_tol:
+            break
+
+    return index, simplices[best[1]]
+
+
+def prolongation_matrix(pts, index, coarse_polys):
+    """Interpolate from a coarse flat mesh back onto the full vertex set.
+
+    Returns the sparse matrix ``P`` for which ``P @ coarse`` is the piecewise
+    linear interpolation of a coarse quantity at every vertex of `pts`. Rows for
+    the few vertices that fall outside the coarse triangulation -- they sit just
+    beyond its boundary -- take the value of the nearest coarse vertex instead.
+
+    Parameters
+    ----------
+    pts : 2D ndarray, shape (total_verts, 2) or (total_verts, 3)
+        Vertex positions to interpolate onto. Only the first two columns are used.
+    index : 1D ndarray
+        Indices into `pts` of the coarse vertices, as returned by
+        `coarsen_flat_mesh`.
+    coarse_polys : 2D ndarray, shape (n_coarse_polys, 3)
+        Triangles of the coarse mesh, indexing into `index`.
+
+    Returns
+    -------
+    prolong : sparse matrix, shape (total_verts, len(index))
+    """
+    from matplotlib.tri import Triangulation
+
+    pts = np.asarray(pts, dtype=np.double)
+    coarse = pts[index, :2]
+    target = pts[:, :2]
+
+    finder = Triangulation(coarse[:, 0], coarse[:, 1],
+                           np.asarray(coarse_polys)).get_trifinder()
+    located = finder(target[:, 0], target[:, 1])
+    inside = located >= 0
+
+    tris = np.asarray(coarse_polys)[located[inside]]
+    corner = coarse[tris]
+    v0 = corner[:, 1] - corner[:, 0]
+    v1 = corner[:, 2] - corner[:, 0]
+    v2 = target[inside] - corner[:, 0]
+    det = v0[:, 0] * v1[:, 1] - v1[:, 0] * v0[:, 1]
+    w1 = (v2[:, 0] * v1[:, 1] - v1[:, 0] * v2[:, 1]) / det
+    w2 = (v0[:, 0] * v2[:, 1] - v2[:, 0] * v0[:, 1]) / det
+
+    rows = np.nonzero(inside)[0]
+    row = np.concatenate([rows, rows, rows])
+    col = np.concatenate([tris[:, 0], tris[:, 1], tris[:, 2]])
+    weight = np.concatenate([1.0 - w1 - w2, w1, w2])
+
+    if (~inside).any():
+        outside = np.nonzero(~inside)[0]
+        _, nearest = cKDTree(coarse).query(target[outside])
+        row = np.concatenate([row, outside])
+        col = np.concatenate([col, nearest])
+        weight = np.concatenate([weight, np.ones(len(outside))])
+
+    return sparse.coo_matrix((weight, (row, col)),
+                             shape=(len(pts), len(index))).tocsr()
 
 
 def naive_prism_height(flat, wm, pia, polys):
@@ -357,6 +521,70 @@ def face_prism_volumes(wm, pia, polys):
     return vols.reshape(-1, 3).sum(1)
 
 
+def _prism_height(flat, wm, pia, polys, correlation_length):
+    """Volume-preserving vertical prism height, regularised in log-height.
+
+    Solves ``(M + lc^2 L) l = M l*`` once on the flat mesh, where ``l*`` is the
+    log of the height that would preserve each column's folded volume, ``L`` is
+    the cotangent stiffness matrix and ``M`` the lumped mass. Working in the log
+    keeps a twenty-fold compression as an offset of three rather than a
+    twenty-fold spike, and makes the regulariser a geometric rather than an
+    arithmetic mean, which is the right averaging for a ratio.
+    """
+    vol = face_prism_volumes(wm, pia, polys)
+    area = _face_areas(flat, polys)
+    nverts = len(flat)
+    idx = np.asarray(polys).ravel()
+
+    # Ratio of sums rather than sum of ratios: a triangle that flattening
+    # crushed to nothing contributes almost no volume and almost no area, so it
+    # barely moves the estimate, instead of contributing one enormous ratio that
+    # dominates its neighbourhood.
+    vvol = np.bincount(idx, weights=np.repeat(vol, 3), minlength=nverts) / 3.0
+    varea = np.bincount(idx, weights=np.repeat(area, 3), minlength=nverts) / 3.0
+
+    good = (vvol > 0) & (varea > 0)
+    target = np.zeros(nverts)
+    target[good] = np.log(vvol[good] / varea[good])
+    if good.any():
+        target[~good] = np.median(target[good])
+
+    _, mass, weights, degree = Surface(flat, polys).laplace_operator
+    lhs = (sparse.dia_matrix((mass, [0]), (nverts, nverts))
+           + correlation_length ** 2 * (degree - weights)).tocsc()
+
+    # Vertices with no area anchor nothing and leave a singular row.
+    goodrows = np.nonzero(mass > 0)[0]
+    solve = _factorized(lhs[goodrows][:, goodrows].tocsc())
+    logheight = target.copy()
+    logheight[goodrows] = solve((mass * target)[goodrows])
+    return np.exp(logheight)
+
+
+def _slab_volume(pts, tets):
+    """Total volume of a tetrahedralised slab."""
+    return float(np.abs(np.linalg.det(_edge_matrix(pts, tets))).sum() / 6.0)
+
+
+def _assemble_elements(flat, wm, pia, polys):
+    """Tetrahedra of the slab, dropping degenerate ones.
+
+    Returns ``(tets, dm_inv, vol0, n_dropped)``.
+    """
+    tets = _prism_tets(polys, len(flat))
+    reference = _edge_matrix(np.vstack([wm, pia]), tets)
+    vol0 = np.abs(np.linalg.det(reference)) / 6.0
+
+    # A prism with a collapsed reference volume has no shape to preserve and an
+    # ill-conditioned deformation gradient. Its vertices are still held by the
+    # neighbouring prisms.
+    scale = np.median(vol0)
+    keep = vol0 > 1e-9 * scale if scale > 0 else np.ones(len(vol0), bool)
+
+    return (tets[keep], np.linalg.inv(reference[keep]), vol0[keep],
+            int((~keep).sum()))
+
+
 class FlatSlab(object):
     """The cortical slab, relaxed onto a flatmap.
 
@@ -391,7 +619,11 @@ class FlatSlab(object):
         which shear couples the slab. Affects only the starting point of the
         relaxation, not its solution.
     max_iter : int, optional
-        Maximum number of L-BFGS iterations. Default 400.
+        Maximum number of L-BFGS iterations on the full mesh. Default 400.
+    levels : int, optional
+        How many meshes to use, counting the full one. The relaxation is solved
+        coarse to fine; each extra level is roughly three to four times smaller
+        than the one above it. Default 3. Pass 1 to solve the full mesh directly.
 
     Attributes
     ----------
@@ -400,7 +632,7 @@ class FlatSlab(object):
         optimiser status and slab volume before and after.
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
-                 correlation_length=None, max_iter=400):
+                 correlation_length=None, max_iter=400, levels=3):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -408,6 +640,7 @@ class FlatSlab(object):
         self.poisson_ratio = poisson_ratio
         self.correlation_length = correlation_length
         self.max_iter = max_iter
+        self.levels = levels
         self.info = {}
         self._cache = {}
 
@@ -463,84 +696,51 @@ class FlatSlab(object):
             surface. The first two columns are zero.
         """
         mask, flat, wm, pia, polys = self._submesh
-
-        vol = face_prism_volumes(wm, pia, polys)
-        area = _face_areas(flat, polys)
-        nv = len(flat)
-        idx = polys.ravel()
-
-        # Ratio of sums rather than sum of ratios: a triangle that flattening
-        # crushed to nothing contributes almost no volume and almost no area, so
-        # it barely moves the estimate, instead of contributing one enormous
-        # ratio that dominates its neighbourhood.
-        vvol = np.bincount(idx, weights=np.repeat(vol, 3), minlength=nv) / 3.0
-        varea = np.bincount(idx, weights=np.repeat(area, 3), minlength=nv) / 3.0
-
-        good = (vvol > 0) & (varea > 0)
-        target = np.zeros(nv)
-        target[good] = np.log(vvol[good] / varea[good])
-        if good.any():
-            target[~good] = np.median(target[good])
-
         lc = self.correlation_length
         if lc is None:
             lc = np.median(self.thickness[mask])
 
-        surf = Surface(flat, polys)
-        _, D, W, V = surf.laplace_operator
-        lhs = (sparse.dia_matrix((D, [0]), (nv, nv)) + lc ** 2 * (V - W)).tocsc()
-
-        # Vertices with no area anchor nothing and leave a singular row.
-        goodrows = np.nonzero(D > 0)[0]
-        solve = _factorized(lhs[goodrows][:, goodrows].tocsc())
-        logheight = target.copy()
-        logheight[goodrows] = solve((D * target)[goodrows])
-
         offsets = np.zeros((len(self.wm), 3))
-        offsets[mask, 2] = np.exp(logheight)
+        offsets[mask, 2] = _prism_height(flat, wm, pia, polys, lc)
         return offsets
-
-    def _elements(self):
-        """Assemble the tetrahedra, dropping degenerate ones.
-
-        Returns ``(tets, dm_inv, vol0, n_dropped)``.
-        """
-        mask, flat, wm, pia, polys = self._submesh
-        tets = _prism_tets(polys, len(flat))
-        dm = _edge_matrix(np.vstack([wm, pia]), tets)
-        vol0 = np.abs(np.linalg.det(dm)) / 6.0
-
-        # A prism with a collapsed reference volume has no shape to preserve and
-        # an ill-conditioned deformation gradient. Its vertices are still held by
-        # the neighbouring prisms.
-        scale = np.median(vol0)
-        keep = vol0 > 1e-9 * scale if scale > 0 else np.ones(len(vol0), bool)
-        n_dropped = int((~keep).sum())
-
-        return tets[keep], np.linalg.inv(dm[keep]), vol0[keep], n_dropped
 
     @property
     @_memo
-    def relaxed(self):
-        """The relaxed pial surface, as an offset from the flat white surface.
+    def _hierarchy(self):
+        """Progressively coarser versions of the flatmap, finest first.
 
-        Returns
-        -------
-        offsets : 2D ndarray, shape (total_verts, 3)
-            Position of the pial surface relative to the flat white matter
-            surface, in the units of the input surfaces. The first two columns
-            are the in-plane slip and the third the height. Vertices off the
-            flatmap are zero.
+        Each entry is ``(index into the flatmap submesh, triangles in this
+        level's own numbering, index into the level above)``. The top level is
+        the submesh itself and has no parent.
         """
-        mask, flat, wm, pia, polys = self._submesh
-        nv = len(flat)
-        nnodes = 2 * nv
+        _, flat, _, _, polys = self._submesh
+        levels = [(np.arange(len(flat)), polys, None)]
 
-        tets, dm_inv, vol0, n_dropped = self._elements()
+        for _ in range(self.levels - 1):
+            parent, parent_polys, _ = levels[-1]
+            try:
+                index, coarse_polys = coarsen_flat_mesh(flat[parent],
+                                                        parent_polys)
+            except (ValueError, QhullError):
+                break
+            # Below a few thousand triangles the solve is quick anyway and the
+            # coarse mesh stops resembling the surface.
+            if len(coarse_polys) < 2000:
+                break
+            levels.append((parent[index], coarse_polys, index))
+
+        return levels
+
+    def _solve_level(self, flat, wm, pia, polys, top0, max_iter):
+        """Minimise the elastic energy of one mesh, starting from `top0`.
+
+        Returns ``(top, info)``, where `top` is the relaxed position of the
+        pial vertices.
+        """
+        nverts = len(flat)
+        nnodes = 2 * nverts
+        tets, dm_inv, vol0, n_dropped = _assemble_elements(flat, wm, pia, polys)
         mu, lam, alpha = lame_parameters(self.poisson_ratio)
-
-        bottom = flat
-        top0 = flat + self.prism_offsets[mask]
 
         # Everything below is transposed relative to the textbook formulas, so
         # that every slice taken per element has a contiguous last axis. Written
@@ -555,7 +755,7 @@ class FlatSlab(object):
         energies = []
 
         def objective(x):
-            pts = np.vstack([bottom, x.reshape(nv, 3)])
+            pts = np.vstack([flat, x.reshape(nverts, 3)])
             deformed = _edge_matrix_T(pts, tets)
             defgrad = dm_invT @ deformed                     # F transposed
 
@@ -584,15 +784,15 @@ class FlatSlab(object):
 
             energy = float(np.dot(vol0, psi))
             energies.append(energy)
-            return energy, grad[nv:].ravel()
+            return energy, grad[nverts:].ravel()
 
         result = minimize(objective, top0.ravel(), jac=True,
                           method='L-BFGS-B',
-                          options=dict(maxiter=self.max_iter,
+                          options=dict(maxiter=max_iter,
                                        # a hard iteration can spend several
                                        # evaluations in its line search; do not
                                        # let that stop the solve early
-                                       maxfun=4 * self.max_iter,
+                                       maxfun=4 * max_iter,
                                        # L-BFGS keeps this many correction pairs
                                        # to model the curvature with. The default
                                        # of 10 is far too few here: on S1 raising
@@ -601,11 +801,11 @@ class FlatSlab(object):
                                        # 10% more time per iteration.
                                        maxcor=60))
 
-        top = result.x.reshape(nv, 3)
-        self.info = dict(
+        top = result.x.reshape(nverts, 3)
+        info = dict(
             n_tets=len(tets),
             n_dropped=n_dropped,
-            n_free_verts=nv,
+            n_free_verts=nverts,
             energy_initial=energies[0] if energies else None,
             energy_final=float(result.fun),
             energy_history=np.asarray(energies),
@@ -614,15 +814,72 @@ class FlatSlab(object):
             converged=bool(result.success),
             message=str(result.message),
             volume_folded=float(vol0.sum()),
-            volume_relaxed=self._slab_volume(np.vstack([bottom, top]), tets),
-            poisson_ratio=self.poisson_ratio,
+            volume_relaxed=_slab_volume(np.vstack([flat, top]), tets),
         )
+        return top, info
+
+    @property
+    @_memo
+    def relaxed(self):
+        """The relaxed pial surface, as an offset from the flat white surface.
+
+        Solved coarse to fine. A cortical flatmap is around 150,000 vertices and
+        the long wavelength part of the answer -- how the whole sheet slides
+        around as it settles -- is what a quasi-Newton method takes longest to
+        find. Solving a mesh three or four times smaller first is cheap, finds
+        exactly that part, and leaves the full mesh only the short wavelength
+        detail to fill in.
+
+        Returns
+        -------
+        offsets : 2D ndarray, shape (total_verts, 3)
+            Position of the pial surface relative to the flat white matter
+            surface, in the units of the input surfaces. The first two columns
+            are the in-plane slip and the third the height. Vertices off the
+            flatmap are zero.
+        """
+        mask, flat, wm, pia, polys = self._submesh
+        hierarchy = self._hierarchy
+
+        lc = self.correlation_length
+        if lc is None:
+            lc = np.median(self.thickness[mask])
+
+        top = None
+        levelinfo = []
+        for depth in range(len(hierarchy) - 1, -1, -1):
+            index, level_polys, _ = hierarchy[depth]
+            level_flat, level_wm, level_pia = flat[index], wm[index], pia[index]
+
+            if top is None:
+                # The coarsest mesh starts from the vertical prism solution.
+                height = _prism_height(level_flat, level_wm, level_pia,
+                                       level_polys, lc)
+                top0 = level_flat + np.column_stack(
+                    [np.zeros((len(index), 2)), height])
+            else:
+                child_index, child_polys, index_in_parent = hierarchy[depth + 1]
+                prolong = prolongation_matrix(level_flat, index_in_parent,
+                                              child_polys)
+                top0 = level_flat + prolong @ coarse_offsets
+
+            # Every level gets the same iteration count, which means the
+            # coarse ones cost a fraction of the full mesh: about a third for
+            # the first coarsening and a twelfth for the second, so the whole
+            # hierarchy adds roughly 40% to the cost of one pass over the full
+            # mesh. Giving the coarse levels more than this was measurably a
+            # waste -- they were already converged well past the point where
+            # the full mesh could still tell the difference.
+            top, info = self._solve_level(level_flat, level_wm, level_pia,
+                                          level_polys, top0, self.max_iter)
+            coarse_offsets = top - level_flat
+            info['level'] = depth
+            levelinfo.append(info)
+
+        self.info = dict(levelinfo[-1])
+        self.info['levels'] = levelinfo[::-1]
+        self.info['poisson_ratio'] = self.poisson_ratio
 
         offsets = np.zeros((len(self.wm), 3))
-        offsets[mask] = top - bottom
+        offsets[mask] = top - flat
         return offsets
-
-    @staticmethod
-    def _slab_volume(pts, tets):
-        """Total volume of a tetrahedralised slab."""
-        return float(np.abs(np.linalg.det(_edge_matrix(pts, tets))).sum() / 6.0)
