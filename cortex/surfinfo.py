@@ -245,7 +245,7 @@ def _relax_hemisphere(args):
                                      / info['volume_folded'] - 1)))
     return offsets
 
-def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=True):
+def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
     """
     Relax the cortical slab onto the flatmap and save the resulting pial offsets.
 
@@ -272,7 +272,12 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=True):
     poisson_ratio : float, optional
         How strictly the tissue preserves volume, in [0, 0.5). Default 0.45.
     parallel : bool, optional
-        Relax the two hemispheres in separate processes. Default True.
+        Relax the two hemispheres in separate processes. Default False. The
+        solve is memory-bandwidth-bound rather than compute-bound, so two of
+        them running at once mostly compete for the same bandwidth: on S1 this
+        measured 611 seconds in parallel against 602 sequential, for twice the
+        peak memory. Worth turning on only on a machine with bandwidth to
+        spare.
 
     Notes
     -----
@@ -285,9 +290,9 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=True):
     """
     args = [(subject, hemi, poisson_ratio) for hemi in ["lh", "rh"]]
     if parallel:
-        # The hemispheres are completely independent, so this halves the wall
-        # clock. Each one peaks at not quite a gigabyte; pass parallel=False on a
-        # machine where running two at once would be tight.
+        # The hemispheres are completely independent, so this looks like it
+        # should halve the wall clock. Measured, it does not -- see the note on
+        # the parameter -- which is why it is not the default.
         from concurrent.futures import ProcessPoolExecutor
         with ProcessPoolExecutor(max_workers=2) as pool:
             offsets = list(pool.map(_relax_hemisphere, args))
