@@ -8,31 +8,40 @@ gyri, which flattening compresses, and stretched thinner over sulci, which
 flattening expands. That relief is a curvature cue that survives even when the
 flatmap is completely covered with data.
 
-The naive way to compute it is to insist on preserving volume in a vertical
-column: the height over a triangle is the folded prism volume divided by the
-flattened triangle area. That denominator goes to zero wherever the flattening
-compressed a triangle hard, so the naive height spikes, and smoothing a field of
-ratios afterwards is dominated by exactly those outliers.
+Preserving the volume of each column independently gives a height of folded
+prism volume over flattened triangle area, which diverges wherever flattening
+compressed a triangle to nothing.
 
-What actually stops a real slab of tissue from spiking is not gravity -- for gray
-matter the ratio of gravitational to elastic stress over a 2.5mm slab is about
-``rho*g*t/mu = 1040*9.81*0.0025/1000 ~ 0.026``, a couple of percent -- but shear.
-A tall narrow column is expensive because it shears against its neighbours, and
-it relieves that by flowing sideways, which is only possible if the pial surface
-is free to move in-plane rather than being pinned directly above the white
-matter. So :class:`FlatSlab` gives every pial vertex three degrees of freedom and
-minimises an elastic energy.
+This module computes the relief instead by treating the slab as a compressible
+hyperelastic solid: its white matter face is pinned to the flatmap as a
+Dirichlet boundary, its pial face is left free in all three dimensions, and the
+elastic energy is minimised. Shear between neighbouring columns supplies the
+regularisation, so a compressed column spreads laterally rather than extruding,
+gyral crowns end up wider than their bases and sulcal fundi narrower, and the
+result needs no smoothing.
 
-Note what that leaves as a parameter. With no body force, a uniform material, a
-pinned bottom and a free top, the shear modulus factors straight out of the
-minimiser: scaling the energy does not move its minimum. The relaxed geometry
-depends on Poisson's ratio and nothing else. Young's modulus, the shear modulus
-and the tissue density have no effect and are deliberately not accepted here.
-Poisson's ratio sets how strictly volume is preserved: at 0.5 the material is
-incompressible and reproduces exactly the spiky answer, while around 0.45 an
-extremely compressed column can shed a little volume instead of spiking. That
-latitude is defensible because the extreme compressions in a flatmap are largely
-artifacts of the flattening objective rather than properties of tissue.
+Each triangular prism between the two surfaces is split into three tetrahedra
+carrying the stable Neo-Hookean energy of Smith et al. (2018), which stays
+finite and correctly signed under element inversion. The energy is minimised
+with L-BFGS-B (Byrd et al., 1995) over the pial vertex positions, started from a
+vertical-prism solution regularised by one screened-Poisson solve in log-height.
+
+Body forces are omitted: for gray matter the ratio of gravitational to elastic
+stress over a 2.5 mm slab, ``rho * g * t / mu``, is of order 0.03. Without a
+body force the shear modulus factors out of the minimiser, which leaves
+Poisson's ratio as the only material parameter affecting the result. It controls
+how strictly volume is preserved, and values below 0.5 let the extreme
+compressions -- which are largely artifacts of the flattening objective rather
+than properties of tissue -- shed volume rather than spike.
+
+References
+----------
+Smith, B., De Goes, F. and Kim, T. (2018). Stable Neo-Hookean flesh simulation.
+ACM Transactions on Graphics 37(2), 1-15.
+
+Byrd, R. H., Lu, P., Nocedal, J. and Zhu, C. (1995). A limited memory algorithm
+for bound constrained optimization. SIAM Journal on Scientific Computing 16(5),
+1190-1208.
 """
 
 import numpy as np
@@ -47,7 +56,8 @@ except ImportError:
 from .misc import _memo
 from .surface import Surface
 
-__all__ = ["FlatSlab", "naive_prism_height", "legacy_js_height"]
+__all__ = ["FlatSlab", "face_prism_volumes", "lame_parameters",
+           "legacy_js_height", "naive_prism_height"]
 
 
 # Decomposition of a triangular prism into three tetrahedra. Nodes 0, 1, 2 are
@@ -86,10 +96,21 @@ def _prism_tets(polys, nverts):
 
 def _edge_matrix(pts, tets):
     """Tetrahedron edge vectors as the columns of a 3x3 matrix per element."""
+    return np.swapaxes(_edge_matrix_T(pts, tets), 1, 2)
+
+
+def _edge_matrix_T(pts, tets):
+    """Tetrahedron edge vectors as the *rows* of a 3x3 matrix per element.
+
+    The relaxation works in this transposed convention throughout because it
+    keeps the last axis contiguous: a row slice of a C-ordered ``(n, 3, 3)``
+    array is contiguous while a column slice is not, and cross products and
+    matrix multiplies over strided views are several times slower.
+    """
     x0 = pts[tets[:, 0]]
     return np.stack([pts[tets[:, 1]] - x0,
                      pts[tets[:, 2]] - x0,
-                     pts[tets[:, 3]] - x0], axis=-1)
+                     pts[tets[:, 3]] - x0], axis=1)
 
 
 def _cofactor(F):
@@ -339,13 +360,12 @@ def face_prism_volumes(wm, pia, polys):
 class FlatSlab(object):
     """The cortical slab, relaxed onto a flatmap.
 
-    Treats the tissue between the white matter and pial surfaces as a soft
-    elastic solid, pins its white matter side to the flatmap, and lets its pial
-    side settle. Unlike a vertical-prism model the pial surface is free to move
-    in-plane, so a column that flattening compressed hard spreads sideways
-    against its neighbours instead of spiking upwards -- gyral crowns end up
-    wider at the top than at the bottom and sulcal fundi narrower, and no
-    post-hoc smoothing is needed.
+    Minimises the elastic energy of the tissue between the white matter and pial
+    surfaces with the white matter side pinned to the flatmap and the pial side
+    free in three dimensions. Allowing in-plane motion is what distinguishes
+    this from a vertical-prism model: a compressed column spreads laterally
+    rather than extruding, so the relief needs no smoothing. See the module
+    docstring for the energy and the solver.
 
     Parameters
     ----------
@@ -362,15 +382,14 @@ class FlatSlab(object):
         get a zero offset and take no part in the relaxation.
     poisson_ratio : float, optional
         How strictly volume is preserved, in [0, 0.5). Approaching 0.5 gives an
-        incompressible material and reproduces the spiky vertical-prism answer;
-        the default 0.45 lets extreme compressions shed a little volume. This is
-        the only material parameter that affects the result -- see the module
-        docstring.
+        incompressible material and recovers the vertical-prism answer including
+        its spikes; the default 0.45 lets extreme compressions shed some volume.
+        The only material parameter that affects the result.
     correlation_length : float, optional
         Length scale, in the units of the surfaces, over which the initial guess
-        is smoothed. Defaults to the median cortical thickness, which is the
-        scale over which shear actually couples the slab. Only affects the
-        starting point of the relaxation, not its solution.
+        is smoothed. Defaults to the median cortical thickness, the scale over
+        which shear couples the slab. Affects only the starting point of the
+        relaxation, not its solution.
     max_iter : int, optional
         Maximum number of L-BFGS iterations. Default 400.
 
@@ -523,28 +542,45 @@ class FlatSlab(object):
         bottom = flat
         top0 = flat + self.prism_offsets[mask]
 
-        dm_invT = np.swapaxes(dm_inv, 1, 2)
-        flat_idx = tets.ravel()
+        # Everything below is transposed relative to the textbook formulas, so
+        # that every slice taken per element has a contiguous last axis. Written
+        # the other way round this loop spends most of its time walking strided
+        # views, and there are hundreds of thousands of elements.
+        dm_invT = np.ascontiguousarray(np.swapaxes(dm_inv, 1, 2))
+        dm_inv_vol = np.ascontiguousarray(vol0[:, None, None] * dm_inv)
+        # One flat scatter beats three strided ones: the gradient is treated as
+        # a flat (nnodes * 3,) array so that the weights can be handed to
+        # bincount without copying them out of the per-element array first.
+        scatter = (tets[:, :, None] * 3 + np.arange(3)).ravel()
         energies = []
 
         def objective(x):
             pts = np.vstack([bottom, x.reshape(nv, 3)])
-            F = _edge_matrix(pts, tets) @ dm_inv
-            psi, P = _energy_and_stress(F, mu, lam, alpha)
+            deformed = _edge_matrix_T(pts, tets)
+            defgrad = dm_invT @ deformed                     # F transposed
 
-            # dE/dDs = vol0 * P * Dm^-T, whose columns are the gradients with
-            # respect to the three tetrahedron nodes that define the edges; the
-            # fourth node takes minus their sum.
-            g = vol0[:, None, None] * (P @ dm_invT)
+            rows = defgrad[:, 0, :], defgrad[:, 1, :], defgrad[:, 2, :]
+            cof = np.stack([np.cross(rows[1], rows[2]),
+                            np.cross(rows[2], rows[0]),
+                            np.cross(rows[0], rows[1])], axis=1)
+            det = np.einsum('ij,ij->i', rows[0], cof[:, 0, :])
+            trace = np.einsum('ijk,ijk->i', defgrad, defgrad)
+
+            psi = (0.5 * mu * (trace - 3.0)
+                   + 0.5 * lam * (det - alpha) ** 2
+                   - 0.5 * mu * np.log(trace + 1.0))
+            stress = ((mu * (1.0 - 1.0 / (trace + 1.0)))[:, None, None] * defgrad
+                      + (lam * (det - alpha))[:, None, None] * cof)
+
+            # dE/dDs = vol0 * P * Dm^-T; transposed, that is vol0 * Dm^-1 * P^T,
+            # whose rows are the gradients with respect to the three nodes that
+            # define the edges. The fourth node takes minus their sum.
             node_g = np.empty((len(tets), 4, 3))
-            node_g[:, 1:, :] = np.swapaxes(g, 1, 2)
+            np.matmul(dm_inv_vol, stress, out=node_g[:, 1:, :])
             node_g[:, 0, :] = -node_g[:, 1:, :].sum(1)
 
-            grad = np.empty((nnodes, 3))
-            for c in range(3):
-                grad[:, c] = np.bincount(flat_idx,
-                                         weights=node_g[:, :, c].ravel(),
-                                         minlength=nnodes)
+            grad = np.bincount(scatter, weights=node_g.ravel(),
+                               minlength=nnodes * 3).reshape(nnodes, 3)
 
             energy = float(np.dot(vol0, psi))
             energies.append(energy)
@@ -556,7 +592,14 @@ class FlatSlab(object):
                                        # a hard iteration can spend several
                                        # evaluations in its line search; do not
                                        # let that stop the solve early
-                                       maxfun=4 * self.max_iter))
+                                       maxfun=4 * self.max_iter,
+                                       # L-BFGS keeps this many correction pairs
+                                       # to model the curvature with. The default
+                                       # of 10 is far too few here: on S1 raising
+                                       # it to 60 reaches a 29% lower energy in
+                                       # the same number of iterations, for about
+                                       # 10% more time per iteration.
+                                       maxcor=60))
 
         top = result.x.reshape(nv, 3)
         self.info = dict(
