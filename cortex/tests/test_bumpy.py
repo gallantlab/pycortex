@@ -7,6 +7,7 @@ the physics is right and not just whether it changed.
 
 import numpy as np
 import pytest
+from scipy import sparse
 from scipy.optimize import minimize_scalar
 
 from cortex import polyutils
@@ -231,3 +232,244 @@ def test_matches_a_real_flatmap_patch():
     # relief should be of the same order as cortical thickness, not orders off
     assert 0.2 < np.median(heights) / np.median(thickness) < 5.0
     assert np.abs(offsets[~inpatch]).max() == 0.0
+
+
+def flat_grid(n=15, spacing=1.0):
+    """A flat regular grid of unit right triangles, two per grid cell.
+
+    Returns ``(pts, polys, index)`` where `pts` has shape ``(n * n, 2)`` and
+    `index[i, j]` is the vertex number at grid position (i, j).
+    """
+    xs = np.arange(n) * spacing
+    X, Y = np.meshgrid(xs, xs, indexing='ij')
+    pts = np.stack([X.ravel(), Y.ravel()], axis=1)
+    index = np.arange(n * n).reshape(n, n)
+    polys = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            a, b = index[i, j], index[i + 1, j]
+            c, d = index[i + 1, j + 1], index[i, j + 1]
+            polys += [[a, b, c], [a, c, d]]
+    return pts, np.array(polys), index
+
+
+def flat_grid_with_hole(n=25, spacing=1.0, hole=(9, 16)):
+    """The same grid, with a square block of cells cut out of the middle.
+
+    `hole` is a half-open ``(lo, hi)`` range of grid cell indices removed in
+    both directions, leaving a mesh with a genuine interior hole -- a boundary
+    loop with no triangles inside it -- rather than just an edge.
+    """
+    pts, _, index = flat_grid(n, spacing)
+    lo, hi = hole
+    polys = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            if lo <= i < hi and lo <= j < hi:
+                continue
+            a, b = index[i, j], index[i + 1, j]
+            c, d = index[i + 1, j + 1], index[i, j + 1]
+            polys += [[a, b, c], [a, c, d]]
+    return pts, np.array(polys), index
+
+
+def test_coarsen_keeps_an_independent_set():
+    """No two surviving vertices were neighbours in the fine mesh.
+
+    That is what a maximal independent set means: retriangulating a pair of
+    neighbours would put a coarse edge across a gap that was close to zero in
+    the fine mesh, which is not a genuine coarsening.
+    """
+    pts, polys, _ = flat_grid(n=15)
+    index, _ = bumpy.coarsen_flat_mesh(pts, polys)
+
+    adj = polyutils.Surface(pts, polys).adj.astype(bool).tocsr()
+    kept = np.zeros(len(pts), bool)
+    kept[index] = True
+    for vert in index:
+        neighbours = adj.indices[adj.indptr[vert]:adj.indptr[vert + 1]]
+        assert not kept[neighbours].any()
+
+
+def test_coarsen_reduces_vertex_count():
+    """The coarse mesh keeps a small, nonzero fraction of the fine vertices.
+
+    An interior vertex of this grid has six neighbours, so a maximal
+    independent set keeps roughly one vertex in four; anything close to one in
+    one would mean the independent-set step was not doing anything.
+    """
+    pts, polys, _ = flat_grid(n=25)
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+    assert 0 < len(index) <= len(pts) // 2
+    assert len(coarse_polys) > 0
+
+
+def test_coarsen_indices_are_valid():
+    """`index` names real vertices and `coarse_polys` indexes into `index`."""
+    pts, polys, _ = flat_grid(n=21)
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+
+    assert index.ndim == 1
+    assert np.issubdtype(index.dtype, np.integer)
+    assert (index >= 0).all() and (index < len(pts)).all()
+    assert len(np.unique(index)) == len(index)
+
+    assert coarse_polys.ndim == 2 and coarse_polys.shape[1] == 3
+    assert (coarse_polys >= 0).all() and (coarse_polys < len(index)).all()
+    assert (coarse_polys[:, 0] != coarse_polys[:, 1]).all()
+    assert (coarse_polys[:, 1] != coarse_polys[:, 2]).all()
+    assert (coarse_polys[:, 0] != coarse_polys[:, 2]).all()
+
+
+def test_coarsen_preserves_area_on_a_simple_patch():
+    """On a hole-free patch the coarse mesh covers almost the same area.
+
+    `coarsen_flat_mesh` widens its bridging tolerance until the coarse area
+    stops tracking the fine one, so on a simply connected patch -- where there
+    is nothing to bridge -- it should stop close to the true area rather than
+    drifting out to the tolerance's edge.
+    """
+    pts, polys, _ = flat_grid(n=21)
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+
+    fine_area = bumpy._planar_area(pts, polys)
+    coarse_area = bumpy._planar_area(pts[index], coarse_polys)
+    assert coarse_area == pytest.approx(fine_area, rel=0.02)
+
+
+def test_coarsen_does_not_bridge_a_hole():
+    """A hole in the fine mesh must stay a hole in the coarse mesh.
+
+    Plain 2D Delaunay triangulates the convex hull of the surviving vertices,
+    so without the fine-mesh-distance rejection the coarse mesh would bridge
+    straight over the missing block and its area would jump close to the
+    *filled-in* square's area instead of staying near the true,
+    hole-punctured area. This is the property the whole hop-counting scheme
+    in `coarsen_flat_mesh` exists to protect.
+    """
+    n, hole = 25, (9, 16)
+    pts, polys, _ = flat_grid_with_hole(n=n, hole=hole)
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+
+    fine_area = bumpy._planar_area(pts, polys)
+    coarse_area = bumpy._planar_area(pts[index], coarse_polys)
+    filled_area = float((n - 1) * (n - 1))
+    hole_area = float((hole[1] - hole[0]) ** 2)
+    assert filled_area - fine_area == pytest.approx(hole_area, abs=1e-9)
+
+    assert coarse_area == pytest.approx(fine_area, rel=0.02)
+    # A bridged coarse mesh would land close to the filled-in area; demand
+    # that the coarse area instead stay far closer to the true, holed area
+    # than to what bridging the hole would have produced.
+    assert abs(coarse_area - fine_area) < 0.1 * hole_area
+    assert abs(coarse_area - filled_area) > 0.5 * hole_area
+
+
+def test_prolongation_reproduces_linear_fields_inside_the_hull():
+    """Barycentric interpolation is exact for affine functions.
+
+    `P @ f_coarse` must equal an affine `f` evaluated at every fine vertex that
+    falls inside the coarse triangulation. Some vertices here do not -- the
+    coarse mesh has a hole in it too, per the previous test -- and those take a
+    nearest-neighbour value instead, which is not exact for a sloped field. A
+    nearest-neighbour row has exactly one stored entry, equal to 1.0; an
+    inside row always has three stored entries (possibly with some exactly
+    zero), one per corner of the triangle it was found in, even when the
+    point sits exactly on a coarse vertex. So `P.getnnz(axis=1) == 1` reliably
+    picks out the excluded rows without needing to know which vertices those
+    are ahead of time.
+    """
+    pts, polys, _ = flat_grid_with_hole(n=25, hole=(9, 16))
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
+
+    def f(xy):
+        return 3.0 + 2.0 * xy[:, 0] - 5.0 * xy[:, 1]
+
+    result = np.asarray(P @ f(pts[index])).ravel()
+    expected = f(pts)
+
+    outside = P.getnnz(axis=1) == 1
+    assert 0 < outside.sum() < len(pts)  # the hole boundary really produces some
+    inside = ~outside
+    assert np.abs(result[inside] - expected[inside]).max() < 1e-9
+
+
+def test_prolongation_is_a_partition_of_unity():
+    """Every row of `P` sums to 1, and no weight is negative.
+
+    Both hold for the inside-triangle barycentric rows and for the
+    outside-hull nearest-neighbour rows, so this needs no masking, unlike the
+    linear-field check above.
+    """
+    pts, polys, _ = flat_grid_with_hole(n=25, hole=(9, 16))
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
+
+    rowsums = np.asarray(P.sum(axis=1)).ravel()
+    assert np.abs(rowsums - 1.0).max() < 1e-10
+    assert P.data.min() >= -1e-12
+
+
+def test_prolongation_shape_and_output_length():
+    """`P` has the documented shape and works for scalar- and vector-valued data."""
+    pts, polys, _ = flat_grid(n=15)
+    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
+    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
+
+    assert sparse.issparse(P)
+    assert P.shape == (len(pts), len(index))
+
+    scalar = np.arange(len(index), dtype=float)
+    assert (P @ scalar).shape == (len(pts),)
+
+    vector = np.column_stack([scalar, -scalar, 2.0 * scalar])
+    assert (P @ vector).shape == (len(pts), 3)
+
+
+def test_coarse_to_fine_builds_a_shrinking_hierarchy():
+    """Each level of the hierarchy is a strictly smaller mesh than the one above.
+
+    The levels also have to be nested -- every coarse vertex is a vertex of the
+    level above it -- because that is what lets a coarse solution be prolonged
+    onto the finer mesh at all.
+    """
+    flat, wm, pia, polys, _ = slab_grid(n=70, spacing=1.0, thickness=1.5,
+                                        stretch=1.15)
+    slab = bumpy.FlatSlab(flat, wm, pia, polys, levels=3)
+    hierarchy = slab._hierarchy
+
+    assert len(hierarchy) > 1, "the mesh was big enough to coarsen"
+    for (parent, parent_polys, _), (child, child_polys, in_parent) in zip(
+            hierarchy, hierarchy[1:]):
+        assert len(child) < len(parent)
+        assert len(child_polys) < len(parent_polys)
+        # nested: the child's vertices are a subset of the parent's, and
+        # `in_parent` says where each one sits in the parent's numbering
+        assert np.array_equal(parent[in_parent], child)
+        assert child_polys.max() < len(child)
+
+
+def test_coarse_to_fine_matches_a_single_level_solve():
+    """Solving coarse to fine changes how long the answer takes, not the answer.
+
+    Both are minimising the same energy over the same mesh; the hierarchy only
+    supplies a better starting point. On a patch small enough for both to
+    converge properly they have to agree, and if prolongation were putting the
+    fine mesh somewhere the single-level solve does not go, this is where it
+    would show.
+    """
+    flat, wm, pia, polys, _ = slab_grid(n=70, spacing=1.0, thickness=1.5,
+                                        stretch=1.15)
+    single = bumpy.FlatSlab(flat, wm, pia, polys, levels=1, max_iter=800)
+    multi = bumpy.FlatSlab(flat, wm, pia, polys, levels=3, max_iter=800)
+    one, many = single.relaxed, multi.relaxed
+
+    assert single.info['converged'] and multi.info['converged']
+    assert multi.info['energy_final'] == pytest.approx(
+        single.info['energy_final'], rel=1e-6)
+
+    height = np.abs(one[:, 2] - many[:, 2]) / np.maximum(one[:, 2], 1e-9)
+    assert np.median(height) < 1e-3
+    assert height.max() < 1e-2
+    assert np.abs(one[:, :2] - many[:, :2]).max() < 1e-2

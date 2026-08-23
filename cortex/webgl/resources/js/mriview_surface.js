@@ -272,18 +272,10 @@ var mriview = (function(module) {
                     var flatbump_attr = new THREE.BufferAttribute(flatbump, 4);
                     flatbump_attr.needsUpdate = true;
                     hemi.addAttribute('flatbump', flatbump_attr);
-                } else {
-                    // Fill these attributes so the shader doesn't choke, even though
-                    // there's no flatmap
-                    // just set flatheight to 1 everywhere.
-                    // var flatheight_arr = new Float32Array(hemi.attributes.position.position / hemi.attributes.position.itemSize);
-                    // flatheight_arr = flatheight_arr.map(function (x) {return 1.0;});
-                    // var flatheight = new THREE.BufferAttribute(flatheight_arr, 1);
-                    // hemi.addAttribute('flatheight', flatheight);
-
-                    // // and set the flatBumpNorms to the 
-                    // var flatBumpNorms = module.computeNormal()
                 }
+                //With no flatmap there is nothing to add: the shader only
+                //declares flatbump under #ifdef HASFLAT, so it never looks for
+                //an attribute that is not here.
 
                 //Generate an index list that has culled non-flatmap vertices
                 var culled = module._cull_flatmap_vertices(hemi.attributes.index.array, hemi.attributes.auxdat.array, hemi.offsets);
