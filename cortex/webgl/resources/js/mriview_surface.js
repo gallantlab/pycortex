@@ -210,13 +210,18 @@ var mriview = (function(module) {
                 pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, areasmoothfactor, areasmoothiter);
                 hemi.pialareas = pialareas;
 
-		var pialarea_attr = new THREE.BufferAttribute(pialareas, 1);
-                pialarea_attr.needsUpdate = true;
-                var wmarea_attr = new THREE.BufferAttribute(wmareas, 1);
-                wmarea_attr.needsUpdate = true;
-		
-                hemi.addAttribute('pialarea', pialarea_attr);
-                hemi.addAttribute('wmarea', wmarea_attr);
+                //The vertex areas are only read by the equivolume depth
+                //sampling in the vertex shaders, and WebGL only guarantees 16
+                //vertex attribute slots -- which these shaders already use up
+                //-- so they ride in the two unused components of auxdat
+                //(x is the medial wall mask, y the curvature) instead of
+                //taking two slots of their own.
+                var auxdat = hemi.attributes.auxdat;
+                for (var v = 0; v < wmareas.length; v++) {
+                    auxdat.array[v*4+2] = wmareas[v];
+                    auxdat.array[v*4+3] = pialareas[v];
+                }
+                auxdat.needsUpdate = true;
 
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
@@ -257,9 +262,20 @@ var mriview = (function(module) {
                     // console.log(flatoff_geom);
                     // this.flatoff = flatoff_geom;
 
-                    // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
-                    hemi.addAttribute('flatheight', flatheights);
-                    hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
+                    //Same story as the areas above: the bump height rides in
+                    //the fourth component of the bumped normals rather than in
+                    //an attribute of its own.
+                    var bumpnorms = module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets);
+                    var flatbump = new Float32Array(flatheights.array.length * 4);
+                    for (var v = 0; v < flatheights.array.length; v++) {
+                        flatbump[v*4]   = bumpnorms.array[v*3];
+                        flatbump[v*4+1] = bumpnorms.array[v*3+1];
+                        flatbump[v*4+2] = bumpnorms.array[v*3+2];
+                        flatbump[v*4+3] = flatheights.array[v];
+                    }
+                    var flatbump_attr = new THREE.BufferAttribute(flatbump, 4);
+                    flatbump_attr.needsUpdate = true;
+                    hemi.addAttribute('flatbump', flatbump_attr);
                 } else {
                     // Fill these attributes so the shader doesn't choke, even though
                     // there's no flatmap
