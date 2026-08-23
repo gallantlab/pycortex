@@ -376,6 +376,7 @@ var Shaderlib = (function() {
             // "uniform float thickmix;",
             utils.thickmixer,
             "uniform int bumpyflat;",
+            "uniform float bumpyflat_scale;",
             "float f_bumpyflat = float(bumpyflat);",
 
             "attribute vec4 wm;",
@@ -383,6 +384,7 @@ var Shaderlib = (function() {
             "attribute vec4 auxdat;",
 
             utils.flatbump_attr,
+
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -440,7 +442,14 @@ var Shaderlib = (function() {
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatbump.w * f_bumpyflat;",
+                    //The pial surface slides sideways as well as up: gyri end up
+                    //wider at the top than at the bottom and sulci narrower, so
+                    //the offset is a full vector rather than a height along the
+                    //flat normal. Javascript bakes the per-hemisphere mirroring
+                    //and the flatmap scale into these components when it loads
+                    //the surfaces.
+                    "vec3 bumpvector = vec3(flatbump.w, wm.w, mixSurfs"+(morphs-2)+".w);",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpyflat_scale * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
@@ -715,6 +724,7 @@ var Shaderlib = (function() {
             // "uniform float thickmix;",
             utils.thickmixer,
             "uniform int bumpyflat;",
+            "uniform float bumpyflat_scale;",
             "float f_bumpyflat = float(bumpyflat);",
 
             "varying vec4 vColor;",
@@ -734,6 +744,7 @@ var Shaderlib = (function() {
             "attribute vec4 auxdat;",
 
             utils.flatbump_attr,
+
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -789,7 +800,14 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatbump.w * f_bumpyflat;",
+                    //The pial surface slides sideways as well as up: gyri end up
+                    //wider at the top than at the bottom and sulci narrower, so
+                    //the offset is a full vector rather than a height along the
+                    //flat normal. Javascript bakes the per-hemisphere mirroring
+                    //and the flatmap scale into these components when it loads
+                    //the surfaces.
+                    "vec3 bumpvector = vec3(flatbump.w, wm.w, mixSurfs"+(morphs-2)+".w);",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpyflat_scale * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",

@@ -76,6 +76,7 @@ var mriview = (function(module) {
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
                 bumpyflat:  { type:'i',  value:viewopts.bumpy_flatmap == 'true'},
+                bumpyflat_scale: { type:'f', value:parseFloat(viewopts.bumpy_flatmap_scale)},
                 allowtilt:  { type:'i',  value:viewopts.allow_tilt == 'true'},
                 // equivolume:  { type:'i',  value:viewopts.equivolume == 'true'},
 
@@ -168,17 +169,6 @@ var mriview = (function(module) {
                 right:{positions:[], normals:[]},
             };
 
-            // Smoothing parameters for the bumpy flatmap. These must be declared
-            // outside the per-hemisphere loop below: they used to live inside it,
-            // and `var` hoisting meant they were still undefined on the first
-            // iteration, so the left hemisphere was left unsmoothed while the
-            // right one picked up the values assigned during the left pass.
-            var areasmoothfactor = 0.1;
-            var areasmoothiter = 5;
-
-            var distsmoothfactor = 0.1;
-            var distsmoothiter = 20;
-
             for (var name in names) {
                 var hemi = geometries[names[name]];
                 posdata[name].map = hemi.indexMap;
@@ -201,28 +191,15 @@ var mriview = (function(module) {
                     posdata[name].normals.push(hemi.attributes['mixNorms'+i])
                     delete hemi.attributes[json.names[i]];
                 }
+                //The white matter and pial vertex areas that equivolume depth
+                //sampling needs already arrived in auxdat.zw -- x is the medial
+                //wall mask and y the curvature -- computed and smoothed in
+                //python by cortex.surfinfo.equivolume_areas. They ride in the
+                //spare components of an attribute that is already here because
+                //WebGL only guarantees 16 vertex attribute slots and these
+                //shaders use every one of them.
+
                 //Setup flatmap mix
-		var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
-                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, areasmoothfactor, areasmoothiter);
-                hemi.wmareas = wmareas;
-
-		var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
-                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, areasmoothfactor, areasmoothiter);
-                hemi.pialareas = pialareas;
-
-                //The vertex areas are only read by the equivolume depth
-                //sampling in the vertex shaders, and WebGL only guarantees 16
-                //vertex attribute slots -- which these shaders already use up
-                //-- so they ride in the two unused components of auxdat
-                //(x is the medial wall mask, y the curvature) instead of
-                //taking two slots of their own.
-                var auxdat = hemi.attributes.auxdat;
-                for (var v = 0; v < wmareas.length; v++) {
-                    auxdat.array[v*4+2] = wmareas[v];
-                    auxdat.array[v*4+3] = pialareas[v];
-                }
-                auxdat.needsUpdate = true;
-
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
                     hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
@@ -232,47 +209,66 @@ var mriview = (function(module) {
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
 
-                    // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
-                    // var flatareascale = flatscale ** 2;
-                    // flatareas = flatareas.map(function (a) { return a / flatareascale;});
-                    // flatareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, flatareas, smoothfactor, smoothiter);
-                    // hemi.flatareas = flatareas;
+                    //The relaxed bumpy flatmap: each vertex gets the offset
+                    //of the pial surface from its position on the flat white
+                    //matter surface, computed in python (see
+                    //cortex.polyutils.FlatSlab) and shipped in the ctm.
+                    //
+                    //The offset is a full vector, not just a height: the pial
+                    //surface slides sideways as it settles, so gyri end up wider
+                    //at the top than at the bottom and sulci narrower. Its three
+                    //components are in flatmap units and in the flatmap's own
+                    //frame, so they get the same scaling and the same
+                    //per-hemisphere mirroring _makeFlat applies to the flat
+                    //coordinates themselves.
+                    var flatsurf = hemi.attributes['mixSurfs'+json.names.length];
+                    var nverts = flatsurf.array.length / 4;
+                    //Absent for a subject with no white matter surface, and for
+                    //a ctm cached before the bumpy flatmap moved into python; in
+                    //both cases the offsets are all zero and the flatmap stays
+                    //flat, which is what the viewer showed anyway.
+                    var offsets = (hemi.attributes.wm !== undefined)
+                        ? hemi.attributes.flatoffset : undefined;
+                    var mirror = (name == "left") ? -1 : 1;
 
-                    var dists = module.computeDist(hemi.attributes.position, hemi.attributes.wm);
-                    dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, distsmoothfactor, distsmoothiter);
-
-                    var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
-                    hemi.vertexvolumes = vertexvolumes;
-                    var flatheights = module.computeFlatVolumeHeight(wmareas, vertexvolumes);
-                    flatheights.array = flatheights.array.map(function (h) {return h * flatscale;});
-                    // flatheights.array = flatheights.array.map(Math.sqrt);
-                    
-                    var flat_offset_verts;
-                    if ( name == "left" ) {
-                        flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, -1);
-                    } else {
-                        flat_offset_verts = module.offsetVerts(hemi.attributes.mixSurfs1, flatheights, 0, 1);
+                    var displaced = new Float32Array(flatsurf.array);
+                    var bumped = new Float32Array(nverts * 3);
+                    for (var v = 0; v < nverts; v++) {
+                        if (offsets !== undefined) {
+                            //dx and dy lie in the flatmap plane, dh is the height
+                            //above it; the flatmap plane is (y, z) in viewer space
+                            //and its normal is x.
+                            bumped[v*3]   = mirror * flatscale * offsets.array[v*4+2];
+                            bumped[v*3+1] = mirror * flatscale * offsets.array[v*4];
+                            bumped[v*3+2] = flatscale * offsets.array[v*4+1];
+                        }
+                        displaced[v*4]   += bumped[v*3];
+                        displaced[v*4+1] += bumped[v*3+1];
+                        displaced[v*4+2] += bumped[v*3+2];
                     }
-                    // // hemi.addAttribute('offsetflat', flat_offset_verts);
-                    // var flatoff_geom = new THREE.BufferGeometry();
-                    // flatoff_geom.addAttribute('position', flat_offset_verts);
-                    // flatoff_geom.addAttribute('index', hemi.attributes.index);
-                    // flatoff_geom.computeVertexNormals();
 
-                    // console.log(flatoff_geom);
-                    // this.flatoff = flatoff_geom;
-
-                    //Same story as the areas above: the bump height rides in
-                    //the fourth component of the bumped normals rather than in
-                    //an attribute of its own.
-                    var bumpnorms = module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets);
-                    var flatbump = new Float32Array(flatheights.array.length * 4);
-                    for (var v = 0; v < flatheights.array.length; v++) {
+                    //These shaders use all 16 of the vertex attribute slots
+                    //WebGL guarantees, so the offset cannot have an attribute of
+                    //its own. flatbump.xyz is the shading normal of the bumped
+                    //surface and its w plus the unused w of `wm` and of the flat
+                    //morph target carry the three components of the offset.
+                    var bumpnorms = module.computeNormal(
+                        new THREE.BufferAttribute(displaced, 4),
+                        hemi.attributes.index, hemi.offsets);
+                    var flatbump = new Float32Array(nverts * 4);
+                    for (var v = 0; v < nverts; v++) {
                         flatbump[v*4]   = bumpnorms.array[v*3];
                         flatbump[v*4+1] = bumpnorms.array[v*3+1];
                         flatbump[v*4+2] = bumpnorms.array[v*3+2];
-                        flatbump[v*4+3] = flatheights.array[v];
+                        flatbump[v*4+3] = bumped[v*3];
+                        flatsurf.array[v*4+3] = bumped[v*3+2];
+                        if (offsets !== undefined)
+                            hemi.attributes.wm.array[v*4+3] = bumped[v*3+1];
                     }
+                    if (offsets !== undefined)
+                        hemi.attributes.wm.needsUpdate = true;
+                    flatsurf.needsUpdate = true;
+
                     var flatbump_attr = new THREE.BufferAttribute(flatbump, 4);
                     flatbump_attr.needsUpdate = true;
                     hemi.addAttribute('flatbump', flatbump_attr);

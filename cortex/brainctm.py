@@ -29,6 +29,7 @@ class BrainCTM:
     def __init__(self, subject, decimate=False):
         self.subject = subject
         self.types = []
+        self.has_volume = False
 
         left, right = db.get_surf(subject, "fiducial")
         try:
@@ -42,6 +43,7 @@ class BrainCTM:
                 self.left = DecimatedHemi(left[0], left[1], fleft[1], pia=pleft[0])
                 self.right = DecimatedHemi(right[0], right[1], fright[1], pia=pright[0])
                 self.addSurf("wm", addtype=False, renorm=False)
+                self.has_volume = True
             except IOError:
                 self.left = DecimatedHemi(left[0], left[1], fleft[1])
                 self.right = DecimatedHemi(right[0], right[1], fright[1])
@@ -52,6 +54,7 @@ class BrainCTM:
                 self.left = Hemi(pleft[0], left[1])
                 self.right = Hemi(pright[0], right[1])
                 self.addSurf("wm", addtype=False, renorm=False)
+                self.has_volume = True
             except IOError:
                 self.left = Hemi(left[0], left[1])
                 self.right = Hemi(right[0], right[1])
@@ -111,6 +114,59 @@ class BrainCTM:
         except AttributeError:
             self.left.aux[:,1] = npz.left
             self.right.aux[:,1] = npz.right
+
+    def addEquivolumeAreas(self, **kwargs):
+        """Load the vertex areas the viewer's equivolume depth sampling needs.
+
+        They ride in the two spare components of ``auxdat`` -- ``x`` is the
+        medial wall mask and ``y`` the curvature -- rather than taking vertex
+        attribute slots of their own, which the surface shaders are already
+        right up against.
+        """
+        if not self.has_volume:
+            return
+        npz = db.get_surfinfo(self.subject, type='equivolume_areas', **kwargs)
+        try:
+            self.left.aux[:,2] = npz['wm_left'][self.left.mask]
+            self.left.aux[:,3] = npz['pia_left'][self.left.mask]
+            self.right.aux[:,2] = npz['wm_right'][self.right.mask]
+            self.right.aux[:,3] = npz['pia_right'][self.right.mask]
+        except AttributeError:
+            self.left.aux[:,2] = npz['wm_left']
+            self.left.aux[:,3] = npz['pia_left']
+            self.right.aux[:,2] = npz['wm_right']
+            self.right.aux[:,3] = npz['pia_right']
+        npz.close()
+
+    def addBumpyFlat(self, **kwargs):
+        """Load the relaxed pial offsets that give the flatmap its relief.
+
+        Each vertex gets a (dx, dy, height) offset from its position on the flat
+        white matter surface, in flatmap units.
+
+        Unlike the other surface info this is *not* generated on demand. The
+        relaxation takes minutes per hemisphere, and building a ctm pack happens
+        the first time anyone opens a viewer, which is not a good moment to
+        disappear for a quarter of an hour. It is generated when the flatmap is
+        imported instead (see `cortex.freesurfer.import_flat`); a subject
+        imported before that existed simply gets a flat flatmap until it is
+        asked for.
+        """
+        if self.flatlims is None or not self.has_volume:
+            return
+
+        npz = db.get_surfinfo(self.subject, type='bumpy_flatmap',
+                              generate=False, **kwargs)
+        if npz is None:
+            print("No bumpy flatmap for %s; the flatmap will have no relief. "
+                  "Run cortex.db.get_surfinfo(%r, type='bumpy_flatmap') to "
+                  "generate it (this takes a few minutes per hemisphere)."
+                  % (self.subject, self.subject))
+            return
+
+        self.left.setBump(npz['bump_left'])
+        self.right.setBump(npz['bump_right'])
+        npz.close()
 
     def save(self, path, method='mg2', external_svg=None, 
              overlays_available=None, **kwargs):
@@ -212,6 +268,7 @@ class Hemi:
         self.pts = pts
         self.polys = polys
         self.flat = None
+        self.bump = None
         self.surfs = {}
         self.aux = np.zeros((len(self.ctm), 4))
 
@@ -232,8 +289,24 @@ class Hemi:
         self.ctm.addUV(pts[:,:2].astype(float), 'uv')
         self.flat = pts[:,:2]
 
+    def setBump(self, offsets):
+        '''Bumpy flatmap offsets, padded to the four components a ctm attribute
+        map always has.'''
+        self.bump = np.hstack([offsets, np.zeros((len(offsets), 1))])
+
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
+        if self.bump is not None:
+            self.ctm.addAttrib(self.bump, 'flatoffset')
+
+        # OpenCTM only has eight attribute map slots. Two go to auxdat and the
+        # bumpy flatmap offsets and one to the white matter surface, so a viewer
+        # can carry at most five extra surfaces.
+        if len(self.ctm.attribs) > 8:
+            raise ValueError(
+                "too many surfaces for one ctm file: %d attribute maps, and "
+                "OpenCTM allows 8. Pass fewer entries in `types`. (%s)"
+                % (len(self.ctm.attribs), ", ".join(self.ctm.attribs)))
         self.ctm.save(**kwargs)
         ctm = CTMfile(self.tfName)
         mesh = ctm.getMesh()
@@ -276,6 +349,9 @@ class DecimatedHemi(Hemi):
     def addSurf(self, pts, **kwargs):
         super().addSurf(pts[self.mask], **kwargs)
 
+    def setBump(self, offsets):
+        super().setBump(offsets[self.mask])
+
 def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
               decimate=False, disp_layers=['rois'], 
               external_svg=None, overlays_available=None,):
@@ -288,6 +364,8 @@ def make_pack(outfile, subj, types=("inflated",), method='raw', level=0,
 
     ctm = BrainCTM(subj, decimate=decimate)
     ctm.addCurvature()
+    ctm.addEquivolumeAreas()
+    ctm.addBumpyFlat()
     for name in types:
         ctm.addSurf(name)
 
