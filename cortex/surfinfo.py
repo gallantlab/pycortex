@@ -220,7 +220,32 @@ def flat_border(outfile, subject):
     
     np.savez(outfile, lines=lines, ismwalls=ismwalls)
 
-def bumpy_flatmap(outfile, subject, poisson_ratio=0.45):
+def _relax_hemisphere(args):
+    """Relax one hemisphere onto its flatmap. Top level so it can be pickled.
+
+    Subjects with no flat surface get zeros rather than an error.
+    """
+    subject, hemi, poisson_ratio = args
+    wm, polys = db.get_surf(subject, "wm", hemi)
+    pia, _ = db.get_surf(subject, "pia", hemi)
+    try:
+        flat, flatpolys = db.get_surf(subject, "flat", hemi)
+    except IOError:
+        return np.zeros_like(wm)
+
+    slab = polyutils.FlatSlab(flat, wm, pia, flatpolys,
+                              poisson_ratio=poisson_ratio)
+    offsets = slab.relaxed
+    info = slab.info
+    print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations, "
+          "volume %+.2f%%" % (subject, hemi, info['n_tets'],
+                              info['energy_initial'], info['energy_final'],
+                              info['iterations'],
+                              100 * (info['volume_relaxed']
+                                     / info['volume_folded'] - 1)))
+    return offsets
+
+def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=True):
     """
     Relax the cortical slab onto the flatmap and save the resulting pial offsets.
 
@@ -246,6 +271,8 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45):
         Subject in the pycortex database for whom the flatmap will be relaxed.
     poisson_ratio : float, optional
         How strictly the tissue preserves volume, in [0, 0.5). Default 0.45.
+    parallel : bool, optional
+        Relax the two hemispheres in separate processes. Default True.
 
     Notes
     -----
@@ -256,28 +283,23 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45):
     mangle these three-component offsets. With these names it hands back the npz
     itself.
     """
-    offsets = []
-    for hemi in ["lh", "rh"]:
-        wm, polys = db.get_surf(subject, "wm", hemi)
-        pia, _ = db.get_surf(subject, "pia", hemi)
-        try:
-            flat, flatpolys = db.get_surf(subject, "flat", hemi)
-        except IOError:
-            offsets.append(np.zeros_like(wm))
-            continue
+    args = [(subject, hemi, poisson_ratio) for hemi in ["lh", "rh"]]
+    if parallel:
+        # The hemispheres are completely independent, so this halves the wall
+        # clock. Each one peaks at not quite a gigabyte; pass parallel=False on a
+        # machine where running two at once would be tight.
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=2) as pool:
+            offsets = list(pool.map(_relax_hemisphere, args))
+    else:
+        offsets = [_relax_hemisphere(a) for a in args]
 
-        slab = polyutils.FlatSlab(flat, wm, pia, flatpolys,
-                                  poisson_ratio=poisson_ratio)
-        offsets.append(slab.relaxed)
-        info = slab.info
-        print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations, "
-              "volume %+.2f%%" % (subject, hemi, info['n_tets'],
-                                  info['energy_initial'], info['energy_final'],
-                                  info['iterations'],
-                                  100 * (info['volume_relaxed']
-                                         / info['volume_folded'] - 1)))
-
-    np.savez(outfile, bump_left=offsets[0], bump_right=offsets[1])
+    # Compressed, and single precision: these are millimetre offsets that end
+    # up in a float32 vertex attribute anyway, so the extra digits are only
+    # taking up room in the filestore.
+    np.savez_compressed(outfile,
+                        bump_left=offsets[0].astype(np.float32),
+                        bump_right=offsets[1].astype(np.float32))
 
 def equivolume_areas(outfile, subject, smooth=1.0):
     """
