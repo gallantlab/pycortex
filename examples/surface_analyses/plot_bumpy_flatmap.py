@@ -36,43 +36,39 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import cortex
-from cortex.polyutils import FlatSlab
 from cortex.polyutils.bumpy import legacy_js_height, naive_prism_height
 
 subject = "S1"
 
-# Normally you would not run the relaxation yourself: it is generated when a
-# flatmap is imported and cached in the database, and
-# ``cortex.db.get_surfinfo(subject, type="bumpy_flatmap")`` hands back the
-# result. It is done explicitly here, for one hemisphere and with the solver
-# stopped early, so that building this page takes a few minutes rather than
-# half an hour. The cached version is run to convergence and is a little
-# smoother than what you see below.
-hemi = "lh"
-wm, polys = cortex.db.get_surf(subject, "wm", hemi)
-pia, _ = cortex.db.get_surf(subject, "pia", hemi)
-flat, flatpolys = cortex.db.get_surf(subject, "flat", hemi)
+# The relaxation is generated when a flatmap is imported and cached in the
+# database, so this is a lookup rather than a computation. Running it yourself
+# takes a quarter of an hour or so for both hemispheres; see
+# `cortex.polyutils.FlatSlab` if you want to try other material parameters.
+npz = cortex.db.get_surfinfo(subject, type="bumpy_flatmap")
+offsets = np.vstack([npz["bump_left"], npz["bump_right"]])
+npz.close()
 
-slab = FlatSlab(flat, wm, pia, flatpolys, poisson_ratio=0.45, max_iter=150)
-offsets = slab.relaxed
+# The two things it is being compared against, computed per hemisphere.
+naive, legacy, thickness, onmap = [], [], [], []
+for hemi in ["lh", "rh"]:
+    wm, polys = cortex.db.get_surf(subject, "wm", hemi)
+    pia, _ = cortex.db.get_surf(subject, "pia", hemi)
+    flat, flatpolys = cortex.db.get_surf(subject, "flat", hemi)
 
-# The two things it is being compared against.
-naive = naive_prism_height(flat, wm, pia, flatpolys)
-legacy = legacy_js_height(wm, pia, polys)
-thickness = np.linalg.norm(pia - wm, axis=1)
+    naive.append(naive_prism_height(flat, wm, pia, flatpolys))
+    legacy.append(legacy_js_height(wm, pia, polys))
+    thickness.append(np.linalg.norm(pia - wm, axis=1))
 
-# Vertices cut away from the flatmap -- the medial wall -- have no relief.
-onmap = np.zeros(len(wm), bool)
-onmap[flatpolys.ravel()] = True
+    # Vertices cut away from the flatmap -- the medial wall -- have no relief.
+    mask = np.zeros(len(wm), bool)
+    mask[flatpolys.ravel()] = True
+    onmap.append(mask)
+
+naive = np.concatenate(naive)
+legacy = np.concatenate(legacy)
+thickness = np.concatenate(thickness)
+onmap = np.concatenate(onmap)
 relaxed = offsets[:, 2]
-
-# Pad to both hemispheres so the flatmap plotting functions accept the data;
-# the right hemisphere is left blank.
-nright = len(cortex.db.get_surf(subject, "wm", "rh")[0])
-
-
-def both_hemis(data):
-    return np.concatenate([data, np.zeros(nright)])
 
 ###############################################################################
 # The relief itself. The relaxed height is shown alongside the naive
@@ -82,8 +78,7 @@ def both_hemis(data):
 
 vmax = float(np.percentile(relaxed[onmap], 99))
 for name, height in [("relaxed", relaxed), ("naive V/A", naive)]:
-    vertex = cortex.Vertex(both_hemis(height), subject, vmin=0, vmax=vmax,
-                           cmap="viridis")
+    vertex = cortex.Vertex(height, subject, vmin=0, vmax=vmax, cmap="viridis")
     cortex.quickshow(vertex, with_rois=False, with_labels=False,
                      with_curvature=False)
     plt.title("bumpy flatmap height, %s (mm)" % name)
@@ -116,7 +111,7 @@ ax.set_title("the naive height's problem is its tail")
 # of spiking: material squeezed out of a compressed column has somewhere to go.
 
 slip = np.linalg.norm(offsets[:, :2], axis=1)
-vertex = cortex.Vertex(both_hemis(slip), subject, vmin=0,
+vertex = cortex.Vertex(slip, subject, vmin=0,
                        vmax=float(np.percentile(slip[onmap], 99)),
                        cmap="magma")
 cortex.quickshow(vertex, with_rois=False, with_labels=False,
@@ -128,9 +123,9 @@ plt.title("in-plane slip of the pial surface (mm)")
 # curvature. Gyri, which flattening compresses, end up thicker; sulci end up
 # thinner.
 
-curv = cortex.db.get_surfinfo(subject, type="curvature").data[:len(wm)]
+curv = cortex.db.get_surfinfo(subject, type="curvature")
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.hexbin(curv[onmap], relaxed[onmap], gridsize=60, bins="log",
+ax.hexbin(curv.data[onmap], relaxed[onmap], gridsize=60, bins="log",
           cmap="Blues")
 ax.set_xlabel("mean curvature (sulci < 0 < gyri)")
 ax.set_ylabel("relaxed height (mm)")
