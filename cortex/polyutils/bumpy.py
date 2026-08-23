@@ -619,7 +619,10 @@ class FlatSlab(object):
         which shear couples the slab. Affects only the starting point of the
         relaxation, not its solution.
     max_iter : int, optional
-        Maximum number of L-BFGS iterations on the full mesh. Default 400.
+        Maximum number of L-BFGS iterations, applied at every level. Default
+        150, which is calibrated against the hierarchy: on S1 it reaches a lower
+        energy than 400 iterations of a single-level solve did, in a little over
+        half the time. Solving with ``levels=1`` needs two to three times more.
     levels : int, optional
         How many meshes to use, counting the full one. The relaxation is solved
         coarse to fine; each extra level is roughly three to four times smaller
@@ -632,7 +635,7 @@ class FlatSlab(object):
         optimiser status and slab volume before and after.
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
-                 correlation_length=None, max_iter=400, levels=3):
+                 correlation_length=None, max_iter=150, levels=3):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -858,7 +861,7 @@ class FlatSlab(object):
                 top0 = level_flat + np.column_stack(
                     [np.zeros((len(index), 2)), height])
             else:
-                child_index, child_polys, index_in_parent = hierarchy[depth + 1]
+                _, child_polys, index_in_parent = hierarchy[depth + 1]
                 prolong = prolongation_matrix(level_flat, index_in_parent,
                                               child_polys)
                 top0 = level_flat + prolong @ coarse_offsets
