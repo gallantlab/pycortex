@@ -105,16 +105,18 @@ flatten  flatten cortical surface
 Surface Controls
 ****************
 
-======== ============================
-name     description
-======== ============================
-unfold   level of unfolding
-pivot    angle between hemispheres
-shift    distance between hemispheres
-depth    cortical depth
-left     toggle left hemisphere
-right    toggle right hemisphere
-======== ============================
+=================== ==================================
+name                description
+=================== ==================================
+unfold              level of unfolding
+pivot               angle between hemispheres
+shift               distance between hemispheres
+depth               cortical depth
+bumpy_flatmap       give the flatmap relief, see below
+bumpy_flatmap_scale how much to exaggerate that relief
+left                toggle left hemisphere
+right               toggle right hemisphere
+=================== ==================================
 
 
 Lighting Controls
@@ -152,10 +154,14 @@ so, rather than stopping for a quarter of an hour the first time it is opened.
 Run ``cortex.db.get_surfinfo(subject, type='bumpy_flatmap')`` once for such a
 subject and it will be picked up from then on.
 
-``bumpy_flatmap_scale`` exaggerates the relief. At 1.0 the bumps are at their
-true scale, which for a 2-5 mm slab is subtle next to a whole flatmap; larger
-values make the folding easier to read. It only affects display, so changing it
-does not invalidate the cached geometry.
+``bumpy_flatmap_scale`` exaggerates the relief, and is a slider in the surface
+controls as well as a setting. At 1.0 the bumps are at their true scale, which
+for a 2-5 mm slab is subtle next to a whole flatmap; larger values make the
+folding easier to read. The slider starts wherever the configuration file put
+it, and runs from 0 to five times true scale -- or to twice the configured value
+if that is already higher. It does nothing while ``bumpy_flatmap`` is off, since
+there is no relief to scale. Being a display setting, it does not invalidate the
+cached geometry, so it can be dragged around freely.
 
 
 Overlay Controls

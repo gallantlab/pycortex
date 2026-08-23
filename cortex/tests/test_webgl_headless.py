@@ -1125,6 +1125,17 @@ def test_bumpy_flatmap_changes_the_render(tmp_path):
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     original = cortex.options.config.get("webgl_viewopts", "bumpy_flatmap")
     images = {}
+
+    def capture(handle, name):
+        outfile = str(tmp_path / ("%s.png" % name))
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+        _assert_not_blank(outfile)
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+        images[name] = np.asarray(Image.open(outfile).convert("RGB"))
+
     try:
         for bumpy in (False, True):
             cortex.options.config.set("webgl_viewopts", "bumpy_flatmap",
@@ -1132,18 +1143,25 @@ def test_bumpy_flatmap_changes_the_render(tmp_path):
             with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
                 handle._set_view(**{**default_view_params,
                                     **unfold_view_params["flatmap"]})
-                outfile = str(tmp_path / ("bumpy_%s.png" % bumpy))
-                handle.getImage(outfile, (512, 384))
-                _wait_for_file(outfile)
-                _assert_not_blank(outfile)
-                pageerrors = [e for e in handle._pw_thread.browser_errors
-                              if "[pageerror]" in e]
-                assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
-                images[bumpy] = np.asarray(Image.open(outfile).convert("RGB"))
+                capture(handle, "bumpy_%s" % bumpy)
+                if bumpy:
+                    # And the same viewer with the relief exaggerated, which is
+                    # what the bumpy_flatmap_scale slider drives.
+                    # Only the rendered image is checked, not a read-back of
+                    # the value: reading any surface menu property through the
+                    # javascript proxy returns an empty dict, for unfold and
+                    # depth just as much as for this one.
+                    handle.ui.set("surface.%s.bumpy_flatmap_scale" % subj, 4.0)
+                    time.sleep(0.3)
+                    capture(handle, "bumpy_scaled")
     finally:
         cortex.options.config.set("webgl_viewopts", "bumpy_flatmap", original)
 
-    assert not np.array_equal(images[True], images[False]), (
+    assert not np.array_equal(images["bumpy_True"], images["bumpy_False"]), (
         "the bumpy flatmap rendered identically to the flat one; the relief "
         "never reached the shader"
+    )
+    assert not np.array_equal(images["bumpy_scaled"], images["bumpy_True"]), (
+        "exaggerating the relief changed nothing; the bumpy_flatmap_scale "
+        "slider is not reaching the shader"
     )

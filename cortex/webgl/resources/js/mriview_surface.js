@@ -64,6 +64,13 @@ var mriview = (function(module) {
         this.object = new THREE.Group();
         this.object.name = 'Surface';
 
+        //Exaggeration of the bumpy flatmap's relief. A missing or unparseable
+        //setting falls back to 1, the true scale; zero is a legitimate value
+        //and has to survive, so this cannot just be `|| 1`.
+        var bumpscale = parseFloat(viewopts.bumpy_flatmap_scale);
+        if (isNaN(bumpscale))
+            bumpscale = 1.0;
+
         this.uniforms = THREE.UniformsUtils.merge( [
             THREE.UniformsLib[ "lights" ],
             {
@@ -76,7 +83,7 @@ var mriview = (function(module) {
                 thickmix:   { type:'f',  value:0.5},
                 surfmix:    { type:'f',  value:0},
                 bumpyflat:  { type:'i',  value:viewopts.bumpy_flatmap == 'true'},
-                bumpyflat_scale: { type:'f', value:parseFloat(viewopts.bumpy_flatmap_scale)},
+                bumpyflat_scale: { type:'f', value:bumpscale},
                 allowtilt:  { type:'i',  value:viewopts.allow_tilt == 'true'},
                 // equivolume:  { type:'i',  value:viewopts.equivolume == 'true'},
 
@@ -109,6 +116,12 @@ var mriview = (function(module) {
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             bumpy_flatmap: {action:[this, "setBumpyFlat"]},
+            //The slider starts wherever the config file put it. Its range goes
+            //to 5x true scale, or to twice the configured value if that is
+            //already higher, so a deliberately large setting is not clamped
+            //away the first time the menu is drawn.
+            bumpy_flatmap_scale: {action:[this.uniforms.bumpyflat_scale, "value",
+                                          0, Math.max(5, 2 * bumpscale)]},
             allow_tilt: {action:[this, "setAllowTilt"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
