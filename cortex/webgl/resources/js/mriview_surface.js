@@ -265,9 +265,16 @@ var mriview = (function(module) {
                     //its own. flatbump.xyz is the shading normal of the bumped
                     //surface and its w plus the unused w of `wm` and of the flat
                     //morph target carry the three components of the offset.
+                    //Vertices in no triangle -- the medial wall, which is cut
+                    //away from the flatmap -- would otherwise get a zero normal
+                    //and a NaN out of the shader's normalize. Fall back to the
+                    //sheet's own normal, read off the first real triangle so
+                    //the sign follows the winding rather than a guess.
+                    var flatnorm = module.flatSheetNormal(
+                        flatsurf.array, 4, hemi.attributes.index, hemi.offsets);
                     var bumpnorms = module.computeNormal(
                         new THREE.BufferAttribute(displaced, 4),
-                        hemi.attributes.index, hemi.offsets);
+                        hemi.attributes.index, hemi.offsets, flatnorm);
                     var flatbump = new Float32Array(nverts * 4);
                     for (var v = 0; v < nverts; v++) {
                         flatbump[v*4]   = bumpnorms.array[v*3];

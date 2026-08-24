@@ -286,12 +286,16 @@ def coarsen_flat_mesh(pts, polys, max_hops=8, area_tol=0.005):
     simplices = Delaunay(pts[index, :2]).simplices
     fine_area = _planar_area(pts, polys)
 
+    # Which survivors are within `hops` steps of each other in the fine graph.
+    # Only the rows belonging to survivors are ever read, and they are a third
+    # of the mesh, so restrict to them before multiplying rather than after:
+    # `reach` is symmetric, so (reach**k)[index] is reach[index] @ reach**(k-1).
     reach = (adj + sparse.eye(nverts, dtype=bool, format='csr')).tocsr()
-    step = (reach @ reach).astype(bool)
+    step = (reach[index] @ reach).astype(bool)
     best = None
     for hops in range(3, max_hops + 1):
         step = (step @ reach).astype(bool)
-        near = step[index][:, index].tocsr()
+        near = step[:, index].tocsr()
         keep = np.ones(len(simplices), bool)
         for a, b in ((0, 1), (1, 2), (0, 2)):
             keep &= np.asarray(near[simplices[:, a], simplices[:, b]]).ravel()
@@ -504,6 +508,33 @@ def _flat_plane(flat):
     return plane
 
 
+def _smooth_vectors(surf, vectors, factor):
+    """`Surface.smooth`, applied to every column of `vectors` at once.
+
+    `Surface.smooth` assembles and factorises the smoothing operator on each
+    call. The operator depends only on the mesh, so smoothing a three-component
+    field on a whole hemisphere the obvious way pays for three sparse
+    factorisations of the same matrix -- which on a flatmap is most of the cost.
+    Same operator, same answer, one factorisation and three back-substitutions.
+    """
+    vectors = np.asarray(vectors, dtype=np.double)
+    if not factor:
+        return vectors.copy()
+
+    _, D, W, V = surf.laplace_operator
+    npt = len(D)
+    lfac = sparse.dia_matrix((D, [0]), (npt, npt)) - factor * (W - V)
+    # Vertices in no triangle have an empty row and column; `Surface.smooth`
+    # drops them from the solve and leaves them at zero, so do the same.
+    good = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+    solve = _factorized(lfac[good][:, good].tocsc())
+
+    out = np.zeros(vectors.shape)
+    for k in range(vectors.shape[1]):
+        out[good, k] = solve((D * vectors[:, k])[good])
+    return out
+
+
 def face_prism_volumes(wm, pia, polys):
     """Volume of the cortical slab over each triangle.
 
@@ -638,22 +669,27 @@ class FlatSlab(object):
         which shear couples the slab. Affects only the starting point of the
         relaxation, not its solution.
     max_iter : int, optional
-        Maximum number of L-BFGS iterations, applied at every level. Default
-        150, which is calibrated against the hierarchy: on S1 it reaches a lower
-        energy than 400 iterations of a single-level solve did, in a little over
-        half the time. Solving with ``levels=1`` needs two to three times more.
+        Maximum number of L-BFGS iterations, applied at every level. Default 60,
+        which is calibrated against the hierarchy and against `polish`: what the
+        iterations past this point buy is short-wavelength detail, and that is
+        smoothed off again afterwards. On S1, raising it to 100 costs a third
+        more time and moves the correlation between the polished relief and mean
+        curvature by 0.001. Solving with ``levels=1`` needs two to three times
+        more.
     levels : int, optional
         How many meshes to use, counting the full one. The relaxation is solved
         coarse to fine; each extra level is roughly three to four times smaller
         than the one above it. Default 3. Pass 1 to solve the full mesh directly.
     thickness_layers : int, optional
-        Number of element layers through the thickness of the slab. Default 4.
+        Number of element layers through the thickness of the slab. Default 3.
         This is not a refinement knob to be traded away: a single layer cannot
         represent shear across the slab, which is the mechanism holding the
         relief up, and with one layer the relief flattens towards a slab of
-        uniform thickness. On S1 the correlation between the relief and mean
-        curvature is 0.52 with one layer against 0.79 with four, with most of
-        the recovery by three.
+        uniform thickness. On a patch of S1 the correlation between the relief
+        and mean curvature is 0.52 with one layer against 0.79 with four. Almost
+        all of that is recovered by three, which is why three is the default:
+        over a whole hemisphere a fourth layer costs 60% more time and moves the
+        correlation by 0.002, in the wrong direction.
     smooth : float, optional
         How much to smooth the white-to-pial displacement before using it as the
         elastic reference, as a diffusion time in the units of the surfaces
@@ -664,16 +700,31 @@ class FlatSlab(object):
         the signal. Pass 0 to use the surfaces as given.
     resolution : float, optional
         Coarsest mesh spacing, in the units of the surfaces, that is worth
-        solving at. Default 1.5 mm; levels finer than this are reached by
-        interpolation rather than solved. On S1 that means solving a 1.6 mm mesh
-        rather than the 0.9 mm one, which costs a fifth as much and, because the
-        result cannot then carry structure at the scale of a single triangle,
-        removes the shortest wavelengths by construction instead of relying on
-        smoothing to take them out afterwards. Coarsening further does start to
-        cost anatomy: a 3.1 mm mesh is four times faster again but its relief
-        tracks curvature distinctly less well. Pass 0 to solve every level
+        solving at. Levels finer than this are reached by interpolation rather
+        than solved. Default 3.2 mm, which on S1 means solving a 3.1 mm mesh
+        rather than the 0.9 mm one. This is the setting that buys the speed and
+        it is not free: solving down to 1.6 mm instead takes five times as long
+        and raises the correlation between the polished relief and high-passed
+        mean curvature from 0.57 to 0.70, so real gyral-scale detail is being
+        given up here. The default is chosen so that a subject import costs
+        about a minute rather than about ten; raise it, or lower it towards 1.5,
+        according to which of those matters. Pass 0 to solve every level
         including the full mesh -- which on a whole hemisphere takes upwards of
         forty minutes and is not recommended.
+    polish : float, optional
+        How much to smooth the finished offsets, as a diffusion time in the
+        units of the surfaces squared. Default 4. This is not cosmetic: levels
+        finer than `resolution` are reached by barycentric interpolation, which
+        is only continuous and not smooth, so the height field has creases along
+        the coarse triangle edges. A shading normal is the derivative of that
+        field, which makes every crease a visible discontinuity in the lighting
+        even though the heights themselves look fine. At the default settings on
+        S1 it takes the RMS angle between the normals of neighbouring triangles
+        from 8.8 degrees to 2.4, and it *improves* the correlation with
+        curvature, from 0.53 to 0.57, so at this strength it is removing noise
+        rather than signal. Smoothing harder keeps flattening the normals a
+        little and starts costing anatomy. Pass 0 to get the prolonged solution
+        as it comes.
 
     Attributes
     ----------
@@ -682,8 +733,8 @@ class FlatSlab(object):
         optimiser status and slab volume before and after.
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
-                 correlation_length=None, max_iter=150, levels=3,
-                 thickness_layers=4, smooth=1.0, resolution=1.5):
+                 correlation_length=None, max_iter=60, levels=3,
+                 thickness_layers=3, smooth=1.0, resolution=3.2, polish=4.0):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -695,6 +746,7 @@ class FlatSlab(object):
         self.thickness_layers = thickness_layers
         self.smooth = smooth
         self.resolution = resolution
+        self.polish = polish
         self.info = {}
         self._cache = {}
 
@@ -743,9 +795,7 @@ class FlatSlab(object):
             return self.pia
 
         surf = Surface(self.wm, self.polys)
-        displacement = self.pia - self.wm
-        return self.wm + np.column_stack(
-            [surf.smooth(displacement[:, k], self.smooth) for k in range(3)])
+        return self.wm + _smooth_vectors(surf, self.pia - self.wm, self.smooth)
 
     @property
     @_memo
@@ -984,11 +1034,23 @@ class FlatSlab(object):
             coarse_offsets = (moved - stack).reshape(layers, len(index), 3)
 
         top = moved[-len(flat):]          # outermost layer is the pial side
+        relief = top - flat
+
+        if self.polish:
+            # Two things to take out. The obvious one is what is left of the
+            # millimetre-scale noise. The less obvious one is that every level
+            # below `floor` was reached by barycentric interpolation, which is
+            # only continuous and not smooth: the height field has creases along
+            # the coarse triangle edges. A shading normal is the derivative of
+            # that field, so a crease is a visible discontinuity in the
+            # lighting, and this is what turns it back into a surface.
+            relief = _smooth_vectors(Surface(flat, polys), relief, self.polish)
+
         self.info = dict(levelinfo[-1])
         self.info['solved_from_level'] = floor
         self.info['levels'] = levelinfo[::-1]
         self.info['poisson_ratio'] = self.poisson_ratio
 
         offsets = np.zeros((len(self.wm), 3))
-        offsets[mask] = top - flat
+        offsets[mask] = relief
         return offsets
