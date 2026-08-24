@@ -458,11 +458,17 @@ def test_coarse_to_fine_matches_a_single_level_solve():
     converge properly they have to agree, and if prolongation were putting the
     fine mesh somewhere the single-level solve does not go, this is where it
     would show.
+
+    Both are given ``resolution=0`` so that the finest mesh is actually solved.
+    At the default the hierarchy stops short of it and interpolates instead,
+    which is a deliberately different answer and not what is under test here.
     """
     flat, wm, pia, polys, _ = slab_grid(n=70, spacing=1.0, thickness=1.5,
                                         stretch=1.15)
-    single = bumpy.FlatSlab(flat, wm, pia, polys, levels=1, max_iter=800)
-    multi = bumpy.FlatSlab(flat, wm, pia, polys, levels=3, max_iter=800)
+    single = bumpy.FlatSlab(flat, wm, pia, polys, levels=1, max_iter=800,
+                            resolution=0)
+    multi = bumpy.FlatSlab(flat, wm, pia, polys, levels=3, max_iter=800,
+                           resolution=0)
     one, many = single.relaxed, multi.relaxed
 
     assert single.info['converged'] and multi.info['converged']
@@ -473,3 +479,58 @@ def test_coarse_to_fine_matches_a_single_level_solve():
     assert np.median(height) < 1e-3
     assert height.max() < 1e-2
     assert np.abs(one[:, :2] - many[:, :2]).max() < 1e-2
+
+
+def _s1_patch(radius=32):
+    """A patch of S1's flatmap, with its white, pial and curvature data."""
+    from cortex import db
+    wm, _ = db.get_surf("S1", "wm", "lh")
+    pia, _ = db.get_surf("S1", "pia", "lh")
+    flat, flatpolys = db.get_surf("S1", "flat", "lh")
+    curv = db.get_surfinfo("S1", type="curvature").data[:len(wm)]
+
+    surf = polyutils.Surface(bumpy._flat_plane(flat), flatpolys)
+    seed = flatpolys[len(flatpolys) // 2, 0]
+    inside = np.zeros(len(flat), bool)
+    inside[surf.get_euclidean_patch(seed, radius)["vertex_mask"]] = True
+    keep = inside[flatpolys].all(1)
+
+    sub = np.zeros(len(flat), bool)
+    sub[flatpolys[keep].ravel()] = True
+    remap = np.zeros(len(flat), np.int64)
+    remap[sub] = np.arange(sub.sum())
+    return (flat[sub], wm[sub], pia[sub], remap[flatpolys[keep]], curv[sub])
+
+
+def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():
+    """The relief has to track the folding, and not at the scale of a triangle.
+
+    Both halves of this regressed once and neither was caught, because the
+    relaxation was only ever checked for energy and volume. A slab one element
+    thick cannot represent shear across itself, which is the mechanism holding
+    the relief up, so the relief flattened towards uniform thickness; and with
+    no regularisation at all, millimetre-scale segmentation noise went straight
+    into it. The result looked dimpled rather than like hills and valleys, and
+    every scalar being measured at the time got better while it happened.
+    """
+    flat, wm, pia, polys, curv = _s1_patch()
+
+    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
+    adj = surf.adj.tocsr()
+    degree = np.maximum(np.asarray(adj.sum(1)).ravel(), 1)
+
+    def roughness(x):
+        """Mesh-scale variation, as a fraction of the field's own spread."""
+        return np.sqrt(((x - np.asarray(adj @ x).ravel() / degree) ** 2).mean()) \
+            / x.std()
+
+    height = bumpy.FlatSlab(flat, wm, pia, polys).relaxed[:, 2]
+    assert np.corrcoef(height, curv)[0, 1] > 0.7
+    assert roughness(height) < 0.15
+
+    # and pin the reason, so that turning either off fails here rather than
+    # silently degrading what the viewer shows
+    thin = bumpy.FlatSlab(flat, wm, pia, polys, thickness_layers=1,
+                          smooth=0).relaxed[:, 2]
+    assert np.corrcoef(thin, curv)[0, 1] < np.corrcoef(height, curv)[0, 1]
+    assert roughness(thin) > roughness(height)
