@@ -769,6 +769,51 @@ class FlatSlab(object):
         The creases are the real culprit and this only hides them. Making the
         prolongation C1, or solving the level the creases live on, would let
         this drop by an order of magnitude.
+    tilt : float, optional
+        Exaggerate the relief's long wavelengths relative to its short ones.
+        Default 1.0, which is off; 2.0 doubles everything above `tilt_scale` and
+        leaves a 5 mm wrinkle alone.
+
+        This is a display choice, not physics, and it is here because shaded
+        relief is itself a high-pass filter: brightness follows the surface
+        gradient, so a band at wavelength L and amplitude A contributes contrast
+        in proportion to A/L. A 30 mm swell needs roughly ten times the
+        amplitude of a 3 mm wrinkle to read as strongly. Terrain looks like
+        hills and valleys because its amplitude spectrum falls steeply with
+        frequency; cortical relief's does not, so it reads as texture unless
+        told otherwise. `polish` cannot substitute -- being a low-pass it
+        shrinks the whole relief and has to be chased with the viewer's scale
+        slider, which rescales every band equally and so changes nothing about
+        the balance.
+
+        On S1, the share of shading (RMS gradient) sitting above 32 mm against
+        the share in the 4-16 mm bands, and what it costs in normal continuity::
+
+            tilt=1   25% vs 40%   silk 2.80   relief std 0.70 mm
+            tilt=2   33% vs 33%   silk 3.00   relief std 1.22 mm
+            tilt=3   38% vs 28%   silk 3.24   relief std 1.75 mm
+            tilt=5   43% vs 24%   silk 3.75   relief std 2.81 mm
+
+        Note how little silk moves for how much relief is added -- tilt=3 nearly
+        triples the relief for half a degree -- because what it adds is long
+        wavelength, and a long wavelength carries very little gradient per unit
+        of amplitude. That is the same fact that makes the relief look
+        high-pass in the first place, used in the other direction.
+
+        The relief does get much taller, so expect to want a smaller
+        ``bumpy_flatmap_scale`` in the viewer alongside a large `tilt`.
+    tilt_scale : float, optional
+        The wavelength, in the units of the surfaces, above which `tilt` applies.
+        Default 24 mm, just above the 8-16 mm band where the folding lives, so
+        that raising `tilt` favours regional swells over individual gyri. Lower
+        it towards 12 mm to emphasise the gyri themselves.
+
+        24 mm is chosen to sit over the bands that actually carry folding: on S1
+        the relief's correlation with mean curvature peaks at 0.62 in 16-32 mm
+        and 0.66 in 32-64 mm, and falls to 0.30 above 64 mm. Raising this much
+        past 40 mm gives a smoother-looking result (silk 2.98 against 3.24 at
+        tilt=3) but spends the exaggeration on the one band that is only weakly
+        anatomical. Ignored when `tilt` is 1.
 
     Attributes
     ----------
@@ -778,7 +823,8 @@ class FlatSlab(object):
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
                  correlation_length=0.5, max_iter=60, levels=3,
-                 thickness_layers=3, smooth=0.0, resolution=3.2, polish=2.0):
+                 thickness_layers=3, smooth=0.0, resolution=3.2, polish=2.0,
+                 tilt=1.0, tilt_scale=24.0):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -791,6 +837,8 @@ class FlatSlab(object):
         self.smooth = smooth
         self.resolution = resolution
         self.polish = polish
+        self.tilt = tilt
+        self.tilt_scale = tilt_scale
         self.info = {}
         self._cache = {}
 
@@ -1089,6 +1137,23 @@ class FlatSlab(object):
             # that field, so a crease is a visible discontinuity in the
             # lighting, and this is what turns it back into a surface.
             relief = _smooth_vectors(Surface(flat, polys), relief, self.polish)
+
+        if self.tilt != 1.0:
+            # Shaded relief is a high-pass filter of the height field: contrast
+            # goes as amplitude/wavelength, so a 30 mm swell needs many times
+            # the amplitude of a 3 mm wrinkle to read as strongly. A relief with
+            # a flat amplitude spectrum therefore looks like texture however
+            # correct it is, and no amount of solver work changes that. This
+            # boosts the long wavelengths and leaves the short ones alone, which
+            # is what `polish` cannot do -- a low-pass shrinks everything and
+            # has to be chased with the viewer's scale slider.
+            #
+            # Deliberately an exaggeration, not physics. `tilt` of 1 is off.
+            surf = Surface(flat, polys)
+            low = _smooth_vectors(surf, relief,
+                                  (self.tilt_scale / (2 * np.pi)) ** 2)
+            # about its own mean, so the sheet is not simply lifted
+            relief = relief + (self.tilt - 1.0) * (low - low.mean(0))
 
         self.info = dict(levelinfo[-1])
         self.info['solved_from_level'] = floor
