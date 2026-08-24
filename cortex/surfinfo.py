@@ -237,12 +237,17 @@ def _relax_hemisphere(args):
                               poisson_ratio=poisson_ratio)
     offsets = slab.relaxed
     info = slab.info
-    print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations, "
-          "volume %+.2f%%" % (subject, hemi, info['n_tets'],
-                              info['energy_initial'], info['energy_final'],
-                              info['iterations'],
-                              100 * (info['volume_relaxed']
-                                     / info['volume_folded'] - 1)))
+    # `converged` is the discriminator between "stopped at a tolerance" and
+    # "ran out of iterations", and it is worth printing: a capped solve stays
+    # near its starting point, which makes `correlation_length` -- documented as
+    # affecting only that starting point -- affect the answer too.
+    print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations "
+          "(%s, |grad|max %.3g), volume %+.2f%%"
+          % (subject, hemi, info['n_tets'], info['energy_initial'],
+             info['energy_final'], info['iterations'],
+             "converged" if info['converged'] else "hit the iteration cap",
+             info['gradient_norm'],
+             100 * (info['volume_relaxed'] / info['volume_folded'] - 1)))
     return offsets
 
 def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):

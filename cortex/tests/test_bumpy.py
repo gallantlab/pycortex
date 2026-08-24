@@ -576,10 +576,9 @@ def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():
     Both halves of this regressed once and neither was caught, because the
     relaxation was only ever checked for energy and volume. A slab one element
     thick cannot represent shear across itself, which is the mechanism holding
-    the relief up, so the relief flattened towards uniform thickness; and with
-    no regularisation at all, millimetre-scale segmentation noise went straight
-    into it. The result looked dimpled rather than like hills and valleys, and
-    every scalar being measured at the time got better while it happened.
+    the relief up, so the relief flattened towards uniform thickness. The result
+    looked dimpled rather than like hills and valleys, and every scalar being
+    measured at the time got better while it happened.
     """
     flat, wm, pia, polys, curv = _s1_patch()
 
@@ -596,9 +595,53 @@ def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():
     assert np.corrcoef(height, curv)[0, 1] > 0.7
     assert roughness(height) < 0.15
 
-    # and pin the reason, so that turning either off fails here rather than
-    # silently degrading what the viewer shows
-    thin = bumpy.FlatSlab(flat, wm, pia, polys, thickness_layers=1,
-                          smooth=0).relaxed[:, 2]
+    # and pin the reason, so that losing the layers fails here rather than
+    # silently degrading what the viewer shows. Only `thickness_layers` differs
+    # -- this used to also pass smooth=0, which is now the default and so
+    # isolated nothing.
+    thin = bumpy.FlatSlab(flat, wm, pia, polys, thickness_layers=1).relaxed[:, 2]
     assert np.corrcoef(thin, curv)[0, 1] < np.corrcoef(height, curv)[0, 1]
     assert roughness(thin) > roughness(height)
+
+
+def _band(surf, x, wavelength):
+    """Low-pass at a given wavelength.
+
+    `Surface.smooth`'s `factor` is a diffusion time, and one backward-Euler step
+    has transfer function 1/(1 + k^2 t), so the half-power point of `factor = t`
+    sits at a wavelength of 2*pi*sqrt(t) -- not at sqrt(t), and not at the
+    sqrt(2t) that the Gaussian-equivalent sigma would suggest. Every previous
+    round of tuning here got that factor of 4.4 wrong in the same direction.
+    """
+    return surf.smooth(x.copy(), (wavelength / (2 * np.pi)) ** 2)
+
+
+def test_the_relief_carries_gyral_scale_signal():
+    """The relief has to have energy at the scale of gyri, not just be smooth.
+
+    Everything else in this file is local: `_silk` compares neighbouring faces,
+    `roughness` compares a vertex to its one-ring, and a correlation against
+    raw curvature is dominated by whichever band happens to have most variance.
+    None of them can see a relief that is beautifully smooth and anatomically
+    empty, which is exactly what over-smoothing produces -- and three rounds of
+    tuning against those metrics alone drove `smooth` and `polish` to values
+    that removed most of the 8-16 mm band while every number on the dashboard
+    improved.
+    """
+    flat, wm, pia, polys, curv = _s1_patch()
+    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
+    height = bumpy.FlatSlab(flat, wm, pia, polys).relaxed[:, 2]
+
+    def gyral(x):
+        """The 8-16 mm band, where the folding lives."""
+        return _band(surf, x, 16.0) - _band(surf, x, 8.0)
+
+    band, cband = gyral(height), gyral(curv)
+    assert np.corrcoef(band, cband)[0, 1] > 0.35, (
+        "the relief has no folding signal left at gyral scale")
+
+    # and it must not have been smoothed into a featureless sheet: the gyral
+    # band has to hold real amplitude, not a rounding error on the mean
+    assert band.std() / height.std() > 0.1, (
+        "the gyral band has been smoothed away relative to the whole relief")
+

@@ -147,7 +147,7 @@ compresses, and thinner over sulci, which it stretches. It is computed by
 relaxing the cortical slab as an elastic solid, which lets the pial surface
 slide sideways as it settles rather than sitting in a vertical column above the
 white matter -- see :class:`cortex.polyutils.FlatSlab`. That calculation takes
-about a minute, so it is done once when the flatmap is imported and cached in
+under a minute, so it is done once when the flatmap is imported and cached in
 the subject's database entry. It is deliberately not generated on demand: a
 subject imported before this existed gets a flatmap with no relief, and the
 viewer says so, rather than stopping while it is computed. Run
