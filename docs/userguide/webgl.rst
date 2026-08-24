@@ -146,22 +146,33 @@ off the white matter and laid flat: thicker over gyri, which flattening
 compresses, and thinner over sulci, which it stretches. It is computed by
 relaxing the cortical slab as an elastic solid, which lets the pial surface
 slide sideways as it settles rather than sitting in a vertical column above the
-white matter -- see :class:`cortex.polyutils.FlatSlab`. That calculation is
-expensive, so it is done once when the flatmap is imported and cached in the
-subject's database entry. It is deliberately not generated on demand: a subject
-imported before this existed gets a flatmap with no relief, and the viewer says
-so, rather than stopping for a quarter of an hour the first time it is opened.
-Run ``cortex.db.get_surfinfo(subject, type='bumpy_flatmap')`` once for such a
+white matter -- see :class:`cortex.polyutils.FlatSlab`. That calculation takes
+about a minute, so it is done once when the flatmap is imported and cached in
+the subject's database entry. It is deliberately not generated on demand: a
+subject imported before this existed gets a flatmap with no relief, and the
+viewer says so, rather than stopping while it is computed. Run
+``cortex.db.get_surfinfo(subject, type='bumpy_flatmap')`` once for such a
 subject and it will be picked up from then on.
 
 ``bumpy_flatmap_scale`` exaggerates the relief, and is a slider in the surface
 controls as well as a setting. At 1.0 the bumps are at their true scale, which
 for a 2-5 mm slab is subtle next to a whole flatmap; larger values make the
-folding easier to read. The slider starts wherever the configuration file put
-it, and runs from 0 to five times true scale -- or to twice the configured value
-if that is already higher. It does nothing while ``bumpy_flatmap`` is off, since
-there is no relief to scale. Being a display setting, it does not invalidate the
-cached geometry, so it can be dragged around freely.
+folding easier to read. The exaggeration is vertical only, as on a topographic
+map: the height above the sheet grows and the sideways sliding of the pial
+surface does not, so turning the slider up does not move the relief around
+relative to the data drawn underneath it. The shading follows, since a height
+field scaled by *s* has a normal whose in-plane components scale by *s* and
+whose out-of-plane component does not. The slider starts wherever the
+configuration file put it, and runs from 0 to five times true scale -- or to
+twice the configured value if that is already higher. It does nothing while
+``bumpy_flatmap`` is off, since there is no relief to scale. Being a display
+setting, it does not invalidate the cached geometry, so it can be dragged
+around freely.
+
+The relief appears over the second half of the unfold, between the inflated
+surface and the flatmap, and the anatomical and inflated surfaces are untouched
+by it. The offsets are in the flatmap's own coordinates, which have no meaning
+on a folded surface.
 
 
 Overlay Controls

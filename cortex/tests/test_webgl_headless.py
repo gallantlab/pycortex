@@ -1142,6 +1142,9 @@ def test_bumpy_flatmap_changes_the_render(tmp_path):
                                       "true" if bumpy else "false")
             with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
                 handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["inflated"]})
+                capture(handle, "inflated_%s" % bumpy)
+                handle._set_view(**{**default_view_params,
                                     **unfold_view_params["flatmap"]})
                 capture(handle, "bumpy_%s" % bumpy)
                 if bumpy:
@@ -1164,4 +1167,14 @@ def test_bumpy_flatmap_changes_the_render(tmp_path):
     assert not np.array_equal(images["bumpy_scaled"], images["bumpy_True"]), (
         "exaggerating the relief changed nothing; the bumpy_flatmap_scale "
         "slider is not reaching the shader"
+    )
+    # The offsets are in flatmap coordinates, so they mean nothing until the
+    # surface is flat: the displacement ramps in over inflated-to-flat, and at
+    # the inflated state it must not have started. This once regressed the
+    # other way -- the displacement ramped over anatomical-to-inflated while
+    # the shading normal ramped over inflated-to-flat, so geometry and
+    # lighting disagreed across the whole first half of the unfold.
+    assert np.array_equal(images["inflated_True"], images["inflated_False"]), (
+        "the bumpy flatmap changed the inflated surface; a flatmap-space "
+        "offset is leaking into the folded surfaces"
     )

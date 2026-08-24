@@ -193,8 +193,13 @@ def test_relaxation_tames_the_spikes_the_naive_height_has():
     flat[:, :2] = centre + radial * squeeze[:, None]
 
     naive = bumpy.naive_prism_height(flat, wm, pia, polys)
+    # `polish` off: it is a fixed diffusion time calibrated to the scale of a
+    # real flatmap, where a millimetre or two of smoothing is small next to a
+    # gyrus. This grid is 20 units across and the squeezed disc 3 units wide, so
+    # at the default it would smooth away most of the very feature under test --
+    # which says nothing about the relaxation, and that is what is under test.
     slab = bumpy.FlatSlab(flat, wm, pia, polys, poisson_ratio=0.45,
-                          max_iter=4000)
+                          max_iter=4000, polish=0)
     relaxed = slab.relaxed[:, 2]
 
     assert naive.max() > 4 * relaxed.max()
@@ -500,6 +505,69 @@ def _s1_patch(radius=32):
     remap = np.zeros(len(flat), np.int64)
     remap[sub] = np.arange(sub.sum())
     return (flat[sub], wm[sub], pia[sub], remap[flatpolys[keep]], curv[sub])
+
+
+def test_smoothing_three_components_at_once_matches_smoothing_them_singly():
+    """`_smooth_vectors` is `Surface.smooth` with the factorisation shared.
+
+    It exists only because the operator does not depend on what is being
+    smoothed, so it must give back exactly what the obvious loop gives back --
+    including leaving vertices in no triangle at zero.
+    """
+    flat, wm, pia, polys, _ = _s1_patch(radius=16)
+    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
+    field = pia - wm
+
+    for factor in (0, 1.0, 4.0):
+        expected = np.column_stack(
+            [surf.smooth(field[:, k].copy(), factor) for k in range(3)])
+        np.testing.assert_allclose(
+            bumpy._smooth_vectors(surf, field, factor), expected, atol=1e-10)
+
+
+def _silk(pts, polys):
+    """RMS angle, in degrees, between the normals of neighbouring triangles.
+
+    This is what "smooth" means to a shader: the shading normal is the
+    derivative of the surface, so it is the angle between neighbours and not
+    the height itself that decides whether the relief reads as silk or as
+    crumpled foil.
+    """
+    tri = pts[polys]
+    n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1), 1e-12)[:, None]
+
+    edges = np.sort(np.vstack([polys[:, [0, 1]], polys[:, [1, 2]],
+                               polys[:, [2, 0]]]), axis=1)
+    face = np.tile(np.arange(len(polys)), 3)
+    order = np.lexsort((edges[:, 1], edges[:, 0]))
+    e, f = edges[order], face[order]
+    shared = np.all(e[:-1] == e[1:], axis=1)
+    a, b = f[:-1][shared], f[1:][shared]
+
+    dot = np.clip((n[a] * n[b]).sum(1), -1, 1)
+    return np.degrees(np.sqrt((np.arccos(dot) ** 2).mean()))
+
+
+def test_the_relief_is_smooth_enough_to_shade():
+    """The bumped flatmap has to be smooth at the scale of a triangle.
+
+    Two things put creases into it. The obvious one is what is left of the
+    millimetre-scale noise in the segmentation. The less obvious one is that
+    every level finer than `resolution` is reached by barycentric
+    interpolation, which is only continuous and not smooth, so the height
+    field has creases along the coarse triangle edges -- invisible in the
+    heights and glaring in the lighting. `polish` is what takes both out.
+    """
+    flat, wm, pia, polys, _ = _s1_patch()
+    plane = bumpy._flat_plane(flat)
+
+    slab = bumpy.FlatSlab(flat, wm, pia, polys)
+    assert _silk(plane + slab.relaxed, polys) < 3.5
+
+    rough = bumpy.FlatSlab(flat, wm, pia, polys, polish=0)
+    assert _silk(plane + rough.relaxed, polys) > _silk(plane + slab.relaxed,
+                                                       polys)
 
 
 def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():

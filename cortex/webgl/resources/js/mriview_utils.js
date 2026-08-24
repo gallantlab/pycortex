@@ -210,7 +210,39 @@ var mriview = (function(module) {
         return {pos:pos, norm:norm, base:base};
     }
 
-    module.computeNormal = function(vertices, index, offsets) {
+    //The unit normal of a planar sheet, taken from its first triangle with any
+    //area. Every triangle of a flatmap gives the same answer up to the sign,
+    //and reading it off the mesh gets that sign from the winding.
+    module.flatSheetNormal = function(positions, stride, index, offsets) {
+        var indices = index.array;
+        var pA = new THREE.Vector3(), pB = new THREE.Vector3(),
+            pC = new THREE.Vector3(), cb = new THREE.Vector3(),
+            ab = new THREE.Vector3();
+
+        for (var j = 0; j < offsets.length; j++) {
+            var start = offsets[j].start, count = offsets[j].count,
+                base = offsets[j].index;
+            for (var i = start; i < start + count; i += 3) {
+                var vA = base + indices[i], vB = base + indices[i+1],
+                    vC = base + indices[i+2];
+                pA.set(positions[vA*stride], positions[vA*stride+1], positions[vA*stride+2]);
+                pB.set(positions[vB*stride], positions[vB*stride+1], positions[vB*stride+2]);
+                pC.set(positions[vC*stride], positions[vC*stride+1], positions[vC*stride+2]);
+                cb.subVectors(pC, pB);
+                ab.subVectors(pA, pB);
+                cb.cross(ab);
+                if (cb.length() > 1e-8)
+                    return cb.normalize().toArray();
+            }
+        }
+        return [0, 0, 0];
+    }
+
+    //`fallback`, if given, is a 3-element array used for vertices whose
+    //accumulated face normals vanish -- a vertex in no triangle at all, or one
+    //whose incident triangles have zero area. Without it those vertices get a
+    //zero normal, which the fragment shader then normalizes into a NaN.
+    module.computeNormal = function(vertices, index, offsets, fallback) {
         var i, il;
         var j, jl;
 
@@ -290,9 +322,9 @@ var mriview = (function(module) {
             normals[ i + 2 ] *= n;
 
             if (isNaN(normals[i])) {
-                normals[i] = 0;
-                normals[i+1] = 0;
-                normals[i+2] = 0;
+                normals[i]   = fallback === undefined ? 0 : fallback[0];
+                normals[i+1] = fallback === undefined ? 0 : fallback[1];
+                normals[i+2] = fallback === undefined ? 0 : fallback[2];
             }
 
         }

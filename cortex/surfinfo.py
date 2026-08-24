@@ -256,8 +256,8 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
     `cortex.polyutils.FlatSlab` for the model and for why Poisson's ratio is the
     only material parameter that matters.
 
-    This is the expensive one -- it is a nonlinear optimisation over every pial
-    vertex, so it takes minutes rather than seconds. It is generated
+    This is the expensive one -- it is a nonlinear optimisation over the whole
+    slab, and takes about half a minute per hemisphere. It is generated
     automatically when a flatmap is imported (see `cortex.freesurfer.import_flat`)
     so that the viewer does not have to wait for it.
 
@@ -274,10 +274,10 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
     parallel : bool, optional
         Relax the two hemispheres in separate processes. Default False. The
         solve is memory-bandwidth-bound rather than compute-bound, so two of
-        them running at once mostly compete for the same bandwidth: on S1 this
-        measured 611 seconds in parallel against 602 sequential, for twice the
-        peak memory. Worth turning on only on a machine with bandwidth to
-        spare.
+        them running at once mostly compete for the same bandwidth rather than
+        halving the time: on S1 this measured 65 seconds in parallel against 77
+        sequential, for twice the peak memory. Worth turning on only on a
+        machine with bandwidth to spare.
 
     Notes
     -----
