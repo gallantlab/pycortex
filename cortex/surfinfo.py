@@ -280,19 +280,19 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False,
         relief's amplitude by 2% -- so it is rarely the knob you want.
     **kwargs
         Passed straight to `cortex.polyutils.FlatSlab`, so anything that shapes
-        the relief is reachable from here. The useful ones are `tilt`, which
-        exaggerates the long wavelengths against the short and is what to reach
-        for when the relief reads as texture rather than terrain, and `polish`,
-        which smooths it. `db.get_surfinfo` folds these into the cache filename,
-        so different settings do not overwrite each other -- but note that
-        `cortex.brainctm` looks for the *unsuffixed* file, so a viewer will not
-        pick up a variant cache. To try one in the viewer, write it to the
+        the relief is reachable from here. The useful ones are `detrend`, which
+        sets how much of the whole-map swell to take out and is what to reach
+        for when the folding is not reading strongly enough, and `polish`, which
+        smooths the result. `db.get_surfinfo` folds these into the cache
+        filename, so different settings do not overwrite each other -- but note
+        that `cortex.brainctm` looks for the *unsuffixed* file, so a viewer will
+        not pick up a variant cache. To try one in the viewer, write it to the
         default name and rebuild the pack::
 
             from cortex import db, surfinfo, utils
             path = db.get_paths('S1')['surfinfo'].format(
                 type='bumpy_flatmap', opts='')
-            surfinfo.bumpy_flatmap(path, 'S1', tilt=3.0)
+            surfinfo.bumpy_flatmap(path, 'S1', detrend=32.0)
             utils.get_ctmpack('S1', recache=True)
     parallel : bool, optional
         Relax the two hemispheres in separate processes. Default False. The
