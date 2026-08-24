@@ -665,9 +665,22 @@ class FlatSlab(object):
         The only material parameter that affects the result.
     correlation_length : float, optional
         Length scale, in the units of the surfaces, over which the initial guess
-        is smoothed. Defaults to the median cortical thickness, the scale over
-        which shear couples the slab. Affects only the starting point of the
-        relaxation, not its solution.
+        is smoothed. Default 0.5 mm. Pass None for the median cortical
+        thickness, the scale over which shear couples the slab, which is the
+        physically motivated choice and was the old default.
+
+        In principle this affects only the starting point and not the solution.
+        In practice it affects the solution, because the solve stops at
+        `max_iter` rather than at a tolerance (see `max_iter`), so whatever the
+        starting point lacks the relaxation has no chance to put back. The
+        smoothing here is a screened-Poisson solve with transfer function
+        1/(1 + lc^2 k^2), so its half-power point is at a wavelength of
+        2*pi*lc -- for a 2.5 mm median thickness that is **15.7 mm**, which
+        removes most of the gyral relief before the solve even starts. On S1,
+        dropping it to 0.5 mm raises the amplitude in the 8-16 mm band by 27%
+        with the correlation to mean curvature unchanged, i.e. it restores
+        signal rather than noise. Converging the solve would be the principled
+        fix and would make this parameter irrelevant again.
     max_iter : int, optional
         Maximum number of L-BFGS iterations, applied at every level. Default 60,
         which is calibrated against the hierarchy and against `polish`: what the
@@ -676,6 +689,14 @@ class FlatSlab(object):
         more time and moves the correlation between the polished relief and mean
         curvature by 0.001. Solving with ``levels=1`` needs two to three times
         more.
+
+        Be aware that this is a *cap*, not a tolerance, and at the default the
+        solve stops here rather than converging -- on S1 ``info['converged']``
+        is False with a final gradient sup-norm around 3e3 against scipy's
+        1e-5. That is a deliberate trade for import time, but it has a
+        consequence worth knowing: an unconverged solve stays near its starting
+        point, so `correlation_length`, which nominally sets only that starting
+        point, ends up shaping the answer.
     levels : int, optional
         How many meshes to use, counting the full one. The relaxation is solved
         coarse to fine; each extra level is roughly three to four times smaller
@@ -693,38 +714,61 @@ class FlatSlab(object):
     smooth : float, optional
         How much to smooth the white-to-pial displacement before using it as the
         elastic reference, as a diffusion time in the units of the surfaces
-        squared. Default 1.0, roughly a millimetre. The relaxation has no
-        regularisation of its own, so without this the millimetre-scale noise in
-        the segmentation goes straight into the relief; on S1 it is the
-        difference between a mesh-scale roughness of 0.21 and 0.10 relative to
-        the signal. Pass 0 to use the surfaces as given.
+        squared. **Default 0, i.e. off**, and it should usually stay off.
+
+        This existed to keep segmentation noise out of the relief, and it does,
+        but it is the wrong tool: a diffusion time t has its half-power point at
+        a wavelength of 2*pi*sqrt(t), so the old default of 1.0 was cutting at
+        **6.3 mm** -- squarely inside the gyral band, smoothing away the very
+        thickness variation that makes gyri thicker than sulci. On S1 it roughly
+        halved the correlation between the relief and mean curvature, from 0.47
+        to 0.25 in the 8-16 mm band and 0.62 to 0.42 in 16-32 mm, and even a
+        value of 0.05 measured slightly worse than zero. `polish` removes the
+        same noise afterwards for a fraction of the signal, so there is no
+        regime where this helps. Raise it only for a segmentation whose
+        thickness map is visibly noisier than the folding it sits on.
     resolution : float, optional
         Coarsest mesh spacing, in the units of the surfaces, that is worth
         solving at. Levels finer than this are reached by interpolation rather
         than solved. Default 3.2 mm, which on S1 means solving a 3.1 mm mesh
         rather than the 0.9 mm one. This is the setting that buys the speed and
-        it is not free: solving down to 1.6 mm instead takes five times as long
-        and raises the correlation between the polished relief and high-passed
-        mean curvature from 0.57 to 0.70, so real gyral-scale detail is being
-        given up here. The default is chosen so that a subject import costs
-        about a minute rather than about ten; raise it, or lower it towards 1.5,
-        according to which of those matters. Pass 0 to solve every level
+        it is not free: solving down to 1.6 mm takes five times as long and does
+        carry more gyral-scale signal. The default is chosen so that a subject
+        import costs about a minute rather than about ten; raise it, or lower it
+        towards 1.5, according to which of those matters.
+
+        Note that at this default the ``floor`` clamp leaves **only the coarsest
+        level actually solved**, so the coarse-to-fine cascade -- which exists
+        because long wavelengths are what a quasi-Newton method converges last
+        -- is not doing anything. Adding levels *coarser* than the floor would
+        cost very little and is the obvious next thing to try. Pass 0 to solve
+        every level
         including the full mesh -- which on a whole hemisphere takes upwards of
         forty minutes and is not recommended.
     polish : float, optional
         How much to smooth the finished offsets, as a diffusion time in the
-        units of the surfaces squared. Default 4. This is not cosmetic: levels
-        finer than `resolution` are reached by barycentric interpolation, which
-        is only continuous and not smooth, so the height field has creases along
-        the coarse triangle edges. A shading normal is the derivative of that
-        field, which makes every crease a visible discontinuity in the lighting
-        even though the heights themselves look fine. At the default settings on
-        S1 it takes the RMS angle between the normals of neighbouring triangles
-        from 8.8 degrees to 2.4, and it *improves* the correlation with
-        curvature, from 0.53 to 0.57, so at this strength it is removing noise
-        rather than signal. Smoothing harder keeps flattening the normals a
-        little and starts costing anatomy. Pass 0 to get the prolonged solution
-        as it comes.
+        units of the surfaces squared. Default 2.0.
+
+        This is not cosmetic: levels finer than `resolution` are reached by
+        barycentric interpolation, which is only continuous and not smooth, so
+        the height field has creases along the coarse triangle edges. A shading
+        normal is the derivative of that field, which makes every crease a
+        visible discontinuity in the lighting even though the heights themselves
+        look fine. On S1 this takes the RMS angle between the normals of
+        neighbouring triangles from 4.5 degrees to 2.8.
+
+        It is also the parameter most easily overdone, because the obvious
+        metrics for "is it smooth" all improve monotonically with it while the
+        anatomy quietly leaves. Its half-power wavelength is 2*pi*sqrt(polish),
+        so the old default of 4.0 was cutting at **12.6 mm** and removing 35% of
+        the amplitude in the 8-16 mm gyral band. 2.0 cuts at 8.9 mm; 0.5, which
+        cuts at 4.4 mm, keeps 21% more gyral relief at the cost of a visibly
+        rougher surface (silk 3.8 degrees against 2.8). Pass 0 to get the
+        prolonged solution as it comes.
+
+        The creases are the real culprit and this only hides them. Making the
+        prolongation C1, or solving the level the creases live on, would let
+        this drop by an order of magnitude.
 
     Attributes
     ----------
@@ -733,8 +777,8 @@ class FlatSlab(object):
         optimiser status and slab volume before and after.
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
-                 correlation_length=None, max_iter=60, levels=3,
-                 thickness_layers=3, smooth=1.0, resolution=3.2, polish=4.0):
+                 correlation_length=0.5, max_iter=60, levels=3,
+                 thickness_layers=3, smooth=0.0, resolution=3.2, polish=2.0):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
