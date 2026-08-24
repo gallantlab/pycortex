@@ -225,7 +225,7 @@ def _relax_hemisphere(args):
 
     Subjects with no flat surface get zeros rather than an error.
     """
-    subject, hemi, poisson_ratio = args
+    subject, hemi, kwargs = args
     wm, polys = db.get_surf(subject, "wm", hemi)
     pia, _ = db.get_surf(subject, "pia", hemi)
     try:
@@ -233,8 +233,7 @@ def _relax_hemisphere(args):
     except IOError:
         return np.zeros_like(wm)
 
-    slab = polyutils.FlatSlab(flat, wm, pia, flatpolys,
-                              poisson_ratio=poisson_ratio)
+    slab = polyutils.FlatSlab(flat, wm, pia, flatpolys, **kwargs)
     offsets = slab.relaxed
     info = slab.info
     # `converged` is the discriminator between "stopped at a tolerance" and
@@ -250,7 +249,8 @@ def _relax_hemisphere(args):
              100 * (info['volume_relaxed'] / info['volume_folded'] - 1)))
     return offsets
 
-def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
+def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False,
+                  **kwargs):
     """
     Relax the cortical slab onto the flatmap and save the resulting pial offsets.
 
@@ -276,6 +276,24 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
         Subject in the pycortex database for whom the flatmap will be relaxed.
     poisson_ratio : float, optional
         How strictly the tissue preserves volume, in [0, 0.5). Default 0.45.
+        Measured to be nearly irrelevant -- 0.499 against 0.45 changes the
+        relief's amplitude by 2% -- so it is rarely the knob you want.
+    **kwargs
+        Passed straight to `cortex.polyutils.FlatSlab`, so anything that shapes
+        the relief is reachable from here. The useful ones are `tilt`, which
+        exaggerates the long wavelengths against the short and is what to reach
+        for when the relief reads as texture rather than terrain, and `polish`,
+        which smooths it. `db.get_surfinfo` folds these into the cache filename,
+        so different settings do not overwrite each other -- but note that
+        `cortex.brainctm` looks for the *unsuffixed* file, so a viewer will not
+        pick up a variant cache. To try one in the viewer, write it to the
+        default name and rebuild the pack::
+
+            from cortex import db, surfinfo, utils
+            path = db.get_paths('S1')['surfinfo'].format(
+                type='bumpy_flatmap', opts='')
+            surfinfo.bumpy_flatmap(path, 'S1', tilt=3.0)
+            utils.get_ctmpack('S1', recache=True)
     parallel : bool, optional
         Relax the two hemispheres in separate processes. Default False. The
         solve is memory-bandwidth-bound rather than compute-bound, so two of
@@ -293,7 +311,8 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False):
     mangle these three-component offsets. With these names it hands back the npz
     itself.
     """
-    args = [(subject, hemi, poisson_ratio) for hemi in ["lh", "rh"]]
+    kwargs['poisson_ratio'] = poisson_ratio
+    args = [(subject, hemi, kwargs) for hemi in ["lh", "rh"]]
     if parallel:
         # The hemispheres are completely independent, so this looks like it
         # should halve the wall clock. Measured, it does not -- see the note on
