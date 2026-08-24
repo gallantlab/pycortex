@@ -647,9 +647,11 @@ class Vertex(VertexData, Dataview):
         `cortex.freesurfer.get_mri_surf2surf_matrix()` and applies it to
         this Vertex's data.
 
-        NOTE: Requires either previous computation of mapping matrices
-        (with `cortex.db.get_mri_surf2surf_matrix`) or active
-        freesurfer environment.
+        NOTE: Requires the source and target subjects' registered sphere
+        surfaces (`?h.sphere.reg`), produced by Freesurfer's `recon-all`
+        pipeline. No active Freesurfer installation is needed at call
+        time -- the mapping is computed directly from those files in
+        pure Python.
 
         Parameters
         ----------

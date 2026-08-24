@@ -76,7 +76,7 @@ class BrainData:
         Returns
         -------
         generator
-            Yields `self`.
+            Yields `BrainData`
         """
         yield self
 
