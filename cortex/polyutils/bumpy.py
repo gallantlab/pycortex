@@ -84,11 +84,18 @@ _PRISM_TETS = np.array([[0, 1, 2, 4],
                         [2, 3, 4, 5]])
 
 
-def _prism_tets(polys, nverts):
-    """Tetrahedra of the slab, as indices into a ``2 * nverts`` node array.
+def _prism_tets(polys, nverts, layers=1):
+    """Tetrahedra of the slab, as indices into a ``(layers + 1) * nverts`` array.
 
-    Bottom vertex ``i`` is node ``i`` and top vertex ``i`` is node
-    ``nverts + i``.
+    Vertex ``i`` of layer ``L`` is node ``L * nverts + i``, with layer 0 the
+    white matter side and layer `layers` the pial side. Each triangular prism
+    between consecutive layers is cut into three tetrahedra.
+
+    More than one layer matters. A single linear element cannot represent a
+    shear profile across the slab, and shear across the slab is the whole
+    mechanism holding the relief up: with one layer, neighbouring columns of
+    tissue exchange material far too freely and the relief flattens out towards
+    a slab of uniform thickness. See `FlatSlab.thickness_layers`.
 
     Parameters
     ----------
@@ -96,16 +103,22 @@ def _prism_tets(polys, nverts):
         Triangle vertex indices.
     nverts : int
         Number of vertices in one surface.
+    layers : int, optional
+        Number of element layers through the thickness. Default 1.
 
     Returns
     -------
-    tets : 2D ndarray, shape (3 * total_polys, 4)
+    tets : 2D ndarray, shape (3 * layers * total_polys, 4)
         Node indices of each tetrahedron.
     """
-    prism = np.empty((len(polys), 6), dtype=np.int64)
-    prism[:, :3] = polys
-    prism[:, 3:] = np.asarray(polys) + nverts
-    return prism[:, _PRISM_TETS].reshape(-1, 4)
+    polys = np.asarray(polys)
+    prisms = []
+    for layer in range(layers):
+        prism = np.empty((len(polys), 6), dtype=np.int64)
+        prism[:, :3] = polys + layer * nverts
+        prism[:, 3:] = polys + (layer + 1) * nverts
+        prisms.append(prism)
+    return np.vstack(prisms)[:, _PRISM_TETS].reshape(-1, 4)
 
 
 def _edge_matrix(pts, tets):
@@ -566,13 +579,19 @@ def _slab_volume(pts, tets):
     return float(np.abs(np.linalg.det(_edge_matrix(pts, tets))).sum() / 6.0)
 
 
-def _assemble_elements(flat, wm, pia, polys):
+def _slab_nodes(inner, outer, layers):
+    """Stack of ``layers + 1`` surfaces evenly spaced between two surfaces."""
+    return np.vstack([inner + (outer - inner) * f
+                      for f in np.linspace(0.0, 1.0, layers + 1)])
+
+
+def _assemble_elements(flat, wm, pia, polys, layers=1):
     """Tetrahedra of the slab, dropping degenerate ones.
 
     Returns ``(tets, dm_inv, vol0, n_dropped)``.
     """
-    tets = _prism_tets(polys, len(flat))
-    reference = _edge_matrix(np.vstack([wm, pia]), tets)
+    tets = _prism_tets(polys, len(flat), layers)
+    reference = _edge_matrix(_slab_nodes(wm, pia, layers), tets)
     vol0 = np.abs(np.linalg.det(reference)) / 6.0
 
     # A prism with a collapsed reference volume has no shape to preserve and an
@@ -627,6 +646,34 @@ class FlatSlab(object):
         How many meshes to use, counting the full one. The relaxation is solved
         coarse to fine; each extra level is roughly three to four times smaller
         than the one above it. Default 3. Pass 1 to solve the full mesh directly.
+    thickness_layers : int, optional
+        Number of element layers through the thickness of the slab. Default 4.
+        This is not a refinement knob to be traded away: a single layer cannot
+        represent shear across the slab, which is the mechanism holding the
+        relief up, and with one layer the relief flattens towards a slab of
+        uniform thickness. On S1 the correlation between the relief and mean
+        curvature is 0.52 with one layer against 0.79 with four, with most of
+        the recovery by three.
+    smooth : float, optional
+        How much to smooth the white-to-pial displacement before using it as the
+        elastic reference, as a diffusion time in the units of the surfaces
+        squared. Default 1.0, roughly a millimetre. The relaxation has no
+        regularisation of its own, so without this the millimetre-scale noise in
+        the segmentation goes straight into the relief; on S1 it is the
+        difference between a mesh-scale roughness of 0.21 and 0.10 relative to
+        the signal. Pass 0 to use the surfaces as given.
+    resolution : float, optional
+        Coarsest mesh spacing, in the units of the surfaces, that is worth
+        solving at. Default 1.5 mm; levels finer than this are reached by
+        interpolation rather than solved. On S1 that means solving a 1.6 mm mesh
+        rather than the 0.9 mm one, which costs a fifth as much and, because the
+        result cannot then carry structure at the scale of a single triangle,
+        removes the shortest wavelengths by construction instead of relying on
+        smoothing to take them out afterwards. Coarsening further does start to
+        cost anatomy: a 3.1 mm mesh is four times faster again but its relief
+        tracks curvature distinctly less well. Pass 0 to solve every level
+        including the full mesh -- which on a whole hemisphere takes upwards of
+        forty minutes and is not recommended.
 
     Attributes
     ----------
@@ -635,7 +682,8 @@ class FlatSlab(object):
         optimiser status and slab volume before and after.
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
-                 correlation_length=None, max_iter=150, levels=3):
+                 correlation_length=None, max_iter=150, levels=3,
+                 thickness_layers=4, smooth=1.0, resolution=1.5):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -644,6 +692,9 @@ class FlatSlab(object):
         self.correlation_length = correlation_length
         self.max_iter = max_iter
         self.levels = levels
+        self.thickness_layers = thickness_layers
+        self.smooth = smooth
+        self.resolution = resolution
         self.info = {}
         self._cache = {}
 
@@ -678,6 +729,26 @@ class FlatSlab(object):
 
     @property
     @_memo
+    def smoothed_pia(self):
+        """The pial surface with the millimetre-scale wobble taken out.
+
+        Smooths the displacement from white matter to pia rather than the pial
+        coordinates themselves, so the folding is left exactly as it is and only
+        the local thickness is regularised. What this removes is segmentation
+        noise: cortical thickness does not genuinely vary from one vertex to the
+        next, and the relaxation would otherwise reproduce every wobble of it
+        faithfully as relief.
+        """
+        if not self.smooth:
+            return self.pia
+
+        surf = Surface(self.wm, self.polys)
+        displacement = self.pia - self.wm
+        return self.wm + np.column_stack(
+            [surf.smooth(displacement[:, k], self.smooth) for k in range(3)])
+
+    @property
+    @_memo
     def prism_offsets(self):
         """Starting guess: a smoothed, volume-preserving vertical prism.
 
@@ -698,13 +769,14 @@ class FlatSlab(object):
             Position of the pial surface relative to the flat white matter
             surface. The first two columns are zero.
         """
-        mask, flat, wm, pia, polys = self._submesh
+        mask, flat, wm, _, polys = self._submesh
         lc = self.correlation_length
         if lc is None:
             lc = np.median(self.thickness[mask])
 
         offsets = np.zeros((len(self.wm), 3))
-        offsets[mask, 2] = _prism_height(flat, wm, pia, polys, lc)
+        offsets[mask, 2] = _prism_height(flat, wm, self.smoothed_pia[mask],
+                                         polys, lc)
         return offsets
 
     @property
@@ -737,12 +809,14 @@ class FlatSlab(object):
     def _solve_level(self, flat, wm, pia, polys, top0, max_iter):
         """Minimise the elastic energy of one mesh, starting from `top0`.
 
-        Returns ``(top, info)``, where `top` is the relaxed position of the
-        pial vertices.
+        Returns ``(moved, info)``, where `moved` stacks the relaxed positions
+        of every layer above the pinned white matter side, pial layer last.
         """
+        layers = self.thickness_layers
         nverts = len(flat)
-        nnodes = 2 * nverts
-        tets, dm_inv, vol0, n_dropped = _assemble_elements(flat, wm, pia, polys)
+        nnodes = (layers + 1) * nverts
+        tets, dm_inv, vol0, n_dropped = _assemble_elements(flat, wm, pia, polys,
+                                                           layers)
         mu, lam, alpha = lame_parameters(self.poisson_ratio)
 
         # Everything below is transposed relative to the textbook formulas, so
@@ -758,7 +832,8 @@ class FlatSlab(object):
         energies = []
 
         def objective(x):
-            pts = np.vstack([flat, x.reshape(nverts, 3)])
+            # only the white matter side is pinned; every layer above it moves
+            pts = np.vstack([flat, x.reshape(layers * nverts, 3)])
             deformed = _edge_matrix_T(pts, tets)
             defgrad = dm_invT @ deformed                     # F transposed
 
@@ -804,9 +879,10 @@ class FlatSlab(object):
                                        # 10% more time per iteration.
                                        maxcor=60))
 
-        top = result.x.reshape(nverts, 3)
+        moved = result.x.reshape(layers * nverts, 3)
         info = dict(
             n_tets=len(tets),
+            thickness_layers=layers,
             n_dropped=n_dropped,
             n_free_verts=nverts,
             energy_initial=energies[0] if energies else None,
@@ -817,9 +893,9 @@ class FlatSlab(object):
             converged=bool(result.success),
             message=str(result.message),
             volume_folded=float(vol0.sum()),
-            volume_relaxed=_slab_volume(np.vstack([flat, top]), tets),
+            volume_relaxed=_slab_volume(np.vstack([flat, moved]), tets),
         )
-        return top, info
+        return moved, info
 
     @property
     @_memo
@@ -842,44 +918,74 @@ class FlatSlab(object):
             flatmap are zero.
         """
         mask, flat, wm, pia, polys = self._submesh
+        pia = self.smoothed_pia[mask]
         hierarchy = self._hierarchy
+        layers = self.thickness_layers
 
         lc = self.correlation_length
         if lc is None:
             lc = np.median(self.thickness[mask])
 
-        top = None
+        # Levels finer than `resolution` are interpolated rather than solved.
+        # The relief varies over millimetres, so resolving it at the scale of a
+        # single triangle costs a great deal and adds nothing but the
+        # opportunity to wrinkle.
+        floor = 0
+        if self.resolution:
+            for depth, (index, level_polys, _) in enumerate(hierarchy):
+                spacing = Surface(flat[index], level_polys).avg_edge_length
+                if spacing >= self.resolution:
+                    break
+                floor = depth + 1
+            floor = min(floor, len(hierarchy) - 1)
+
+        moved = None
         levelinfo = []
         for depth in range(len(hierarchy) - 1, -1, -1):
             index, level_polys, _ = hierarchy[depth]
             level_flat, level_wm, level_pia = flat[index], wm[index], pia[index]
+            stack = np.tile(level_flat, (layers, 1))
 
-            if top is None:
-                # The coarsest mesh starts from the vertical prism solution.
+            if moved is None:
+                # The coarsest mesh starts from the vertical prism solution,
+                # with the intermediate layers spread evenly up to it.
                 height = _prism_height(level_flat, level_wm, level_pia,
                                        level_polys, lc)
-                top0 = level_flat + np.column_stack(
-                    [np.zeros((len(index), 2)), height])
+                rise = np.concatenate(
+                    [np.zeros((len(index), 2)), height[:, None]], axis=1)
+                start = np.vstack([rise * f for f in
+                                   np.linspace(0, 1, layers + 1)[1:]])
             else:
                 _, child_polys, index_in_parent = hierarchy[depth + 1]
                 prolong = prolongation_matrix(level_flat, index_in_parent,
                                               child_polys)
-                top0 = level_flat + prolong @ coarse_offsets
+                start = np.vstack([prolong @ coarse_offsets[i]
+                                   for i in range(layers)])
+            top0 = stack + start
 
-            # Every level gets the same iteration count, which means the
-            # coarse ones cost a fraction of the full mesh: about a third for
-            # the first coarsening and a twelfth for the second, so the whole
-            # hierarchy adds roughly 40% to the cost of one pass over the full
-            # mesh. Giving the coarse levels more than this was measurably a
-            # waste -- they were already converged well past the point where
-            # the full mesh could still tell the difference.
-            top, info = self._solve_level(level_flat, level_wm, level_pia,
-                                          level_polys, top0, self.max_iter)
-            coarse_offsets = top - level_flat
-            info['level'] = depth
-            levelinfo.append(info)
+            if depth < floor:
+                # Fine enough that solving it would only add wrinkles; take the
+                # interpolated coarse answer as it stands.
+                moved = top0
+            else:
+                # Every solved level gets the same iteration count, which means
+                # the coarse ones cost a fraction of the finest solved mesh:
+                # about a third per coarsening step. Giving them more than this
+                # was measurably a waste -- they were already converged well
+                # past the point where the finer mesh could tell the difference.
+                moved, info = self._solve_level(level_flat, level_wm, level_pia,
+                                                level_polys, top0, self.max_iter)
+                info['level'] = depth
+                levelinfo.append(info)
 
+            # (layers, nverts, 3); the node stack is block-major by layer, so
+            # this reshape is a view rather than an interleave. Needed on every
+            # level, solved or not, since the next one down prolongs from it.
+            coarse_offsets = (moved - stack).reshape(layers, len(index), 3)
+
+        top = moved[-len(flat):]          # outermost layer is the pial side
         self.info = dict(levelinfo[-1])
+        self.info['solved_from_level'] = floor
         self.info['levels'] = levelinfo[::-1]
         self.info['poisson_ratio'] = self.poisson_ratio
 
