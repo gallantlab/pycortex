@@ -89,3 +89,4 @@ Each subject has one `overlays.svg` whose Inkscape layers (`rois`, `sulci`, …)
 - **Caching is pervasive and silent**: mappers, flatmap caches, CTM packs, surfinfo, and surf2surf matrices all persist in the subject cache dir. Most public functions take `recache=True` to force a rebuild; `db.clear_cache(subject)` clears everything.
 - **`import cortex` has side effects**: it writes the user `options.cfg` on first run, and `cortex.webgl.view` raises at import if the configured colormaps directory is missing (webgl imports are lazy for this reason).
 - The bundled `S1` subject is a stub for testing — real analysis work uses a user filestore configured via `options.cfg`.
+- Tests and examples rewrite `filestore/db/S1/overlays.svg`, but the changes are only due to pretty-printing. Changes to this file should never be committed.
