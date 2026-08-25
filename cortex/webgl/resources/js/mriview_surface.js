@@ -222,18 +222,16 @@ var mriview = (function(module) {
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
 
-                    //The bumpy flatmap: each vertex gets the height of the
-                    //pial surface above its position on the flat white matter
-                    //surface, computed in python (see cortex.polyutils.FlatSlab)
-                    //and shipped in the ctm. The relief is purely vertical, so
-                    //one component carries it -- the flatmap plane is (y, z) in
-                    //viewer space and its normal is x.
+                    //The bumpy flatmap: the height of the pial surface above
+                    //the flat white matter surface, computed in python (see
+                    //cortex.polyutils.FlatSlab). The relief is purely vertical
+                    //and the flatmap plane is (y, z) in viewer space, so the
+                    //height goes along x.
                     var flatsurf = hemi.attributes['mixSurfs'+json.names.length];
                     var nverts = flatsurf.array.length / 4;
-                    //Absent for a subject with no white matter surface, and for
-                    //a ctm cached before the bumpy flatmap moved into python; in
-                    //both cases the offsets are all zero and the flatmap stays
-                    //flat, which is what the viewer showed anyway.
+                    //Absent for a subject with no white matter surface, and
+                    //for a ctm cached before this moved into python; either way
+                    //the flatmap just stays flat.
                     var offsets = (hemi.attributes.wm !== undefined)
                         ? hemi.attributes.flatoffset : undefined;
                     var mirror = (name == "left") ? -1 : 1;
@@ -246,20 +244,18 @@ var mriview = (function(module) {
                         displaced[v*4] += height[v];
                     }
 
-                    //Vertices in no triangle -- the medial wall, which is cut
-                    //away from the flatmap -- would otherwise get a zero normal
-                    //and a NaN out of the shader's normalize. Fall back to the
-                    //sheet's own normal, read off the first real triangle so
-                    //the sign follows the winding rather than a guess.
+                    //The medial wall is in no triangle and would get a zero
+                    //normal, which the shader's normalize turns into a NaN.
+                    //Fall back to the sheet's own normal, read off a real
+                    //triangle so the sign follows the winding.
                     var flatnorm = module.flatSheetNormal(
                         flatsurf.array, 4, hemi.attributes.index, hemi.offsets);
                     var bumpnorms = module.computeNormal(
                         new THREE.BufferAttribute(displaced, 4),
                         hemi.attributes.index, hemi.offsets, flatnorm);
-                    //flatbump.xyz is the shading normal of the bumped surface
-                    //and its w the height, so the whole relief rides in one
-                    //attribute. These shaders use all 16 of the vertex attribute
-                    //slots WebGL guarantees, so that matters.
+                    //flatbump.xyz is the shading normal and its w the height,
+                    //so the whole relief rides in one attribute -- these
+                    //shaders use all 16 slots WebGL guarantees.
                     var flatbump = new Float32Array(nverts * 4);
                     for (var v = 0; v < nverts; v++) {
                         flatbump[v*4]   = bumpnorms.array[v*3];

@@ -223,11 +223,6 @@ def flat_border(outfile, subject):
 def bumpy_flatmap(outfile, subject, **kwargs):
     """Give the flatmap the relief of the cortical slab, and cache it.
 
-    The height at each vertex is the folded volume of the cortical column over
-    the folded white matter area beneath it -- see
-    `cortex.polyutils.FlatSlab` and the `cortex.polyutils.bumpy` module
-    docstring for what that is and why it is that rather than something else.
-
     Hemispheres with no flat surface get an array of zeros rather than an error.
 
     Parameters
@@ -237,17 +232,14 @@ def bumpy_flatmap(outfile, subject, **kwargs):
     subject : str
         Subject in the pycortex database whose flatmap gets the relief.
     **kwargs
-        Passed to `cortex.polyutils.FlatSlab`; `polish` and `detrend` are the
-        two that shape the result.
+        Passed to `cortex.polyutils.FlatSlab`.
 
     Notes
     -----
-    The arrays are stored under ``bump_left`` and ``bump_right`` rather than
-    ``left`` and ``right`` on purpose: `cortex.database.Database.get_surfinfo`
-    turns a file with ``left`` and ``right`` keys into a `Vertex` by
-    concatenating them, which assumes one value per vertex and would quietly
-    mangle these three-component offsets. With these names it hands back the
-    npz itself.
+    Stored under ``bump_left`` and ``bump_right`` rather than ``left`` and
+    ``right`` on purpose: `get_surfinfo` turns a file with the latter into a
+    `Vertex` by concatenating them, which assumes one value per vertex and
+    would mangle these three-component offsets.
     """
     offsets = []
     for hemi in ("lh", "rh"):

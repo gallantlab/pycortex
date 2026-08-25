@@ -14,26 +14,22 @@ The bumpy flatmap puts the folding back as relief instead of as color. Cortex is
 making the relaxation cuts, and laying it down. The white matter side ends up
 flat, and the pial side sits some distance above it.
 
-How far above is the question, and it turns out to matter a great deal which
-area you divide the column's volume by. Dividing by the *flattened* area is the
-honest model of a slab laid flat -- but a flatmap's area distortion measures
-essentially uncorrelated with curvature, so that denominator contributes no
-folding and injects the flattening algorithm's artifacts instead, on top of
-giving enormous heights wherever flattening crushed a triangle. What is left
-behind is close to a map of cortical thickness, which is a blobby field and
-reads as round knobs.
+How far above turns out to depend a great deal on which area you divide the
+column's volume by. The *flattened* area is the more obvious choice and it does
+not work: a flatmap's area distortion measures essentially uncorrelated with
+curvature, so that denominator contributes no folding and injects the
+flattening algorithm's artifacts instead, besides giving enormous heights
+wherever flattening crushed a triangle. What is left is close to a map of
+cortical thickness, which is blobby and reads as round knobs.
 
 `cortex.polyutils.folding_height` divides by the *folded* white matter area
 instead, which with ``r = sqrt(A_pia / A_wm)`` is ``thickness * (1 + r + r**2)
 / 3``. `r` is what carries the folding: the pia has more area than the white
-matter beneath a gyral crown and less in a fundus. Measured on S1 with every
-field smoothed alike, `r` scores 0.776 on a crest-anisotropy measure where
-thickness alone scores 0.705.
+matter beneath a gyral crown and less in a fundus.
 
-Two other heights are plotted below for comparison: the naive volume-over-flat-
-area field, and the height the webgl viewer used to compute in javascript --
-which, despite never looking at the flatmap, was the closest of the three to
-what the folding actually looks like.
+Both alternatives are plotted below -- the naive volume-over-flattened-area
+field, and the height the webgl viewer used to compute in javascript, which
+despite never looking at the flatmap is the same quantity by another route.
 """
 
 import numpy as np

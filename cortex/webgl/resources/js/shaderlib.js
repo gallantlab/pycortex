@@ -440,20 +440,13 @@ var Shaderlib = (function() {
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    //The pial surface slides sideways as well as up: gyri end up
-                    //wider at the top than at the bottom and sulci narrower, so
-                    //the offset is a full vector rather than a height along the
-                    //flat normal. Javascript bakes the per-hemisphere mirroring
-                    //and the flatmap scale into these components when it loads
-                    //the surfaces.
                     //The relief is purely vertical and the flatmap's
-                    //out-of-plane axis is x -- see `_makeFlat` in
-                    //mriview_surface.js -- so the scale setting is vertical
-                    //exaggeration, as on a topographic map.
+                    //out-of-plane axis is x, so the scale setting is vertical
+                    //exaggeration, as on a topographic map. Javascript bakes
+                    //the per-hemisphere mirroring and the flatmap scale in.
                     "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
-                    //Ramped over inflated-to-flat, the same half of the unfold
-                    //the normal below uses. An offset in flatmap coordinates
-                    //means nothing on a folded or inflated surface.
+                    //Only over inflated-to-flat: a height in flatmap
+                    //coordinates means nothing on a folded surface.
                     "pos += clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
@@ -462,9 +455,8 @@ var Shaderlib = (function() {
 
                 "#ifdef HASFLAT",
                     //Scaling a height field by s scales the normal's in-plane
-                    //components by s and leaves the out-of-plane one alone.
-                    //Exact, costs nothing, and needs no recomputation when the
-                    //slider moves; at scale 0 it gives back the flat normal.
+                    //components by s and leaves the out-of-plane one alone --
+                    //exact, and at scale 0 it gives back the flat normal.
                     "vec3 bumpnorm = normalize(vec3(flatbump.x, bumpyflat_scale * flatbump.y, bumpyflat_scale * flatbump.z));",
                     "vNormal = normalMatrix * mix(norm, bumpnorm, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * f_bumpyflat);",
                 "#else",
@@ -818,20 +810,13 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
-                    //The pial surface slides sideways as well as up: gyri end up
-                    //wider at the top than at the bottom and sulci narrower, so
-                    //the offset is a full vector rather than a height along the
-                    //flat normal. Javascript bakes the per-hemisphere mirroring
-                    //and the flatmap scale into these components when it loads
-                    //the surfaces.
                     //The relief is purely vertical and the flatmap's
-                    //out-of-plane axis is x -- see `_makeFlat` in
-                    //mriview_surface.js -- so the scale setting is vertical
-                    //exaggeration, as on a topographic map.
+                    //out-of-plane axis is x, so the scale setting is vertical
+                    //exaggeration, as on a topographic map. Javascript bakes
+                    //the per-hemisphere mirroring and the flatmap scale in.
                     "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
-                    //Ramped over inflated-to-flat, the same half of the unfold
-                    //the normal below uses. An offset in flatmap coordinates
-                    //means nothing on a folded or inflated surface.
+                    //Only over inflated-to-flat: a height in flatmap
+                    //coordinates means nothing on a folded surface.
                     "pos += clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
@@ -840,9 +825,8 @@ var Shaderlib = (function() {
 
                 "#ifdef HASFLAT",
                     //Scaling a height field by s scales the normal's in-plane
-                    //components by s and leaves the out-of-plane one alone.
-                    //Exact, costs nothing, and needs no recomputation when the
-                    //slider moves; at scale 0 it gives back the flat normal.
+                    //components by s and leaves the out-of-plane one alone --
+                    //exact, and at scale 0 it gives back the flat normal.
                     "vec3 bumpnorm = normalize(vec3(flatbump.x, bumpyflat_scale * flatbump.y, bumpyflat_scale * flatbump.z));",
                     "vNormal = normalMatrix * mix(norm, bumpnorm, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * f_bumpyflat);",
                 "#else",
