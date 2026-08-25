@@ -220,87 +220,25 @@ def flat_border(outfile, subject):
     
     np.savez(outfile, lines=lines, ismwalls=ismwalls)
 
-def _relax_hemisphere(args):
-    """Relax one hemisphere onto its flatmap. Top level so it can be pickled.
+def bumpy_flatmap(outfile, subject, **kwargs):
+    """Give the flatmap the relief of the cortical slab, and cache it.
 
-    Subjects with no flat surface get zeros rather than an error.
-    """
-    subject, hemi, kwargs = args
-    wm, polys = db.get_surf(subject, "wm", hemi)
-    pia, _ = db.get_surf(subject, "pia", hemi)
-    try:
-        flat, flatpolys = db.get_surf(subject, "flat", hemi)
-    except IOError:
-        return np.zeros_like(wm)
+    The height at each vertex is the folded volume of the cortical column over
+    the folded white matter area beneath it -- see
+    `cortex.polyutils.FlatSlab` and the `cortex.polyutils.bumpy` module
+    docstring for what that is and why it is that rather than something else.
 
-    slab = polyutils.FlatSlab(flat, wm, pia, flatpolys, **kwargs)
-    offsets = slab.relaxed
-    info = slab.info
-    # `converged` is the discriminator between "stopped at a tolerance" and
-    # "ran out of iterations", and it is worth printing: a capped solve stays
-    # near its starting point, which makes `correlation_length` -- documented as
-    # affecting only that starting point -- affect the answer too.
-    print("%s %s: %d elements, energy %.4g -> %.4g in %d iterations "
-          "(%s, |grad|max %.3g), volume %+.2f%%"
-          % (subject, hemi, info['n_tets'], info['energy_initial'],
-             info['energy_final'], info['iterations'],
-             "converged" if info['converged'] else "hit the iteration cap",
-             info['gradient_norm'],
-             100 * (info['volume_relaxed'] / info['volume_folded'] - 1)))
-    return offsets
-
-def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False,
-                  **kwargs):
-    """
-    Relax the cortical slab onto the flatmap and save the resulting pial offsets.
-
-    The white matter surface is pinned to the flatmap and the pial surface is
-    allowed to settle as an elastic solid, so the flatmap gets relief that
-    reflects cortical thickness and folding: gyri, which flattening compresses,
-    end up thicker, and sulci, which it stretches, thinner. See
-    `cortex.polyutils.FlatSlab` for the model and for why Poisson's ratio is the
-    only material parameter that matters.
-
-    This is the expensive one -- it is a nonlinear optimisation over the whole
-    slab, and takes about half a minute per hemisphere. It is generated
-    automatically when a flatmap is imported (see `cortex.freesurfer.import_flat`)
-    so that the viewer does not have to wait for it.
-
-    Subjects with no flat surface get an array of zeros rather than an error.
+    Hemispheres with no flat surface get an array of zeros rather than an error.
 
     Parameters
     ----------
     outfile : str
         Path where the offsets will be saved as an npz file.
     subject : str
-        Subject in the pycortex database for whom the flatmap will be relaxed.
-    poisson_ratio : float, optional
-        How strictly the tissue preserves volume, in [0, 0.5). Default 0.45.
-        Measured to be nearly irrelevant -- 0.499 against 0.45 changes the
-        relief's amplitude by 2% -- so it is rarely the knob you want.
+        Subject in the pycortex database whose flatmap gets the relief.
     **kwargs
-        Passed straight to `cortex.polyutils.FlatSlab`, so anything that shapes
-        the relief is reachable from here. The useful ones are `detrend`, which
-        sets how much of the whole-map swell to take out and is what to reach
-        for when the folding is not reading strongly enough, and `polish`, which
-        smooths the result. `db.get_surfinfo` folds these into the cache
-        filename, so different settings do not overwrite each other -- but note
-        that `cortex.brainctm` looks for the *unsuffixed* file, so a viewer will
-        not pick up a variant cache. To try one in the viewer, write it to the
-        default name and rebuild the pack::
-
-            from cortex import db, surfinfo, utils
-            path = db.get_paths('S1')['surfinfo'].format(
-                type='bumpy_flatmap', opts='')
-            surfinfo.bumpy_flatmap(path, 'S1', detrend=32.0)
-            utils.get_ctmpack('S1', recache=True)
-    parallel : bool, optional
-        Relax the two hemispheres in separate processes. Default False. The
-        solve is memory-bandwidth-bound rather than compute-bound, so two of
-        them running at once mostly compete for the same bandwidth rather than
-        halving the time: on S1 this measured 65 seconds in parallel against 77
-        sequential, for twice the peak memory. Worth turning on only on a
-        machine with bandwidth to spare.
+        Passed to `cortex.polyutils.FlatSlab`; `polish` and `detrend` are the
+        two that shape the result.
 
     Notes
     -----
@@ -308,20 +246,20 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False,
     ``left`` and ``right`` on purpose: `cortex.database.Database.get_surfinfo`
     turns a file with ``left`` and ``right`` keys into a `Vertex` by
     concatenating them, which assumes one value per vertex and would quietly
-    mangle these three-component offsets. With these names it hands back the npz
-    itself.
+    mangle these three-component offsets. With these names it hands back the
+    npz itself.
     """
-    kwargs['poisson_ratio'] = poisson_ratio
-    args = [(subject, hemi, kwargs) for hemi in ["lh", "rh"]]
-    if parallel:
-        # The hemispheres are completely independent, so this looks like it
-        # should halve the wall clock. Measured, it does not -- see the note on
-        # the parameter -- which is why it is not the default.
-        from concurrent.futures import ProcessPoolExecutor
-        with ProcessPoolExecutor(max_workers=2) as pool:
-            offsets = list(pool.map(_relax_hemisphere, args))
-    else:
-        offsets = [_relax_hemisphere(a) for a in args]
+    offsets = []
+    for hemi in ("lh", "rh"):
+        wm, _ = db.get_surf(subject, "wm", hemi)
+        pia, _ = db.get_surf(subject, "pia", hemi)
+        try:
+            flat, flatpolys = db.get_surf(subject, "flat", hemi)
+        except IOError:
+            offsets.append(np.zeros_like(wm))
+            continue
+        offsets.append(polyutils.FlatSlab(flat, wm, pia, flatpolys,
+                                          **kwargs).relaxed)
 
     # Compressed, and single precision: these are millimetre offsets that end
     # up in a float32 vertex attribute anyway, so the extra digits are only
@@ -329,6 +267,7 @@ def bumpy_flatmap(outfile, subject, poisson_ratio=0.45, parallel=False,
     np.savez_compressed(outfile,
                         bump_left=offsets[0].astype(np.float32),
                         bump_right=offsets[1].astype(np.float32))
+
 
 def equivolume_areas(outfile, subject, smooth=1.0):
     """

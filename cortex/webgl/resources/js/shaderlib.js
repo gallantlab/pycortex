@@ -446,12 +446,11 @@ var Shaderlib = (function() {
                     //flat normal. Javascript bakes the per-hemisphere mirroring
                     //and the flatmap scale into these components when it loads
                     //the surfaces.
-                    //The scale slider is vertical exaggeration, like on a
-                    //topographic map: only the out-of-plane component grows, so
-                    //turning it up does not slide the relief sideways relative
-                    //to the anatomy underneath it. The flatmap's out-of-plane
-                    //axis is x -- see `_makeFlat` in mriview_surface.js.
-                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, wm.w, mixSurfs"+(morphs-2)+".w);",
+                    //The relief is purely vertical and the flatmap's
+                    //out-of-plane axis is x -- see `_makeFlat` in
+                    //mriview_surface.js -- so the scale setting is vertical
+                    //exaggeration, as on a topographic map.
+                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
                     //Ramped over inflated-to-flat, the same half of the unfold
                     //the normal below uses. An offset in flatmap coordinates
                     //means nothing on a folded or inflated surface.
@@ -825,12 +824,11 @@ var Shaderlib = (function() {
                     //flat normal. Javascript bakes the per-hemisphere mirroring
                     //and the flatmap scale into these components when it loads
                     //the surfaces.
-                    //The scale slider is vertical exaggeration, like on a
-                    //topographic map: only the out-of-plane component grows, so
-                    //turning it up does not slide the relief sideways relative
-                    //to the anatomy underneath it. The flatmap's out-of-plane
-                    //axis is x -- see `_makeFlat` in mriview_surface.js.
-                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, wm.w, mixSurfs"+(morphs-2)+".w);",
+                    //The relief is purely vertical and the flatmap's
+                    //out-of-plane axis is x -- see `_makeFlat` in
+                    //mriview_surface.js -- so the scale setting is vertical
+                    //exaggeration, as on a topographic map.
+                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
                     //Ramped over inflated-to-flat, the same half of the unfold
                     //the normal below uses. An offset in flatmap coordinates
                     //means nothing on a folded or inflated surface.

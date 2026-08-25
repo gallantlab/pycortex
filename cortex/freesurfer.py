@@ -396,18 +396,12 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
     # just been replaced. Those files would otherwise stay stale forever.
     _clear_flat_surfinfo(cx_subject)
 
-    # The bumpy flatmap is a nonlinear relaxation over the cortical slab and
-    # takes about a minute, so generate it now rather than making the first
-    # viewer launch for this subject wait for it.
-    print("Relaxing the cortical slab onto the new flatmap...")
-    database.db.get_surfinfo(cx_subject, type="bumpy_flatmap")
-
 
 def _clear_flat_surfinfo(cx_subject):
     """Delete the surface info files that are derived from the flatmap.
 
     Called when a flatmap is (re)imported. Anything computed from the flat
-    surface -- distortion, the flatmap border, the bumpy flatmap relaxation --
+    surface -- distortion, the flatmap border, the bumpy flatmap --
     describes the *old* flatmap once a new one is imported.
     """
     surfiform = database.db.get_paths(cx_subject)['surfinfo']

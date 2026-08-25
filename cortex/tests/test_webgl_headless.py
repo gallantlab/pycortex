@@ -1080,30 +1080,10 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _ensure_bumpy_flatmap(max_iter=15):
-    """Put a bumpy flatmap in the database for the test subject if there is none.
-
-    The real relaxation runs for minutes per hemisphere and is normally done
-    once, when a flatmap is imported. This only needs a plausible non-zero
-    offset field to check that it reaches the shader, so it stops the solve long
-    before it has converged.
-    """
-    from cortex.polyutils import FlatSlab
-
-    path = cortex.db.get_paths(subj)['surfinfo'].format(type='bumpy_flatmap',
-                                                        opts='')
-    if os.path.exists(path):
-        return
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-
-    offsets = []
-    for hemi in ("lh", "rh"):
-        wm, _ = cortex.db.get_surf(subj, "wm", hemi)
-        pia, _ = cortex.db.get_surf(subj, "pia", hemi)
-        flat, flatpolys = cortex.db.get_surf(subj, "flat", hemi)
-        slab = FlatSlab(flat, wm, pia, flatpolys, max_iter=max_iter)
-        offsets.append(slab.relaxed)
-    np.savez(path, bump_left=offsets[0], bump_right=offsets[1])
+def _ensure_bumpy_flatmap():
+    """Put a bumpy flatmap in the database for the test subject if there is
+    none. It is a few seconds per hemisphere, so just ask for it."""
+    cortex.db.get_surfinfo(subj, type='bumpy_flatmap').close()
 
 
 @pytest.mark.timeout(900)

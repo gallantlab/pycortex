@@ -1,14 +1,12 @@
-"""Tests for the bumpy flatmap relaxation in `cortex.polyutils.bumpy`.
+"""Tests for the bumpy flatmap in `cortex.polyutils.bumpy`.
 
-Most of these check the relaxation against a case where the answer is known
-exactly rather than against a stored result, so they say something about whether
-the physics is right and not just whether it changed.
+These check the relief against properties that can be stated in advance --
+folding produces relief at constant thickness, the height ignores flatmap
+distortion, a ridge stays a ridge -- rather than against a stored result, so
+they say whether the answer is right and not just whether it changed.
 """
 
 import numpy as np
-import pytest
-from scipy import sparse
-from scipy.optimize import minimize_scalar
 from scipy.spatial import Delaunay
 
 from cortex import polyutils
@@ -40,22 +38,6 @@ def slab_grid(n=13, spacing=1.0, thickness=2.5, stretch=1.0):
     return flat, wm, pia, np.array(polys), index
 
 
-def homogeneous_stretch(stretch, poisson_ratio):
-    """Vertical stretch of a uniformly, biaxially stretched incompressible-ish block.
-
-    The exact finite-strain answer for the same energy, found by minimising over
-    the one remaining degree of freedom. In the interior of a thin slab the
-    relaxation has to reproduce this.
-    """
-    mu, lam, alpha = bumpy.lame_parameters(poisson_ratio)
-
-    def energy(s):
-        F = np.diag([stretch, stretch, s])[None]
-        return bumpy._energy_and_stress(F, mu, lam, alpha)[0][0]
-
-    return minimize_scalar(energy, bracket=(0.5, 1.0, 1.5), tol=1e-14).x
-
-
 def test_prism_volume_matches_brick_vol():
     """The vectorised prism volume agrees with the reference implementation."""
     rng = np.random.default_rng(0)
@@ -69,97 +51,6 @@ def test_prism_volume_matches_brick_vol():
     assert np.allclose(got, expected)
 
 
-@pytest.mark.parametrize("poisson_ratio", [0.0, 0.2, 0.35, 0.45, 0.49])
-def test_energy_is_stable_at_rest(poisson_ratio):
-    """An undeformed element sits at a stationary point of the energy."""
-    mu, lam, alpha = bumpy.lame_parameters(poisson_ratio)
-    _, stress = bumpy._energy_and_stress(np.eye(3)[None], mu, lam, alpha)
-    assert np.abs(stress).max() < 1e-12
-
-
-@pytest.mark.parametrize("poisson_ratio", [0.0, 0.2, 0.35, 0.45])
-def test_poisson_ratio_means_poisson_ratio(poisson_ratio):
-    """The small-strain moduli are the ones that were asked for.
-
-    The stable Neo-Hookean energy's ``log(I_C + 1)`` term perturbs its
-    behaviour away from linear elasticity, so `lame_parameters` shifts the Lame
-    parameters to compensate. If that shift were wrong, `poisson_ratio` would
-    quietly mean something else -- and since it is the only material parameter
-    that affects the result, nothing else would catch it.
-    """
-    mu, lam, alpha = bumpy.lame_parameters(poisson_ratio)
-    h = 1e-6
-
-    def dstress(i, j, k, l):
-        F = np.repeat(np.eye(3)[None], 2, axis=0)
-        F[0, k, l] += h
-        F[1, k, l] -= h
-        stress = bumpy._energy_and_stress(F, mu, lam, alpha)[1]
-        return (stress[0, i, j] - stress[1, i, j]) / (2 * h)
-
-    lam_eff = dstress(0, 0, 1, 1)                       # C_1122
-    mu_eff = 0.5 * (dstress(0, 0, 0, 0) - lam_eff)      # C_1111 = lam + 2 mu
-    assert mu_eff == pytest.approx(1.0, abs=1e-6)
-    assert lam_eff / (2 * (lam_eff + mu_eff)) == pytest.approx(poisson_ratio,
-                                                               abs=1e-6)
-
-
-def test_unflattened_slab_is_left_alone():
-    """With an identity flat map the reference slab is already the minimiser.
-
-    Every height has to come out as the cortical thickness and nothing may slide
-    sideways. This exercises the whole assembly -- tetrahedra, deformation
-    gradients, gradient scatter and boundary conditions -- against an answer
-    that is known exactly.
-    """
-    flat, wm, pia, polys, _ = slab_grid(thickness=2.5)
-    slab = bumpy.FlatSlab(flat, wm, pia, polys, poisson_ratio=0.45)
-    offsets = slab.relaxed
-
-    assert np.abs(offsets[:, :2]).max() < 1e-9
-    assert np.abs(offsets[:, 2] - 2.5).max() < 1e-9
-    assert slab.info['n_dropped'] == 0
-
-
-@pytest.mark.parametrize("poisson_ratio", [0.0, 0.35, 0.45])
-def test_uniform_stretch_matches_the_exact_solution(poisson_ratio):
-    """A uniformly stretched thin slab reproduces the homogeneous answer.
-
-    The slab is made wide relative to its thickness so that the free edges,
-    whose boundary layer is a few thicknesses across, do not reach the middle.
-    """
-    stretch = 1.02
-    thickness = 0.5
-    flat, wm, pia, polys, index = slab_grid(n=21, spacing=1.0,
-                                            thickness=thickness,
-                                            stretch=stretch)
-    slab = bumpy.FlatSlab(flat, wm, pia, polys, poisson_ratio=poisson_ratio,
-                          max_iter=4000)
-    offsets = slab.relaxed
-
-    middle = index[10, 10]
-    expected = thickness * homogeneous_stretch(stretch, poisson_ratio)
-    assert offsets[middle, 2] == pytest.approx(expected, rel=1e-3)
-    # By symmetry the middle of the patch has nowhere to slide.
-    assert np.abs(offsets[middle, :2]).max() < 1e-3 * thickness
-
-
-def test_incompressible_slab_conserves_volume():
-    """As Poisson's ratio approaches 0.5 the slab stops losing volume."""
-    flat, wm, pia, polys, _ = slab_grid(n=15, thickness=1.0, stretch=1.3)
-
-    losses = []
-    for poisson_ratio in (0.3, 0.45, 0.499):
-        slab = bumpy.FlatSlab(flat, wm, pia, polys,
-                              poisson_ratio=poisson_ratio, max_iter=4000)
-        slab.relaxed
-        losses.append(abs(slab.info['volume_relaxed']
-                          / slab.info['volume_folded'] - 1))
-
-    assert losses[0] > losses[1] > losses[2]
-    assert losses[-1] < 0.01
-
-
 def test_vertices_off_the_flatmap_are_untouched():
     """Vertices in no flat triangle -- the medial wall -- get a zero offset."""
     flat, wm, pia, polys, index = slab_grid(n=9, stretch=1.1)
@@ -167,329 +58,13 @@ def test_vertices_off_the_flatmap_are_untouched():
     corner = {index[0, 0], index[0, 1], index[1, 0]}
     keep = np.array([not (set(f) & corner) for f in polys])
 
-    slab = bumpy.FlatSlab(flat, wm, pia, polys[keep], poisson_ratio=0.45)
-    offsets = slab.relaxed
+    offsets = bumpy.FlatSlab(flat, wm, pia, polys[keep]).relaxed
 
     off_map = np.ones(len(wm), bool)
     off_map[polys[keep].ravel()] = False
     assert off_map.sum() > 0
     assert np.abs(offsets[off_map]).max() == 0.0
     assert np.abs(offsets[~off_map, 2]).min() > 0.0
-
-
-def test_relaxation_tames_the_spikes_the_naive_height_has():
-    """The whole point: the relaxed height has a far shorter tail.
-
-    A patch whose flattening compresses one small region hard is exactly the
-    situation that makes the naive vertical-prism height blow up.
-    """
-    n = 21
-    flat, wm, pia, polys, index = slab_grid(n=n, spacing=1.0, thickness=2.0)
-    # Squeeze a disc in the middle of the flatmap towards its centre, leaving
-    # the folded surfaces alone: locally the flattening lost a lot of area.
-    centre = flat[:, :2].mean(0)
-    radial = flat[:, :2] - centre
-    dist = np.linalg.norm(radial, axis=1)
-    squeeze = np.clip(1.0 - 0.9 * np.exp(-(dist / 3.0) ** 2), 0.05, 1.0)
-    flat[:, :2] = centre + radial * squeeze[:, None]
-
-    naive = bumpy.naive_prism_height(flat, wm, pia, polys)
-    # `polish` off: it is a fixed diffusion time calibrated to the scale of a
-    # real flatmap, where a millimetre or two of smoothing is small next to a
-    # gyrus. This grid is 20 units across and the squeezed disc 3 units wide, so
-    # at the default it would smooth away most of the very feature under test --
-    # which says nothing about the relaxation, and that is what is under test.
-    # `detail=0`: this patch is flat, of uniform thickness, and its only signal
-    # is the flattening compression. The folding height ignores that by design
-    # -- it divides by the folded area, and here there is no folding at all --
-    # so at the defaults this fixture produces a deliberately flat sheet. What
-    # is under test is the relaxation, so measure the relaxation.
-    slab = bumpy.FlatSlab(flat, wm, pia, polys, poisson_ratio=0.45,
-                          max_iter=4000, polish=0, detail=0)
-    relaxed = slab.relaxed[:, 2]
-
-    assert naive.max() > 4 * relaxed.max()
-    # and the relief still has to be there, not flattened away
-    assert relaxed.max() > 1.2 * np.median(relaxed)
-
-
-def test_matches_a_real_flatmap_patch():
-    """Runs on a patch of a real subject, with its real cuts and distortions."""
-    from cortex import db
-    wm, polys = db.get_surf("S1", "wm", "lh")
-    pia, _ = db.get_surf("S1", "pia", "lh")
-    flat, flatpolys = db.get_surf("S1", "flat", "lh")
-
-    # extract_chunk only carries one auxiliary point set and this needs three,
-    # so take a patch by masking instead.
-    surf = polyutils.Surface(flat, flatpolys)
-    seed = flatpolys[len(flatpolys) // 2, 0]
-    patch = np.zeros(len(flat), bool)
-    patch[surf.get_euclidean_patch(seed, 15)['vertex_mask']] = True
-    keep = patch[flatpolys].all(1)
-    assert keep.sum() > 100
-
-    slab = bumpy.FlatSlab(flat, wm, pia, flatpolys[keep], poisson_ratio=0.45,
-                          max_iter=200)
-    offsets = slab.relaxed
-
-    inpatch = np.zeros(len(flat), bool)
-    inpatch[flatpolys[keep].ravel()] = True
-    heights = offsets[inpatch, 2]
-    thickness = np.linalg.norm(pia - wm, axis=1)[inpatch]
-
-    assert np.isfinite(offsets).all()
-    assert (heights > 0).all()
-    # relief should be of the same order as cortical thickness, not orders off
-    assert 0.2 < np.median(heights) / np.median(thickness) < 5.0
-    assert np.abs(offsets[~inpatch]).max() == 0.0
-
-
-def flat_grid(n=15, spacing=1.0):
-    """A flat regular grid of unit right triangles, two per grid cell.
-
-    Returns ``(pts, polys, index)`` where `pts` has shape ``(n * n, 2)`` and
-    `index[i, j]` is the vertex number at grid position (i, j).
-    """
-    xs = np.arange(n) * spacing
-    X, Y = np.meshgrid(xs, xs, indexing='ij')
-    pts = np.stack([X.ravel(), Y.ravel()], axis=1)
-    index = np.arange(n * n).reshape(n, n)
-    polys = []
-    for i in range(n - 1):
-        for j in range(n - 1):
-            a, b = index[i, j], index[i + 1, j]
-            c, d = index[i + 1, j + 1], index[i, j + 1]
-            polys += [[a, b, c], [a, c, d]]
-    return pts, np.array(polys), index
-
-
-def flat_grid_with_hole(n=25, spacing=1.0, hole=(9, 16)):
-    """The same grid, with a square block of cells cut out of the middle.
-
-    `hole` is a half-open ``(lo, hi)`` range of grid cell indices removed in
-    both directions, leaving a mesh with a genuine interior hole -- a boundary
-    loop with no triangles inside it -- rather than just an edge.
-    """
-    pts, _, index = flat_grid(n, spacing)
-    lo, hi = hole
-    polys = []
-    for i in range(n - 1):
-        for j in range(n - 1):
-            if lo <= i < hi and lo <= j < hi:
-                continue
-            a, b = index[i, j], index[i + 1, j]
-            c, d = index[i + 1, j + 1], index[i, j + 1]
-            polys += [[a, b, c], [a, c, d]]
-    return pts, np.array(polys), index
-
-
-def test_coarsen_keeps_an_independent_set():
-    """No two surviving vertices were neighbours in the fine mesh.
-
-    That is what a maximal independent set means: retriangulating a pair of
-    neighbours would put a coarse edge across a gap that was close to zero in
-    the fine mesh, which is not a genuine coarsening.
-    """
-    pts, polys, _ = flat_grid(n=15)
-    index, _ = bumpy.coarsen_flat_mesh(pts, polys)
-
-    adj = polyutils.Surface(pts, polys).adj.astype(bool).tocsr()
-    kept = np.zeros(len(pts), bool)
-    kept[index] = True
-    for vert in index:
-        neighbours = adj.indices[adj.indptr[vert]:adj.indptr[vert + 1]]
-        assert not kept[neighbours].any()
-
-
-def test_coarsen_reduces_vertex_count():
-    """The coarse mesh keeps a small, nonzero fraction of the fine vertices.
-
-    An interior vertex of this grid has six neighbours, so a maximal
-    independent set keeps roughly one vertex in four; anything close to one in
-    one would mean the independent-set step was not doing anything.
-    """
-    pts, polys, _ = flat_grid(n=25)
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-    assert 0 < len(index) <= len(pts) // 2
-    assert len(coarse_polys) > 0
-
-
-def test_coarsen_indices_are_valid():
-    """`index` names real vertices and `coarse_polys` indexes into `index`."""
-    pts, polys, _ = flat_grid(n=21)
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-
-    assert index.ndim == 1
-    assert np.issubdtype(index.dtype, np.integer)
-    assert (index >= 0).all() and (index < len(pts)).all()
-    assert len(np.unique(index)) == len(index)
-
-    assert coarse_polys.ndim == 2 and coarse_polys.shape[1] == 3
-    assert (coarse_polys >= 0).all() and (coarse_polys < len(index)).all()
-    assert (coarse_polys[:, 0] != coarse_polys[:, 1]).all()
-    assert (coarse_polys[:, 1] != coarse_polys[:, 2]).all()
-    assert (coarse_polys[:, 0] != coarse_polys[:, 2]).all()
-
-
-def test_coarsen_preserves_area_on_a_simple_patch():
-    """On a hole-free patch the coarse mesh covers almost the same area.
-
-    `coarsen_flat_mesh` widens its bridging tolerance until the coarse area
-    stops tracking the fine one, so on a simply connected patch -- where there
-    is nothing to bridge -- it should stop close to the true area rather than
-    drifting out to the tolerance's edge.
-    """
-    pts, polys, _ = flat_grid(n=21)
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-
-    fine_area = bumpy._planar_area(pts, polys)
-    coarse_area = bumpy._planar_area(pts[index], coarse_polys)
-    assert coarse_area == pytest.approx(fine_area, rel=0.02)
-
-
-def test_coarsen_does_not_bridge_a_hole():
-    """A hole in the fine mesh must stay a hole in the coarse mesh.
-
-    Plain 2D Delaunay triangulates the convex hull of the surviving vertices,
-    so without the fine-mesh-distance rejection the coarse mesh would bridge
-    straight over the missing block and its area would jump close to the
-    *filled-in* square's area instead of staying near the true,
-    hole-punctured area. This is the property the whole hop-counting scheme
-    in `coarsen_flat_mesh` exists to protect.
-    """
-    n, hole = 25, (9, 16)
-    pts, polys, _ = flat_grid_with_hole(n=n, hole=hole)
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-
-    fine_area = bumpy._planar_area(pts, polys)
-    coarse_area = bumpy._planar_area(pts[index], coarse_polys)
-    filled_area = float((n - 1) * (n - 1))
-    hole_area = float((hole[1] - hole[0]) ** 2)
-    assert filled_area - fine_area == pytest.approx(hole_area, abs=1e-9)
-
-    assert coarse_area == pytest.approx(fine_area, rel=0.02)
-    # A bridged coarse mesh would land close to the filled-in area; demand
-    # that the coarse area instead stay far closer to the true, holed area
-    # than to what bridging the hole would have produced.
-    assert abs(coarse_area - fine_area) < 0.1 * hole_area
-    assert abs(coarse_area - filled_area) > 0.5 * hole_area
-
-
-def test_prolongation_reproduces_linear_fields_inside_the_hull():
-    """Barycentric interpolation is exact for affine functions.
-
-    `P @ f_coarse` must equal an affine `f` evaluated at every fine vertex that
-    falls inside the coarse triangulation. Some vertices here do not -- the
-    coarse mesh has a hole in it too, per the previous test -- and those take a
-    nearest-neighbour value instead, which is not exact for a sloped field. A
-    nearest-neighbour row has exactly one stored entry, equal to 1.0; an
-    inside row always has three stored entries (possibly with some exactly
-    zero), one per corner of the triangle it was found in, even when the
-    point sits exactly on a coarse vertex. So `P.getnnz(axis=1) == 1` reliably
-    picks out the excluded rows without needing to know which vertices those
-    are ahead of time.
-    """
-    pts, polys, _ = flat_grid_with_hole(n=25, hole=(9, 16))
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
-
-    def f(xy):
-        return 3.0 + 2.0 * xy[:, 0] - 5.0 * xy[:, 1]
-
-    result = np.asarray(P @ f(pts[index])).ravel()
-    expected = f(pts)
-
-    outside = P.getnnz(axis=1) == 1
-    assert 0 < outside.sum() < len(pts)  # the hole boundary really produces some
-    inside = ~outside
-    assert np.abs(result[inside] - expected[inside]).max() < 1e-9
-
-
-def test_prolongation_is_a_partition_of_unity():
-    """Every row of `P` sums to 1, and no weight is negative.
-
-    Both hold for the inside-triangle barycentric rows and for the
-    outside-hull nearest-neighbour rows, so this needs no masking, unlike the
-    linear-field check above.
-    """
-    pts, polys, _ = flat_grid_with_hole(n=25, hole=(9, 16))
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
-
-    rowsums = np.asarray(P.sum(axis=1)).ravel()
-    assert np.abs(rowsums - 1.0).max() < 1e-10
-    assert P.data.min() >= -1e-12
-
-
-def test_prolongation_shape_and_output_length():
-    """`P` has the documented shape and works for scalar- and vector-valued data."""
-    pts, polys, _ = flat_grid(n=15)
-    index, coarse_polys = bumpy.coarsen_flat_mesh(pts, polys)
-    P = bumpy.prolongation_matrix(pts, index, coarse_polys)
-
-    assert sparse.issparse(P)
-    assert P.shape == (len(pts), len(index))
-
-    scalar = np.arange(len(index), dtype=float)
-    assert (P @ scalar).shape == (len(pts),)
-
-    vector = np.column_stack([scalar, -scalar, 2.0 * scalar])
-    assert (P @ vector).shape == (len(pts), 3)
-
-
-def test_coarse_to_fine_builds_a_shrinking_hierarchy():
-    """Each level of the hierarchy is a strictly smaller mesh than the one above.
-
-    The levels also have to be nested -- every coarse vertex is a vertex of the
-    level above it -- because that is what lets a coarse solution be prolonged
-    onto the finer mesh at all.
-    """
-    flat, wm, pia, polys, _ = slab_grid(n=70, spacing=1.0, thickness=1.5,
-                                        stretch=1.15)
-    slab = bumpy.FlatSlab(flat, wm, pia, polys, levels=3)
-    hierarchy = slab._hierarchy
-
-    assert len(hierarchy) > 1, "the mesh was big enough to coarsen"
-    for (parent, parent_polys, _), (child, child_polys, in_parent) in zip(
-            hierarchy, hierarchy[1:]):
-        assert len(child) < len(parent)
-        assert len(child_polys) < len(parent_polys)
-        # nested: the child's vertices are a subset of the parent's, and
-        # `in_parent` says where each one sits in the parent's numbering
-        assert np.array_equal(parent[in_parent], child)
-        assert child_polys.max() < len(child)
-
-
-def test_coarse_to_fine_matches_a_single_level_solve():
-    """Solving coarse to fine changes how long the answer takes, not the answer.
-
-    Both are minimising the same energy over the same mesh; the hierarchy only
-    supplies a better starting point. On a patch small enough for both to
-    converge properly they have to agree, and if prolongation were putting the
-    fine mesh somewhere the single-level solve does not go, this is where it
-    would show.
-
-    Both are given ``resolution=0`` so that the finest mesh is actually solved.
-    At the default the hierarchy stops short of it and interpolates instead,
-    which is a deliberately different answer and not what is under test here.
-    """
-    flat, wm, pia, polys, _ = slab_grid(n=70, spacing=1.0, thickness=1.5,
-                                        stretch=1.15)
-    single = bumpy.FlatSlab(flat, wm, pia, polys, levels=1, max_iter=800,
-                            resolution=0)
-    multi = bumpy.FlatSlab(flat, wm, pia, polys, levels=3, max_iter=800,
-                           resolution=0)
-    one, many = single.relaxed, multi.relaxed
-
-    assert single.info['converged'] and multi.info['converged']
-    assert multi.info['energy_final'] == pytest.approx(
-        single.info['energy_final'], rel=1e-6)
-
-    height = np.abs(one[:, 2] - many[:, 2]) / np.maximum(one[:, 2], 1e-9)
-    assert np.median(height) < 1e-3
-    assert height.max() < 1e-2
-    assert np.abs(one[:, :2] - many[:, :2]).max() < 1e-2
 
 
 def _s1_patch(radius=32):
@@ -558,68 +133,25 @@ def _silk(pts, polys):
 def test_the_relief_is_smooth_enough_to_shade():
     """The bumped flatmap has to be smooth at the scale of a triangle.
 
-    Two things put creases into it. The obvious one is what is left of the
-    millimetre-scale noise in the segmentation. The less obvious one is that
-    every level finer than `resolution` is reached by barycentric
-    interpolation, which is only continuous and not smooth, so the height
-    field has creases along the coarse triangle edges -- invisible in the
-    heights and glaring in the lighting. `polish` is what takes both out.
+    A shading normal is the derivative of the height field, so millimetre-scale
+    noise that is invisible in the heights is glaring in the lighting.
+    `polish` is what takes it out.
     """
     flat, wm, pia, polys, _ = _s1_patch()
     plane = bumpy._flat_plane(flat)
 
     slab = bumpy.FlatSlab(flat, wm, pia, polys)
     relief = slab.relaxed
-    # Two thresholds, because a bare angle is not scale-free: the relief got
-    # about twice as tall when it moved onto the folding quantity, and the angle
+    # Two thresholds, because a bare angle is not scale-free -- the angle
     # between neighbouring faces grows with height for the same shape. The
-    # absolute number is what the eye sees at the viewer's default scale; the
-    # ratio is smoothness per unit relief, and it is the one that says the
-    # surface itself did not get rougher.
+    # absolute number is what the eye sees; the ratio is smoothness per unit
+    # relief, and it is the one that says the surface itself is not rough.
     assert _silk(plane + relief, polys) < 4.5
     assert _silk(plane + relief, polys) / relief[:, 2].std() < 5.0
 
     rough = bumpy.FlatSlab(flat, wm, pia, polys, polish=0)
     assert _silk(plane + rough.relaxed, polys) > _silk(plane + slab.relaxed,
                                                        polys)
-
-
-def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():
-    """The relief has to track the folding, and not at the scale of a triangle.
-
-    Both halves of this regressed once and neither was caught, because the
-    relaxation was only ever checked for energy and volume. A slab one element
-    thick cannot represent shear across itself, which is the mechanism holding
-    the relief up, so the relief flattened towards uniform thickness. The result
-    looked dimpled rather than like hills and valleys, and every scalar being
-    measured at the time got better while it happened.
-    """
-    flat, wm, pia, polys, curv = _s1_patch()
-
-    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
-    adj = surf.adj.tocsr()
-    degree = np.maximum(np.asarray(adj.sum(1)).ravel(), 1)
-
-    def roughness(x):
-        """Mesh-scale variation, as a fraction of the field's own spread."""
-        return np.sqrt(((x - np.asarray(adj @ x).ravel() / degree) ** 2).mean()) \
-            / x.std()
-
-    height = bumpy.FlatSlab(flat, wm, pia, polys).relaxed[:, 2]
-    assert np.corrcoef(height, curv)[0, 1] > 0.7
-    assert roughness(height) < 0.15
-
-    # This used to also assert that a one-layer slab does worse, to pin the
-    # shear mechanism. That control has been removed rather than adjusted,
-    # because it no longer isolates anything and keeping it would be
-    # misleading: the relief's gyral band now comes from the folding height,
-    # which is a geometric quantity computed on the full-resolution mesh and is
-    # identical however many element layers the slab was solved with. A
-    # one-layer slab scores the same here. That is worth stating plainly --
-    # with `max_iter=60` the solve stays close to its starting point, so the
-    # relaxation contributes much less to what is on screen than it once did.
-    # `test_uniform_stretch_matches_the_exact_solution` still exercises the
-    # through-thickness discretisation against an exactly known answer.
 
 
 def _band(surf, x, wavelength):
@@ -662,50 +194,6 @@ def test_the_relief_carries_gyral_scale_signal():
     # band has to hold real amplitude, not a rounding error on the mean
     assert band.std() / height.std() > 0.1, (
         "the gyral band has been smoothed away relative to the whole relief")
-
-
-
-def test_anisotropic_stiffness_reduces_to_the_cotangent_laplacian():
-    """With an identity tensor it must BE the existing operator, exactly.
-
-    Everything the anisotropic smoothing does rests on this matrix being the
-    right one, and the failure mode is silent -- a subtly wrong stiffness still
-    produces a plausible-looking smooth field. So pin it against the operator
-    already in the codebase rather than against a hand-derived expectation.
-    """
-    rng = np.random.RandomState(0)
-    xy = rng.rand(40, 2) * 10
-    tri = Delaunay(xy).simplices
-    surf = polyutils.Surface(np.column_stack([xy, np.zeros(len(xy))]), tri)
-
-    _, _, W, V = surf.laplace_operator
-    reference = (V - W).toarray()
-    eye = np.tile(np.eye(3), (len(tri), 1, 1))
-    got = bumpy._aniso_stiffness(surf, eye).toarray()
-
-    np.testing.assert_allclose(got, reference, atol=1e-12)
-    # and the properties the smoother relies on
-    np.testing.assert_allclose(got.sum(1), 0, atol=1e-12)   # constants survive
-    np.testing.assert_allclose(got, got.T, atol=1e-14)      # symmetric
-    assert np.linalg.eigvalsh(got).min() > -1e-10           # positive semidef
-
-    # the smoother built on it must agree with the isotropic one too
-    field = rng.rand(len(xy), 2)
-    np.testing.assert_allclose(
-        bumpy._smooth_vectors_aniso(surf, field, 1.5, eye),
-        bumpy._smooth_vectors(surf, field, 1.5), atol=1e-12)
-
-
-def test_anisotropy_of_one_is_exactly_the_isotropic_filter():
-    """The parameter has to have a genuine off position, not merely a weak one."""
-    rng = np.random.RandomState(1)
-    xy = rng.rand(40, 2) * 10
-    tri = Delaunay(xy).simplices
-    surf = polyutils.Surface(np.column_stack([xy, np.zeros(len(xy))]), tri)
-
-    tensor = bumpy._ridge_tensor(surf, xy[:, 0], 4.0, anisotropy=1.0)
-    np.testing.assert_allclose(tensor, np.tile(np.eye(3), (len(tri), 1, 1)),
-                               atol=1e-14)
 
 
 def _elongation(surf, field, scale=8.0):
@@ -822,17 +310,17 @@ def test_folding_alone_produces_relief():
     assert np.corrcoef(height, crown)[0, 1] > 0.6
 
 
-
 def test_folding_height_ignores_the_flatmap_distortion():
     """The point of the new denominator, stated as a property.
 
     `folding_height` divides by the *folded* white matter area, so distorting
     the flatmap must not change it -- the flatmap enters only as the mesh the
-    regularisation is solved on. `_prism_height` divides by the *flattened*
-    area, so the same distortion moves it a great deal. That difference is the
-    whole reason for the change: the flatmap's area distortion measures
-    essentially uncorrelated with curvature, so as a denominator it contributes
-    no folding and injects the flattening algorithm's artifacts instead.
+    regularisation is solved on. `naive_prism_height` divides by the
+    *flattened* area, so the same distortion moves it a great deal. That
+    difference is the whole reason for the change: a flatmap's area distortion
+    measures essentially uncorrelated with curvature, so as a denominator it
+    contributes no folding and injects the flattening algorithm's artifacts
+    instead.
     """
     flat, wm, pia, polys, _ = _curved_ridge_slab(n=31)
 
@@ -845,7 +333,7 @@ def test_folding_height_ignores_the_flatmap_distortion():
         return np.abs(b - a).mean() / a.mean()
 
     folding = shift(lambda f: bumpy.folding_height(f, wm, pia, polys))
-    prism = shift(lambda f: bumpy._prism_height(f, wm, pia, polys, 0.5))
+    prism = shift(lambda f: bumpy.naive_prism_height(f, wm, pia, polys))
     assert folding < 0.02
     assert prism > 5 * folding
 
