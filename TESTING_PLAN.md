@@ -205,7 +205,14 @@ argument/matrix assembly with mocked `subprocess` (the pattern in
    `mayavi_aligner.py`, `blender/*`, `formats_old.py`, and `appdirs.py`
    (vendored) so the Codecov number tracks code that can realistically be
    tested. ~1100 statements of GUI/vendored code currently dilute the signal.
-4. **Optional**: `hypothesis` property-based tests are a natural fit for
+4. **Stop tests from mutating the checked-in filestore.** Running the suite
+   locally leaves `filestore/db/S1/overlays.svg` modified in the working tree:
+   the `SVGOverlay` machinery rewrites the file in place (reformatting its
+   XML) when tests touch ROI layers. Tests should run against a copy of `S1`
+   in a temp directory (a `session`-scoped fixture that copies the subject
+   into an isolated filestore), so `git status` stays clean after `pytest`
+   and no test can corrupt the bundled fixture.
+5. **Optional**: `hypothesis` property-based tests are a natural fit for
    `unmask`/`Transform` algebra, but plain parameterized tests cover the plan
    above; adopt only if the team wants the dependency.
 
