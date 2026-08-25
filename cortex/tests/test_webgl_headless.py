@@ -1088,13 +1088,13 @@ def _ensure_bumpy_flatmap():
 
 @pytest.mark.timeout(900)
 def test_bumpy_flatmap_changes_the_render(tmp_path):
-    """The relaxed relief reaches the shader and visibly changes the flatmap.
+    """The relief reaches the shader and visibly changes the flatmap.
 
-    This is the end-to-end check on the whole path: the relaxation in
+    This is the end-to-end check on the whole path: the height computed in
     `cortex.polyutils.FlatSlab`, the cached surface info, the ``flatoffset``
-    attribute in the ctm, the components javascript packs into ``flatbump``,
-    ``wm`` and the flat morph target, and the displacement the vertex shader
-    applies. Any break in that chain shows up here as two identical images.
+    attribute in the ctm, the height javascript packs into ``flatbump.w``, and
+    the displacement the vertex shader applies. Any break in that chain shows
+    up here as two identical images.
     """
     from PIL import Image
 

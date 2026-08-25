@@ -11,7 +11,7 @@ transparent.
 
 The bumpy flatmap puts the folding back as relief instead of as color. Cortex is
 2 to 5 mm thick, so imagine peeling the cortical slab off the white matter,
-making the relaxation cuts, and laying it down. The white matter side ends up
+making the flattening cuts, and laying it down. The white matter side ends up
 flat, and the pial side sits some distance above it.
 
 How far above turns out to depend a great deal on which area you divide the
@@ -62,17 +62,18 @@ for hemi in ["lh", "rh"]:
 naive = np.concatenate(naive)
 thickness = np.concatenate(thickness)
 onmap = np.concatenate(onmap)
-height = offsets[:, 2]
+relief = offsets[:, 2]
 
 ###############################################################################
-# The relief itself, shown alongside the naive
-# volume-preserving height on the same color scale, which is what makes the
-# difference obvious: the naive map is mostly flat with a scatter of very bright
-# spikes, because its range is set by a handful of crushed triangles.
+# The relief itself, shown alongside the naive volume-preserving height on the
+# same color scale, which is what makes the difference obvious: the naive map is
+# mostly flat with a scatter of very bright spikes, because its range is set by
+# a handful of crushed triangles.
 
-vmax = float(np.percentile(height[onmap], 99))
-for name, height in [("folding height", height), ("naive V/A_flat", naive)]:
-    vertex = cortex.Vertex(height, subject, vmin=0, vmax=vmax, cmap="viridis")
+vmax = float(np.percentile(relief[onmap], 99))
+for name, field in [("folding height", relief),
+                    ("naive V/A_flat", naive)]:
+    vertex = cortex.Vertex(field, subject, vmin=0, vmax=vmax, cmap="viridis")
     cortex.quickshow(vertex, with_rois=False, with_labels=False,
                      with_curvature=False)
     plt.title("bumpy flatmap height, %s (mm)" % name)
@@ -81,16 +82,13 @@ for name, height in [("folding height", height), ("naive V/A_flat", naive)]:
 # Where the spikes are. Plotted as distributions, on a log axis because the
 # naive height's problem is entirely in its tail. Cortex is 2-5 mm thick, so a
 # sensible bumpy flatmap should sit in roughly that range; the naive height runs
-# well past it, and the height the viewer used to compute in javascript is
-# systematically too tall because it never actually looked at the flatmap -- its
-# denominator was the *folded* white matter area, so it reduces to thickness
-# times a function of the folded pial-to-white area ratio.
+# well past it.
 
 fig, ax = plt.subplots(figsize=(7, 4))
 bins = np.logspace(-1, 2, 120)
-for name, height in [("cortical thickness", thickness), ("naive V/A_flat", naive),
-                     ("folding height", height)]:
-    ax.hist(np.clip(height[onmap], 1e-2, None), bins=bins, histtype="step",
+for name, field in [("cortical thickness", thickness),
+                   ("naive V/A_flat", naive), ("folding height", relief)]:
+    ax.hist(np.clip(field[onmap], 1e-2, None), bins=bins, histtype="step",
             label=name, linewidth=1.5)
 ax.set_xscale("log")
 ax.set_yscale("log")
@@ -100,26 +98,13 @@ ax.legend()
 ax.set_title("the naive height's problem is its tail")
 
 ###############################################################################
-# How far the pial surface slides sideways. This is the part a vertical-prism
-# model cannot represent at all, and it is what lets the relief spread instead
-# of spiking: material squeezed out of a compressed column has somewhere to go.
-
-slip = np.linalg.norm(offsets[:, :2], axis=1)
-vertex = cortex.Vertex(slip, subject, vmin=0,
-                       vmax=float(np.percentile(slip[onmap], 99)),
-                       cmap="magma")
-cortex.quickshow(vertex, with_rois=False, with_labels=False,
-                 with_curvature=False)
-plt.title("in-plane slip of the pial surface (mm)")
-
-###############################################################################
 # Finally, the check that the relief means what it should: height against mean
-# curvature. Gyri, which flattening compresses, end up thicker; sulci end up
-# thinner.
+# curvature. Gyral crowns, where the pia carries more area than the white matter
+# beneath it, end up thicker; sulcal fundi end up thinner.
 
 curv = cortex.db.get_surfinfo(subject, type="curvature")
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.hexbin(curv.data[onmap], height[onmap], gridsize=60, bins="log",
+ax.hexbin(curv.data[onmap], relief[onmap], gridsize=60, bins="log",
           cmap="Blues")
 ax.set_xlabel("mean curvature (sulci < 0 < gyri)")
 ax.set_ylabel("relief height (mm)")
