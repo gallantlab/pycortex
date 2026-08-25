@@ -199,8 +199,13 @@ def test_relaxation_tames_the_spikes_the_naive_height_has():
     # gyrus. This grid is 20 units across and the squeezed disc 3 units wide, so
     # at the default it would smooth away most of the very feature under test --
     # which says nothing about the relaxation, and that is what is under test.
+    # `detail=0`: this patch is flat, of uniform thickness, and its only signal
+    # is the flattening compression. The folding height ignores that by design
+    # -- it divides by the folded area, and here there is no folding at all --
+    # so at the defaults this fixture produces a deliberately flat sheet. What
+    # is under test is the relaxation, so measure the relaxation.
     slab = bumpy.FlatSlab(flat, wm, pia, polys, poisson_ratio=0.45,
-                          max_iter=4000, polish=0)
+                          max_iter=4000, polish=0, detail=0)
     relaxed = slab.relaxed[:, 2]
 
     assert naive.max() > 4 * relaxed.max()
@@ -564,7 +569,15 @@ def test_the_relief_is_smooth_enough_to_shade():
     plane = bumpy._flat_plane(flat)
 
     slab = bumpy.FlatSlab(flat, wm, pia, polys)
-    assert _silk(plane + slab.relaxed, polys) < 3.5
+    relief = slab.relaxed
+    # Two thresholds, because a bare angle is not scale-free: the relief got
+    # about twice as tall when it moved onto the folding quantity, and the angle
+    # between neighbouring faces grows with height for the same shape. The
+    # absolute number is what the eye sees at the viewer's default scale; the
+    # ratio is smoothness per unit relief, and it is the one that says the
+    # surface itself did not get rougher.
+    assert _silk(plane + relief, polys) < 4.5
+    assert _silk(plane + relief, polys) / relief[:, 2].std() < 5.0
 
     rough = bumpy.FlatSlab(flat, wm, pia, polys, polish=0)
     assert _silk(plane + rough.relaxed, polys) > _silk(plane + slab.relaxed,
@@ -596,13 +609,17 @@ def test_relief_follows_the_folding_and_is_not_mesh_scale_noise():
     assert np.corrcoef(height, curv)[0, 1] > 0.7
     assert roughness(height) < 0.15
 
-    # and pin the reason, so that losing the layers fails here rather than
-    # silently degrading what the viewer shows. Only `thickness_layers` differs
-    # -- this used to also pass smooth=0, which is now the default and so
-    # isolated nothing.
-    thin = bumpy.FlatSlab(flat, wm, pia, polys, thickness_layers=1).relaxed[:, 2]
-    assert np.corrcoef(thin, curv)[0, 1] < np.corrcoef(height, curv)[0, 1]
-    assert roughness(thin) > roughness(height)
+    # This used to also assert that a one-layer slab does worse, to pin the
+    # shear mechanism. That control has been removed rather than adjusted,
+    # because it no longer isolates anything and keeping it would be
+    # misleading: the relief's gyral band now comes from the folding height,
+    # which is a geometric quantity computed on the full-resolution mesh and is
+    # identical however many element layers the slab was solved with. A
+    # one-layer slab scores the same here. That is worth stating plainly --
+    # with `max_iter=60` the solve stays close to its starting point, so the
+    # relaxation contributes much less to what is on screen than it once did.
+    # `test_uniform_stretch_matches_the_exact_solution` still exercises the
+    # through-thickness discretisation against an exactly known answer.
 
 
 def _band(surf, x, wavelength):
@@ -754,3 +771,96 @@ def test_a_ridge_stays_a_ridge():
         "elongated")
     # and it has to still be a ridge in the right place, not just elongated
     assert np.corrcoef(relief, bump)[0, 1] > 0.8
+
+
+def _curved_ridge_slab(n=41, thickness=2.0, height=2.0, width=5.0):
+    """A slab of *exactly* constant thickness, folded into a ridge along y.
+
+    The pia is offset along the surface normal, so on the convex crown it has
+    more area than the white matter beneath it and in the flanks less. Thickness
+    is uniform to machine precision, so any relief this produces comes from the
+    folding and from nothing else.
+    """
+    g = np.arange(n) * 1.0
+    X, Y = np.meshgrid(g, g, indexing='ij')
+    z = height * np.exp(-((X - g[-1] / 2) / width) ** 2)
+    wm = np.stack([X.ravel(), Y.ravel(), z.ravel()], axis=1)
+
+    gx, gy = np.gradient(z, 1.0, 1.0, axis=(0, 1))
+    normal = np.stack([-gx.ravel(), -gy.ravel(), np.ones(n * n)], axis=1)
+    normal /= np.linalg.norm(normal, axis=1)[:, None]
+    pia = wm + thickness * normal
+
+    index = np.arange(n * n).reshape(n, n)
+    polys = []
+    for i in range(n - 1):
+        for j in range(n - 1):
+            a, b = index[i, j], index[i + 1, j]
+            c, d = index[i + 1, j + 1], index[i, j + 1]
+            polys += [[a, b, c], [a, c, d]]
+    flat = np.column_stack([X.ravel(), Y.ravel(), np.zeros(n * n)])
+    return flat, wm, pia, np.array(polys), z.ravel()
+
+
+def test_folding_alone_produces_relief():
+    """Constant thickness, folded: there must still be a bump on the crown.
+
+    This is the property the relief was missing. Cortical thickness is a fairly
+    blobby field and on its own it gives a relief of round knobs; what makes a
+    flatmap look like gyri is the pial flare, the pia carrying more area than
+    the white matter beneath a crown. Here thickness is uniform to machine
+    precision, so the flare is the *only* signal available and a quantity that
+    ignores it would return a flat sheet.
+    """
+    flat, wm, pia, polys, crown = _curved_ridge_slab()
+
+    thickness = np.linalg.norm(pia - wm, axis=1)
+    assert thickness.std() < 1e-12, "the fixture is supposed to be uniform"
+
+    height = bumpy.folding_height(flat, wm, pia, polys)
+    assert height.std() > 0.02 * thickness.mean()
+    assert np.corrcoef(height, crown)[0, 1] > 0.6
+
+
+
+def test_folding_height_ignores_the_flatmap_distortion():
+    """The point of the new denominator, stated as a property.
+
+    `folding_height` divides by the *folded* white matter area, so distorting
+    the flatmap must not change it -- the flatmap enters only as the mesh the
+    regularisation is solved on. `_prism_height` divides by the *flattened*
+    area, so the same distortion moves it a great deal. That difference is the
+    whole reason for the change: the flatmap's area distortion measures
+    essentially uncorrelated with curvature, so as a denominator it contributes
+    no folding and injects the flattening algorithm's artifacts instead.
+    """
+    flat, wm, pia, polys, _ = _curved_ridge_slab(n=31)
+
+    # a smooth, folding-unrelated area distortion of the flatmap
+    warped = flat.copy()
+    warped[:, 0] *= 1.0 + 0.3 * np.sin(2 * np.pi * flat[:, 1] / 30.0)
+
+    def shift(fn):
+        a, b = fn(flat), fn(warped)
+        return np.abs(b - a).mean() / a.mean()
+
+    folding = shift(lambda f: bumpy.folding_height(f, wm, pia, polys))
+    prism = shift(lambda f: bumpy._prism_height(f, wm, pia, polys, 0.5))
+    assert folding < 0.02
+    assert prism > 5 * folding
+
+
+def test_folding_height_is_the_frustum_over_the_white_area():
+    """Pin the algebra: V_frustum / A_wm, which is what legacy computed."""
+    flat, wm, pia, polys, _ = _curved_ridge_slab(n=21)
+
+    awm = bumpy._vertex_areas(wm, polys)
+    apia = bumpy._vertex_areas(pia, polys)
+    r = np.sqrt(apia / awm)
+    thickness = np.linalg.norm(pia - wm, axis=1)
+    expected = thickness * (1 + r + r ** 2) / 3.0
+
+    # unregularised comparison, so use a correlation length short enough that
+    # the smoothing is not what is being tested
+    got = bumpy.folding_height(flat, wm, pia, polys, correlation_length=1e-4)
+    np.testing.assert_allclose(got, expected, rtol=2e-3)

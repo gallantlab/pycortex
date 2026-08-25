@@ -20,6 +20,21 @@ regularisation, so a compressed column spreads laterally rather than extruding,
 gyral crowns end up wider than their bases and sulcal fundi narrower, and the
 result needs no smoothing.
 
+What sets the gyral band, though, is not the relaxation but the *quantity*.
+Folded volume over flattened area turns out to carry almost no folding: the
+flatmap's own area distortion measures essentially uncorrelated with both mean
+and Gaussian curvature, so as a denominator it contributes noise rather than
+anatomy, and what is left is close to a map of cortical thickness -- which is a
+blobby field and reads as round knobs. Dividing the same volume by the *folded*
+white matter area instead gives ``thickness * (1 + r + r**2) / 3`` with
+``r = sqrt(A_pia/A_wm)``, and `r` tracks folding directly: the pia carries more
+area than the white matter beneath a gyral crown and less in a fundus. On S1,
+with everything smoothed alike and measured by crest anisotropy, `r` scores
+0.776 where thickness alone scores 0.705. That is `folding_height`, and it is
+what the relief is built from; `_prism_height` remains for the flattening
+question. See `FlatSlab.folding_offsets` for why it has to be computed on the
+full-resolution mesh.
+
 Each triangular prism between the two surfaces is split into three tetrahedra
 carrying the stable Neo-Hookean energy of Smith et al. (2018), which stays
 finite and correctly signed under element inversion. The energy is minimised
@@ -44,6 +59,20 @@ Poisson's ratio as the only material parameter affecting the result. It controls
 how strictly volume is preserved, and values below 0.5 let the extreme
 compressions -- which are largely artifacts of the flattening objective rather
 than properties of tissue -- shed volume rather than spike.
+
+Known limitation
+----------------
+The coarse levels of the hierarchy subsample the white and pial surfaces and
+retriangulate them with the *flat* Delaunay connectivity, so every coarse edge
+is a chord through the fold rather than an arc along it. The pial flare is
+second order -- curvature times thickness -- while the surfaces themselves are
+zeroth order, so it is the first thing that deficit removes and the coarse
+pia/white area ratio collapses towards one. The elastic reference the coarse
+solve minimises has therefore already had the gyral signal taken out of it. The
+relief works around this by taking its folding term from the full-resolution
+mesh; fixing it properly would mean aggregating true fine-mesh face volumes and
+areas onto the coarse elements instead of re-deriving them from subsampled
+vertices.
 
 References
 ----------
@@ -70,8 +99,8 @@ from .misc import _memo
 from .surface import Surface
 
 __all__ = ["FlatSlab", "coarsen_flat_mesh", "face_prism_volumes",
-           "lame_parameters", "legacy_js_height", "naive_prism_height",
-           "prolongation_matrix"]
+           "folding_height", "lame_parameters", "legacy_js_height",
+           "naive_prism_height", "prolongation_matrix"]
 
 
 # Decomposition of a triangular prism into three tetrahedra. Nodes 0, 1, 2 are
@@ -695,31 +724,24 @@ def face_prism_volumes(wm, pia, polys):
     return vols.reshape(-1, 3).sum(1)
 
 
-def _prism_height(flat, wm, pia, polys, correlation_length):
-    """Volume-preserving vertical prism height, regularised in log-height.
+def _regularise_log_height(flat, polys, numerator, denominator,
+                           correlation_length):
+    """Smooth a ratio of two positive fields, in the log, on the flat mesh.
 
-    Solves ``(M + lc^2 L) l = M l*`` once on the flat mesh, where ``l*`` is the
-    log of the height that would preserve each column's folded volume, ``L`` is
-    the cotangent stiffness matrix and ``M`` the lumped mass. Working in the log
-    keeps a twenty-fold compression as an offset of three rather than a
+    Solves ``(M + lc^2 L) l = M l*`` once, where ``l*`` is the log of the ratio,
+    ``L`` is the cotangent stiffness and ``M`` the lumped mass. Working in the
+    log keeps a twenty-fold compression as an offset of three rather than a
     twenty-fold spike, and makes the regulariser a geometric rather than an
     arithmetic mean, which is the right averaging for a ratio.
+
+    Both heights in this module are ratios of exactly this kind and differ only
+    in what they divide by, so the smoothing belongs here rather than in either
+    of them.
     """
-    vol = face_prism_volumes(wm, pia, polys)
-    area = _face_areas(flat, polys)
     nverts = len(flat)
-    idx = np.asarray(polys).ravel()
-
-    # Ratio of sums rather than sum of ratios: a triangle that flattening
-    # crushed to nothing contributes almost no volume and almost no area, so it
-    # barely moves the estimate, instead of contributing one enormous ratio that
-    # dominates its neighbourhood.
-    vvol = np.bincount(idx, weights=np.repeat(vol, 3), minlength=nverts) / 3.0
-    varea = np.bincount(idx, weights=np.repeat(area, 3), minlength=nverts) / 3.0
-
-    good = (vvol > 0) & (varea > 0)
+    good = (numerator > 0) & (denominator > 0)
     target = np.zeros(nverts)
-    target[good] = np.log(vvol[good] / varea[good])
+    target[good] = np.log(numerator[good] / denominator[good])
     if good.any():
         target[~good] = np.median(target[good])
 
@@ -733,6 +755,72 @@ def _prism_height(flat, wm, pia, polys, correlation_length):
     logheight = target.copy()
     logheight[goodrows] = solve((mass * target)[goodrows])
     return np.exp(logheight)
+
+
+def _lumped(values, polys, nverts):
+    """A per-face quantity gathered onto vertices, a third to each corner."""
+    return np.bincount(np.asarray(polys).ravel(),
+                       weights=np.repeat(values, 3), minlength=nverts) / 3.0
+
+
+def folding_height(flat, wm, pia, polys, correlation_length=0.5):
+    """Slab height driven by the pial flare, not by the flattening.
+
+    ``V_frustum / A_wm``, the folded volume over the *folded* white matter area,
+    which with ``r = sqrt(A_pia / A_wm)`` is ``thickness * (1 + r + r**2) / 3``.
+
+    This is the quantity that carries folding. Over a gyral crown the pia has
+    more area than the white matter beneath it, so `r` rises; in a sulcal fundus
+    it falls. Measured on S1 with everything smoothed alike, `r` scores 0.776 on
+    a crest-anisotropy measure where cortical thickness alone scores 0.705 and
+    mean curvature -- the folding itself -- scores 0.833. Thickness is a fairly
+    blobby field; `r` is what makes a relief look like gyri.
+
+    The contrast is with `_prism_height`, which divides the same volume by the
+    *flattened* area instead. That is the honest model of a slab laid flat, but
+    the flatmap's own area distortion measures essentially uncorrelated with
+    both mean and Gaussian curvature, so as a denominator it contributes no
+    folding and injects the flattening algorithm's artifacts in its place.
+    Dividing by the folded area instead answers a slightly different question --
+    what thickness the slab would have if flattening preserved area -- and that
+    is the question with gyri in the answer.
+    """
+    nverts = len(wm)
+    awm = _lumped(_face_areas(wm, polys), polys, nverts)
+    apia = _lumped(_face_areas(pia, polys), polys, nverts)
+    thickness = np.sqrt(((pia - wm) ** 2).sum(1))
+
+    good = awm > 0
+    r = np.zeros(nverts)
+    r[good] = np.sqrt(np.maximum(apia[good], 0.0) / awm[good])
+    height = thickness * (1.0 + r + r ** 2) / 3.0
+
+    # Same log-space regularisation as the prism height -- this is a ratio too,
+    # and a vertex whose white matter area nearly vanishes would otherwise
+    # spike. Smoothed on the flat mesh, not the folded one, because that is
+    # where the relief is going to be looked at and where `correlation_length`
+    # is measured for every other field here.
+    return _regularise_log_height(flat, polys, height, np.ones(nverts),
+                                  correlation_length)
+
+
+def _prism_height(flat, wm, pia, polys, correlation_length):
+    """Volume-preserving vertical prism height, regularised in log-height.
+
+    The height that would preserve each column's folded volume when the slab is
+    laid flat: folded volume over *flattened* area. See `folding_height` for the
+    variant that divides by the folded area instead, and for why that one is
+    what carries the folding cue.
+    """
+    nverts = len(flat)
+    # Ratio of sums rather than sum of ratios: a triangle that flattening
+    # crushed to nothing contributes almost no volume and almost no area, so it
+    # barely moves the estimate, instead of contributing one enormous ratio that
+    # dominates its neighbourhood.
+    vvol = _lumped(face_prism_volumes(wm, pia, polys), polys, nverts)
+    varea = _lumped(_face_areas(flat, polys), polys, nverts)
+    return _regularise_log_height(flat, polys, vvol, varea,
+                                  correlation_length)
 
 
 def _slab_volume(pts, tets):
@@ -937,8 +1025,8 @@ class FlatSlab(object):
     """
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
                  correlation_length=0.5, max_iter=60, levels=3,
-                 thickness_layers=3, smooth=0.0, resolution=3.2, polish=2.0,
-                 detrend=64.0, detail=12.0, detail_floor=3.0,
+                 thickness_layers=3, smooth=0.0, resolution=3.2, polish=3.0,
+                 detrend=64.0, detail=12.0, detail_floor=5.0,
                  anisotropy=0.15, ridge_scale=8.0):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
@@ -1037,6 +1125,35 @@ class FlatSlab(object):
         offsets = np.zeros((len(self.wm), 3))
         offsets[mask, 2] = _prism_height(flat, wm, self.smoothed_pia[mask],
                                          polys, lc)
+        return offsets
+
+    @property
+    @_memo
+    def folding_offsets(self):
+        """`folding_height` on the full-resolution mesh, as a vertical offset.
+
+        This is where the folding cue comes from, and it has to be computed
+        here, on the finest mesh, because the hierarchy destroys it. Every
+        coarse level subsamples the white and pial surfaces and retriangulates
+        them with the *flat* Delaunay connectivity, so each coarse edge is a
+        chord through the fold rather than an arc along it. The pial flare is a
+        second-order quantity -- curvature times thickness -- while the surfaces
+        themselves are zeroth order, so it is the first thing the chord deficit
+        removes: the coarse pia/white area ratio collapses towards one.
+
+        Returns
+        -------
+        offsets : 2D ndarray, shape (total_verts, 3)
+            The first two columns are zero; this height is purely vertical.
+        """
+        mask, flat, wm, _, polys = self._submesh
+        lc = self.correlation_length
+        if lc is None:
+            lc = np.median(self.thickness[mask])
+
+        offsets = np.zeros((len(self.wm), 3))
+        offsets[mask, 2] = folding_height(flat, wm, self.smoothed_pia[mask],
+                                          polys, lc)
         return offsets
 
     @property
@@ -1207,10 +1324,14 @@ class FlatSlab(object):
             stack = np.tile(level_flat, (layers, 1))
 
             if moved is None:
-                # The coarsest mesh starts from the vertical prism solution,
-                # with the intermediate layers spread evenly up to it.
-                height = _prism_height(level_flat, level_wm, level_pia,
-                                       level_polys, lc)
+                # The coarsest mesh starts from the folding height, with the
+                # intermediate layers spread evenly up to it. Taken from the
+                # full-resolution field by indexing rather than recomputed on
+                # this level's own surfaces: the coarse mesh's pia/white area
+                # ratio has already collapsed towards one, and the solve is
+                # capped well short of convergence, so whatever the starting
+                # point lacks it has no chance to put back.
+                height = self.folding_offsets[mask][index, 2]
                 rise = np.concatenate(
                     [np.zeros((len(index), 2)), height[:, None]], axis=1)
                 start = np.vstack([rise * f for f in
@@ -1265,7 +1386,7 @@ class FlatSlab(object):
             # the crossover, the full-resolution prism height from there down to
             # `detail_floor`, and nothing below that.
             surf = Surface(flat, polys)
-            fine = self.prism_offsets[mask]
+            fine = self.folding_offsets[mask]
             t_x = (self.detail / (2 * np.pi)) ** 2
             t_min = (self.detail_floor / (2 * np.pi)) ** 2
 
