@@ -1,9 +1,7 @@
 
 from .bumpy import (
     FlatSlab,
-    face_prism_volumes,
     folding_height,
-    legacy_js_height,
     naive_prism_height,
 )
 from .distortion import Distortion

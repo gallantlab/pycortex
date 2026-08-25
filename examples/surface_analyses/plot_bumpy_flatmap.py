@@ -27,16 +27,14 @@ instead, which with ``r = sqrt(A_pia / A_wm)`` is ``thickness * (1 + r + r**2)
 / 3``. `r` is what carries the folding: the pia has more area than the white
 matter beneath a gyral crown and less in a fundus.
 
-Both alternatives are plotted below -- the naive volume-over-flattened-area
-field, and the height the webgl viewer used to compute in javascript, which
-despite never looking at the flatmap is the same quantity by another route.
+The naive volume-over-flattened-area field is plotted below for comparison.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 import cortex
-from cortex.polyutils.bumpy import legacy_js_height, naive_prism_height
+from cortex.polyutils import naive_prism_height
 
 subject = "S1"
 
@@ -47,14 +45,13 @@ offsets = np.vstack([npz["bump_left"], npz["bump_right"]])
 npz.close()
 
 # The two things it is being compared against, computed per hemisphere.
-naive, legacy, thickness, onmap = [], [], [], []
+naive, thickness, onmap = [], [], []
 for hemi in ["lh", "rh"]:
     wm, polys = cortex.db.get_surf(subject, "wm", hemi)
     pia, _ = cortex.db.get_surf(subject, "pia", hemi)
     flat, flatpolys = cortex.db.get_surf(subject, "flat", hemi)
 
     naive.append(naive_prism_height(flat, wm, pia, flatpolys))
-    legacy.append(legacy_js_height(wm, pia, polys))
     thickness.append(np.linalg.norm(pia - wm, axis=1))
 
     # Vertices cut away from the flatmap -- the medial wall -- have no relief.
@@ -63,7 +60,6 @@ for hemi in ["lh", "rh"]:
     onmap.append(mask)
 
 naive = np.concatenate(naive)
-legacy = np.concatenate(legacy)
 thickness = np.concatenate(thickness)
 onmap = np.concatenate(onmap)
 height = offsets[:, 2]
@@ -93,7 +89,7 @@ for name, height in [("folding height", height), ("naive V/A_flat", naive)]:
 fig, ax = plt.subplots(figsize=(7, 4))
 bins = np.logspace(-1, 2, 120)
 for name, height in [("cortical thickness", thickness), ("naive V/A_flat", naive),
-                     ("legacy javascript", legacy), ("folding height", height)]:
+                     ("folding height", height)]:
     ax.hist(np.clip(height[onmap], 1e-2, None), bins=bins, histtype="step",
             label=name, linewidth=1.5)
 ax.set_xscale("log")

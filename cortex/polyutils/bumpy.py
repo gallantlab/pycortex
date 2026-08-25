@@ -16,8 +16,7 @@ essentially uncorrelated with both mean and Gaussian curvature, so as a
 denominator it contributes no folding and injects the flattening algorithm's
 artifacts in its place; what is left is close to a map of cortical thickness,
 which is blobby and reads as round knobs. `naive_prism_height` computes that
-version for comparison, and `legacy_js_height` the one the webgl viewer used to
-compute in javascript -- which is this module's quantity by another route.
+version, for comparison.
 """
 
 
@@ -29,11 +28,10 @@ try:
 except ImportError:
     from scipy.sparse.linalg.dsolve import factorized as _factorized
 
-from .misc import _memo
+from .misc import _memo, face_area, face_volume
 from .surface import Surface
 
-__all__ = ["FlatSlab", "face_prism_volumes", "folding_height",
-           "legacy_js_height", "naive_prism_height"]
+__all__ = ["FlatSlab", "folding_height", "naive_prism_height"]
 
 
 def _flat_plane(flat):
@@ -48,106 +46,35 @@ def _flat_plane(flat):
     return plane
 
 
-def _face_areas(pts, polys):
-    """Area of each triangle."""
-    ppts = pts[polys]
-    cross = np.cross(ppts[:, 1] - ppts[:, 0], ppts[:, 2] - ppts[:, 0])
-    return 0.5 * np.sqrt((cross ** 2).sum(-1))
-
-
-def _vertex_areas(pts, polys):
-    """One third of the incident face area, summed at each vertex."""
-    areas = _face_areas(pts, polys)
-    return np.bincount(np.asarray(polys).ravel(), weights=np.repeat(areas, 3),
-                       minlength=len(pts)) / 3.0
-
-
 def _lumped(values, polys, nverts):
     """A per-face quantity gathered onto vertices, a third to each corner."""
     return np.bincount(np.asarray(polys).ravel(),
                        weights=np.repeat(values, 3), minlength=nverts) / 3.0
 
 
-def _smooth_vectors(surf, vectors, factor):
-    """`Surface.smooth`, applied to every column of `vectors` at once.
+def _regularise_log_height(flat, polys, values, correlation_length):
+    """Smooth a positive field in the log, on the flat mesh.
 
-    The operator depends only on the mesh, so the obvious loop pays for three
-    factorisations of the same matrix. One factorisation, three solves.
+    `Surface.smooth` solves ``(M + t L) y = M x`` with `L` the cotangent
+    stiffness and `M` the lumped mass, which is the screened-Poisson system
+    wanted here with ``t = lc**2``. Working in the log keeps a twenty-fold
+    compression as an offset of three rather than a twenty-fold spike, and
+    makes this a geometric rather than an arithmetic mean -- the right
+    averaging for a ratio.
     """
-    vectors = np.asarray(vectors, dtype=np.double)
-    if not factor:
-        return vectors.copy()
-
-    _, D, W, V = surf.laplace_operator
-    npt = len(D)
-    lfac = sparse.dia_matrix((D, [0]), (npt, npt)) - factor * (W - V)
-    # Vertices in no triangle have an empty row and column; `Surface.smooth`
-    # drops them from the solve and leaves them at zero, so do the same.
-    good = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
-    solve = _factorized(lfac[good][:, good].tocsc())
-
-    out = np.zeros(vectors.shape)
-    for k in range(vectors.shape[1]):
-        out[good, k] = solve((D * vectors[:, k])[good])
-    return out
-
-
-def _regularise_log_height(flat, polys, numerator, denominator,
-                           correlation_length):
-    """Smooth a ratio of two positive fields, in the log, on the flat mesh.
-
-    Solves ``(M + lc^2 L) l = M l*`` once, with `L` the cotangent stiffness and
-    `M` the lumped mass. Working in the log keeps a twenty-fold compression as
-    an offset of three rather than a twenty-fold spike, and makes this a
-    geometric rather than an arithmetic mean -- the right averaging for a ratio.
-    """
-    nverts = len(flat)
-    good = (numerator > 0) & (denominator > 0)
-    target = np.zeros(nverts)
-    target[good] = np.log(numerator[good] / denominator[good])
+    good = values > 0
+    target = np.zeros(len(flat))
+    target[good] = np.log(values[good])
     if good.any():
         target[~good] = np.median(target[good])
 
-    _, mass, weights, degree = Surface(flat, polys).laplace_operator
-    lhs = (sparse.dia_matrix((mass, [0]), (nverts, nverts))
-           + correlation_length ** 2 * (degree - weights)).tocsc()
-
-    # Vertices with no area anchor nothing and leave a singular row.
-    goodrows = np.nonzero(mass > 0)[0]
-    solve = _factorized(lhs[goodrows][:, goodrows].tocsc())
-    logheight = target.copy()
-    logheight[goodrows] = solve((mass * target)[goodrows])
-    return np.exp(logheight)
-
-
-def face_prism_volumes(wm, pia, polys):
-    """Volume of the cortical slab over each triangle.
-
-    Each triangular prism between the two surfaces is cut into three
-    tetrahedra, the same decomposition `polyutils.misc.brick_vol` uses. Nodes
-    0-2 are the white matter triangle and 3-5 the pial one.
-
-    Parameters
-    ----------
-    wm, pia : 2D ndarray, shape (total_verts, 3)
-        The two surfaces bounding the slab.
-    polys : 2D ndarray, shape (total_polys, 3)
-        Triangle vertex indices.
-
-    Returns
-    -------
-    volumes : 1D ndarray, shape (total_polys,)
-    """
-    polys = np.asarray(polys)
-    corners = np.concatenate([np.asarray(wm)[polys], np.asarray(pia)[polys]],
-                             axis=1)                       # (nfaces, 6, 3)
-    total = np.zeros(len(polys))
-    for a, b, c, d in ((0, 1, 2, 4), (0, 2, 3, 4), (2, 3, 4, 5)):
-        e = np.stack([corners[:, b] - corners[:, a],
-                      corners[:, c] - corners[:, a],
-                      corners[:, d] - corners[:, a]], axis=1)
-        total += np.abs(np.linalg.det(e)) / 6.0
-    return total
+    surf = Surface(flat, polys)
+    smoothed = surf.smooth(target, correlation_length ** 2)
+    # `Surface.smooth` returns zero for vertices in no triangle, which would
+    # come back as a height of one; leave those at the median instead.
+    isolated = np.asarray(surf.connected.sum(1)).ravel() == 0
+    smoothed[isolated] = target[isolated]
+    return np.exp(smoothed)
 
 
 def folding_height(flat, wm, pia, polys, correlation_length=0.5):
@@ -159,8 +86,9 @@ def folding_height(flat, wm, pia, polys, correlation_length=0.5):
     the module docstring for why the denominator is the folded area.
     """
     nverts = len(wm)
-    awm = _lumped(_face_areas(wm, polys), polys, nverts)
-    apia = _lumped(_face_areas(pia, polys), polys, nverts)
+    polys = np.asarray(polys)
+    awm = _lumped(face_area(wm[polys]), polys, nverts)
+    apia = _lumped(face_area(pia[polys]), polys, nverts)
     thickness = np.sqrt(((pia - wm) ** 2).sum(1))
 
     good = awm > 0
@@ -173,8 +101,7 @@ def folding_height(flat, wm, pia, polys, correlation_length=0.5):
     # spike. Smoothed on the flat mesh, not the folded one, because that is
     # where the relief is going to be looked at and where `correlation_length`
     # is measured for every other field here.
-    return _regularise_log_height(flat, polys, height, np.ones(nverts),
-                                  correlation_length)
+    return _regularise_log_height(flat, polys, height, correlation_length)
 
 
 def naive_prism_height(flat, wm, pia, polys):
@@ -205,8 +132,8 @@ def naive_prism_height(flat, wm, pia, polys):
     """
     nverts = len(wm)
     polys = np.asarray(polys)
-    vol = face_prism_volumes(wm, pia, polys)
-    area = _face_areas(_flat_plane(flat), polys)
+    vol = face_volume(wm, pia, polys)
+    area = face_area(_flat_plane(flat)[polys])
 
     # One height per triangle, then averaged onto the vertices. Note this is a
     # mean of ratios, and that is the whole problem: a triangle the flattening
@@ -220,68 +147,6 @@ def naive_prism_height(flat, wm, pia, polys):
     height = np.bincount(polys.ravel(), weights=np.repeat(faceheight, 3),
                          minlength=nverts)
     return np.where(counts > 0, height / np.maximum(counts, 1), 0.0)
-
-
-def _umbrella_smooth(data, polys, nverts, factor, iterations):
-    """The uniform smoothing the viewer's javascript used.
-
-    Each vertex accumulates its neighbours once per incident face, so shared
-    neighbours are weighted twice; there is no area or cotangent weighting.
-    Reproduced only so that `legacy_js_height` matches what shipped.
-    """
-    polys = np.asarray(polys)
-    a, b, c = polys[:, 0], polys[:, 1], polys[:, 2]
-    idx = np.concatenate([a, a, b, b, c, c])
-    counts = np.bincount(idx, minlength=nverts).astype(float)
-    counts[counts == 0] = 1.0
-
-    out = np.asarray(data, dtype=float).copy()
-    for _ in range(iterations):
-        nb = np.concatenate([out[b], out[c], out[a], out[c], out[a], out[b]])
-        means = np.bincount(idx, weights=nb, minlength=nverts) / counts
-        out = means * factor + out * (1.0 - factor)
-    return out
-
-
-def legacy_js_height(wm, pia, polys, smooth_areas=5, smooth_dists=20,
-                     factor=0.1):
-    """The bumpy flatmap height the webgl viewer used to compute in javascript.
-
-    Despite its name this never looked at the flatmap: the denominator was the
-    *folded* white matter vertex area, so with ``A_pia = r**2 * A_wm`` it
-    collapses to ``thickness * (1 + r + r**2) / 3`` -- `folding_height` by
-    another route, with weaker smoothing. Kept as a reference. The three
-    smoothing arguments default to what the viewer shipped.
-
-    Parameters
-    ----------
-    wm, pia : 2D ndarray, shape (total_verts, 3)
-        The white matter and pial surfaces.
-    polys : 2D ndarray, shape (total_polys, 3)
-        Triangle vertex indices.
-    smooth_areas, smooth_dists : int, optional
-        Smoothing iterations for the vertex areas and for the thickness.
-    factor : float, optional
-        Smoothing step size.
-
-    Returns
-    -------
-    height : 1D ndarray, shape (total_verts,)
-    """
-    wmareas = _umbrella_smooth(_vertex_areas(wm, polys), polys, len(wm),
-                               factor, smooth_areas)
-    piaareas = _umbrella_smooth(_vertex_areas(pia, polys), polys, len(wm),
-                                factor, smooth_areas)
-    dists = _umbrella_smooth(np.sqrt(((pia - wm) ** 2).sum(1)), polys, len(wm),
-                             factor, smooth_dists)
-
-    # Volume of a conical frustum with the two vertex areas as its parallel
-    # caps and the thickness as its height.
-    vol = dists / 3.0 * (wmareas + piaareas + np.sqrt(wmareas * piaareas))
-    height = np.zeros(len(wm))
-    good = wmareas > 0
-    height[good] = vol[good] / wmareas[good]
-    return height
 
 
 class FlatSlab(object):
@@ -367,15 +232,13 @@ class FlatSlab(object):
         mask, flat, wm, pia, polys = self._submesh
         surf = Surface(flat, polys)
 
-        relief = folding_height(flat, wm, pia, polys,
-                                self.correlation_length)[:, None]
+        relief = folding_height(flat, wm, pia, polys, self.correlation_length)
         if self.polish:
-            relief = _smooth_vectors(surf, relief, self.polish)
+            relief = surf.smooth(relief, self.polish)
         if self.detrend:
-            swell = _smooth_vectors(surf, relief,
-                                    (self.detrend / (2 * np.pi)) ** 2)
+            swell = surf.smooth(relief, (self.detrend / (2 * np.pi)) ** 2)
             # about its own mean, so the sheet keeps its average thickness
-            relief = relief - (swell - swell.mean(0))
+            relief = relief - (swell - swell.mean())
 
         self.info = dict(n_verts=int(mask.sum()),
                          height_mean=float(relief.mean()),
@@ -384,5 +247,5 @@ class FlatSlab(object):
                          height_max=float(relief.max()))
 
         offsets = np.zeros((len(self.wm), 3))
-        offsets[mask, 2] = relief[:, 0]
+        offsets[mask, 2] = relief
         return offsets
