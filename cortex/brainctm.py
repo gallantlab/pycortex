@@ -139,31 +139,15 @@ class BrainCTM:
         npz.close()
 
     def addBumpyFlat(self, **kwargs):
-        """Load the relaxed pial offsets that give the flatmap its relief.
+        """Load the relief that gives the flatmap its bumps.
 
-        Each vertex gets a (dx, dy, height) offset from its position on the flat
+        Each vertex gets a (0, 0, height) offset from its position on the flat
         white matter surface, in flatmap units.
-
-        Unlike the other surface info this is *not* generated on demand. The
-        relaxation takes minutes per hemisphere, and building a ctm pack happens
-        the first time anyone opens a viewer, which is not a good moment to
-        disappear for a quarter of an hour. It is generated when the flatmap is
-        imported instead (see `cortex.freesurfer.import_flat`); a subject
-        imported before that existed simply gets a flat flatmap until it is
-        asked for.
         """
         if self.flatlims is None or not self.has_volume:
             return
 
-        npz = db.get_surfinfo(self.subject, type='bumpy_flatmap',
-                              generate=False, **kwargs)
-        if npz is None:
-            print("No bumpy flatmap for %s; the flatmap will have no relief. "
-                  "Run cortex.db.get_surfinfo(%r, type='bumpy_flatmap') to "
-                  "generate it (this takes a few minutes per hemisphere)."
-                  % (self.subject, self.subject))
-            return
-
+        npz = db.get_surfinfo(self.subject, type='bumpy_flatmap', **kwargs)
         self.left.setBump(npz['bump_left'])
         self.right.setBump(npz['bump_right'])
         npz.close()

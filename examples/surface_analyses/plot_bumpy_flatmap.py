@@ -12,24 +12,28 @@ transparent.
 The bumpy flatmap puts the folding back as relief instead of as color. Cortex is
 2 to 5 mm thick, so imagine peeling the cortical slab off the white matter,
 making the relaxation cuts, and laying it down. The white matter side ends up
-flat, but the pial side sits some distance above it -- bunched up thicker over
-gyri, which flattening compresses, and stretched thinner over sulci, which
-flattening expands.
+flat, and the pial side sits some distance above it.
 
-The obvious way to compute that height is to insist each column of tissue keeps
-its folded volume: height is the folded volume over the flattened area. The
-problem is the denominator. Flattening compresses some triangles almost to
-nothing, and those give enormous heights -- so the naive bumpy flatmap is a
-field of spikes, and smoothing it afterwards does not help, because a mean of
-ratios is dominated by exactly the outliers you wanted to remove.
+How far above is the question, and it turns out to matter a great deal which
+area you divide the column's volume by. Dividing by the *flattened* area is the
+honest model of a slab laid flat -- but a flatmap's area distortion measures
+essentially uncorrelated with curvature, so that denominator contributes no
+folding and injects the flattening algorithm's artifacts instead, on top of
+giving enormous heights wherever flattening crushed a triangle. What is left
+behind is close to a map of cortical thickness, which is a blobby field and
+reads as round knobs.
 
-`cortex.polyutils.FlatSlab` instead treats the slab as a soft elastic solid,
-pins its white matter side to the flatmap, and lets the pial side settle. What
-keeps a real piece of tissue from spiking is not gravity -- over a 3 mm slab
-that is a couple of percent effect -- but shear: a tall narrow column is
-expensive because it shears against its neighbours, and it relieves that by
-spreading sideways. So the pial surface is free to move in-plane, and the relief
-comes out smooth without anything being smoothed.
+`cortex.polyutils.folding_height` divides by the *folded* white matter area
+instead, which with ``r = sqrt(A_pia / A_wm)`` is ``thickness * (1 + r + r**2)
+/ 3``. `r` is what carries the folding: the pia has more area than the white
+matter beneath a gyral crown and less in a fundus. Measured on S1 with every
+field smoothed alike, `r` scores 0.776 on a crest-anisotropy measure where
+thickness alone scores 0.705.
+
+Two other heights are plotted below for comparison: the naive volume-over-flat-
+area field, and the height the webgl viewer used to compute in javascript --
+which, despite never looking at the flatmap, was the closest of the three to
+what the folding actually looks like.
 """
 
 import numpy as np
@@ -40,10 +44,8 @@ from cortex.polyutils.bumpy import legacy_js_height, naive_prism_height
 
 subject = "S1"
 
-# The relaxation is generated when a flatmap is imported and cached in the
-# database, so this is a lookup rather than a computation. Running it yourself
-# takes a quarter of an hour or so for both hemispheres; see
-# `cortex.polyutils.FlatSlab` if you want to try other material parameters.
+# Cached in the database, so this is a lookup; computing it takes a few seconds
+# per hemisphere. See `cortex.polyutils.FlatSlab` for the parameters.
 npz = cortex.db.get_surfinfo(subject, type="bumpy_flatmap")
 offsets = np.vstack([npz["bump_left"], npz["bump_right"]])
 npz.close()
@@ -68,16 +70,16 @@ naive = np.concatenate(naive)
 legacy = np.concatenate(legacy)
 thickness = np.concatenate(thickness)
 onmap = np.concatenate(onmap)
-relaxed = offsets[:, 2]
+height = offsets[:, 2]
 
 ###############################################################################
-# The relief itself. The relaxed height is shown alongside the naive
+# The relief itself, shown alongside the naive
 # volume-preserving height on the same color scale, which is what makes the
 # difference obvious: the naive map is mostly flat with a scatter of very bright
 # spikes, because its range is set by a handful of crushed triangles.
 
-vmax = float(np.percentile(relaxed[onmap], 99))
-for name, height in [("relaxed", relaxed), ("naive V/A", naive)]:
+vmax = float(np.percentile(height[onmap], 99))
+for name, height in [("folding height", height), ("naive V/A_flat", naive)]:
     vertex = cortex.Vertex(height, subject, vmin=0, vmax=vmax, cmap="viridis")
     cortex.quickshow(vertex, with_rois=False, with_labels=False,
                      with_curvature=False)
@@ -94,8 +96,8 @@ for name, height in [("relaxed", relaxed), ("naive V/A", naive)]:
 
 fig, ax = plt.subplots(figsize=(7, 4))
 bins = np.logspace(-1, 2, 120)
-for name, height in [("cortical thickness", thickness), ("naive V/A", naive),
-                     ("legacy javascript", legacy), ("relaxed", relaxed)]:
+for name, height in [("cortical thickness", thickness), ("naive V/A_flat", naive),
+                     ("legacy javascript", legacy), ("folding height", height)]:
     ax.hist(np.clip(height[onmap], 1e-2, None), bins=bins, histtype="step",
             label=name, linewidth=1.5)
 ax.set_xscale("log")
@@ -125,10 +127,10 @@ plt.title("in-plane slip of the pial surface (mm)")
 
 curv = cortex.db.get_surfinfo(subject, type="curvature")
 fig, ax = plt.subplots(figsize=(6, 4))
-ax.hexbin(curv.data[onmap], relaxed[onmap], gridsize=60, bins="log",
+ax.hexbin(curv.data[onmap], height[onmap], gridsize=60, bins="log",
           cmap="Blues")
 ax.set_xlabel("mean curvature (sulci < 0 < gyri)")
-ax.set_ylabel("relaxed height (mm)")
+ax.set_ylabel("relief height (mm)")
 ax.set_title("relief follows the folding")
 
 plt.show()

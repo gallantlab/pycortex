@@ -141,26 +141,21 @@ that reads as shaded relief. Like ``pivot``, the sliders move to show the values
 in effect and can still be dragged afterwards; the next change to ``unfold`` or
 ``bumpy_flatmap`` drives them back from the configured defaults.
 
-The relief is the shape a slab of cortex would actually take if it were peeled
-off the white matter and laid flat: thicker over gyri, which flattening
-compresses, and thinner over sulci, which it stretches. It is computed by
-relaxing the cortical slab as an elastic solid, which lets the pial surface
-slide sideways as it settles rather than sitting in a vertical column above the
-white matter -- see :class:`cortex.polyutils.FlatSlab`. That calculation takes
-under a minute, so it is done once when the flatmap is imported and cached in
-the subject's database entry. It is deliberately not generated on demand: a
-subject imported before this existed gets a flatmap with no relief, and the
-viewer says so, rather than stopping while it is computed. Run
-``cortex.db.get_surfinfo(subject, type='bumpy_flatmap')`` once for such a
-subject and it will be picked up from then on.
+The relief is the shape a slab of cortex would take if it were peeled off the
+white matter and laid flat: thicker where the pia carries more area than the
+white matter beneath it, which is over a gyral crown, and thinner in a sulcal
+fundus. See :class:`cortex.polyutils.FlatSlab` for the quantity and
+:mod:`cortex.polyutils.bumpy` for why it is that one. It costs a few seconds
+per hemisphere and is cached in the subject's database entry like any other
+surface info.
 
 ``bumpy_flatmap_scale`` exaggerates the relief, and is a slider in the surface
 controls as well as a setting. At 1.0 the bumps are at their true scale, which
-for a 2-5 mm slab is subtle next to a whole flatmap; larger values make the
-folding easier to read. The exaggeration is vertical only, as on a topographic
-map: the height above the sheet grows and the sideways sliding of the pial
-surface does not, so turning the slider up does not move the relief around
-relative to the data drawn underneath it. The shading follows, since a height
+for a 2-5 mm slab is subtle next to a whole flatmap, so the default exaggerates
+somewhat; larger values make the folding easier still to read. The relief is
+purely vertical, so this is vertical exaggeration as on a topographic map and
+turning it up does not move anything sideways relative to the data drawn
+underneath. The shading follows, since a height
 field scaled by *s* has a normal whose in-plane components scale by *s* and
 whose out-of-plane component does not. The slider starts wherever the
 configuration file put it, and runs from 0 to five times true scale -- or to

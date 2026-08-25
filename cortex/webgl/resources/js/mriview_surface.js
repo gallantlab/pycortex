@@ -222,18 +222,12 @@ var mriview = (function(module) {
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
 
-                    //The relaxed bumpy flatmap: each vertex gets the offset
-                    //of the pial surface from its position on the flat white
-                    //matter surface, computed in python (see
-                    //cortex.polyutils.FlatSlab) and shipped in the ctm.
-                    //
-                    //The offset is a full vector, not just a height: the pial
-                    //surface slides sideways as it settles, so gyri end up wider
-                    //at the top than at the bottom and sulci narrower. Its three
-                    //components are in flatmap units and in the flatmap's own
-                    //frame, so they get the same scaling and the same
-                    //per-hemisphere mirroring _makeFlat applies to the flat
-                    //coordinates themselves.
+                    //The bumpy flatmap: each vertex gets the height of the
+                    //pial surface above its position on the flat white matter
+                    //surface, computed in python (see cortex.polyutils.FlatSlab)
+                    //and shipped in the ctm. The relief is purely vertical, so
+                    //one component carries it -- the flatmap plane is (y, z) in
+                    //viewer space and its normal is x.
                     var flatsurf = hemi.attributes['mixSurfs'+json.names.length];
                     var nverts = flatsurf.array.length / 4;
                     //Absent for a subject with no white matter surface, and for
@@ -245,26 +239,13 @@ var mriview = (function(module) {
                     var mirror = (name == "left") ? -1 : 1;
 
                     var displaced = new Float32Array(flatsurf.array);
-                    var bumped = new Float32Array(nverts * 3);
+                    var height = new Float32Array(nverts);
                     for (var v = 0; v < nverts; v++) {
-                        if (offsets !== undefined) {
-                            //dx and dy lie in the flatmap plane, dh is the height
-                            //above it; the flatmap plane is (y, z) in viewer space
-                            //and its normal is x.
-                            bumped[v*3]   = mirror * flatscale * offsets.array[v*4+2];
-                            bumped[v*3+1] = mirror * flatscale * offsets.array[v*4];
-                            bumped[v*3+2] = flatscale * offsets.array[v*4+1];
-                        }
-                        displaced[v*4]   += bumped[v*3];
-                        displaced[v*4+1] += bumped[v*3+1];
-                        displaced[v*4+2] += bumped[v*3+2];
+                        if (offsets !== undefined)
+                            height[v] = mirror * flatscale * offsets.array[v*4+2];
+                        displaced[v*4] += height[v];
                     }
 
-                    //These shaders use all 16 of the vertex attribute slots
-                    //WebGL guarantees, so the offset cannot have an attribute of
-                    //its own. flatbump.xyz is the shading normal of the bumped
-                    //surface and its w plus the unused w of `wm` and of the flat
-                    //morph target carry the three components of the offset.
                     //Vertices in no triangle -- the medial wall, which is cut
                     //away from the flatmap -- would otherwise get a zero normal
                     //and a NaN out of the shader's normalize. Fall back to the
@@ -275,19 +256,17 @@ var mriview = (function(module) {
                     var bumpnorms = module.computeNormal(
                         new THREE.BufferAttribute(displaced, 4),
                         hemi.attributes.index, hemi.offsets, flatnorm);
+                    //flatbump.xyz is the shading normal of the bumped surface
+                    //and its w the height, so the whole relief rides in one
+                    //attribute. These shaders use all 16 of the vertex attribute
+                    //slots WebGL guarantees, so that matters.
                     var flatbump = new Float32Array(nverts * 4);
                     for (var v = 0; v < nverts; v++) {
                         flatbump[v*4]   = bumpnorms.array[v*3];
                         flatbump[v*4+1] = bumpnorms.array[v*3+1];
                         flatbump[v*4+2] = bumpnorms.array[v*3+2];
-                        flatbump[v*4+3] = bumped[v*3];
-                        flatsurf.array[v*4+3] = bumped[v*3+2];
-                        if (offsets !== undefined)
-                            hemi.attributes.wm.array[v*4+3] = bumped[v*3+1];
+                        flatbump[v*4+3] = height[v];
                     }
-                    if (offsets !== undefined)
-                        hemi.attributes.wm.needsUpdate = true;
-                    flatsurf.needsUpdate = true;
 
                     var flatbump_attr = new THREE.BufferAttribute(flatbump, 4);
                     flatbump_attr.needsUpdate = true;
