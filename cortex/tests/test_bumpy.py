@@ -39,7 +39,7 @@ def slab_grid(n=13, spacing=1.0, thickness=2.5, stretch=1.0):
 
 
 def test_prism_volume_matches_brick_vol():
-    """The vectorised prism volume agrees with the reference implementation."""
+    """`face_volume` is `brick_vol` over every face at once."""
     rng = np.random.default_rng(0)
     wm = rng.normal(size=(30, 3))
     pia = wm + rng.normal(size=(30, 3)) * 0.3 + np.array([0., 0., 2.])
@@ -47,7 +47,7 @@ def test_prism_volume_matches_brick_vol():
 
     expected = np.array([polyutils.brick_vol(np.append(wm[f], pia[f], axis=0))
                          for f in polys])
-    got = bumpy.face_prism_volumes(wm, pia, polys)
+    got = polyutils.face_volume(wm, pia, polys)
     assert np.allclose(got, expected)
 
 
@@ -86,21 +86,6 @@ def _s1_patch(radius=32):
     remap = np.zeros(len(flat), np.int64)
     remap[sub] = np.arange(sub.sum())
     return (flat[sub], wm[sub], pia[sub], remap[flatpolys[keep]], curv[sub])
-
-
-def test_smoothing_three_components_at_once_matches_smoothing_them_singly():
-    """`_smooth_vectors` must agree with the loop it replaces, including
-    leaving vertices in no triangle at zero.
-    """
-    flat, wm, pia, polys, _ = _s1_patch(radius=16)
-    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
-    field = pia - wm
-
-    for factor in (0, 1.0, 4.0):
-        expected = np.column_stack(
-            [surf.smooth(field[:, k].copy(), factor) for k in range(3)])
-        np.testing.assert_allclose(
-            bumpy._smooth_vectors(surf, field, factor), expected, atol=1e-10)
 
 
 def _silk(pts, polys):
@@ -200,7 +185,9 @@ def _elongation(surf, field, scale=8.0):
     area = surf.face_areas
     w = np.maximum(np.asarray(surf.connected.dot(area)).ravel(), 1e-20)
     v = surf.connected.dot(area[:, None] * packed) / w[:, None]
-    v = bumpy._smooth_vectors(surf, v, (scale / (2 * np.pi)) ** 2)
+    v = np.column_stack([surf.smooth(v[:, k].copy(),
+                                     (scale / (2 * np.pi)) ** 2)
+                         for k in range(v.shape[1])])
     packed = v[surf.polys].mean(1)
 
     sxx, sxy, syy = packed[:, 0], packed[:, 1], packed[:, 2]
@@ -330,11 +317,11 @@ def test_folding_height_ignores_the_flatmap_distortion():
 
 
 def test_folding_height_is_the_frustum_over_the_white_area():
-    """Pin the algebra: V_frustum / A_wm, which is what legacy computed."""
+    """Pin the algebra: the height really is V_frustum / A_wm."""
     flat, wm, pia, polys, _ = _curved_ridge_slab(n=21)
 
-    awm = bumpy._vertex_areas(wm, polys)
-    apia = bumpy._vertex_areas(pia, polys)
+    awm = bumpy._lumped(polyutils.face_area(wm[polys]), polys, len(wm))
+    apia = bumpy._lumped(polyutils.face_area(pia[polys]), polys, len(wm))
     r = np.sqrt(apia / awm)
     thickness = np.linalg.norm(pia - wm, axis=1)
     expected = thickness * (1 + r + r ** 2) / 3.0

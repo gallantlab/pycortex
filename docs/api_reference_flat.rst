@@ -181,9 +181,7 @@ polyutils
     :toctree:generated/
 
     coarsen_flat_mesh
-    face_prism_volumes
     lame_parameters
-    legacy_js_height
     naive_prism_height
     prolongation_matrix
 
