@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 from scipy.optimize import minimize_scalar
+from scipy.spatial import Delaunay
 
 from cortex import polyutils
 from cortex.polyutils import bumpy
@@ -645,3 +646,111 @@ def test_the_relief_carries_gyral_scale_signal():
     assert band.std() / height.std() > 0.1, (
         "the gyral band has been smoothed away relative to the whole relief")
 
+
+
+def test_anisotropic_stiffness_reduces_to_the_cotangent_laplacian():
+    """With an identity tensor it must BE the existing operator, exactly.
+
+    Everything the anisotropic smoothing does rests on this matrix being the
+    right one, and the failure mode is silent -- a subtly wrong stiffness still
+    produces a plausible-looking smooth field. So pin it against the operator
+    already in the codebase rather than against a hand-derived expectation.
+    """
+    rng = np.random.RandomState(0)
+    xy = rng.rand(40, 2) * 10
+    tri = Delaunay(xy).simplices
+    surf = polyutils.Surface(np.column_stack([xy, np.zeros(len(xy))]), tri)
+
+    _, _, W, V = surf.laplace_operator
+    reference = (V - W).toarray()
+    eye = np.tile(np.eye(3), (len(tri), 1, 1))
+    got = bumpy._aniso_stiffness(surf, eye).toarray()
+
+    np.testing.assert_allclose(got, reference, atol=1e-12)
+    # and the properties the smoother relies on
+    np.testing.assert_allclose(got.sum(1), 0, atol=1e-12)   # constants survive
+    np.testing.assert_allclose(got, got.T, atol=1e-14)      # symmetric
+    assert np.linalg.eigvalsh(got).min() > -1e-10           # positive semidef
+
+    # the smoother built on it must agree with the isotropic one too
+    field = rng.rand(len(xy), 2)
+    np.testing.assert_allclose(
+        bumpy._smooth_vectors_aniso(surf, field, 1.5, eye),
+        bumpy._smooth_vectors(surf, field, 1.5), atol=1e-12)
+
+
+def test_anisotropy_of_one_is_exactly_the_isotropic_filter():
+    """The parameter has to have a genuine off position, not merely a weak one."""
+    rng = np.random.RandomState(1)
+    xy = rng.rand(40, 2) * 10
+    tri = Delaunay(xy).simplices
+    surf = polyutils.Surface(np.column_stack([xy, np.zeros(len(xy))]), tri)
+
+    tensor = bumpy._ridge_tensor(surf, xy[:, 0], 4.0, anisotropy=1.0)
+    np.testing.assert_allclose(tensor, np.tile(np.eye(3), (len(tri), 1, 1)),
+                               atol=1e-14)
+
+
+def _elongation(surf, field, scale=8.0):
+    """Structure-tensor coherence: 1 for a ridge, 0 for a round bump.
+
+    Measured from the field itself, which is what keeps it an independent check
+    even when the smoothing has been oriented by curvature.
+    """
+    g = surf.surface_gradient(np.asarray(field, float), at_verts=False)
+    idx = np.array([(0, 0), (0, 1), (1, 1)])
+    packed = (g[:, :, None] * g[:, None, :])[:, idx[:, 0], idx[:, 1]]
+
+    area = surf.face_areas
+    w = np.maximum(np.asarray(surf.connected.dot(area)).ravel(), 1e-20)
+    v = surf.connected.dot(area[:, None] * packed) / w[:, None]
+    v = bumpy._smooth_vectors(surf, v, (scale / (2 * np.pi)) ** 2)
+    packed = v[surf.polys].mean(1)
+
+    sxx, sxy, syy = packed[:, 0], packed[:, 1], packed[:, 2]
+    tr = sxx + syy
+    disc = np.sqrt(np.maximum((sxx - syy) ** 2 + 4 * sxy ** 2, 0.0))
+    ok = tr > 1e-20
+    return float((disc[ok]).sum() / tr[ok].sum())
+
+
+def test_the_elongation_measure_tells_ridges_from_knobs():
+    """Pin the instrument before trusting what it says about cortex."""
+    g = np.linspace(0, 48, 120)
+    X, Y = np.meshgrid(g, g)
+    xy = np.column_stack([X.ravel(), Y.ravel()])
+    surf = polyutils.Surface(np.column_stack([xy, np.zeros(len(xy))]),
+                             Delaunay(xy).simplices)
+    x, y = xy[:, 0], xy[:, 1]
+
+    ridges = np.sin(2 * np.pi * x / 8.0)
+    knobs = ridges * np.sin(2 * np.pi * y / 8.0)
+    assert _elongation(surf, ridges) > 0.9
+    assert _elongation(surf, knobs) < 0.4
+
+
+def test_a_ridge_stays_a_ridge():
+    """The whole point: an elongated thickness ridge must not come out beaded.
+
+    Every other synthetic case in this file is a square grid stretched equally
+    in both directions, so none of them can tell an elongated relief from a
+    chain of round bumps -- which is exactly the defect this guards. The slab is
+    given a thickness ridge running along y, and the relief has to come back at
+    least as elongated as an honest measurement of that ridge.
+    """
+    n, spacing = 41, 1.0
+    flat, wm, pia, polys, index = slab_grid(n=n, spacing=spacing, thickness=2.0)
+
+    # a ridge along y: thicker in a 6 mm-wide band, uniform down its length
+    x = wm[:, 0] - wm[:, 0].mean()
+    bump = 1.2 * np.exp(-(x / 3.0) ** 2)
+    pia = pia + np.column_stack([np.zeros(len(x)), np.zeros(len(x)), bump])
+
+    surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
+    relief = bumpy.FlatSlab(flat, wm, pia, polys).relaxed[:, 2]
+
+    assert _elongation(surf, relief) > 0.85, (
+        "the relief lost the ridge's direction; it is beaded rather than "
+        "elongated")
+    # and it has to still be a ridge in the right place, not just elongated
+    assert np.corrcoef(relief, bump)[0, 1] > 0.8
