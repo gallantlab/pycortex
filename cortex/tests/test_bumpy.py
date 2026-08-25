@@ -89,11 +89,8 @@ def _s1_patch(radius=32):
 
 
 def test_smoothing_three_components_at_once_matches_smoothing_them_singly():
-    """`_smooth_vectors` is `Surface.smooth` with the factorisation shared.
-
-    It exists only because the operator does not depend on what is being
-    smoothed, so it must give back exactly what the obvious loop gives back --
-    including leaving vertices in no triangle at zero.
+    """`_smooth_vectors` must agree with the loop it replaces, including
+    leaving vertices in no triangle at zero.
     """
     flat, wm, pia, polys, _ = _s1_patch(radius=16)
     surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
@@ -133,9 +130,8 @@ def _silk(pts, polys):
 def test_the_relief_is_smooth_enough_to_shade():
     """The bumped flatmap has to be smooth at the scale of a triangle.
 
-    A shading normal is the derivative of the height field, so millimetre-scale
-    noise that is invisible in the heights is glaring in the lighting.
-    `polish` is what takes it out.
+    A shading normal is the derivative of the height field, so noise that is
+    invisible in the heights is glaring in the lighting.
     """
     flat, wm, pia, polys, _ = _s1_patch()
     plane = bumpy._flat_plane(flat)
@@ -158,10 +154,9 @@ def _band(surf, x, wavelength):
     """Low-pass at a given wavelength.
 
     `Surface.smooth`'s `factor` is a diffusion time, and one backward-Euler step
-    has transfer function 1/(1 + k^2 t), so the half-power point of `factor = t`
-    sits at a wavelength of 2*pi*sqrt(t) -- not at sqrt(t), and not at the
-    sqrt(2t) that the Gaussian-equivalent sigma would suggest. Every previous
-    round of tuning here got that factor of 4.4 wrong in the same direction.
+    has transfer function 1/(1 + k^2 t), so `factor = t` is half power at a
+    wavelength of 2*pi*sqrt(t) -- not sqrt(t), and not the sqrt(2t) the
+    Gaussian-equivalent sigma suggests. It is easy to be wrong here by 4.4x.
     """
     return surf.smooth(x.copy(), (wavelength / (2 * np.pi)) ** 2)
 
@@ -169,14 +164,10 @@ def _band(surf, x, wavelength):
 def test_the_relief_carries_gyral_scale_signal():
     """The relief has to have energy at the scale of gyri, not just be smooth.
 
-    Everything else in this file is local: `_silk` compares neighbouring faces,
-    `roughness` compares a vertex to its one-ring, and a correlation against
-    raw curvature is dominated by whichever band happens to have most variance.
-    None of them can see a relief that is beautifully smooth and anatomically
-    empty, which is exactly what over-smoothing produces -- and three rounds of
-    tuning against those metrics alone drove `smooth` and `polish` to values
-    that removed most of the 8-16 mm band while every number on the dashboard
-    improved.
+    Every other measure here is local -- `_silk` compares neighbouring faces,
+    and a correlation against raw curvature is dominated by whichever band has
+    most variance. None of them can see a relief that is beautifully smooth and
+    anatomically empty, which is what over-smoothing produces.
     """
     flat, wm, pia, polys, curv = _s1_patch()
     surf = polyutils.Surface(bumpy._flat_plane(flat), polys)
