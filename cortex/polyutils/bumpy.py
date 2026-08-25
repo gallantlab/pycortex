@@ -535,6 +535,136 @@ def _smooth_vectors(surf, vectors, factor):
     return out
 
 
+def _ridge_tensor(surf, field, ridge_scale, anisotropy):
+    """A per-face diffusion tensor that smooths along ridges, not across them.
+
+    Isotropic diffusion is the reason a chain of coarse-mesh bumps stays a chain
+    of bumps: it rounds each one off instead of joining them up. What is wanted
+    is a filter that knows which way the ridge runs, and cortex already says so
+    -- the mean curvature of the white matter surface marks the gyral crests
+    densely and unambiguously.
+
+    The direction comes from the structure tensor of `field`, smoothed over
+    `ridge_scale` so that it carries the orientation of the ridge rather than of
+    whatever noise sits on top of it. Its leading eigenvector points *across*
+    the ridge, so damping diffusion along that eigenvector and leaving it alone
+    along the other one smooths the crest lengthwise.
+
+    The damping is scaled by the coherence, ``(l1 - l2) / (l1 + l2)``, so that
+    it only applies where there genuinely is an orientation. Without that, an
+    isotropic patch would pick an arbitrary direction from noise and get combed
+    into streaks.
+
+    Returns ``(n_faces, 3, 3)``. With `anisotropy` of 1 this is the identity at
+    every face and the result is exactly ordinary isotropic diffusion.
+    """
+    grad = surf.surface_gradient(np.asarray(field, dtype=np.double),
+                                 at_verts=False)
+
+    # Structure tensor. A raw outer product is rank one and says nothing about
+    # shape until it has been averaged over a neighbourhood, so the smoothing
+    # here is what makes it a measurement rather than a restatement.
+    outer = grad[:, :, None] * grad[:, None, :]
+    idx = np.array([(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)])
+    packed = outer[:, idx[:, 0], idx[:, 1]]
+
+    area = surf.face_areas
+    weight = np.asarray(surf.connected.dot(area)).ravel()
+    weight[weight == 0] = 1.0
+    at_verts = surf.connected.dot(area[:, None] * packed) / weight[:, None]
+    at_verts = _smooth_vectors(surf, at_verts,
+                               (ridge_scale / (2 * np.pi)) ** 2)
+    packed = at_verts[surf.polys].mean(1)
+
+    tensor = np.empty((len(area), 3, 3))
+    tensor[:, idx[:, 0], idx[:, 1]] = packed
+    tensor[:, idx[:, 1], idx[:, 0]] = packed
+
+    # The flatmap lies in z = 0, so every gradient is in-plane and the whole
+    # question is a 2x2 one; the third row and column are zero and stay zero.
+    sxx, sxy, syy = tensor[:, 0, 0], tensor[:, 0, 1], tensor[:, 1, 1]
+    trace = sxx + syy
+    disc = np.sqrt(np.maximum((sxx - syy) ** 2 + 4 * sxy ** 2, 0.0))
+    coherence = np.where(trace > 1e-20, disc / np.maximum(trace, 1e-20), 0.0)
+
+    # Leading eigenvector, across the ridge. Both expressions for it degenerate
+    # at different places, so take whichever is better conditioned here.
+    lead = (trace + disc) / 2.0
+    va = np.column_stack([sxy, lead - sxx, np.zeros(len(sxx))])
+    vb = np.column_stack([lead - syy, sxy, np.zeros(len(sxx))])
+    na, nb = np.linalg.norm(va, axis=1), np.linalg.norm(vb, axis=1)
+    across = np.where((na > nb)[:, None], va, vb)
+    norm = np.linalg.norm(across, axis=1)
+    flat_here = norm < 1e-20
+    across[flat_here] = np.array([1.0, 0.0, 0.0])
+    across /= np.maximum(norm, 1e-20)[:, None]
+
+    # In two dimensions the two eigenvector projectors sum to the identity, so
+    # damping one direction is a rank-one correction and nothing else is needed.
+    damp = (1.0 - anisotropy) * coherence
+    damp[flat_here] = 0.0
+    D = np.tile(np.eye(3), (len(area), 1, 1))
+    D -= damp[:, None, None] * (across[:, :, None] * across[:, None, :])
+    return D
+
+
+def _aniso_stiffness(surf, tensor):
+    """FEM stiffness matrix for ``div(D grad u)`` with `D` given per face.
+
+    The cotangent formula is the `D` = identity case of this. For linear
+    elements the gradient of the hat function at vertex `i` is the opposite edge
+    rotated a quarter turn in the plane of the face, over twice its area -- and
+    `Surface._facenorm_cross_edge` already caches exactly those rotated edges --
+    so the element matrix is ``(n x e_i)^T D (n x e_j) / (4 A)``.
+
+    Returns the stiffness directly, symmetric and with rows summing to zero,
+    which is `V - W` of `Surface.laplace_operator` when `D` is the identity.
+    """
+    fe12, fe23, fe31 = surf._facenorm_cross_edge
+    # gradient direction of the hat at vertex i is the rotated *opposite* edge
+    rot = [fe23, fe31, fe12]
+    area = np.maximum(surf.face_areas, 1e-20)
+
+    npt = len(surf.pts)
+    rows, cols, vals = [], [], []
+    for i in range(3):
+        Dg = np.einsum('fab,fb->fa', tensor, rot[i])
+        for j in range(3):
+            rows.append(surf.polys[:, i])
+            cols.append(surf.polys[:, j])
+            vals.append((Dg * rot[j]).sum(1) / (4.0 * area))
+
+    L = sparse.coo_matrix(
+        (np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+        shape=(npt, npt)).tocsr()
+    return (L + L.T) / 2.0
+
+
+def _smooth_vectors_aniso(surf, vectors, factor, tensor):
+    """`_smooth_vectors` with a per-face diffusion tensor.
+
+    Same backward-Euler step, ``(M + factor * L) x = M x0``; `_smooth_vectors`
+    is the case where `L` is the isotropic stiffness. Note the sign: that
+    function writes the stiffness as ``-(W - V)``, and this one assembles
+    ``V - W`` directly.
+    """
+    vectors = np.asarray(vectors, dtype=np.double)
+    if not factor:
+        return vectors.copy()
+
+    _, D, _, _ = surf.laplace_operator
+    npt = len(D)
+    lfac = (sparse.dia_matrix((D, [0]), (npt, npt))
+            + factor * _aniso_stiffness(surf, tensor))
+    good = np.nonzero(~np.array(lfac.sum(0) == 0).ravel())[0]
+    solve = _factorized(lfac[good][:, good].tocsc())
+
+    out = np.zeros(vectors.shape)
+    for k in range(vectors.shape[1]):
+        out[good, k] = solve((D * vectors[:, k])[good])
+    return out
+
+
 def face_prism_volumes(wm, pia, polys):
     """Volume of the cortical slab over each triangle.
 
@@ -808,7 +938,8 @@ class FlatSlab(object):
     def __init__(self, flat, wm, pia, polys, poisson_ratio=0.45,
                  correlation_length=0.5, max_iter=60, levels=3,
                  thickness_layers=3, smooth=0.0, resolution=3.2, polish=2.0,
-                 detrend=64.0):
+                 detrend=64.0, detail=12.0, detail_floor=3.0,
+                 anisotropy=0.15, ridge_scale=8.0):
         self.flat = np.asarray(flat, dtype=np.double)
         self.wm = np.asarray(wm, dtype=np.double)
         self.pia = np.asarray(pia, dtype=np.double)
@@ -822,6 +953,10 @@ class FlatSlab(object):
         self.resolution = resolution
         self.polish = polish
         self.detrend = detrend
+        self.detail = detail
+        self.detail_floor = detail_floor
+        self.anisotropy = anisotropy
+        self.ridge_scale = ridge_scale
         self.info = {}
         self._cache = {}
 
@@ -1111,6 +1246,37 @@ class FlatSlab(object):
         top = moved[-len(flat):]          # outermost layer is the pial side
         relief = top - flat
 
+        if self.detail:
+            # Put ridge-scale detail back. The relaxation is solved on a mesh
+            # coarser than a gyrus is wide, so everything it produces lives in
+            # the span of that mesh's hat functions -- discs about twice the
+            # coarse spacing across. A gyral ridge is no wider than one of them,
+            # so it comes out as a chain of round bumps rather than a crest.
+            #
+            # It does not have to. Shear only couples the slab over roughly its
+            # own thickness, two or three millimetres, and a ridge is several
+            # times wider than that -- which is exactly the regime where the
+            # cheap volume-preserving prism height is already close to right.
+            # Where it is wrong is at short wavelengths, where flattening
+            # crushed a triangle and it spikes, and that is precisely where the
+            # relaxation earns its keep.
+            #
+            # So take each field where it is trustworthy: the relaxation above
+            # the crossover, the full-resolution prism height from there down to
+            # `detail_floor`, and nothing below that.
+            surf = Surface(flat, polys)
+            fine = self.prism_offsets[mask]
+            t_x = (self.detail / (2 * np.pi)) ** 2
+            t_min = (self.detail_floor / (2 * np.pi)) ** 2
+
+            coarse = _smooth_vectors(surf, relief, t_x)
+            band = (_smooth_vectors(surf, fine, t_min)
+                    - _smooth_vectors(surf, fine, t_x))
+            # The prism height is purely vertical, so `band` has nothing in its
+            # first two columns and the in-plane slip stays the relaxation's
+            # without needing to be put back by hand.
+            relief = coarse + band
+
         if self.polish:
             # Two things to take out. The obvious one is what is left of the
             # millimetre-scale noise. The less obvious one is that every level
@@ -1119,7 +1285,23 @@ class FlatSlab(object):
             # the coarse triangle edges. A shading normal is the derivative of
             # that field, so a crease is a visible discontinuity in the
             # lighting, and this is what turns it back into a surface.
-            relief = _smooth_vectors(Surface(flat, polys), relief, self.polish)
+            surf = Surface(flat, polys)
+            if self.anisotropy == 1.0:
+                relief = _smooth_vectors(surf, relief, self.polish)
+            else:
+                # Isotropic diffusion rounds a chain of bumps off; it cannot
+                # join them up. Orient it along the gyri instead -- see
+                # `_ridge_tensor` for where the direction comes from.
+                # nan_to_num because mean_curvature inverts the lumped mass
+                # matrix, and any vertex in no triangle at all has zero mass.
+                # Those sit outside `mask`, but the warning is real and a stray
+                # nan would spread through the gradient into every face.
+                curv = np.nan_to_num(
+                    Surface(self.wm, self.polys).mean_curvature())[mask]
+                tensor = _ridge_tensor(surf, curv, self.ridge_scale,
+                                       self.anisotropy)
+                relief = _smooth_vectors_aniso(surf, relief, self.polish,
+                                               tensor)
 
         if self.detrend:
             # Take out the whole-map swell. On S1 the band above 64 mm holds a
