@@ -192,7 +192,7 @@ class VolumeData(BrainData):
     @classmethod
     def random(cls, subject: str, xfmname: str,
                random_type: Literal['low_frequency', 'uniform']='low_frequency',
-               falloff_exponent: float=-2.0,
+               falloff_exponent: float=-1.25,
                **kwargs) -> Self:
         """
         Create a random-valued VolumeData for the given subject and xfmname.
@@ -419,7 +419,7 @@ class VertexData(BrainData):
 
     @classmethod
     def random(cls, subject: str, random_type: Literal['low_frequency', 'uniform']='low_frequency',
-               smooth_factor: float=20,
+               smooth_factor: float=40,
                **kwargs) -> Self:
         """
         Create a random-valued VertexData for the given subject.
@@ -728,7 +728,7 @@ def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="d
 
 # Make low frequency 3d data
 def _low_freq_noise(size: Union[int, tuple[int, int, int]],
-                     falloff_exponent: float=-2) -> npt.NDArray[np.float64]:
+                     falloff_exponent: float=-1.25) -> npt.NDArray[np.float64]:
     """Make low-frequency noise
     
     Parameters
