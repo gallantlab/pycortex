@@ -457,3 +457,19 @@ def test_nan_transparent_volume_raw_alpha_override():
     # Non-NaN positions should reflect the user's alpha
     assert not np.isnan(data[15, 50, 50])
     assert volume[0, 15, 50, 50, 3] > 0
+
+
+@pytest.mark.parametrize("random_type", ["uniform", "low_frequency"])
+def test_vertex_random(random_type):
+    data = cortex.Vertex.random(subj, random_type=random_type)
+    assert data.data.shape == (nverts,)
+    assert np.isclose(data.data.mean(), 0, atol=0.01)
+    assert np.isclose(data.data.std(), 1, atol=0.01)
+
+
+@pytest.mark.parametrize("random_type", ["uniform", "low_frequency"])
+def test_volume_random(random_type):
+    data = cortex.Volume.random(subj, xfmname, random_type=random_type)
+    assert data.data.shape == volshape
+    assert np.isclose(data.data.mean(), 0, atol=0.01)
+    assert np.isclose(data.data.std(), 1, atol=0.01)
