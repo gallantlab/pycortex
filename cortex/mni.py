@@ -29,6 +29,14 @@ def _save_fsl_xfm(filename, xfm):
 def _load_fsl_xfm(filename):
     return np.loadtxt(filename)
 
+def _mktemp(suffix=""):
+    # mkstemp (unlike deprecated mktemp) opens the file itself to avoid a
+    # race condition; close its fd immediately since only the path is
+    # needed here (flirt/nibabel write to it as an external process).
+    fd, path = tempfile.mkstemp(suffix)
+    os.close(fd)
+    return path
+
 def compute_mni_transform(subject, xfm,
                           template=default_template):
     """
@@ -49,7 +57,7 @@ def compute_mni_transform(subject, xfm,
         Transformation matrix from the space specified by `xfm` to MNI space.
     """
     # Set up some paths
-    anat_to_mni_xfm = tempfile.mktemp()
+    anat_to_mni_xfm = _mktemp()
 
     # Get anatomical image
     anat_filename = db.get_anat(subject, "brainmask").get_filename()
@@ -96,9 +104,9 @@ def transform_to_mni(volumedata, func_to_mni,
         `volumedata` after transformation to MNI space.
     """
     # Set up paths
-    func_nii = tempfile.mktemp(".nii.gz")
-    func_to_mni_xfm = tempfile.mktemp(".mat")
-    func_in_mni = tempfile.mktemp(".nii.gz")
+    func_nii = _mktemp(".nii.gz")
+    func_to_mni_xfm = _mktemp(".mat")
+    func_in_mni = _mktemp(".nii.gz")
 
     # Save out relevant things
     volumedata.save_nii(func_nii)
@@ -178,9 +186,9 @@ def transform_mni_to_subject(subject, xfm, volarray, func_to_mni,
 
     """
     # Set up paths
-    mnispace_func_nii = tempfile.mktemp(".nii.gz")
-    mni_to_func_xfm = tempfile.mktemp(".mat")
-    funcspace_nii = tempfile.mktemp(".nii.gz")
+    mnispace_func_nii = _mktemp(".nii.gz")
+    mni_to_func_xfm = _mktemp(".mat")
+    funcspace_nii = _mktemp(".nii.gz")
 
     # Save out relevant things
     affine = nibabel.load(template).affine
