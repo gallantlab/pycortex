@@ -93,9 +93,9 @@ Finally, selecting one surface type will give you two new functions: get, and sh
     In [6]: left, right = cortex.db.S1.surfaces.inflated.get()
     In [7]: cortex.db.S1.surfaces.fiducial.show()
 
-Subject names that are not valid python identifiers
+Subject names that are not valid Python identifiers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Attribute access only works for names that happen to be valid python
+Attribute access only works for names that happen to be valid Python
 identifiers, so a subject called ``S1-test`` cannot be reached as
 ``cortex.db.S1-test``. Every level of the tab interface also supports item
 access, which works for any name::

@@ -105,7 +105,7 @@ class SurfaceDB:
         except KeyError:
             raise KeyError("Subject {subj} has no surface '{name}'. Available "
                            "surfaces: {avail}".format(subj=self.subject, name=name,
-                                                      avail=', '.join(sorted(self.types.keys()))))
+                                                      avail=', '.join(sorted(self.types.keys())))) from None
 
     def __getattr__(self, attr: str):
         if attr.startswith('__') and attr.endswith('__'):
@@ -242,7 +242,7 @@ class Database:
         except KeyError:
             raise KeyError("Subject '{subj}' not found in filestore {store}. Available "
                            "subjects: {avail}".format(subj=subject, store=self.filestore,
-                                                      avail=', '.join(sorted(self.subjects.keys()))))
+                                                      avail=', '.join(sorted(self.subjects.keys())))) from None
         if subj._warning is not None:
             warnings.warn(subj._warning)
         return subj
