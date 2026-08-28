@@ -393,7 +393,7 @@ def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['
         image_data += [binascii.b2a_base64(fpc.read())]
 
     ## Create and save SVG file
-    roipack = utils.db.get_overlay(braindata.subject, overlay_file)
+    roipack = utils.db.get_overlay(braindata.subject, overlay_file, modify_svg_file=False)
     roipack.get_svg(fname, layers=layers, labels=with_labels, with_ims=image_data)
 
 
