@@ -550,7 +550,7 @@ def get_roi_verts(subject, roi=None, mask=False, overlay_file=None):
         after left hemisphere vertex numbers.
     """
     # Get overlays
-    svg = db.get_overlay(subject, overlay_file=overlay_file)
+    svg = db.get_overlay(subject, overlay_file=overlay_file, modify_svg_file=False)
 
     # Get flat surface so we can figure out which verts are in medial wall
     # or in cuts

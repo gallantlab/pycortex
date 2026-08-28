@@ -205,7 +205,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
         extents = _get_extents(fig)
     if height is None:
         height = _get_height(fig)        
-    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file, modify_svg_file=False)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('rois_paths')
     layer_kws.update(svg_kws)
@@ -250,7 +250,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_
     img : matplotlib.image.AxesImage
         matplotlib axes image object for plotted data
     """
-    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file, modify_svg_file=False)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
     layer_kws.update(svg_kws)
@@ -424,7 +424,7 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     if extents is None:
         extents = _get_extents(fig)
     pts_, polys_ = db.get_surf(dataview.subject, "flat", merge=True, nudge=True)
-    extra_svg = get_overlay(dataview.subject, svgfile, pts_, polys_)
+    extra_svg = get_overlay(dataview.subject, svgfile, pts_, polys_, modify_svg_file=False)
     svg_kws = _convert_svg_kwargs(kwargs)
     try:
         # Check for layer if it exists
@@ -569,7 +569,7 @@ def add_cutout(fig, name, dataview, layers=None, height=None, extents=None, over
         height = _get_height(fig)
     if extents is None:
         extents = _get_extents(fig)
-    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
+    svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file, modify_svg_file=False)
     # Set other cutouts to be invisible
     for co_name, co_shape in svgobject.cutouts.shapes.items():
         co_shape.visible = co_name == name
