@@ -30,6 +30,39 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install pycortex
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y inkscape --no-install-recommends
+          pip install --upgrade pip
+          pip install wheel setuptools numpy cython
+          pip install -e '.[headless]' --no-build-isolation
+          pip install -e . --no-build-isolation --group dev
+          python -c 'import cortex; print(cortex.__full_version__)'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps --only-shell chromium
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -43,8 +76,8 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
-
+          # Let Claude run the test suite without prompting. The steps above install
+          # the same environment as run_tests.yml, so `pytest` works out of the box
+          # and Claude never needs pip or a bare `python` here.
+          claude_args: |
+            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*)"
