@@ -11,33 +11,31 @@ Pycortex visualizes fMRI and other volumetric neuroimaging data on cortical surf
 The package has two Cython extensions (`cortex/formats.pyx` for surface mesh I/O, `cortex/openctm.pyx` wrapping the vendored `OpenCTM-1.0.3/` C library), so `import cortex` fails from a source checkout until they are built:
 
 ```bash
-pip install -U setuptools wheel numpy cython
-pip install -e '.[headless]' --no-build-isolation   # headless extra = playwright, for WebGL tests
-pip install -e . --no-build-isolation --group dev   # test + type-checking dependencies
-playwright install --only-shell chromium            # browser for headless WebGL tests
+uv sync --all-extras                              # headless extra (playwright) + dev group (test/type-checking deps) by default; builds the Cython extensions
+uv run playwright install --only-shell chromium   # browser for headless WebGL tests
 ```
 
-Versioning is by `setuptools-scm` from git tags (written to `cortex/_version.py`); never edit version files by hand. A new git worktree does not have the compiled extensions — rebuild, or copy `cortex/*.so` from an existing build.
+Versioning is by `setuptools-scm` from git tags (written to `cortex/_version.py`); never edit version files by hand. A new git worktree gets its own `.venv` — rerun `uv sync` there to (re)build the compiled extensions.
 
 ### Tests
 
 ```bash
-pytest                                              # full suite (pytest.ini: testpaths=cortex, coverage on)
-pytest cortex/tests/test_quickflat.py               # one file
-pytest cortex/tests/test_quickflat.py::test_make_figure  # one test
-pytest -p no:cacheprovider --no-cov -x cortex/tests/test_formats.py  # quick iteration without coverage
+uv run pytest                                              # full suite (pytest.ini: testpaths=cortex, coverage on)
+uv run pytest cortex/tests/test_quickflat.py               # one file
+uv run pytest cortex/tests/test_quickflat.py::test_make_figure  # one test
+uv run pytest -p no:cacheprovider --no-cov -x cortex/tests/test_formats.py  # quick iteration without coverage
 ```
 
 - `pytest.ini` sets a 240 s per-test timeout (via `pytest-timeout`) because headless browser sessions can hang; override per-test with `@pytest.mark.timeout(N)`.
 - Tests self-skip based on available tools: Inkscape (quickflat/dataset overlay tests), Playwright Chromium (`cortex/tests/testing_utils.py:has_playwright` — WebGL headless tests), and FreeSurfer's `mri_surf2surf`.
 - Nearly all tests use the stub subject `S1` bundled in `filestore/db/S1` (transform `fullhead`, 304380 vertices, volume shape `(31, 100, 100)`).
-- CI (`.github/workflows/run_tests.yml`) runs `pytest --cov=./` on a matrix of Python versions, with Inkscape and Playwright Chromium installed. The only enforced lint is codespell (config in `pyproject.toml`). mypy is configured in `pyproject.toml` and installed with the dev group but not run in CI.
+- CI (`.github/workflows/run_tests.yml`) runs `pytest --cov=./` on a matrix of Python versions, with Inkscape and Playwright Chromium installed. The only enforced lint is codespell (config in `pyproject.toml`). mypy is configured in `pyproject.toml` and installed with the dev group but not run in CI — new Python code should still carry type annotations.
 
 ### Docs
 
 ```bash
-pip install sphinx_gallery numpydoc
-cd docs && make html    # gallery examples need Inkscape and Playwright too
+uv pip install sphinx_gallery numpydoc   # not (yet) a dependency group
+cd docs && uv run make html              # gallery examples need Inkscape and Playwright too
 ```
 
 ## Architecture
