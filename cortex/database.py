@@ -740,6 +740,14 @@ class Database:
         return coords
 
     def get_cache(self, subject: str) -> str:
+        """Get (creating if necessary) the cache directory for a subject.
+
+        By default, this is a "cache" subdirectory inside the subject's
+        filestore entry. This can be overridden by setting the ``cache``
+        option under ``[basic]`` in the pycortex config file (see
+        :file:`cortex/defaults.cfg`), in which case the cache directory
+        becomes ``{cache}/{subject}/cache``.
+        """
         try:
             self.auxfile.get_surf(subject, "fiducial")  # type: ignore[union-attr]
             #generate the hashed name of the filename and subject as the directory name
