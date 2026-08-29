@@ -80,4 +80,4 @@ jobs:
           # the same environment as run_tests.yml, so `pytest` works out of the box
           # and Claude never needs pip or a bare `python` here.
           claude_args: |
-            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*)"
+            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv:*)"
