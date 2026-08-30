@@ -18,6 +18,14 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    # Cap runaway sessions: without this the job could run for the 6-hour
+    # default, burning runner minutes and API usage.
+    timeout-minutes: 30
+    # One Claude run at a time per issue/PR; extra @claude mentions queue up
+    # instead of running (and pushing) concurrently.
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
     env:
       # Make `uv pip` target the interpreter set up by actions/setup-python
       # instead of looking for a project virtualenv.
@@ -36,6 +44,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Don't leave GITHUB_TOKEN in .git/config, where anything pytest
+          # executes (e.g. a PR branch's conftest.py) could read it. The
+          # Claude action authenticates git with its own app token.
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -43,11 +55,10 @@ jobs:
           python-version: "3.12"
 
       # setup-uv publishes no floating major tag past v7, so pin the exact
-      # release by commit SHA: this workflow runs with CLAUDE_CODE_OAUTH_TOKEN
-      # in scope, and a mutable tag on a third-party action is a supply-chain
-      # hole. Caching is on by default ("auto") for GitHub-hosted runners.
+      # release tag; dependabot keeps it updated. Caching is on by default
+      # ("auto") for GitHub-hosted runners.
       - name: Set up uv
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        uses: astral-sh/setup-uv@v10.0.1
 
       - uses: actions/cache@v6
         with:
@@ -102,5 +113,10 @@ jobs:
           # `uv run --with <pkg>` / `uv pip install` pull in arbitrary code first.
           # Only spell out the specific subcommands Claude needs, each with the
           # program to execute already fixed by the prefix.
+          #
+          # WebFetch/WebSearch are disallowed outright: issue and PR text is
+          # untrusted input, and network fetches are the easiest exfiltration
+          # channel for a prompt-injected session.
           claude_args: |
-            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv run pytest:*),Bash(uv run python -m pytest:*),Bash(uv run mypy:*),Bash(uv pip list:*),Bash(uv pip show:*),Bash(uv --version)"
+            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv run pytest:*),Bash(uv run python -m pytest:*),Bash(uv pip list:*),Bash(uv pip show:*),Bash(uv --version)"
+            --disallowed-tools "WebFetch,WebSearch"
