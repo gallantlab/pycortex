@@ -18,6 +18,13 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    env:
+      # Make `uv pip` target the interpreter set up by actions/setup-python
+      # instead of looking for a project virtualenv.
+      UV_SYSTEM_PYTHON: 1
+      # `uv run` would otherwise resolve and build the project from scratch
+      # (there is no uv.lock), discarding the environment installed below.
+      UV_NO_SYNC: 1
     permissions:
       contents: read
       pull-requests: read
@@ -35,6 +42,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      # setup-uv publishes no floating major tag past v7, so pin the exact
+      # release by commit SHA: this workflow runs with CLAUDE_CODE_OAUTH_TOKEN
+      # in scope, and a mutable tag on a third-party action is a supply-chain
+      # hole. Caching is on by default ("auto") for GitHub-hosted runners.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+
       - uses: actions/cache@v6
         with:
           path: ~/.cache/pip
@@ -51,6 +65,9 @@ jobs:
           pip install -e '.[headless]' --no-build-isolation
           pip install -e . --no-build-isolation --group dev
           python -c 'import cortex; print(cortex.__full_version__)'
+          # Combined with UV_NO_SYNC, this makes `uv run <cmd>` execute inside the
+          # environment installed above rather than a throwaway project venv.
+          python -c 'import sys; print(f"UV_PROJECT_ENVIRONMENT={sys.prefix}")' >> "$GITHUB_ENV"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v6
@@ -79,5 +96,11 @@ jobs:
           # Let Claude run the test suite without prompting. The steps above install
           # the same environment as run_tests.yml, so `pytest` works out of the box
           # and Claude never needs pip or a bare `python` here.
+          #
+          # Keep this list narrow. A bare `Bash(uv:*)` is equivalent to allowing
+          # arbitrary shell: `uv run <anything>` executes any command, and
+          # `uv run --with <pkg>` / `uv pip install` pull in arbitrary code first.
+          # Only spell out the specific subcommands Claude needs, each with the
+          # program to execute already fixed by the prefix.
           claude_args: |
-            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv:*)"
+            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv run pytest:*),Bash(uv run python -m pytest:*),Bash(uv run mypy:*),Bash(uv pip list:*),Bash(uv pip show:*),Bash(uv --version)"
