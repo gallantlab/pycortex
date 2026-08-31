@@ -63,6 +63,47 @@ def make_dataview(dtype_name):
         raise ValueError(f"Unknown dtype_name: {dtype_name}")
 
 
+def _assert_no_browser_failures(handle):
+    """Fail on uncaught JS exceptions, or on WebGL reporting its own failure.
+
+    ``[pageerror]`` covers uncaught exceptions; ``filter_webgl_failures`` covers
+    a shader that compiled but failed to *link*, which three.js reports only on
+    console.error, so nothing raises and the render comes back blank.
+
+    ``browser_errors`` is current to within ``EVENT_PUMP_INTERVAL``, so it does
+    not matter whether this is called inside the ``with`` block.
+
+    Not the only defence: a driver that silently links an over-allocating shader
+    reports nothing, which is what ``_assert_not_blank`` is for. Neither covers
+    a shader variant no test renders.
+    """
+    from cortex.export.headless import filter_webgl_failures
+
+    errors = handle._pw_thread.browser_errors
+    pageerrors = [e for e in errors if "[pageerror]" in e]
+    assert not pageerrors, f"JS errors: {pageerrors}"
+    failures = filter_webgl_failures(errors)
+    assert not failures, f"WebGL reported a failure: {failures}"
+
+
+def _assert_not_blank(path):
+    """Fail if the render came out as a single flat color.
+
+    A shader that fails to link, or geometry that never reached the GPU, leaves
+    only the background -- otherwise indistinguishable from success, since the
+    png is written and nothing raises.
+    """
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).reshape(-1, 3).astype(np.uint32)
+    # Packed to one int per pixel; np.unique on a structured view costs ~16x more.
+    ncolors = len(np.unique((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]))
+    assert ncolors > 10, (
+        f"{path} has only {ncolors} distinct color(s); the brain was probably "
+        "never drawn."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Group 1: Data type smoke tests
 # ---------------------------------------------------------------------------
@@ -70,7 +111,22 @@ def make_dataview(dtype_name):
 
 @pytest.mark.parametrize(
     "dtype_name",
-    ["Volume", "Vertex", "VolumeRGB", "VertexRGB", "Volume2D", "Vertex2D"],
+    [
+        "Volume",
+        "Vertex",
+        "VolumeRGB",
+        "VertexRGB",
+        "Volume2D",
+        # gh-714: the Vertex2D flatmap shader fails to link, so the render comes
+        # back blank and three.js reports it on console.error. Strict, so a
+        # render that starts succeeding reports an XPASS.
+        pytest.param(
+            "Vertex2D",
+            marks=pytest.mark.xfail(
+                strict=True, reason="gh-714: Vertex2D shader fails to link"
+            ),
+        ),
+    ],
 )
 def test_datatype_renders(dtype_name, tmp_path):
     """Each data type should render in the headless viewer without errors."""
@@ -81,9 +137,10 @@ def test_datatype_renders(dtype_name, tmp_path):
         wait_for_file(outfile)
         assert os.path.isfile(outfile)
         assert os.path.getsize(outfile) > 0
-        # No uncaught JS errors
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+    # Browser errors first, since one may explain a blank file.
+    _assert_no_browser_failures(handle)
+    _assert_not_blank(outfile)
 
 
 # ---------------------------------------------------------------------------
@@ -678,6 +735,8 @@ def _addData_viewer():
     vol1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol1, viewer_params={}) as handle:
         yield handle
+    # A final check after teardown, which flushes anything still queued.
+    _assert_no_browser_failures(handle)
 
 
 def _served_metadata(handle):
@@ -735,8 +794,7 @@ class TestAddData:
         handle.addData(second=vol2)
         time.sleep(2)
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
         # "data" is the name webshow gives to a bare Dataview.
         assert set(handle.dataviews.attrs) == {"data", "second"}
@@ -791,8 +849,7 @@ class TestAddData:
         assert len(metadata["images"]) == 2
         assert metadata["views"][1]["data"][0] not in previous_brains
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
     def test_rejects_unknown_subject(self, _addData_viewer):
         """Surfaces cannot be added to a running viewer, so neither can subjects."""
@@ -838,6 +895,5 @@ def test_addData_vertex_data(tmp_path):
         assert "mosaic" not in metadata["data"][vertex_name]
         assert _fetch(handle, metadata["images"][vertex_name][0])[1:6] == b"NUMPY"
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
