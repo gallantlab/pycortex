@@ -83,6 +83,7 @@ def test_plot_panels_headless():
         assert os.path.isfile(save_name)
         assert os.path.getsize(save_name) > 0
 
+
 def test_filter_webgl_failures_keeps_only_real_failures():
     """Only genuine WebGL failures match; ordinary console noise does not.
 

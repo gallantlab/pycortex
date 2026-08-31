@@ -76,6 +76,11 @@ def _assert_no_browser_failures(handle):
     Not the only defence: a driver that silently links an over-allocating shader
     reports nothing, which is what ``_assert_not_blank`` is for. Neither covers
     a shader variant no test renders.
+
+    Known limitation: ``browser_errors`` is cumulative and never cleared, so
+    with a handle shared across tests (``TestAddData``) one transient failure
+    fails every later test in the class too. Misattributed, not missed; a
+    watermark index from the previous call would isolate it.
     """
     from cortex.export.headless import filter_webgl_failures
 
