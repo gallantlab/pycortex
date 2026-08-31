@@ -12,7 +12,23 @@ from ..database import db
 from ..options import config
 
 
-def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **kwargs):
+def _rgba_nan_mask(raw, shape):
+    """Boolean NaN mask (or None) stored by a raw conversion (``Volume.raw``,
+    ``Volume2D.raw``, ...), in the layout of the uint8 RGBA representation
+    ``shape`` (time axis included). None for native RGB dataviews: there NaN
+    has become alpha 0 and is indistinguishable from intentional transparency,
+    exactly as in the WebGL viewer's RGB textures.
+    """
+    stored = getattr(raw, "_nan_mask", None)
+    if stored is None:
+        return None
+    stored = np.asarray(stored, dtype=bool)
+    if stored.size != int(np.prod(shape)):
+        return None
+    return stored.reshape(shape)
+
+
+def make_flatmap_image(braindata, height=1024, recache=False, nanmean=True, **kwargs):
     """Generate flatmap image from volumetric brain data
 
     This 
@@ -27,8 +43,14 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
     recache : boolean
         Whether or not to recache intermediate files. Takes longer to plot this way, potentially
         resolves some errors. Useful if you've made changes to the alignment.
-    nanmean : bool, optional (default = False)
-        If True, NaNs in the data will be ignored when averaging across layers.
+    nanmean : bool, optional (default = True)
+        If True, NaN voxels are ignored when averaging across cortical
+        thickness (mean([1, NaN]) = 1); if False, any NaN voxel contributing
+        to a pixel makes it NaN / transparent. For 2D dataviews the NaN mask
+        of the conversion to RGBA is used. For RGB dataviews NaN has already
+        become alpha 0, so fully transparent voxels count as missing: they
+        are skipped by ``nanmean=True`` and alpha-weighted otherwise (the
+        same rule as the WebGL viewer's RGB textures).
     kwargs : idk
         idk
 
@@ -49,8 +71,10 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
                                **kwargs)
         
         if isinstance(braindata, dataset.Vertex2D):
-            data = braindata.raw.vertices
+            raw = braindata.raw
+            data = raw.vertices
         else:
+            raw = braindata
             data = braindata.vertices
     else:
         pixmap = get_flatcache(braindata.subject,
@@ -59,8 +83,10 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
                                recache=recache,
                                **kwargs)
         if isinstance(braindata, dataset.Volume2D):
-            data = braindata.raw.volume
+            raw = braindata.raw
+            data = raw.volume
         else:
+            raw = braindata
             data = braindata.volume
 
     if data.shape[0] > 1:
@@ -70,8 +96,43 @@ def make_flatmap_image(braindata, height=1024, recache=False, nanmean=False, **k
         # Convert data to float to avoid image artifacts
         data = data.astype(float)
     if data.dtype == np.uint8:
+        # RGBA data. Average across cortical thickness in *premultiplied*
+        # space, as the WebGL viewer does (textures are uploaded with
+        # premultiplyAlpha=true), then un-premultiply. Averaging straight RGBA
+        # lets transparent voxels (NaN, alpha=0) bleed their (black) color
+        # into neighbouring pixels, producing dark halos in quickflat only.
+        rgba = data.reshape(-1, 4).astype(np.float64) / 255.
+        alpha = rgba[:, 3:4]
+        premult = np.concatenate([rgba[:, :3] * alpha, alpha], axis=1)
+        avg = np.asarray(pixmap.dot(premult))
+
+        # NaN handling (``nanmean``), as in the float branch below. NaN has
+        # already become alpha 0 in the RGBA conversion, so the voxel validity
+        # comes from the NaN mask when the conversion provides one (2D views,
+        # Volume.raw) and otherwise -- native RGB, like the WebGL RGB
+        # textures -- from "fully transparent".
+        nan_mask = _rgba_nan_mask(raw, data.shape[:-1])
+        if nan_mask is not None:
+            valid = ~nan_mask.ravel()
+        else:
+            valid = alpha[:, 0] > 0
+        w_valid = np.asarray(pixmap.dot(valid.astype(np.float64))).ravel()
+        if nanmean:
+            # mean over the valid voxels only: mean([c, NaN]) = c
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                avg = np.where(w_valid[:, None] > 0, avg / w_valid[:, None], 0.)
+        elif nan_mask is not None:
+            # any NaN voxel contributing to the pixel hides it
+            w_nan = np.asarray(pixmap.dot((~valid).astype(np.float64))).ravel()
+            avg[w_nan > 0] = 0.
+
+        out = np.zeros_like(avg)
+        opaque = avg[:, 3] > 0
+        out[opaque, :3] = avg[opaque, :3] / avg[opaque, 3:4]
+        out[:, 3] = avg[:, 3]
         img = np.zeros(mask.shape+(4,), dtype=np.uint8)
-        img[mask] = pixmap * data.reshape(-1, 4)
+        img[mask] = np.round(np.clip(out, 0, 1) * 255).astype(np.uint8)
         img = img.transpose(1,0,2)[::-1]
         # Make img a c-contiguous array or pil will complain when saving it
         if not img.flags["C_CONTIGUOUS"]:

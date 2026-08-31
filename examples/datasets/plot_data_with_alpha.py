@@ -26,6 +26,15 @@ pycortex supports two patterns for this:
    per-voxel/per-vertex array (or a :class:`Volume`/:class:`Vertex`)
    in ``[0, 1]``.
 
+3. **2D data with an alpha map** -- :class:`Volume2D` / :class:`Vertex2D`
+   also accept ``alpha=``, which is multiplied into the colormap alpha. This
+   lets you combine any 2D colormap (e.g. a covariance map) with a separate
+   opacity map.
+
+In every case, NaN anywhere at a voxel/vertex (in the data, in either
+dimension of a 2D view, in any RGB channel, or in the alpha map itself)
+renders fully transparent, so the curvature shows through.
+
 Below, we illustrate both patterns with a synthetic "model accuracy"
 mask -- a 3D Gaussian bump for the volume case and a vertex-distance
 falloff for the surface case -- so cortex near the bump centre stays
@@ -179,15 +188,48 @@ plt.suptitle("VertexRGB(alpha=accuracy): RGB channels masked by 'accuracy'")
 plt.show()
 
 # %%
+# Pattern 3: 2D data + a separate alpha map via Volume2D(alpha=...)
+# -----------------------------------------------------------------
+#
+# A 2D colormap can encode two quantities (here a covariance-style map of
+# ``data`` against ``accuracy``) while a third map controls opacity. The
+# ``alpha=`` map is multiplied into the colormap's own alpha channel.
+# Here we fade out the inferior part of the volume. NaNs in the data are
+# always transparent, whatever ``alpha`` says: the posterior slab below is
+# NaN and renders as bare curvature.
+data_vol_nan = data_vol.copy()
+data_vol_nan[:, :25, :] = np.nan  # posterior slab: undefined
+alpha_inferior_fade = np.clip(zz / 30.0, 0, 1)  # 0 at the bottom, 1 at the top
+
+v2d_alpha = cortex.Volume2D(
+    data_vol_nan,
+    accuracy_vol,
+    subject,
+    xfm,
+    cmap="RdBu_covar",
+    vmin=-1,
+    vmax=1,
+    vmin2=0,
+    vmax2=1,
+    alpha=alpha_inferior_fade,
+)
+cortex.quickshow(v2d_alpha, with_colorbar=True, with_curvature=True)
+plt.suptitle("Volume2D(alpha=...): 2D colormap, separate opacity, NaN slab")
+plt.show()
+
+# %%
 # Notes
 # -----
 #
-# * Both patterns produce the same composite formula at the pixel level:
+# * All patterns produce the same composite formula at the pixel level:
 #   ``out = alpha * data + (1 - alpha) * curvature_underlay``. Choose
-#   based on what the "data" is: scalar (use Pattern 1) or RGB (use
-#   Pattern 2).
+#   based on what the "data" is: scalar (use Pattern 1), RGB (use
+#   Pattern 2) or two quantities plus an opacity (use Pattern 3).
+# * NaN anywhere at a voxel/vertex -- data, either 2D dimension, any RGB
+#   channel, or the alpha map -- is rendered fully transparent.
 # * The same objects work in the WebGL viewer:
-#   ``cortex.webgl.show(v2d)`` etc.; opacity is honored identically.
+#   ``cortex.webgl.show(v2d)`` etc.; NaN and opacity are honored
+#   identically, also when switching between datasets.
 # * The deprecated ``Vertex.blend_curvature(alpha)`` helper produced a
 #   pre-blended :class:`VertexRGB` that lost ``cmap``/``vmin``/``vmax``
 #   editability. The Pattern 1 :class:`Vertex2D` route above is the

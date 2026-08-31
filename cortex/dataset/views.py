@@ -132,9 +132,16 @@ def _from_hdf_view(
             h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, subject=subject, **kwargs
         )
 
-    if len(data) == 2:
+    if len(data) in (2, 3):
         dim1 = _from_hdf_data(h5, data[0], xfmname=xfmname[0], subject=subject)
         dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1], subject=subject)
+        # Optional third entry: the alpha map of a 2D view (same xfm as dim1)
+        alpha = None
+        if len(data) == 3 and data[2] is not None:
+            # stored normalized to [0, 1] by Dataview2D._write_hdf
+            alpha = _from_hdf_data(
+                h5, data[2], xfmname=xfmname[0], subject=subject, vmin=0, vmax=1
+            )
         cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
         return cls(
             dim1,
@@ -144,6 +151,7 @@ def _from_hdf_view(
             vmax=vmax[0],
             vmax2=vmax[1],
             subject=subject,
+            alpha=alpha,
             **kwargs,
         )
     elif len(data) == 4:
