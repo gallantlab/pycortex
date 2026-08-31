@@ -1324,6 +1324,14 @@ var mriview = (function(module) {
             hide_labels: {action:hidelabels, key:'l', hidden:true, help:'Toggle labels'},
         });
 
+        // optional guided tour (cortex.webgl.make_static(tour=True))
+        if (typeof viewopts !== "undefined" && viewopts.tour && typeof Tour !== "undefined") {
+            this.tour = new Tour(this);
+            this.ui.add({
+                toggle_tour: {action: this.tour.toggle.bind(this.tour), key: 'o', hidden: true, help: 'Toggle tour'},
+            });
+        }
+
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
