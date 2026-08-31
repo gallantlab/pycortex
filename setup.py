@@ -141,6 +141,10 @@ setup(name=DISTNAME,
       # Don't use `extras_require` here. Put them in pyproject.toml .
       cmdclass=dict(install=my_install),
       include_package_data=True,
+      # Exclude reference renders for the visual-regression test from the wheel.
+      # They are still included in the source tarball by MANIFEST.in.
+      exclude_package_data={'cortex.tests': ['reference_images/*',
+                                             'reference_images/*/*']},
       classifiers=[
           'Development Status :: 6 - Mature',
           'Intended Audience :: Science/Research',

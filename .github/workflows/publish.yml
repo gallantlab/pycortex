@@ -15,6 +15,10 @@ jobs:
     - uses: actions/checkout@v7
       with:
         fetch-depth: 0  # Required for setuptools-scm to get version from tags
+        # MANIFEST.in sweeps the LFS-tracked reference images into the sdist;
+        # without this it would ship pointer stubs instead, which twine check
+        # does not catch.
+        lfs: true
 
     - name: Set up Python
       uses: actions/setup-python@v7
