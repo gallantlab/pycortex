@@ -12,12 +12,34 @@ on:
 
 jobs:
   claude:
+    # The author_association checks are a cheap pre-filter so drive-by
+    # @claude mentions from non-members fail here instead of after the
+    # multi-minute environment setup. They are not the security boundary:
+    # claude-code-action independently verifies the actor has write access
+    # before running Claude. "assigned" issue events skip the filter because
+    # assigning already requires triage access, and the issue author (whose
+    # association is checked) may be an outside reporter.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && (github.event.action == 'assigned' || contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)))
     runs-on: ubuntu-latest
+    # Cap runaway sessions: without this the job could run for the 6-hour
+    # default, burning runner minutes and API usage.
+    timeout-minutes: 30
+    # One Claude run at a time per issue/PR; extra @claude mentions queue up
+    # instead of running (and pushing) concurrently.
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+    env:
+      # Make `uv pip` target the interpreter set up by actions/setup-python
+      # instead of looking for a project virtualenv.
+      UV_SYSTEM_PYTHON: 1
+      # `uv run` would otherwise resolve and build the project from scratch
+      # (there is no uv.lock), discarding the environment installed below.
+      UV_NO_SYNC: 1
     permissions:
       contents: read
       pull-requests: read
@@ -29,11 +51,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Don't leave GITHUB_TOKEN in .git/config, where anything pytest
+          # executes (e.g. a PR branch's conftest.py) could read it. The
+          # Claude action authenticates git with its own app token.
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+
+      # setup-uv publishes no floating major tag past v7, so pin the exact
+      # release tag; dependabot keeps it updated. Caching is on by default
+      # ("auto") for GitHub-hosted runners.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.0.1
 
       - uses: actions/cache@v6
         with:
@@ -51,6 +83,9 @@ jobs:
           pip install -e '.[headless]' --no-build-isolation
           pip install -e . --no-build-isolation --group dev
           python -c 'import cortex; print(cortex.__full_version__)'
+          # Combined with UV_NO_SYNC, this makes `uv run <cmd>` execute inside the
+          # environment installed above rather than a throwaway project venv.
+          python -c 'import sys; print(f"UV_PROJECT_ENVIRONMENT={sys.prefix}")' >> "$GITHUB_ENV"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v6
@@ -79,5 +114,16 @@ jobs:
           # Let Claude run the test suite without prompting. The steps above install
           # the same environment as run_tests.yml, so `pytest` works out of the box
           # and Claude never needs pip or a bare `python` here.
+          #
+          # Keep this list narrow. A bare `Bash(uv:*)` is equivalent to allowing
+          # arbitrary shell: `uv run <anything>` executes any command, and
+          # `uv run --with <pkg>` / `uv pip install` pull in arbitrary code first.
+          # Only spell out the specific subcommands Claude needs, each with the
+          # program to execute already fixed by the prefix.
+          #
+          # WebFetch/WebSearch are disallowed outright: issue and PR text is
+          # untrusted input, and network fetches are the easiest exfiltration
+          # channel for a prompt-injected session.
           claude_args: |
-            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv:*)"
+            --allowed-tools "Bash(pytest:*),Bash(python -m pytest:*),Bash(uv run pytest:*),Bash(uv run python -m pytest:*),Bash(uv pip list:*),Bash(uv pip show:*),Bash(uv --version)"
+            --disallowed-tools "WebFetch,WebSearch"
