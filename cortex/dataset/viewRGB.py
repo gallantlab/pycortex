@@ -103,6 +103,20 @@ class DataviewRGB(Dataview):
                 )
 
     def uniques(self, collapse=False):
+        """Yield the underlying Dataview channels that make up this RGB view.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            If True, yield this RGB view itself as a single unit instead of
+            its individual channels. Default False.
+
+        Returns
+        -------
+        generator
+            Yields `self` if `collapse`, otherwise `self.red`, `self.green`,
+            `self.blue`, and `self.alpha` (if set).
+        """
         if collapse:
             yield self
         else:
@@ -591,6 +605,21 @@ class VolumeRGB(DataviewRGB):
         self._alpha = alpha
 
     def to_json(self, simple=False):
+        """Serialize this RGB volume to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary suitable for a quick
+            listing rather than the full webgl payload. Default False.
+
+        Returns
+        -------
+        dict
+            Serialized view data, including the transform matrix (when not
+            `simple`) needed to place the RGB volume in the correct space.
+        """
         sdict = super().to_json(simple=simple)
         if simple:
             sdict["shape"] = self.red.shape
@@ -894,6 +923,21 @@ class VertexRGB(DataviewRGB):
         return np.array(verts).transpose([1, 2, 0])
 
     def to_json(self, simple=False):
+        """Serialize this RGB vertex view to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary (hemisphere split point
+            and frame count) rather than the full webgl payload. Default
+            False.
+
+        Returns
+        -------
+        dict
+            Serialized view data.
+        """
         sdict = super().to_json(simple=simple)
 
         if simple:
