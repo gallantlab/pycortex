@@ -1,19 +1,18 @@
+import binascii
 import io
 import os
 import tempfile
-import binascii
+from typing import IO, Optional, Sequence, Union
+
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Union, IO, Sequence
-
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.typing import ColorType
 
-from . import composite
 from .. import dataset, utils
+from . import composite
 from .utils import make_flatmap_image
-
 
 default_colorbar_locations = {
     'left': (.0, .07, .2, .04),
@@ -447,12 +446,12 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
                vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     """Create a movie of an 4D data set"""
     raise NotImplementedError
-    import sys
+    import multiprocessing as mp
     import shlex
     import shutil
-    import tempfile
     import subprocess as sp
-    import multiprocessing as mp
+    import sys
+    import tempfile
 
     from scipy.interpolate import interp1d
 
