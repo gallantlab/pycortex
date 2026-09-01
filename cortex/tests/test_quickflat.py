@@ -2,12 +2,24 @@ import cortex
 import numpy as np
 import tempfile
 import pytest
+from matplotlib.figure import Figure
 
 from cortex import dataset
+import cortex.quickflat.utils  # for ty
+from cortex.svgoverlay import svgns
 from cortex.testing_utils import inkscapePath
 from cortex.webgl.data import Package
 
 no_inkscape = inkscapePath() is None
+
+
+def random_volume(with_nan=False, **kwargs):
+    orig_vol = cortex.Volume.random("S1", "fullhead", **kwargs)
+    data = orig_vol.data.copy()
+    if with_nan:
+        # set 50% of the values in the dataset to NaN
+        data[np.random.rand(*data.shape) > 0.5] = np.nan
+    return orig_vol.copy(data=data)
 
 
 @pytest.mark.skipif(no_inkscape, reason='Inkscape required')
@@ -119,4 +131,336 @@ def test_make_flatmap_image_vertexrgb_alpha_unchanged():
     assert bright_red_pixels.size > 0, (
         "VertexRGB.vertices appears to be premultiplied -- the matplotlib "
         "path will double-attenuate. The fix should live in webgl/data.py."
+    )
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_quickflat_curvature():
+    vol = random_volume(with_nan=True, cmap="hot", vmin=0, vmax=1)
+    cortex.quickflat.make_figure(vol, with_curvature=True)
+
+
+# Tests for remaining make_figure arguments
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_recache():
+    """Test recache parameter"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+    fig = cortex.quickflat.make_figure(view, recache=False)
+
+    # recache=True takes longer but should still work
+    fig = cortex.quickflat.make_figure(view, recache=True)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_pixelwise_and_thick():
+    """Test pixelwise and thick parameters"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test pixelwise=True with different thick values
+    for thick in [1, 4, 8, 16, 32]:
+        fig = cortex.quickflat.make_figure(view, pixelwise=True, thick=thick)
+
+    # Test pixelwise=False
+    fig = cortex.quickflat.make_figure(view, pixelwise=False)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_sampler():
+    """Test sampler parameter with different sampling methods"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    for sampler in ["nearest", "trilinear"]:
+        fig = cortex.quickflat.make_figure(view, sampler=sampler)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_height_and_dpi():
+    """Test height and dpi parameters"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test smaller height for faster rendering
+    height, dpi = 512, 100
+    fig = cortex.quickflat.make_figure(view, height=height, dpi=dpi)
+    # Check the resulting figure size in inches (height in pixels / dpi)
+    expected_height_inch = height / dpi
+    assert np.isclose(fig.get_figheight(), expected_height_inch, atol=0.1)
+
+    # Test larger height
+    height, dpi = 1024, 150
+    fig = cortex.quickflat.make_figure(view, height=height, dpi=dpi)
+    expected_height_inch = height / dpi
+    assert np.isclose(fig.get_figheight(), expected_height_inch, atol=0.1)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_depth():
+    """Test depth parameter for sampling different cortical depths"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test different depth values (0 = gray/white matter, 1 = pial surface)
+    for depth in [0.0, 0.5, 1.0]:
+        fig = cortex.quickflat.make_figure(view, depth=depth)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_display_flags():
+    """Test boolean display flags: with_rois, with_sulci, with_labels, with_colorbar"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test with_rois
+    fig = cortex.quickflat.make_figure(view, with_rois=True)
+    fig = cortex.quickflat.make_figure(view, with_rois=False)
+
+    # Test with_sulci
+    fig = cortex.quickflat.make_figure(view, with_sulci=False)
+    fig = cortex.quickflat.make_figure(view, with_sulci=True)
+
+    # Test with_labels
+    fig = cortex.quickflat.make_figure(view, with_labels=False)
+    fig = cortex.quickflat.make_figure(view, with_labels=True)
+
+    # Test with_colorbar
+    fig = cortex.quickflat.make_figure(view, with_colorbar=False)
+    fig = cortex.quickflat.make_figure(view, with_colorbar=True)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_with_dropout():
+    """Test with_dropout parameter with bool and float values"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test with_dropout with boolean values
+    fig = cortex.quickflat.make_figure(view, with_dropout=False)
+    fig = cortex.quickflat.make_figure(view, with_dropout=True)
+
+    # Test with_dropout with float value
+    fig = cortex.quickflat.make_figure(view, with_dropout=10.0)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+@pytest.mark.slow
+@pytest.mark.timeout(600)  # override with longer timeout
+def test_with_connected_vertices():
+    """Test with_connected_vertices parameter"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    fig = cortex.quickflat.make_figure(view, with_connected_vertices=False)
+
+    # Note: with_connected_vertices=True is more computationally expensive:
+    # db.get_shared_voxels() runs an A* search per crossing vertex pair to build
+    # its cache (cortex/utils.py's get_shared_voxels/shortest_path), and that
+    # cache doesn't exist yet on a clean CI checkout. The default 240s suite-wide
+    # timeout (pytest.ini) isn't enough on CI hardware for this first-run,
+    # cold-cache computation.
+    fig = cortex.quickflat.make_figure(view, with_connected_vertices=True)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_roi_styling_parameters():
+    """Test ROI styling parameters: linewidth, linecolor, roifill, shadow, labelsize, labelcolor
+
+    See test_roi_styling_parameters_via_add_sulci_and_add_custom
+    for the same kwargs applied through add_sulci/add_custom instead.
+    """
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test linewidth
+    fig = cortex.quickflat.make_figure(view, with_rois=True, linewidth=2)
+
+    # Test linecolor (RGB/RGBA tuple)
+    fig = cortex.quickflat.make_figure(view, with_rois=True, linecolor=(1.0, 0.0, 0.0))
+
+    # Test roifill (RGB/RGBA tuple)
+    fig = cortex.quickflat.make_figure(
+        view, with_rois=True, roifill=(1.0, 0.0, 0.0, 0.5)
+    )
+
+    # Test shadow
+    fig = cortex.quickflat.make_figure(view, with_rois=True, shadow=1)
+
+    # Test labelsize
+    fig = cortex.quickflat.make_figure(view, with_rois=True, labelsize="10pt")
+
+    # Test labelcolor
+    fig = cortex.quickflat.make_figure(view, with_rois=True, labelcolor=(0.0, 0.0, 0.0))
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_roi_styling_parameters_via_add_sulci_and_add_custom():
+    """The same styling kwargs from test_roi_styling_parameters should also work
+    through add_sulci and add_custom, not just add_rois.
+    """
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+    overlays_path = cortex.db.get_paths("S1")["overlays"]
+
+    styling_kwargs = [
+        dict(linewidth=2),
+        dict(linecolor=(1.0, 0.0, 0.0)),
+        dict(roifill=(1.0, 0.0, 0.0, 0.5)),
+        dict(shadow=1),
+        dict(labelsize="10pt"),
+        dict(labelcolor=(0.0, 0.0, 0.0)),
+    ]
+    for kwargs in styling_kwargs:
+        fig = cortex.quickflat.make_figure(view, with_sulci=True, **kwargs)
+        fig = cortex.quickflat.make_figure(
+            view, extra_disp=(overlays_path, "rois"), **kwargs
+        )
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_shadow_mechanism():
+    """shadow should visibly and exactly control the svg's own drop-shadow filter.
+
+    Three checks that a "does it crash" test would not have caught: the years-long
+    regression where shadow was silently a no-op (see git history of
+    _convert_svg_kwargs / feGaussianBlur) would have passed a crash-only test.
+    """
+    # 1. shadow should produce a real pixel difference, not just avoid crashing.
+    im_small_shadow = cortex.db.get_overlay("S1").get_texture("rois", 256, shadow=0.5)
+    im_large_shadow = cortex.db.get_overlay("S1").get_texture("rois", 256, shadow=20)
+    assert not np.array_equal(im_small_shadow, im_large_shadow)
+
+    # 2. shadow should set the svg's own feGaussianBlur stdDeviation exactly.
+    svgobject = cortex.db.get_overlay("S1")
+    svgobject.get_texture("rois", 256, shadow=7.5)
+    blurs = svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    assert len(blurs) > 0
+    for blur in blurs:
+        assert blur.attrib["stdDeviation"] == "7.5"
+
+    # 3. shadow=None (the default) should not touch the svg's own stdDeviation.
+    svgobject = cortex.db.get_overlay("S1")
+    before = [
+        b.attrib["stdDeviation"]
+        for b in svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    ]
+    svgobject.get_texture("rois", 256)
+    after = [
+        b.attrib["stdDeviation"]
+        for b in svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    ]
+    assert before == after
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_curvature_parameters():
+    """Test curvature styling parameters: curvature_brightness, curvature_contrast, curvature_threshold"""
+    vol = random_volume(with_nan=True, cmap="hot", vmin=0, vmax=1)
+
+    # Test brightness and contrast together
+    fig = cortex.quickflat.make_figure(
+        vol, with_curvature=True, curvature_brightness=0.7, curvature_contrast=0.5
+    )
+
+    # Test threshold
+    fig = cortex.quickflat.make_figure(
+        vol, with_curvature=True, curvature_threshold=True
+    )
+
+    fig = cortex.quickflat.make_figure(
+        vol, with_curvature=True, curvature_threshold=False
+    )
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_colorbar_ticks():
+    """Test colorbar_ticks parameter"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot", vmin=0, vmax=1)
+
+    # Custom ticks
+    ticks = np.array([0.0, 0.5, 1.0])
+    fig = cortex.quickflat.make_figure(view, with_colorbar=True, colorbar_ticks=ticks)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_fig_parameter():
+    """Test fig parameter with Figure and Axes objects"""
+    from matplotlib import pyplot as plt
+
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test passing a Figure object
+    fig_obj = plt.figure()
+    result = cortex.quickflat.make_figure(view, fig=fig_obj)
+    assert isinstance(result, Figure)
+    plt.close(fig_obj)
+
+    # Test passing an Axes object
+    fig_obj = plt.figure()
+    ax_obj = fig_obj.add_subplot(111)
+    result = cortex.quickflat.make_figure(view, fig=ax_obj)
+    assert isinstance(result, Figure)
+    plt.close(fig_obj)
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_extra_hatch():
+    """Test extra_hatch parameter with additional hatching layer"""
+    mask = cortex.db.get_mask("S1", "fullhead", type="thick")
+    data = np.ones(mask.sum())
+    vol = cortex.Volume(data, "S1", "fullhead", vmin=0, vmax=1)
+
+    # Create a hatch layer with same shape
+    hatch_data = cortex.Volume(
+        np.random.rand(mask.sum()), "S1", "fullhead", vmin=0, vmax=1
+    )
+    hatch_color = (1.0, 0.0, 0.0)  # Red
+
+    fig = cortex.quickflat.make_figure(vol, extra_hatch=(hatch_data, hatch_color))
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_roi_list_and_sulci_list():
+    """Test roi_list and sulci_list parameters to filter displayed regions"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+
+    # Test roi_list - get available ROIs first
+    # Note: This depends on the database having ROIs available
+    try:
+        fig = cortex.quickflat.make_figure(view, with_rois=True, roi_list=["V1"])
+    except (ValueError, KeyError):
+        # Database might not have specific ROI names for this subject
+        pass
+
+    # Test sulci_list
+    try:
+        fig = cortex.quickflat.make_figure(view, with_sulci=True, sulci_list=None)
+    except (ValueError, KeyError):
+        # Database might not have specific sulci names
+        pass
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_combined_parameters():
+    """Test make_figure with multiple parameters combined"""
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot", vmin=0, vmax=1)
+
+    # Comprehensive combination test
+    fig = cortex.quickflat.make_figure(
+        view,
+        recache=False,
+        pixelwise=True,
+        thick=16,
+        sampler="nearest",
+        height=512,
+        dpi=100,
+        depth=0.5,
+        with_rois=True,
+        with_sulci=False,
+        with_labels=True,
+        with_colorbar=True,
+        with_dropout=False,
+        with_curvature=True,
+        with_connected_vertices=False,
+        linewidth=1,
+        linecolor=(0.0, 0.0, 0.0),
+        labelsize="12pt",
+        curvature_brightness=0.6,
+        curvature_contrast=0.4,
+        curvature_threshold=True,
+        colorbar_location="center",
+        nanmean=False,
     )

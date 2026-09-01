@@ -1,19 +1,18 @@
+import binascii
 import io
 import os
 import tempfile
-import binascii
+from typing import IO, Optional, Sequence, Union
+
 import numpy as np
 import numpy.typing as npt
-from typing import Optional, Union, IO
-
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.typing import ColorType
 
-from . import composite
 from .. import dataset, utils
+from . import composite
 from .utils import make_flatmap_image
-
 
 default_colorbar_locations = {
     'left': (.0, .07, .2, .04),
@@ -41,7 +40,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
-                colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
+                colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[Sequence[str]]=None, sulci_list: Optional[Sequence[str]]=None,
                 nanmean: bool=False) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
 
@@ -305,8 +304,8 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
-             height=1024, overlay_file=None, with_dropout=False, **kwargs):
+def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_curvature: bool=True, layers: Sequence[str]=['rois'],
+             height: int=1024, overlay_file: Optional[str]=None, with_dropout: bool=False, **kwargs):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -447,12 +446,12 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
                vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     """Create a movie of an 4D data set"""
     raise NotImplementedError
-    import sys
+    import multiprocessing as mp
     import shlex
     import shutil
-    import tempfile
     import subprocess as sp
-    import multiprocessing as mp
+    import sys
+    import tempfile
 
     from scipy.interpolate import interp1d
 
