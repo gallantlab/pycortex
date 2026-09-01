@@ -1,5 +1,5 @@
 import copy
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 from matplotlib.axes import Axes
 from matplotlib.collections import LineCollection
@@ -183,7 +183,7 @@ def add_data(fig: Figure, braindata: Union[dataset.Volume, dataset.Vertex, datas
                     **cmapdict)
     return img, extents
 
-def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_list=None, overlay_file=None, **kwargs):
+def add_rois(fig: Axes, dataview: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, roi_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, shadow: Optional[float]=None, **kwargs) -> AxesImage:
     """Add ROIs layer to a figure
 
     NOTE: zorder for rois is 3
@@ -195,15 +195,18 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
     extents : array-like
-        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
+        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to
         extents of images already present in figure.
-    height : scalar 
-        Height of image. None defaults to height of images already present in figure. 
+    height : scalar
+        Height of image. None defaults to height of images already present in figure.
     with_labels : bool
         Whether to display text labels on ROIs
-    roi_list : 
+    roi_list :
 
-    kwargs : 
+    shadow : float, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow.
+        None (default) leaves the svg file's own shadow setting untouched.
+    kwargs :
 
     Returns
     -------
@@ -213,12 +216,12 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     if extents is None:
         extents = _get_extents(fig)
     if height is None:
-        height = _get_height(fig)        
+        height = _get_height(fig)
     svgobject = db.get_overlay(dataview.subject, overlay_file=overlay_file)
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('rois_paths')
     layer_kws.update(svg_kws)
-    im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, **layer_kws)
+    im = svgobject.get_texture('rois', height, labels=with_labels, shape_list=roi_list, shadow=shadow, **layer_kws)
     _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im,
                     aspect='equal',
@@ -229,7 +232,7 @@ def add_rois(fig, dataview, extents=None, height=None, with_labels=True, roi_lis
     return img
 
 
-def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_list=None, overlay_file=None, **kwargs):
+def add_sulci(fig: Axes, dataview: dataset.Dataview, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=True, sulci_list: Optional[Sequence[str]]=None, overlay_file: Optional[str]=None, shadow: Optional[float]=None, **kwargs) -> AxesImage:
     """Add sulci layer to figure
 
     Parameters
@@ -239,14 +242,17 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_
     dataview : cortex.Dataview object
         dataview containing data to be plotted, subject (surface identifier), and transform.
     extents : array-like
-        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to 
+        4 values for [Left, Right, Top, Bottom] extents of image plotted. None defaults to
         extents of images already present in figure.
     height : scalar
-        Height of image. None defaults to height of images already present in figure. 
+        Height of image. None defaults to height of images already present in figure.
     with_labels : bool
         Whether to display text labels for sulci
     sulci_list : list
         List of sulci to include
+    shadow : float, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow.
+        None (default) leaves the svg file's own shadow setting untouched.
 
     Other Parameters
     ----------------
@@ -263,7 +269,7 @@ def add_sulci(fig, dataview, extents=None, height=None, with_labels=True, sulci_
     svg_kws = _convert_svg_kwargs(kwargs)
     layer_kws = _parse_defaults('sulci_paths')
     layer_kws.update(svg_kws)
-    sulc = svgobject.get_texture('sulci', height, labels=with_labels, shape_list=sulci_list, **layer_kws)
+    sulc = svgobject.get_texture('sulci', height, labels=with_labels, shape_list=sulci_list, shadow=shadow, **layer_kws)
     if extents is None:
         extents = _get_extents(fig)
     _, ax = _get_fig_and_ax(fig)
@@ -385,8 +391,8 @@ def add_colorbar_2d(fig: Figure, cmap_name: str, colorbar_ticks: tuple[float, fl
 
     return cbar
 
-def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_labels=False, 
-               shape_list=None, **kwargs):
+def add_custom(fig: Axes, dataview: dataset.Dataview, svgfile: str, layer: str, extents: Optional[tuple[float, float, float, float]]=None, height: Optional[int]=None, with_labels: bool=False,
+               shape_list: Optional[Sequence[str]]=None, shadow: Optional[float]=None, **kwargs) -> AxesImage:
     """Add a custom data layer
 
     Parameters
@@ -401,15 +407,18 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
     layer : string
         Layer name within custom svg file to display
     extents : array-like
-        4 values for [Left, Right, Bottom, Top] extents of image plotted. If None, defaults to 
+        4 values for [Left, Right, Bottom, Top] extents of image plotted. If None, defaults to
         extents of images already present in figure.
     height : scalar
-        Height of image. if None, defaults to height of images already present in figure. 
+        Height of image. if None, defaults to height of images already present in figure.
     with_labels : bool
         Whether to display text labels on ROIs
     shape_list : list
         list of paths/shapes within svg layer to render, if only a subset of
         the paths/shapes within the layer are desired.
+    shadow : float, optional
+        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow.
+        None (default) leaves the svg file's own shadow setting untouched.
 
     Other Parameters
     ----------------
@@ -436,9 +445,10 @@ def add_custom(fig, dataview, svgfile, layer, extents=None, height=None, with_la
         layer_kws.update(svg_kws)
     except:
         layer_kws = svg_kws
-    im = extra_svg.get_texture(layer, height, 
-                               labels=with_labels, 
-                               shape_list=shape_list, 
+    im = extra_svg.get_texture(layer, height,
+                               labels=with_labels,
+                               shape_list=shape_list,
+                               shadow=shadow,
                                **layer_kws)
     _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(im, 

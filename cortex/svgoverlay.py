@@ -187,7 +187,7 @@ class SVGOverlay:
         print('Saved SVG to: %s'%filename)
 
     def get_texture(self, layer_name, height, name=None, background=None, labels=True,
-        shape_list=None, **kwargs):
+        shape_list=None, shadow=None, **kwargs):
         """Renders a specific layer of this svgobject as a png
 
         Parameters
@@ -206,6 +206,11 @@ class SVGOverlay:
             list of string names for path/shape elements in this layer to be rendered
             (any elements not on this list will be set to invisible, if this list is
             provided)
+        shadow : float or None
+            Standard deviation of the gaussian drop-shadow filter baked into the svg
+            file (`stdDeviation` of its `feGaussianBlur`). None (default) leaves the
+            filter's own stdDeviation untouched. 0 collapses the blurred copy behind
+            the source shape exactly, i.e. no visible shadow.
         kwargs : keyword arguments
             keywords to specify display properties of svg path objects, e.g. {'stroke':'white',
             'stroke-width':2} etc. See inkscape help for names for properties. This function
@@ -230,6 +235,10 @@ class SVGOverlay:
                 "SVGOverlay.get_texture requires inkscape."
                 "Please make sure that inkscape is installed and that is "
                 "accessible from the terminal.")
+
+        if shadow is not None:
+            for blur in self.svg.findall(".//{%s}feGaussianBlur"%svgns):
+                blur.attrib["stdDeviation"] = str(shadow)
 
         import matplotlib.pyplot as plt
         # Set the size of the texture
