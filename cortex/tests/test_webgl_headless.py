@@ -73,7 +73,7 @@ def _assert_no_browser_failures(handle):
     ``browser_errors`` is current to within ``EVENT_PUMP_INTERVAL``, so it does
     not matter whether this is called inside the ``with`` block.
 
-    Not the only defence: a driver that silently links an over-allocating shader
+    Not the only defense: a driver that silently links an over-allocating shader
     reports nothing, which is what ``_assert_not_blank`` is for. Neither covers
     a shader variant no test renders.
 

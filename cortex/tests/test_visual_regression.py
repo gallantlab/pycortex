@@ -116,7 +116,7 @@ REGENERATE_REFERENCES = bool(os.environ.get("REGENERATE_REFERENCE_IMAGES"))
 # references are coupled to the Chromium and matplotlib builds that produced them,
 # and an upgrade can shift anti-aliasing and rasterization slightly. They are far
 # tighter than any real regression: a wrong colormap, a dropped alpha channel or
-# swapped colour channels all move large areas of the image by much more.
+# swapped color channels all move large areas of the image by much more.
 MAX_MEAN_ABS_DIFF = 2.0        # mean |difference| over all pixels/channels, of 255
 DIFF_THRESHOLD = 16            # a pixel "differs" if any channel moves by more
 MAX_FRACTION_DIFFERING = 0.02  # at most this fraction of pixels may differ
@@ -202,13 +202,13 @@ CROSS_MAX_MEAN_ABS_DIFF = 8.0
 CROSS_DIFF_THRESHOLD = 64
 CROSS_MAX_FRACTION_DIFFERING = 0.05
 
-# Render settings chosen to minimise cross-renderer disagreement, from a factorial
+# Render settings chosen to minimize cross-renderer disagreement, from a factorial
 # sweep of both renderers' settings (curvature brightness/contrast/threshold,
 # depth, sampler, thick/layers, and webgl's three lighting controls).
 #
 # Only one setting was worth changing from the defaults: curvature thresholding.
 # Thresholded curvature puts a hard binary edge at curvature=0 whose sub-pixel
-# placement each rasteriser resolves differently, so it is maximally sensitive to
+# placement each rasterizer resolves differently, so it is maximally sensitive to
 # the residual misalignment; smooth curvature is low-frequency and resamples
 # cleanly. Averaged over the brightness/contrast grid the thresholded pairing
 # scored 8.50 against 3.66 for the smooth one, and 4.98 vs 2.66 at the default
@@ -241,7 +241,7 @@ def _ssim(a: npt.NDArray, b: npt.NDArray) -> float:
     identical input.
 
     Computed on the channel mean, so it is invariant to a channel permutation --
-    see the note on MAX_SSIM_LOSS. It is a structural check, not a colour one.
+    see the note on MAX_SSIM_LOSS. It is a structural check, not a color one.
     """
     from scipy.ndimage import gaussian_filter
 
@@ -555,7 +555,7 @@ def _build_nan_dataview(name: str) -> Dataview:
 
     # The rule, as gh-695 states it, is that a NaN *anywhere* at a voxel -- the
     # data, either 2D dimension, any RGB channel, or the alpha map -- renders
-    # fully transparent. These references pin the behaviour as it is on main.
+    # fully transparent. These references pin the behavior as it is on main.
     # Each of those gets NaN'd over its own region, so a single render exercises
     # several branches of the rule at once and a failure still says which one
     # moved. The vertex regions are disjoint; the volume ones (x>=50, y>=50,
@@ -564,11 +564,11 @@ def _build_nan_dataview(name: str) -> Dataview:
     # that not everything has simply gone transparent.
     #
     # The alpha map is NaN'd here too, on a third axis. That is not a duplicate
-    # of the nan_alpha suite: this covers alpha NaNs superposed on colour NaNs,
-    # where nan_alpha isolates them with every colour channel clean.
+    # of the nan_alpha suite: this covers alpha NaNs superposed on color NaNs,
+    # where nan_alpha isolates them with every color channel clean.
     #
     # Expect the alpha map's surviving NaN fraction to look smaller than its mask.
-    # Where a colour channel is already NaN the pipeline writes alpha's vmin over
+    # Where a color channel is already NaN the pipeline writes alpha's vmin over
     # it, so of the z>=15 region only the quarter with red and green both clean
     # stays NaN; the rest is resolved to a hard 0. Both halves of that are worth
     # rendering, which is why the regions are allowed to overlap.
@@ -611,14 +611,14 @@ def _build_nan_dataview(name: str) -> Dataview:
 
 
 def _build_nan_alpha_dataview(name: str) -> Dataview:
-    """Build an RGB dataview whose *alpha map* carries NaNs, colour channels clean.
+    """Build an RGB dataview whose *alpha map* carries NaNs, color channels clean.
 
     The other NaN suite puts NaNs in the data; this puts them in the alpha map,
-    which is a separate code path -- alpha is not colour-mapped, it is used
+    which is a separate code path -- alpha is not color-mapped, it is used
     directly as a blend weight, so a NaN reaches the compositing arithmetic
     rather than a colormap lookup.
 
-    Current behaviour is that those elements render fully transparent, i.e. the
+    Current behavior is that those elements render fully transparent, i.e. the
     curvature underlay shows through, which is what the other NaN cases do too.
     """
     a = _synth_arrays()
@@ -850,16 +850,16 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     """Render an RGB dataview whose alpha map carries NaNs, and assert it matches.
 
     The other NaN suite puts NaNs in the data channels; this one puts them in the
-    alpha map. That is a distinct path -- alpha is not colour-mapped, it is used
+    alpha map. That is a distinct path -- alpha is not color-mapped, it is used
     directly as a blend weight, so the NaN lands in the compositing arithmetic
     rather than in a colormap lookup. Only ``VolumeRGB``/``VertexRGB`` take an
     explicit ``alpha=``, so only those two are covered.
 
-    Current behaviour, which these references encode, is that NaN-alpha elements
+    Current behavior, which these references encode, is that NaN-alpha elements
     render fully transparent and the curvature underlay shows through -- the same
     outcome as a NaN in the data.
 
-    Be aware that this behaviour is not settled. gh-695, which unifies NaN and
+    Be aware that this behavior is not settled. gh-695, which unifies NaN and
     alpha handling across quickflat, WebGL and the RGB dataviews, changes how the
     surviving RGB is blended without changing the transparency itself. If that lands, expect these four references to need
     regenerating; the transparency assertion should survive, the exact blend will

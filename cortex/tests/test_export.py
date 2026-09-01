@@ -37,7 +37,7 @@ def test_save_3d_views_headless():
             list_surfaces=["inflated"],
             size=(1024, 768),
             trim=False,
-            # The WebGL scene needs time to initialise surfaces before
+            # The WebGL scene needs time to initialize surfaces before
             # _set_view can succeed; sleep=10 (the default) is safe.
             sleep=10,
             headless=True,

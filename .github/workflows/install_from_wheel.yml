@@ -21,9 +21,8 @@ jobs:
       max-parallel: 5
 
     steps:
-    # No lfs: true on purpose. This installs and imports a wheel, and
-    # exclude_package_data keeps the reference images out of wheels, so
-    # fetching them here would spend LFS bandwidth on files nothing reads.
+    # Don't clone with LFS because the wheel will not include the reference
+    # images, so we can save some bandwidth.
     - uses: actions/checkout@v7
     - name: Set up Python
       uses: actions/setup-python@v7

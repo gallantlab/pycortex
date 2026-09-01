@@ -90,7 +90,7 @@ def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
     raise RuntimeError(
         f"Viewer's .loaded deferred did not resolve within {timeout:.0f}s "
         f"(last response: {last_err!r}). The CTM mesh may have failed to "
-        "download or parse, or mriview.js failed to initialise."
+        "download or parse, or mriview.js failed to initialize."
     )
 
 
@@ -448,7 +448,7 @@ def headless_viewer(
         # any point during the session (each call returns a fresh snapshot).
         handle._pw_thread = pw_thread
 
-        # Block until the WebGL viewer has finished initialising (CTM mesh
+        # Block until the WebGL viewer has finished initializing (CTM mesh
         # download + parse + first setData). Replaces ad-hoc time.sleep(10)
         # calls in tests and callers, and shortens the wait when the
         # browser is faster than the worst-case timeout.

@@ -91,7 +91,7 @@ Generated on `main` (`3779f7ca`).
 | matplotlib | 3.10.9 |
 
 Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build; matplotlib rasterises the
+regenerating. playwright fixes the chromium build; matplotlib rasterizes the
 quickflat renders and `plot_panels`' composition of the webgl ones, so between
 them they determine all 28 images.
 
