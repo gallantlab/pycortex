@@ -1173,6 +1173,78 @@ def test_retrieve_new_views_roundtrip():
         assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
 
 
+def test_save_new_views_writes_to_the_filestore():
+    """save_new_views stores GUI views and promotes them out of new_views."""
+    viewdir = os.path.join(cortex.db.filestore, subj, "views")
+    names = ["_pytest_saved_a", "_pytest saved b"]
+    written = []
+
+    try:
+        vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+            handle._set_view(**{"camera.azimuth": 90})
+            time.sleep(2)
+            for name in names:
+                handle.send(method="run",
+                            params=["window.viewer.saveNewView", [name]])
+            assert set(handle.retrieve_new_views()) == set(names)
+
+            paths = handle.save_new_views()
+            written = list(paths.values())
+            assert set(paths) == set(names)
+
+            for name in names:
+                path = os.path.join(viewdir, name + ".json")
+                assert paths[name] == path
+                assert os.path.isfile(path)
+                with open(path) as fp:
+                    stored = json.load(fp)
+                # Stored in _capture_view's format, so it feeds straight back in.
+                assert "surface.{subject}.unfold" in stored
+                assert stored["camera.azimuth"] == pytest.approx(90, abs=1.0)
+                handle._set_view(**stored)
+
+            # Saved views are no longer "new": they move into the views menu.
+            assert handle.retrieve_new_views() == {}
+            buttons = _js_attrs(
+                handle, "window.viewer.ui._desc.camera._desc.views._desc")
+            for name in names:
+                assert name in buttons
+
+            # A second save is a no-op rather than a rewrite, since there is
+            # nothing left to promote.
+            assert handle.save_new_views() == {}
+
+            # Re-saving under an existing name needs is_overwrite.
+            handle.send(method="run",
+                        params=["window.viewer.saveNewView", [names[0]]])
+            with pytest.raises(IOError):
+                handle.save_new_views()
+            assert handle.save_new_views(is_overwrite=True) == {
+                names[0]: os.path.join(viewdir, names[0] + ".json")}
+
+            # A name that would escape the views directory is refused outright.
+            handle.send(method="run",
+                        params=["window.viewer.saveNewView", ["../_pytest_evil"]])
+            with pytest.raises(ValueError):
+                handle.save_new_views()
+            assert not os.path.exists(
+                os.path.join(cortex.db.filestore, subj, "_pytest_evil.json"))
+
+            with pytest.raises(KeyError):
+                handle.save_new_views(names=["_pytest_no_such_view"])
+
+            pageerrors = [e for e in handle._pw_thread.browser_errors
+                          if "[pageerror]" in e]
+            assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+    finally:
+        # The S1 filestore is checked in; leave nothing behind.
+        for path in set(written) | {os.path.join(viewdir, n + ".json")
+                                    for n in names}:
+            if os.path.exists(path):
+                os.remove(path)
+
+
 def test_saved_views_are_loaded_into_the_viewer():
     """views/*.json for the displayed subject reach the browser and the menu."""
     from cortex.export.save_views import default_view_params

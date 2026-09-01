@@ -617,8 +617,8 @@ var jsplot = (function (module) {
         "<div class='pycortex-row pycortex-buttons'>",
         "  <button class='viewsave-ok'>OK</button>",
         "  <button class='viewsave-cancel'>cancel</button></div>",
-        "<div class='pycortex-hint'>Kept in the browser until python calls",
-        "  retrieve_new_views().</div>",
+        "<div class='pycortex-hint'>Kept in the browser until python stores it",
+        "  with save_new_views().</div>",
         "<div class='pycortex-status viewsave-status'></div>",
     ].join("\n");
 
@@ -678,7 +678,21 @@ var jsplot = (function (module) {
             vt.applyView(this, view);
         };
 
-        var views_ui = cam_ui.addFolder("views", true);
+        // Built up front, rather than letting addFolder make it, so that the
+        // init override below is in place before dat.GUI can materialize the
+        // folder.
+        var views_ui = new module.Menu();
+        var _views_init = views_ui.init;
+        views_ui.init = function(gui) {
+            _views_init.call(this, gui);
+            // dat.GUI wraps a folder's element in <li class="folder">; tag that
+            // so the stylesheet can widen and centre the view names without
+            // touching the rest of the controls.
+            if (gui && gui.domElement && gui.domElement.parentNode)
+                $(gui.domElement.parentNode).addClass("pycortex-views");
+        };
+        cam_ui.addFolder("views", true, views_ui);
+
         var saved = (typeof viewopts !== "undefined" && viewopts.saved_views) ?
                     viewopts.saved_views : {};
         var subjects = Object.keys(saved);
@@ -699,6 +713,18 @@ var jsplot = (function (module) {
             desc[label] = {action: function() { vt.applyView(viewer, view); }};
             views_ui.add(desc);
         }
+
+        // Called by JSMixer.save_new_views once a view is on disk: it is no
+        // longer "new", so it moves out of _new_views and joins the views
+        // folder. The button's closure holds the view object itself, so it
+        // keeps working after the entry is deleted.
+        viewer.promoteNewView = function(name) {
+            if (!(name in this._new_views))
+                return false;
+            addViewButton(name, this._new_views[name]);
+            delete this._new_views[name];
+            return true;
+        };
 
         for (var i = 0; i < subjects.length; i++) {
             var subject = subjects[i];

@@ -302,13 +302,11 @@ The **save view** button in the same menu captures the current view under a name
 
     new_views = viewer.retrieve_new_views()
 
-which returns a dict mapping each name to a dict of view parameters, in the same format as ``viewer._capture_view()``. To keep one permanently, write it into the subject's ``views`` directory::
+which returns a dict mapping each name to a dict of view parameters, in the same format as ``viewer._capture_view()``. To keep them, write them into the subject's ``views`` directory::
 
-    import json, os
-    for name, view in viewer.retrieve_new_views().items():
-        path = os.path.join(cortex.db.filestore, subject, "views", name + ".json")
-        with open(path, "w") as fp:
-            json.dump(view, fp)
+    viewer.save_new_views()
+
+This returns a dict mapping each name to the file it was written to. Pass ``subject`` to store them under a subject other than the first one displayed, ``names`` to save only some of them, and ``is_overwrite=True`` to replace views already stored under the same name. A view that has been stored is no longer "new": it moves into the **camera > views** menu of the running viewer and stops being returned by ``retrieve_new_views``, so calling ``save_new_views`` twice will not rewrite the same files.
 
 Animations
 ~~~~~~~~~~

@@ -838,15 +838,13 @@ def show(
             -------
             dict of str to dict
                 Maps the name typed into the viewer to a dict of view parameters,
-                in the same format as ``_capture_view``. They can be passed
-                straight to ``_set_view``, or written to
-                ``<filestore>/<subject>/views/<name>.json`` to make them
-                permanent::
+                in the same format as ``_capture_view``, so they can be passed
+                straight to ``_set_view``. Use ``save_new_views`` to make them
+                permanent.
 
-                    for name, view in handle.retrieve_new_views().items():
-                        path = os.path.join(cortex.db.filestore, subject,
-                                            "views", name + ".json")
-                        json.dump(view, open(path, "w"))
+            See Also
+            --------
+            save_new_views : write these views into the pycortex filestore.
 
             Notes
             -----
@@ -862,6 +860,107 @@ def show(
                 raise Exception(val["error"])
             # `send` returns [None] when the browser does not answer in time.
             return cast(dict[str, dict[str, Any]], val) if isinstance(val, dict) else {}
+
+        def save_new_views(self, subject: Optional[str]=None,
+                           names: Optional[list[str]]=None,
+                           is_overwrite: bool=False) -> dict[str, str]:
+            """Store views saved through the viewer's GUI in the filestore.
+
+            Writes each view created with the viewer's "save view" button to
+            ``<filestore>/<subject>/views/<name>.json``, where the rest of
+            pycortex looks for saved views: they show up in the camera > views
+            menu of every viewer opened for that subject from then on, and can
+            be applied with ``get_view``.
+
+            A view that has been written is no longer "new". It moves into the
+            running viewer's views menu and out of ``retrieve_new_views``, so
+            calling this twice does not rewrite the same files.
+
+            Parameters
+            ----------
+            subject : str or None, optional
+                pycortex subject id to save the views under. Default None,
+                meaning the first subject the viewer is displaying.
+            names : list of str or None, optional
+                Save only these views. Default None, meaning every view
+                currently held in the viewer.
+            is_overwrite : bool, optional
+                Whether to replace views of the same name that are already in
+                the filestore (default False).
+
+            Returns
+            -------
+            dict of str to str
+                Maps each saved view's name to the file it was written to.
+
+            Raises
+            ------
+            KeyError
+                If `names` mentions a view the viewer does not have.
+            ValueError
+                If a view name cannot be used as a filename.
+            IOError
+                If a view is already stored under that name and `is_overwrite`
+                is False.
+
+            See Also
+            --------
+            retrieve_new_views : get the same views without storing them.
+
+            Examples
+            --------
+            >>> handle = cortex.webgl.show(volume)   # doctest: +SKIP
+            >>> # ... position the brain and press "save view" in the viewer
+            >>> handle.save_new_views()             # doctest: +SKIP
+            {'lateral': '/path/to/filestore/S1/views/lateral.json'}
+            """
+            if subject is None:
+                subject = subjects[0]
+
+            new_views = self.retrieve_new_views()
+            if names is None:
+                names = sorted(new_views)
+            else:
+                missing = [n for n in names if n not in new_views]
+                if len(missing) > 0:
+                    raise KeyError(
+                        "The viewer has no view named %s. Views already stored "
+                        "in the filestore cannot be re-saved; the viewer holds "
+                        "%s." % (", ".join(repr(n) for n in missing),
+                                 ", ".join(repr(n) for n in sorted(new_views))
+                                 or "nothing"))
+
+            viewdir = os.path.join(db.filestore, subject, "views")
+            # db.save_view leaves this to get_paths, which makes it a latent
+            # FileNotFoundError for a subject imported without a views dir.
+            os.makedirs(viewdir, exist_ok=True)
+
+            # Check everything before writing anything, so that a name clash
+            # partway through does not leave some views stored and some not.
+            # The names come from a text field in the browser, so they also
+            # have to be prevented from escaping the views directory.
+            paths = {}
+            for name in names:
+                if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]*", name) is None:
+                    raise ValueError(
+                        "Cannot save the view named %r: a view name must start "
+                        "with a letter or digit and contain only letters, "
+                        "digits, spaces, '_', '-' and '.'" % name)
+                path = os.path.join(viewdir, name + ".json")
+                if os.path.exists(path) and not is_overwrite:
+                    raise IOError(
+                        "Refusing to over-write the extant view %s. If you want "
+                        "to do this, set is_overwrite=True!" % path)
+                paths[name] = path
+
+            for name in names:
+                with open(paths[name], "w") as fp:
+                    json.dump(new_views[name], fp)
+                # Now that it is on disk it belongs with the loaded views.
+                self.send(method="run",
+                          params=["window.viewer.promoteNewView", [name]])
+
+            return paths
 
         def addData(self, **kwargs):
             """Add (or replace) dataviews in the running viewer.

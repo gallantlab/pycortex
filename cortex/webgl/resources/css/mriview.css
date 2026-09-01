@@ -721,3 +721,23 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     border-radius: 50%;
     background-color: #ffd700;
 }
+
+/* Saved-view buttons (the "views" folder, tagged by viewtools.js) carry only a
+   name, so let it span and centre the whole row rather than sitting in the
+   narrow left column dat.GUI reserves for slider labels (.dg .property-name is
+   width: 40%), which needlessly truncates longer view names.
+
+   dat.GUI already makes the whole row of a function controller clickable, and
+   the empty div it leaves in .c is only there to hold a label these buttons do
+   not use, so widening the name costs nothing. */
+.pycortex-views .cr.function .property-name {
+    display: block;
+    float: none;
+    clear: none;
+    width: auto;
+    text-align: center;
+}
+
+.pycortex-views .cr.function .c {
+    display: none;
+}
