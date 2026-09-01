@@ -3,10 +3,10 @@ import numpy as np
 import tempfile
 import pytest
 from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 
 from cortex import dataset
 import cortex.quickflat.utils  # for ty
+from cortex.svgoverlay import svgns
 from cortex.testing_utils import inkscapePath
 from cortex.webgl.data import Package
 
@@ -19,7 +19,6 @@ def random_volume(with_nan=False, **kwargs):
     if with_nan:
         # set 50% of the values in the dataset to NaN
         data[np.random.rand(*data.shape) > 0.5] = np.nan
-    # TODO: make sure kwargs are passed through correctly (e.g. vmin/vmax, etc.)
     return orig_vol.copy(data=data)
 
 
@@ -242,7 +241,7 @@ def test_with_dropout():
 
 @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
 @pytest.mark.slow
-@pytest.mark.timeout(600)  # override global timeout
+@pytest.mark.timeout(600)  # override with longer timeout
 def test_with_connected_vertices():
     """Test with_connected_vertices parameter"""
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
@@ -254,35 +253,96 @@ def test_with_connected_vertices():
     # its cache (cortex/utils.py's get_shared_voxels/shortest_path), and that
     # cache doesn't exist yet on a clean CI checkout. The default 240s suite-wide
     # timeout (pytest.ini) isn't enough on CI hardware for this first-run,
-    # cold-cache computation, even though it reliably completes (~1 minute
-    # locally with a warm mapper cache). Override with a longer budget rather
-    # than skip real coverage of this code path.
+    # cold-cache computation.
     fig = cortex.quickflat.make_figure(view, with_connected_vertices=True)
 
 
 @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
 def test_roi_styling_parameters():
-    """Test ROI styling parameters: linewidth, linecolor, roifill, shadow, labelsize, labelcolor"""
+    """Test ROI styling parameters: linewidth, linecolor, roifill, shadow, labelsize, labelcolor
+
+    See test_roi_styling_parameters_via_add_sulci_and_add_custom
+    for the same kwargs applied through add_sulci/add_custom instead.
+    """
     view = cortex.Volume.random("S1", "fullhead", cmap="hot")
-    # TODO: need with_rois, etc.?
 
     # Test linewidth
-    fig = cortex.quickflat.make_figure(view, linewidth=2)
+    fig = cortex.quickflat.make_figure(view, with_rois=True, linewidth=2)
 
     # Test linecolor (RGB/RGBA tuple)
-    fig = cortex.quickflat.make_figure(view, linecolor=(1.0, 0.0, 0.0))
+    fig = cortex.quickflat.make_figure(view, with_rois=True, linecolor=(1.0, 0.0, 0.0))
 
     # Test roifill (RGB/RGBA tuple)
-    fig = cortex.quickflat.make_figure(view, roifill=(1.0, 0.0, 0.0, 0.5))
+    fig = cortex.quickflat.make_figure(
+        view, with_rois=True, roifill=(1.0, 0.0, 0.0, 0.5)
+    )
 
     # Test shadow
-    # fig = cortex.quickflat.make_figure(view, shadow=1) # TODO: why does this fail?
+    fig = cortex.quickflat.make_figure(view, with_rois=True, shadow=1)
 
     # Test labelsize
-    fig = cortex.quickflat.make_figure(view, labelsize="10pt")
+    fig = cortex.quickflat.make_figure(view, with_rois=True, labelsize="10pt")
 
     # Test labelcolor
-    fig = cortex.quickflat.make_figure(view, labelcolor=(0.0, 0.0, 0.0))
+    fig = cortex.quickflat.make_figure(view, with_rois=True, labelcolor=(0.0, 0.0, 0.0))
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_roi_styling_parameters_via_add_sulci_and_add_custom():
+    """The same styling kwargs from test_roi_styling_parameters should also work
+    through add_sulci and add_custom, not just add_rois.
+    """
+    view = cortex.Volume.random("S1", "fullhead", cmap="hot")
+    overlays_path = cortex.db.get_paths("S1")["overlays"]
+
+    styling_kwargs = [
+        dict(linewidth=2),
+        dict(linecolor=(1.0, 0.0, 0.0)),
+        dict(roifill=(1.0, 0.0, 0.0, 0.5)),
+        dict(shadow=1),
+        dict(labelsize="10pt"),
+        dict(labelcolor=(0.0, 0.0, 0.0)),
+    ]
+    for kwargs in styling_kwargs:
+        fig = cortex.quickflat.make_figure(view, with_sulci=True, **kwargs)
+        fig = cortex.quickflat.make_figure(
+            view, extra_disp=(overlays_path, "rois"), **kwargs
+        )
+
+
+@pytest.mark.skipif(no_inkscape, reason="Inkscape required")
+def test_shadow_mechanism():
+    """shadow should visibly and exactly control the svg's own drop-shadow filter.
+
+    Three checks that a "does it crash" test would not have caught: the years-long
+    regression where shadow was silently a no-op (see git history of
+    _convert_svg_kwargs / feGaussianBlur) would have passed a crash-only test.
+    """
+    # 1. shadow should produce a real pixel difference, not just avoid crashing.
+    im_small_shadow = cortex.db.get_overlay("S1").get_texture("rois", 256, shadow=0.5)
+    im_large_shadow = cortex.db.get_overlay("S1").get_texture("rois", 256, shadow=20)
+    assert not np.array_equal(im_small_shadow, im_large_shadow)
+
+    # 2. shadow should set the svg's own feGaussianBlur stdDeviation exactly.
+    svgobject = cortex.db.get_overlay("S1")
+    svgobject.get_texture("rois", 256, shadow=7.5)
+    blurs = svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    assert len(blurs) > 0
+    for blur in blurs:
+        assert blur.attrib["stdDeviation"] == "7.5"
+
+    # 3. shadow=None (the default) should not touch the svg's own stdDeviation.
+    svgobject = cortex.db.get_overlay("S1")
+    before = [
+        b.attrib["stdDeviation"]
+        for b in svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    ]
+    svgobject.get_texture("rois", 256)
+    after = [
+        b.attrib["stdDeviation"]
+        for b in svgobject.svg.findall(".//{%s}feGaussianBlur" % svgns)
+    ]
+    assert before == after
 
 
 @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
