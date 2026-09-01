@@ -1231,6 +1231,11 @@ var mriview = (function(module) {
             "Height": {action:[this, 'imageHeight', 500, 4000]}
         });
 
+        // Saved views and the keyframe animation panel (resources/js/viewtools.js).
+        // These go in sub-folders/buttons rather than into cam_ui.add directly, so
+        // they do not show up in JSMixer.view_props as capturable properties.
+        jsplot.viewtools.installCameraUI(this, cam_ui);
+
         // keyboard shortcut menu
         var _show_help = false;
         var helpmenu = function() {

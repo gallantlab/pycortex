@@ -588,3 +588,136 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     color: #888;
     opacity: 0.5;
 }
+
+/* Floating panels for saved views and animation (resources/js/viewtools.js).
+   Chrome deliberately echoes dat.GUI so they sit next to the controls. */
+.pycortex-panel {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    width: 290px;
+    z-index: 300;
+    background-color: #1a1a1a;
+    border: 1px solid #2c2c2c;
+    border-radius: 3px;
+    color: #eee;
+    font: 11px 'Lucida Grande', sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.pycortex-panel-title {
+    background-color: #000;
+    padding: 6px 8px;
+    cursor: move;
+    font-weight: bold;
+    border-bottom: 1px solid #2c2c2c;
+}
+
+.pycortex-panel-close {
+    float: right;
+    cursor: pointer;
+    padding: 0 3px;
+    color: #888;
+}
+
+.pycortex-panel-close:hover {
+    color: #fff;
+}
+
+.pycortex-panel-body {
+    padding: 8px;
+}
+
+.pycortex-row {
+    margin-bottom: 6px;
+    line-height: 20px;
+}
+
+.pycortex-row label {
+    display: inline-block;
+    width: 44px;
+    color: #999;
+}
+
+.pycortex-row input[type=number],
+.pycortex-row input[type=text] {
+    background-color: #303030;
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    color: #2fa1d6;
+    padding: 2px 4px;
+    width: 60px;
+}
+
+.pycortex-row input[type=text] {
+    width: 190px;
+}
+
+.pycortex-buttons {
+    text-align: center;
+}
+
+.pycortex-buttons button {
+    background-color: #303030;
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    color: #eee;
+    cursor: pointer;
+    margin: 0 2px;
+    padding: 4px 8px;
+}
+
+.pycortex-buttons button:hover:enabled {
+    background-color: #3c3c3c;
+}
+
+.pycortex-buttons button:disabled {
+    color: #666;
+    cursor: default;
+}
+
+.pycortex-hint {
+    color: #777;
+    font-size: 10px;
+    margin-bottom: 6px;
+    word-wrap: break-word;
+}
+
+.pycortex-status {
+    color: #999;
+    font-size: 10px;
+    min-height: 12px;
+    margin-top: 4px;
+}
+
+/* Frame slider, with a dot marking every frame that has a keyframe. */
+.keyframe-track {
+    position: relative;
+    margin: 4px 0 10px 0;
+    padding-bottom: 8px;
+}
+
+.keyframe-track input[type=range] {
+    width: 100%;
+    margin: 0;
+}
+
+.keyframe-ticks {
+    position: absolute;
+    /* Inset by half a slider thumb, since the thumb centre does not reach the
+       ends of the track -- otherwise the first and last dots sit off the mark. */
+    left: 7px;
+    right: 7px;
+    bottom: 0;
+    height: 8px;
+    pointer-events: none;  /* dots must not swallow drags on the slider */
+}
+
+.keyframe-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin-left: -3px;
+    border-radius: 50%;
+    background-color: #ffd700;
+}
