@@ -291,7 +291,33 @@ It is often useful to be able to store, recall, and share specific perspectives 
 
 Where, ``'subject'`` is the subject identifier and ``'name'`` is a unique name for the stored view. A previously saved view can be applied to a webgl viewer using::
 
-    viewer.get_view(viewer, subject, name)
+    viewer.get_view(subject, name)
+
+Saved views in the browser
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every view stored for the subject(s) a viewer displays is loaded when the viewer starts, and appears as a button under **camera > views** in the browser controls. Clicking one applies it. This works in static viewers made with ``cortex.webgl.make_static`` as well.
+
+The **save view** button in the same menu captures the current view under a name you choose. These stay in the browser rather than being written to the filestore, so that you can experiment freely; retrieve them from python with::
+
+    new_views = viewer.retrieve_new_views()
+
+which returns a dict mapping each name to a dict of view parameters, in the same format as ``viewer._capture_view()``. To keep one permanently, write it into the subject's ``views`` directory::
+
+    import json, os
+    for name, view in viewer.retrieve_new_views().items():
+        path = os.path.join(cortex.db.filestore, subject, "views", name + ".json")
+        with open(path, "w") as fp:
+            json.dump(view, fp)
+
+Animations
+~~~~~~~~~~
+
+The **create animation** button opens a panel for building an animation out of keyframes. Set the current frame with the slider (frames that already hold a keyframe are marked with a yellow dot), pose the brain, and press **add keyframe**; the values in between are interpolated. **play animation** previews the result at the chosen frame rate, and **render animation** writes one PNG per frame.
+
+Rendering needs a viewer started from python, since the frames are written by the server rather than by the browser. The folder named in the panel is interpreted relative to the ``movie_dir`` given to ``cortex.webgl.show`` (the current working directory by default), and the server refuses to write outside it::
+
+    viewer = cortex.webgl.show(volume, movie_dir="/path/to/movies")
 
 
 ``overlays.svg``

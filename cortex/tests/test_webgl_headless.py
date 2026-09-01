@@ -902,3 +902,382 @@ def test_addData_vertex_data(tmp_path):
 
         _assert_no_browser_failures(handle)
 
+<<<<<<< HEAD
+=======
+
+# ---------------------------------------------------------------------------
+# Group 10: Manual visual A/B comparison across all alpha-bearing dataviews
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not os.environ.get("RUN_VISUAL_COMPARISON"),
+    reason="Manual visual comparison; set RUN_VISUAL_COMPARISON=1 to run.",
+)
+def test_visual_comparison_alpha_dataviews(tmp_path):
+    """Render all 6 dataview types via quickshow + webgl, side-by-side.
+
+    Skipped by default — set ``RUN_VISUAL_COMPARISON=1`` to run. Builds a
+    grid where each row is one dataview type (Volume, Vertex, Volume2D,
+    Vertex2D, VolumeRGB, VertexRGB) and the two columns are the matplotlib
+    (``cortex.quickshow``) reference vs the headless WebGL flatmap render.
+    Used as a manual smoke check that the alpha-blend fix
+    (``Package``-side premultiply for VertexRGB + cmap-LUT
+    ``premultiplyAlpha=true`` for the 2D-cmap path) keeps both viewers in
+    visual agreement across every alpha-encoding pattern.
+
+    Plain Volume / Vertex have no native per-element alpha (pycortex's
+    bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
+    dataview types), so those two rows act as a no-alpha baseline. The
+    other four rows exercise alpha: Volume2D / Vertex2D via the 2D-alpha
+    cmap ``RdBu_r_alpha``, VolumeRGB / VertexRGB via the ``alpha=`` kwarg.
+
+    Renders are intentionally low-resolution (quickshow ``height=256``,
+    webgl ``size=(512, 384)``) so the final composite PNG stays small.
+    Both viewers run with no labels, no ROIs, and curvature underlay on.
+
+    The composite PNG is written under ``tmp_path`` and the absolute path
+    is printed at the end of the test so the file is easy to open.
+    """
+    import matplotlib.pyplot as plt
+
+    import cortex.polyutils
+
+    # ------- Synthesize data and alpha maps (mirrors plot_data_with_alpha.py) -
+
+    # Volumetric
+    zz, yy, xx = np.mgrid[0:31, 0:100, 0:100]
+    data_vol = (xx - 50) / 50.0  # ~ [-1, 1]
+    center = np.array([15, 50, 50])
+    sigma_v = 25.0
+    dist2 = (
+        (zz - center[0]) ** 2 + (yy - center[1]) ** 2 + (xx - center[2]) ** 2
+    )
+    accuracy_vol = np.exp(-dist2 / (2 * sigma_v**2))  # [0, 1] bump
+    red_vol = np.clip(xx / 99.0, 0, 1)
+    green_vol = np.clip(yy / 99.0, 0, 1)
+    blue_vol = np.clip(zz / 30.0, 0, 1)
+
+    # Surface (vertex) — encode by spatial coordinate, not vertex index
+    surfs = [
+        cortex.polyutils.Surface(*d)
+        for d in cortex.db.get_surf(subj, "fiducial")
+    ]
+    num_verts = [s.pts.shape[0] for s in surfs]
+    pts = np.vstack([surfs[0].pts, surfs[1].pts])
+    y_centered = pts[:, 1] - pts[:, 1].mean()
+    data_vtx = y_centered / np.abs(y_centered).max()  # [-1, 1]
+    xyz_norm = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
+
+    def _bump(surf, seed, sigma):
+        d = np.linalg.norm(surf.pts - surf.pts[seed], axis=1)
+        return np.exp(-(d**2) / (2 * sigma**2))
+
+    accuracy_vtx = np.hstack(
+        [
+            _bump(surfs[0], num_verts[0] // 2, sigma=40.0),
+            _bump(surfs[1], num_verts[1] // 2, sigma=40.0),
+        ]
+    )
+
+    # ------- Build the six dataviews ----------------------------------------
+    # Volume / Vertex have no native per-element alpha — pycortex's bundled
+    # `*_alpha` colormaps are all 2D LUTs and only apply to Volume2D /
+    # Vertex2D. So plain Volume / Vertex use a non-alpha cmap (`viridis`)
+    # and serve as the no-alpha baseline; Volume2D / Vertex2D pair data
+    # against accuracy via the 2D-alpha cmap `RdBu_r_alpha`; VolumeRGB /
+    # VertexRGB use the native `alpha=` kwarg.
+
+    cmap_plain = "viridis"
+    cmap_2d = "RdBu_r_alpha"
+
+    dataviews = [
+        (
+            "Volume",
+            cortex.Volume(
+                data_vol, subj, xfmname,
+                cmap=cmap_plain, vmin=-1, vmax=1,
+            ),
+        ),
+        (
+            "Vertex",
+            cortex.Vertex(
+                data_vtx, subj,
+                cmap=cmap_plain, vmin=-1, vmax=1,
+            ),
+        ),
+        (
+            "Volume2D",
+            cortex.Volume2D(
+                data_vol, accuracy_vol, subj, xfmname,
+                cmap=cmap_2d,
+                vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            ),
+        ),
+        (
+            "Vertex2D",
+            cortex.Vertex2D(
+                data_vtx, accuracy_vtx, subj,
+                cmap=cmap_2d,
+                vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            ),
+        ),
+        (
+            "VolumeRGB",
+            cortex.VolumeRGB(
+                cortex.Volume(red_vol, subj, xfmname, vmin=0, vmax=1),
+                cortex.Volume(green_vol, subj, xfmname, vmin=0, vmax=1),
+                cortex.Volume(blue_vol, subj, xfmname, vmin=0, vmax=1),
+                subj, xfmname,
+                alpha=cortex.Volume(accuracy_vol, subj, xfmname, vmin=0, vmax=1),
+            ),
+        ),
+        (
+            "VertexRGB",
+            cortex.VertexRGB(
+                cortex.Vertex(xyz_norm[:, 0], subj, vmin=0, vmax=1),
+                cortex.Vertex(xyz_norm[:, 1], subj, vmin=0, vmax=1),
+                cortex.Vertex(xyz_norm[:, 2], subj, vmin=0, vmax=1),
+                subj,
+                alpha=cortex.Vertex(accuracy_vtx, subj, vmin=0, vmax=1),
+            ),
+        ),
+    ]
+
+    # ------- Render each dataview through both paths ------------------------
+    # Each WebGL render spins up its own headless browser via plot_panels;
+    # six sequential launches × ~15s sleep = ~90s+ end to end. That's fine
+    # for a manual A/B and avoids the broken `addData` path on headless.
+
+    n = len(dataviews)
+    fig, axes = plt.subplots(n, 2, figsize=(7, 2.2 * n))
+
+    flatmap_panel = [
+        {
+            "extent": [0.0, 0.0, 1.0, 1.0],
+            "view": {"angle": "flatmap", "surface": "flatmap"},
+        }
+    ]
+
+    for row, (name, view) in enumerate(dataviews):
+        # quickshow → low-res PNG
+        qs_path = tmp_path / f"qs_{name}.png"
+        qs_fig = cortex.quickshow(
+            view,
+            with_curvature=True,
+            with_rois=False,
+            with_labels=False,
+            with_colorbar=False,
+            with_sulci=False,
+            with_borders=False,
+            height=256,
+        )
+        qs_fig.savefig(qs_path, bbox_inches="tight", pad_inches=0, dpi=80)
+        plt.close(qs_fig)
+
+        # webgl → trimmed flatmap PNG via plot_panels (single flatmap panel)
+        wg_path = str(tmp_path / f"wg_{name}.png")
+        wg_fig = cortex.export.plot_panels(
+            view,
+            panels=flatmap_panel,
+            figsize=(6, 3),
+            windowsize=(512, 384),
+            save_name=wg_path,
+            sleep=10,
+            viewer_params=dict(labels_visible=[], overlays_visible=[]),
+            headless=True,
+        )
+        plt.close(wg_fig)
+
+        ax_qs, ax_wg = axes[row]
+        ax_qs.imshow(plt.imread(qs_path))
+        ax_qs.set_title(f"{name} — quickshow", fontsize=9)
+        ax_qs.axis("off")
+        ax_wg.imshow(plt.imread(wg_path))
+        ax_wg.set_title(f"{name} — webgl (flatmap)", fontsize=9)
+        ax_wg.axis("off")
+
+    fig.suptitle(
+        "Alpha-bearing dataviews: quickshow vs WebGL", fontsize=11,
+    )
+    fig.tight_layout()
+    out_path = tmp_path / "alpha_dataview_comparison.png"
+    fig.savefig(out_path, dpi=100, bbox_inches="tight")
+    plt.close(fig)
+
+    print(f"\nVisual comparison saved to:\n  {out_path}\n")
+    assert out_path.exists()
+    assert out_path.stat().st_size > 0
+
+
+
+# ---------------------------------------------------------------------------
+# Group 10: Saved views and the animation GUI
+# ---------------------------------------------------------------------------
+
+
+def _js_attrs(handle, path):
+    """Read a javascript object's properties, with values for the scalar ones.
+
+    ``send(method="get", ...)`` cannot be used for this: for a non-object
+    property, ``Websock.prototype.get`` returns the property *name* rather than
+    its value (that is what makes the "set" method work). ``query`` is the
+    accessor that carries values, and is what ``JSProxy.attrs`` uses.
+    """
+    resp = handle.send(method="query", params=[path])
+    assert isinstance(resp, list) and resp and isinstance(resp[0], dict), resp
+    return resp[0]
+
+
+def _js_value(handle, path):
+    """Read one scalar javascript property, e.g. viewopts.movie_post.token."""
+    parent, _, name = path.rpartition(".")
+    entry = _js_attrs(handle, parent)[name]
+    assert len(entry) > 1, f"{path} is not a scalar: {entry}"
+    return entry[1]
+
+
+def test_retrieve_new_views_roundtrip():
+    """Views saved through the GUI come back to python via the handle."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        assert handle.retrieve_new_views() == {}
+
+        target = {"camera.azimuth": 90, "camera.altitude": 90}
+        handle._set_view(**target)
+        time.sleep(2)
+
+        # What the "save view" button calls.
+        handle.send(method="run",
+                    params=["window.viewer.saveNewView", ["from_gui"]])
+
+        views = handle.retrieve_new_views()
+        assert set(views) == {"from_gui"}
+        saved = views["from_gui"]
+        for key, expected in target.items():
+            assert saved[key] == pytest.approx(expected, abs=1.0)
+
+        # Keys keep the {subject} placeholder, so the view stays interchangeable
+        # with what _capture_view writes and with saved views/*.json files.
+        assert "surface.{subject}.unfold" in saved
+
+        # The javascript capture must be a subset of the python one; otherwise
+        # _set_view would reject keys coming back out of the browser.
+        captured = handle._capture_view()
+        assert set(saved) <= set(captured), set(saved) - set(captured)
+
+        # And it must round-trip back in without complaint.
+        handle._set_view(**saved)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_saved_views_are_loaded_into_the_viewer():
+    """views/*.json for the displayed subject reach the browser and the menu."""
+    from cortex.export.save_views import default_view_params
+
+    viewdir = os.path.join(cortex.db.filestore, subj, "views")
+    os.makedirs(viewdir, exist_ok=True)
+    name = "_pytest_tmp_view"
+    viewfile = os.path.join(viewdir, name + ".json")
+    with open(viewfile, "w") as fp:
+        json.dump(dict(default_view_params), fp)
+
+    try:
+        vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+            # Only the displayed subject's views are shipped to the browser.
+            assert set(_js_attrs(handle, "window.viewopts.saved_views")) == {subj}
+            assert name in _js_attrs(
+                handle, "window.viewopts.saved_views.%s" % subj)
+
+            # ... and each one becomes a button under camera > views.
+            buttons = _js_attrs(
+                handle, "window.viewer.ui._desc.camera._desc.views._desc")
+            assert name in buttons
+
+            # Clicking it applies the view.
+            handle._set_view(**{"camera.azimuth": 10})
+            time.sleep(1)
+            handle.send(method="run", params=[
+                "window.viewer.ui._desc.camera._desc.views._desc"
+                ".%s.action" % name, []])
+            time.sleep(2)
+            assert handle.ui.get("camera.azimuth")[0] == pytest.approx(
+                default_view_params["camera.azimuth"], abs=1.0)
+    finally:
+        os.remove(viewfile)
+
+
+def _post(url, **fields):
+    """POST form fields, returning the HTTP status (including error statuses)."""
+    import urllib.error
+    import urllib.parse
+
+    data = urllib.parse.urlencode(fields).encode()
+    try:
+        with urllib.request.urlopen(url, data=data, timeout=10) as resp:
+            return resp.status
+    except urllib.error.HTTPError as err:
+        return err.code
+
+
+# 1x1 transparent png, as the browser would send it
+_TINY_PNG = ("data:image/png;base64,"
+             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8"
+             "z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+
+
+def test_movie_handler_rejects_bad_requests():
+    """The frame-render endpoint refuses bad tokens, names, and escaping paths."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        url = f"http://localhost:{handle.server.port}/movie"
+        token = _js_value(handle, "window.viewopts.movie_post.token")
+        assert isinstance(token, str) and len(token) > 0
+
+        assert _post(url, token="wrong", name="f", frame=0, png=_TINY_PNG) == 403
+        assert _post(url, name="f", frame=0, png=_TINY_PNG) == 403
+        assert _post(url, token=token, dir="../..", name="f", frame=0,
+                     png=_TINY_PNG) == 403
+        assert _post(url, token=token, dir="/etc", name="f", frame=0,
+                     png=_TINY_PNG) == 403
+        assert _post(url, token=token, name="../evil", frame=0,
+                     png=_TINY_PNG) == 400
+        assert _post(url, token=token, name="f", frame="nope",
+                     png=_TINY_PNG) == 400
+        assert _post(url, token=token, name="f", frame=0, png="garbage") == 400
+
+
+def test_movie_handler_writes_frames(tmp_path):
+    """A well-formed request lands as <movie_dir>/<dir>/<name>_<frame>.png."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(
+            vol, viewer_params=dict(movie_dir=str(tmp_path))) as handle:
+        url = f"http://localhost:{handle.server.port}/movie"
+        token = _js_value(handle, "window.viewopts.movie_post.token")
+        assert _js_value(handle, "window.viewopts.movie_post.root") == str(
+            os.path.realpath(tmp_path))
+
+        assert _post(url, token=token, dir="frames", name="brainmovie",
+                     frame=7, png=_TINY_PNG) == 200
+
+        out = tmp_path / "frames" / "brainmovie_00007.png"
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+
+def test_static_viewer_has_views_but_no_render_target(tmp_path):
+    """A static export carries saved views, but nowhere to write frames."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    outpath = str(tmp_path / "static")
+    cortex.webgl.make_static(outpath, vol, html_embed=False, copy_ctmfiles=False)
+
+    with open(os.path.join(outpath, "index.html")) as fp:
+        html = fp.read()
+    assert "viewtools.js" in html
+    assert "saved_views" in html
+    # No python behind a static viewer, so the animation panel must not offer
+    # to render frames to disk.
+    assert "movie_post" not in html

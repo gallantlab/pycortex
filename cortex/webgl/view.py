@@ -2,9 +2,12 @@ import binascii
 import copy
 import functools
 import glob
+import hmac
 import json
 import mimetypes
 import os
+import re
+import secrets
 import shutil
 import sys
 import threading
@@ -40,6 +43,45 @@ domain_name = options.config.get("webgl", "domain_name")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
+
+
+def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]]]:
+    """Read the saved views of `subjects` out of the filestore.
+
+    `subjects` is the list of subjects the viewer is actually displaying, so a
+    viewer never reads (nor ships to the browser) views belonging to unrelated
+    subjects in the filestore.
+
+    Returns
+    -------
+    dict
+        ``{subject: {view_name: {prop: value}}}``. The keys within each view keep
+        the literal ``{subject}`` placeholder that ``JSMixer._capture_view``
+        writes; the javascript side substitutes it per subject when the view is
+        applied, so one saved view still works in a multi-subject viewer.
+    """
+    saved: dict[str, dict[str, dict[str, Any]]] = {}
+    for subj in subjects:
+        saved[subj] = {}
+        viewdir = os.path.join(db.filestore, subj, "views")
+        # Glob *.json rather than using db.get_paths()['views'], which strips any
+        # extension off any file in the directory (so notes.tar.gz would show up
+        # as a view named "notes.tar").
+        for path in sorted(glob.glob(os.path.join(viewdir, "*.json"))):
+            name = os.path.splitext(os.path.basename(path))[0]
+            try:
+                with open(path) as fp:
+                    view = json.load(fp)
+            except (ValueError, OSError) as err:
+                warnings.warn("Skipping unreadable view %s: %s" % (path, err))
+                continue
+            if not isinstance(view, dict):
+                warnings.warn("Skipping view %s: expected a dict of view "
+                              "parameters, got %s" % (path, type(view).__name__))
+                continue
+            saved[subj][name] = view
+    return saved
+
 
 def make_static(
     outpath,
@@ -262,6 +304,10 @@ def make_static(
         if "paths" in sec or "labels" in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
 
+    # Views saved in the filestore, for the "camera > views" menu. Only the
+    # subjects this viewer displays are read.
+    my_viewopts["saved_views"] = _load_saved_views(subjects)
+
     html = tpl.generate(
         data=json.dumps(metadata),
         colormaps=colormaps,
@@ -302,6 +348,7 @@ def show(
     title: str="Brain",
     layout: Optional[str]=None,
     display_url: bool=True,
+    movie_dir: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -380,6 +427,11 @@ def show(
         link to access the viewer. Set to False to suppress this display message,
         which can be useful in contexts like Marimo notebooks or programmatic
         headless viewers. Default True
+    movie_dir : str or None, optional
+        Root directory that the viewer's animation panel may render frames into.
+        The folder typed into the panel is interpreted relative to this root, and
+        the server refuses to write anywhere outside it. Default None, meaning
+        the current working directory.
     **kwargs
         All additional keyword arguments are passed to the template renderer.
     """
@@ -459,6 +511,18 @@ def show(
     for sec in options.config.sections():
         if 'paths' in sec or 'labels' in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
+
+    # Views saved in the filestore, for the "camera > views" menu. Only the
+    # subjects this viewer displays are read.
+    my_viewopts['saved_views'] = _load_saved_views(subjects)
+
+    # Where the animation panel is allowed to write rendered frames. The browser
+    # sends a path relative to this root and MovieHandler refuses anything that
+    # resolves outside it; see MovieHandler below.
+    movie_root = os.path.realpath(os.getcwd() if movie_dir is None else movie_dir)
+    movie_token = secrets.token_urlsafe(32)
+    my_viewopts['movie_post'] = dict(url="movie", token=movie_token,
+                                     root=movie_root)
 
     if pickerfun is None:
         pickerfun = lambda *a: None
@@ -555,6 +619,69 @@ def show(
                         print("Error writing image!")
                         data = png
                 svgfile.write(data)
+
+    class MovieHandler(web.RequestHandler):
+        """Writes one animation frame rendered by the viewer's animation panel.
+
+        Kept separate from MixerHandler.post, which pairs uploads with filenames
+        by the order they were pushed onto `post_name`: a browser-driven render
+        loop has no way to keep that queue in step, so each frame carries its own
+        destination instead.
+
+        The destination is always resolved underneath `movie_root` (see the
+        `movie_dir` argument of show). The server binds all interfaces and serves
+        the page unauthenticated, so the token below only keeps unrelated local
+        processes out -- `movie_root` is what stops this from being an arbitrary
+        file-write primitive.
+        """
+        def post(self):
+            # Compare as bytes: compare_digest rejects non-ASCII str outright,
+            # which would turn a hostile token into a 500 instead of a 403.
+            sent = self.get_argument("token", "").encode("utf-8", "replace")
+            if not hmac.compare_digest(sent, movie_token.encode("utf-8")):
+                self.set_status(403)
+                self.finish("Bad or missing token")
+                return
+
+            name = self.get_argument("name", "frame")
+            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name) is None:
+                self.set_status(400)
+                self.finish("Invalid frame name: use letters, digits, '_', '-' and '.'")
+                return
+
+            try:
+                frame = int(self.get_argument("frame"))
+            except (TypeError, ValueError):
+                self.set_status(400)
+                self.finish("Invalid or missing frame number")
+                return
+
+            dest = os.path.realpath(os.path.join(movie_root,
+                                                 self.get_argument("dir", "")))
+            if dest != movie_root and not dest.startswith(movie_root + os.sep):
+                self.set_status(403)
+                self.finish("Refusing to write outside %s" % movie_root)
+                return
+
+            png = self.get_argument("png", default="")
+            try:
+                data = binascii.a2b_base64(png[png.index(",") + 1:].strip())
+            except (ValueError, binascii.Error):
+                self.set_status(400)
+                self.finish("Could not decode png data")
+                return
+
+            try:
+                os.makedirs(dest, exist_ok=True)
+                fname = os.path.join(dest, "%s_%05d.png" % (name, frame))
+                with open(fname, "wb") as fp:
+                    fp.write(data)
+            except OSError as err:
+                self.set_status(500)
+                self.finish("Could not write frame: %s" % err)
+                return
+
+            self.write(dict(path=fname))
 
     P = ParamSpec('P')
 
@@ -698,6 +825,43 @@ def show(
             For a list of the view parameters set, see viewer._capture_view
             """
             view = db.get_view(self, subject, name)
+
+        def retrieve_new_views(self) -> dict[str, dict[str, Any]]:
+            """Get views saved through the viewer's GUI.
+
+            Returns the views created with the "save view" button in the viewer's
+            camera menu. These live only in the browser until they are retrieved,
+            which keeps them separate from the views that were loaded out of the
+            filestore when the viewer started.
+
+            Returns
+            -------
+            dict of str to dict
+                Maps the name typed into the viewer to a dict of view parameters,
+                in the same format as ``_capture_view``. They can be passed
+                straight to ``_set_view``, or written to
+                ``<filestore>/<subject>/views/<name>.json`` to make them
+                permanent::
+
+                    for name, view in handle.retrieve_new_views().items():
+                        path = os.path.join(cortex.db.filestore, subject,
+                                            "views", name + ".json")
+                        json.dump(view, open(path, "w"))
+
+            Notes
+            -----
+            If several subjects are displayed, only the first one's viewer is
+            queried, mirroring the behavior of ``_capture_view``.
+            """
+            # One round trip, rather than the three that walking the proxy
+            # attribute by attribute would cost (each level is a `query`).
+            resp = self.send(method="run",
+                             params=["window.viewer.getNewViews", []])
+            val = resp[0] if isinstance(resp, list) and len(resp) > 0 else None
+            if isinstance(val, dict) and "error" in val:
+                raise Exception(val["error"])
+            # `send` returns [None] when the browser does not answer in time.
+            return cast(dict[str, dict[str, Any]], val) if isinstance(val, dict) else {}
 
         def addData(self, **kwargs):
             """Add (or replace) dataviews in the running viewer.
@@ -1026,6 +1190,7 @@ def show(
                      (r'/data/(.*)', DataHandler),
                      (r'/stim/(.*)', StimHandler),
                      (r'/mixer.html', MixerHandler),
+                     (r'/movie', MovieHandler),
                      (r'/picker', PickerHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
