@@ -5,10 +5,9 @@ import copy
 import functools
 import os
 import shlex
-import shutil
 import struct
 import subprocess as sp
-import tempfile
+import sys
 import warnings
 from collections.abc import Mapping
 from tempfile import NamedTemporaryFile
@@ -21,7 +20,9 @@ from nibabel import gifti
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
 
-from . import anat, appdirs, database
+from . import appdirs, database
+# autoflatten_subject is re-exported here as the public name for it
+from ._autoflatten import autoflatten_subject, check_autoflatten_available
 
 
 def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
@@ -155,11 +156,41 @@ def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=Non
         return False
 
 
+def _get_freesurfer_subject_dir(
+    freesurfer_subject_dir: Optional[str] = None,
+) -> str:
+    """Resolve the freesurfer subjects directory.
+
+    Parameters
+    ----------
+    freesurfer_subject_dir : str or None
+        Freesurfer subjects directory. If None, the value of the environment
+        variable ``$SUBJECTS_DIR`` is used.
+
+    Returns
+    -------
+    freesurfer_subject_dir : str
+        The resolved directory. Raises `ValueError` if it is None and
+        ``$SUBJECTS_DIR`` is not set.
+    """
+    if freesurfer_subject_dir is not None:
+        return freesurfer_subject_dir
+    if "SUBJECTS_DIR" in os.environ:
+        return os.environ["SUBJECTS_DIR"]
+    raise ValueError(
+        "Please source freesurfer before running this function, "
+        "or pass a path to the freesurfer subjects directory in "
+        "`freesurfer_subject_dir`"
+    )
+
+
 def import_subj(
     freesurfer_subject,
     pycortex_subject=None,
     freesurfer_subject_dir=None,
     whitematter_surf="smoothwm",
+    autoflatten=True,
+    autoflatten_args=None,
 ):
     """Imports a subject from freesurfer
 
@@ -184,6 +215,16 @@ def import_subj(
         Which whitematter surface to import as 'wm'. By default uses 'smoothwm', but 
         that surface is smoothed and may not be appropriate. 
         A good alternative is 'white'.
+    autoflatten : bool, optional
+        Whether to automatically cut and flatten the surfaces with `autoflatten`
+        after importing them (True by default), see `autoflatten_subject`. This
+        step takes a while, typically 15-30 minutes for both hemispheres; set it
+        to False to skip it and cut and flatten the surfaces yourself (or run
+        `autoflatten_subject` later). `autoflatten` is an optional dependency; if
+        it is not installed, a warning is issued and this step is skipped.
+    autoflatten_args : list of str, optional
+        Extra command line arguments passed to ``autoflatten run``, for example
+        ``["--backend", "freesurfer"]``. Ignored if `autoflatten` is False.
     
     Notes
     -----
@@ -200,9 +241,11 @@ def import_subj(
     Only the files listed below are copied over. They are read from the freesurfer
     subject directory, ``{freesurfer_subject_dir}/{freesurfer_subject}/``, and written
     into the pycortex filestore entry for the subject,
-    ``{pycortex_filestore}/{pycortex_subject}/``. Flat surfaces are *not* imported by
-    this function; use `import_flat` for those. Labels and annotations are not imported
-    either; use `get_label` for those.
+    ``{pycortex_filestore}/{pycortex_subject}/``. Flat surfaces are created and
+    imported by `autoflatten_subject` at the end of this function, unless
+    `autoflatten` is False; to import flat surfaces that were cut and flattened by
+    hand, use `import_flat`. Labels and annotations are not imported; use
+    `get_label` for those.
 
     Anatomical volumes, converted with ``mri_convert``:
 
@@ -243,15 +286,11 @@ def import_subj(
     ==========================  ================================  ==================
     """
     # Check if freesurfer is sourced or if subjects dir is passed
-    if freesurfer_subject_dir is None:
-        if "SUBJECTS_DIR" in os.environ:
-            freesurfer_subject_dir = os.environ["SUBJECTS_DIR"]
-        else:
-            raise ValueError(
-                "Please source freesurfer before running this function, "
-                "or pass a path to the freesurfer subjects directory in "
-                "`freesurfer_subject_dir`"
-            )
+    freesurfer_subject_dir = _get_freesurfer_subject_dir(freesurfer_subject_dir)
+    # Check that autoflatten is importable before doing any work, so that we do not
+    # import the subject only to fail at the very last (and slowest) step.
+    if autoflatten and not check_autoflatten_available():
+        autoflatten = False
     fs_mri_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "mri")
     fs_surf_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "surf")
     fs_anat_template = os.path.join(fs_mri_path, "{name}.mgz")
@@ -320,8 +359,18 @@ def import_subj(
             left=-lh, 
             right=-rh
         )
-    # Finally update the database by re-initializing it
+    # Update the database by re-initializing it
     database.db = database.Database()
+
+    # Automatically cut and flatten the surfaces. This is by far the slowest step,
+    # so it is done last, once everything else has been imported successfully.
+    if autoflatten:
+        autoflatten_subject(
+            freesurfer_subject,
+            pycortex_subject=pycortex_subject,
+            freesurfer_subject_dir=freesurfer_subject_dir,
+            autoflatten_args=autoflatten_args,
+        )
 
 
 def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
@@ -1260,7 +1309,7 @@ def write_dot(fname, pts, polys, name="test"):
             l = np.sqrt(((pts[a] - pts[b])**2).sum(-1))
             lengths.append(l)
             fp.write("%s -- %s [len=%f];\n"%(a, b, l))
-        fp.write("maxiter=1000000;\n");
+        fp.write("maxiter=1000000;\n")
         fp.write("}")
 
 
