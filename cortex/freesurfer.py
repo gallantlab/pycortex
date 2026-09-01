@@ -62,6 +62,12 @@ def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
         Freesurfer subject ID (should be a folder in your freesurfer $SUBJECTS_DIR)
     type : string
         Which steps of autorecon-all to perform. {'all', '1','2','3','cp','wm', 'pia'}
+    parallel : bool
+        Whether to parallelize the recon. Only has an effect for the '2', 'wm',
+        and 'all' steps, which are the only ones freesurfer can parallelize.
+    n_cores : int
+        Number of cores to use when `parallel` is True. None (default) uses
+        all available cores.
 
     """
     types = {

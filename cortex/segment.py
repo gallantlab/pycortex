@@ -47,15 +47,8 @@ def init_subject(subject, filenames, do_import_subject=False, **kwargs):
         prior to importing into pycortex.
     **kwargs
         Additional keyword arguments are forwarded to
-        `cortex.freesurfer.autorecon`. The deprecated `run_all` kwarg is
-        also accepted as an alias for `do_import_subject`.
-
-        parallel : bool, optional
-            Whether to run autorecon-all in parallel (only applies to the
-            '2', 'wm', or 'all' autorecon steps). Default True.
-        n_cores : int, optional
-            Number of cores to use for parallelization, if `parallel` is
-            True. Defaults to all available CPU cores.
+        `cortex.freesurfer.autorecon`.
+        useful ones: parallel=True, n_cores=4 (or more, if you have them)
     """
     if "run_all" in kwargs:
         warnings.warn(
@@ -204,24 +197,9 @@ def cut_surface(
         overwritten without asking for confirmation.
     **kwargs
         Additional keyword arguments are forwarded to the flattening backend
-        selected by `flatten_with`:
-
-        save_every : int, optional
-            Only used when `flatten_with` is 'freesurfer'. If not None, saves
-            a version of the mesh every `save_every` iterations of the
-            flattening process (via `freesurfer.flatten`). Useful for
-            determining why a flattening fails.
-        n_iterations : int, optional
-            Only used when `flatten_with` is 'SLIM'. Number of iterations for
-            the SLIM flattening algorithm. Default is 20.
-        slim_path : str, optional
-            Only used when `flatten_with` is 'SLIM'. Path to the SLIM
-            executable. Defaults to the path specified in the pycortex
-            config file.
-        do_flatten : bool, optional
-            Only used when `flatten_with` is 'SLIM'. Whether to proceed with
-            flattening. If None (default), prompts for confirmation
-            interactively.
+        selected by `flatten_with`: cortex.freesurfer.flatten() for
+        'freesurfer', or cortex.segment.flatten_slim() for 'SLIM'.
+        useful ones: save_every=10 (freesurfer), n_iterations=20 (SLIM)
     """
 
     if fs_subject is None:
@@ -366,11 +344,16 @@ def flatten_slim(
     patch : str
         name of patch, often "flatten" (obj file used here is {hemi}_{patch}.obj
         in the subject's freesurfer directory)
+    n_iterations : int
+        number of iterations of the SLIM flattening algorithm. Defaults to 20.
     freesurfer_subject_dir : str
         path to freesurfer subejct dir. Defaults to environment variable
         SUBJECTS_DIR
     slim_path : str
         path to SLIM flattening. Defaults to path specified in config file.
+    do_flatten : bool | None
+        whether to proceed with flattening. None (default) prompts for
+        confirmation interactively.
     """
     if slim_path == "None":
         slim_url = (
