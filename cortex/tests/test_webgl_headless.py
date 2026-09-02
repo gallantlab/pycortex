@@ -70,7 +70,7 @@ def _assert_no_browser_failures(handle):
     a shader that compiled but failed to *link*, which three.js reports only on
     console.error, so nothing raises and the render comes back blank.
 
-    ``browser_errors`` is current to within ``EVENT_PUMP_INTERVAL``, so it does
+    ``browser_errors`` is current to within ``EVENT_POLL_INTERVAL``, so it does
     not matter whether this is called inside the ``with`` block.
 
     Not the only defense: a driver that silently links an over-allocating shader

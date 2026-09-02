@@ -101,7 +101,7 @@ def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
 
 #: How often the worker thread calls into Playwright to dispatch queued browser
 #: events; ``browser_errors`` is current to within this interval.
-EVENT_PUMP_INTERVAL = 0.25
+EVENT_POLL_INTERVAL = 0.25
 
 #: Browser messages that mean WebGL itself failed, as opposed to unrelated
 #: javascript a page may log. Deliberately narrow: a healthy viewer already logs
@@ -263,14 +263,22 @@ class _PlaywrightThread:
         # Playwright's sync API dispatches queued events only while something is
         # calling into it, so parking here for the viewer's lifetime would leave
         # console messages undelivered until _cleanup(). Poll instead: the cheap
-        # round-trip pumps the loop.
-        while not self._shutdown_event.wait(EVENT_PUMP_INTERVAL):
+        # round-trip is what makes Playwright dispatch them.
+        while not self._shutdown_event.wait(EVENT_POLL_INTERVAL):
             try:
                 self._page.evaluate("0")
             except Exception:
-                # Usually the page closing during shutdown, but anything else
-                # ending the pump silently stops browser_errors updating.
-                logger.debug("event pump stopped", exc_info=True)
+                # Stop polling, but do not tear the viewer down underneath the
+                # caller: park until shutdown, as this thread did before
+                # polling existed. Falling through to _cleanup() here would
+                # close the browser mid-session, surfacing much later as the
+                # next getImage timing out.
+                logger.warning(
+                    "event polling stopped; browser_errors will no longer "
+                    "update for this viewer",
+                    exc_info=True,
+                )
+                self._shutdown_event.wait()
                 break
         self._cleanup()
 

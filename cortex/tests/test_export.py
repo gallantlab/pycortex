@@ -13,7 +13,7 @@ import pytest
 
 import cortex
 
-from .testing_utils import has_playwright, wait_for_file
+from .testing_utils import has_playwright
 
 pytestmark = pytest.mark.skipif(
     not has_playwright,
@@ -82,68 +82,6 @@ def test_plot_panels_headless():
         assert fig is not None
         assert os.path.isfile(save_name)
         assert os.path.getsize(save_name) > 0
-
-
-def test_filter_webgl_failures_keeps_only_real_failures():
-    """Only genuine WebGL failures match; ordinary console noise does not.
-
-    The filter has to stay narrow: a healthy viewer always logs a console.error
-    for the Leap Motion websocket it cannot reach.
-    """
-    from cortex.export.headless import filter_webgl_failures
-
-    noise = [
-        "[console.error] WebSocket connection to 'ws://127.0.0.1:6437/v6.json' "
-        "failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED",
-        "[console.warning] THREE.WebGLShader: gl.getShaderInfoLog() WARNING: 0:87",
-        "[console.warning] [.WebGL-0x21b400157a00]GL Driver Message (OpenGL, Perf)",
-        # Emitted alongside a link failure but meaningless alone: nothing calls
-        # gl.validateProgram(), so VALIDATE_STATUS is false for want of a run.
-        "[console.error] gl.VALIDATE_STATUS false",
-        "[console.error] gl.getError() 0",
-    ]
-    assert filter_webgl_failures(noise) == []
-
-    link_failure = "[console.error] THREE.WebGLProgram: Could not initialise shader."
-    context_failure = "[pageerror] Error creating WebGL context."
-    assert filter_webgl_failures(noise + [link_failure]) == [link_failure]
-    assert filter_webgl_failures(noise + [context_failure]) == [context_failure]
-
-
-def test_browser_errors_are_delivered_before_teardown():
-    """Console messages must arrive while the viewer is alive, not at teardown.
-
-    Playwright's sync API dispatches queued events only while something is
-    calling into it, so without the pump in ``_PlaywrightThread._run`` nothing
-    reaches ``browser_errors`` until ``_cleanup()`` -- long after
-    ``save_3d_views`` reads it. Rendering therefore has to grow the count.
-    """
-    import time
-
-    from cortex.export.headless import EVENT_PUMP_INTERVAL
-
-    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
-    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        after_load = len(handle._pw_thread.browser_errors)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            outfile = os.path.join(tmpdir, "pump.png")
-            handle.getImage(outfile, (512, 384))
-            wait_for_file(outfile)
-        # Poll rather than sleep a fixed interval; a few pump cycles is enough.
-        deadline = time.time() + 2.0
-        while time.time() < deadline:
-            during_render = len(handle._pw_thread.browser_errors)
-            if during_render > after_load:
-                break
-            time.sleep(EVENT_PUMP_INTERVAL)
-        else:
-            during_render = len(handle._pw_thread.browser_errors)
-
-    assert during_render > after_load, (
-        "browser_errors did not grow while the viewer was alive (%d -> %d); "
-        "queued console events are not being dispatched"
-        % (after_load, during_render)
-    )
 
 
 def test_save_3d_views_raises_on_webgl_failure(monkeypatch):

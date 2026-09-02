@@ -22,8 +22,8 @@ def wait_for_file(path, timeout=30):
     (the library cannot import from cortex/tests/), not deleting either copy.
 
     If that happens, keep the ``time.sleep(1)`` that follows that loop. It reads
-    as slack on the file wait but is not: it is the window in which the event
-    pump delivers console messages, which the WebGL failure check on the next
+    as slack on the file wait but is not: it is the window in which event
+    polling delivers console messages, which the WebGL failure check on the next
     line depends on. Re-label it rather than removing it.
     """
     import os
