@@ -280,6 +280,10 @@ Surface info
 
 The filestore also manages several important quantifications about the surfaces. These include Tissot's Indicatrix and the flatmap surface distortion. There are stored in the ``/surface-info`` directory. This is also where the per-vertex curvature, sulcal depth and thickness imported from Freesurfer_ are stored (see :ref:`database-freesurfer-import`). Each file is an ``.npz`` file holding one array per hemisphere, under the keys ``left`` and ``right``, and can be loaded with ``cortex.db.get_surfinfo``.
 
+Two of them cannot be returned as a ``Vertex`` object, because that conversion concatenates arrays stored under the keys ``left`` and ``right`` and assumes one value per vertex. ``bumpy_flatmap.npz`` holds the bumpy flatmap's relief (see :class:`cortex.polyutils.FlatSlab`) as a three-component offset per vertex, of which only the third is nonzero, under the keys ``bump_left`` and ``bump_right``, and ``equivolume_areas.npz`` holds four scalar maps rather than two -- the white matter and pial vertex areas the webgl viewer's equivolume depth sampling needs -- under ``wm_left``, ``wm_right``, ``pia_left`` and ``pia_right``. For these, ``cortex.db.get_surfinfo`` hands back the ``.npz`` file itself rather than a ``Vertex``; remember to close it.
+
+Anything computed from the flatmap -- the distortion maps, the flatmap border and the bumpy flatmap -- is deleted and regenerated when a new flatmap is imported with ``cortex.freesurfer.import_flat``, since it describes a flatmap that no longer exists.
+
 
 Views
 -----
@@ -325,9 +329,11 @@ Here is an example entry into the filestore...
         ├── overlays.svg
         ├── rois.svg
         ├── surface-info
+        │   ├── bumpy_flatmap.npz
         │   ├── curvature.npz
         │   ├── distortion[dist_type=areal].npz
         │   ├── distortion[dist_type=metric].npz
+        │   ├── equivolume_areas.npz
         │   ├── sulcaldepth.npz
         │   └── thickness.npz
         ├── surfaces

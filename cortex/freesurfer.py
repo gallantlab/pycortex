@@ -403,6 +403,31 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
         os.unlink(overlays_file)
     # Regenerate it? 
 
+    # clear_cache only empties the cache/ directory, but surface-info/ holds
+    # derived data too, and some of it is computed from the flatmap that has
+    # just been replaced. Those files would otherwise stay stale forever.
+    _clear_flat_surfinfo(cx_subject)
+
+
+def _clear_flat_surfinfo(cx_subject):
+    """Delete the surface info files that are derived from the flatmap.
+
+    Called when a flatmap is (re)imported. Anything computed from the flat
+    surface -- distortion, the flatmap border, the bumpy flatmap --
+    describes the *old* flatmap once a new one is imported.
+    """
+    surfiform = database.db.get_paths(cx_subject)['surfinfo']
+    directory = os.path.dirname(surfiform)
+    if not os.path.isdir(directory):
+        return
+    flat_derived = ("distortion", "flat_border", "bumpy_flatmap")
+    for fname in os.listdir(directory):
+        # Options are appended to the type as "type[opt=val].npz", so match on
+        # the leading type name rather than the whole filename.
+        stem = fname.split("[")[0].rsplit(".", 1)[0]
+        if stem in flat_derived:
+            os.unlink(os.path.join(directory, fname))
+
 
 def _remove_disconnected_polys(polys):
     """Remove polygons that are not in the main connected component.

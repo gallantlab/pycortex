@@ -1073,3 +1073,88 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
     print(f"\nVisual comparison saved to:\n  {out_path}\n")
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+
+
+# ---------------------------------------------------------------------------
+# Group 6: Bumpy flatmap
+# ---------------------------------------------------------------------------
+
+
+def _ensure_bumpy_flatmap():
+    """Put a bumpy flatmap in the database for the test subject if there is
+    none. It is a few seconds per hemisphere, so just ask for it."""
+    cortex.db.get_surfinfo(subj, type='bumpy_flatmap').close()
+
+
+@pytest.mark.timeout(900)
+def test_bumpy_flatmap_changes_the_render(tmp_path):
+    """The relief reaches the shader and visibly changes the flatmap.
+
+    This is the end-to-end check on the whole path: the height computed in
+    `cortex.polyutils.FlatSlab`, the cached surface info, the ``flatoffset``
+    attribute in the ctm, the height javascript packs into ``flatbump.w``, and
+    the displacement the vertex shader applies. Any break in that chain shows
+    up here as two identical images.
+    """
+    from PIL import Image
+
+    _ensure_bumpy_flatmap()
+    # The pack may predate the offsets, in which case it has no flatoffset map.
+    cortex.utils.get_ctmpack(subj, recache=True)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    original = cortex.options.config.get("webgl_viewopts", "bumpy_flatmap")
+    images = {}
+
+    def capture(handle, name):
+        outfile = str(tmp_path / ("%s.png" % name))
+        handle.getImage(outfile, (512, 384))
+        _wait_for_file(outfile)
+        _assert_not_blank(outfile)
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+        images[name] = np.asarray(Image.open(outfile).convert("RGB"))
+
+    try:
+        for bumpy in (False, True):
+            cortex.options.config.set("webgl_viewopts", "bumpy_flatmap",
+                                      "true" if bumpy else "false")
+            with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+                handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["inflated"]})
+                capture(handle, "inflated_%s" % bumpy)
+                handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["flatmap"]})
+                capture(handle, "bumpy_%s" % bumpy)
+                if bumpy:
+                    # And the same viewer with the relief exaggerated, which is
+                    # what the bumpy_flatmap_scale slider drives.
+                    # Only the rendered image is checked, not a read-back of
+                    # the value: reading any surface menu property through the
+                    # javascript proxy returns an empty dict, for unfold and
+                    # depth just as much as for this one.
+                    handle.ui.set("surface.%s.bumpy_flatmap_scale" % subj, 4.0)
+                    time.sleep(0.3)
+                    capture(handle, "bumpy_scaled")
+    finally:
+        cortex.options.config.set("webgl_viewopts", "bumpy_flatmap", original)
+
+    assert not np.array_equal(images["bumpy_True"], images["bumpy_False"]), (
+        "the bumpy flatmap rendered identically to the flat one; the relief "
+        "never reached the shader"
+    )
+    assert not np.array_equal(images["bumpy_scaled"], images["bumpy_True"]), (
+        "exaggerating the relief changed nothing; the bumpy_flatmap_scale "
+        "slider is not reaching the shader"
+    )
+    # The offsets are in flatmap coordinates, so they mean nothing until the
+    # surface is flat: the displacement ramps in over inflated-to-flat, and at
+    # the inflated state it must not have started. This once regressed the
+    # other way -- the displacement ramped over anatomical-to-inflated while
+    # the shading normal ramped over inflated-to-flat, so geometry and
+    # lighting disagreed across the whole first half of the unfold.
+    assert np.array_equal(images["inflated_True"], images["inflated_False"]), (
+        "the bumpy flatmap changed the inflated surface; a flatmap-space "
+        "offset is leaking into the folded surfaces"
+    )
