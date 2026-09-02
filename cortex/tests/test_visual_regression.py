@@ -2,8 +2,8 @@
 
 Four suites. Three of them render flatmaps of the six public dataview classes
 (``Volume``, ``Vertex``, ``Volume2D``, ``Vertex2D``, ``VolumeRGB``,
-``VertexRGB``) through both matplotlib (``cortex.quickshow``) and the headless
-WebGL viewer (``cortex.export.plot_panels``), varying what the data carries:
+``VertexRGB``) through both matplotlib (``cortex.quickflat.make_png``) and the
+headless WebGL viewer (``save_3d_views``), varying what the data carries:
 alpha-bearing values, NaNs in the data channels, and NaNs in the alpha map. The
 last covers only the two RGB classes, the only ones taking an explicit
 ``alpha=``. Every one of those renders is checked twice -- against its own
@@ -12,8 +12,11 @@ render of the same dataview at a loose one.
 
 The fourth suite renders non-flatmap views, ``Volume`` and ``Vertex`` on the
 inflated and fiducial surfaces, through ``save_3d_views``. Those are
-webgl-only and get the reference check alone: ``cortex.quickshow`` produces
-flatmaps and nothing else, so there is nothing to diff them against.
+webgl-only and get the reference check alone: quickflat produces flatmaps and
+nothing else, so there is nothing to diff them against.
+
+Every render is transparent outside the flatmap, so the two renderers are
+directly comparable without compositing or a coordinate correction.
 
 See ``reference_images/README.md`` for how the references were produced and how
 to regenerate them.
@@ -96,16 +99,13 @@ NONFLAT_VIEWS = [
     ("fiducial", "lateral_pivot", "Vertex"),
 ]
 
-#: Lossless WebP: bit-exact after decode and 59% the size of optimized PNG. AVIF
-#: is smaller still but Pillow cannot write it losslessly -- it was measured at
-#: max|difference| 27-29, larger than DIFF_THRESHOLD below, so it would corrupt
-#: the comparison it is meant to feed. Higher PNG compression levels are pointless
-#: here: level 6 and level 9 produce byte-identical output.
+#: Lossless WebP: bit-exact after decode and appreciably smaller than optimized
+#: PNG.
 REFERENCE_SUFFIX = ".webp"
 
 #: First bytes of a git-lfs pointer. The reference images are LFS-tracked, so
-# if LFS hasn't been properly initialized, these 130-byte text stubs exist in
-# place of the images.
+#: if LFS hasn't been properly initialized, these 130-byte text stubs exist in
+#: place of the images.
 LFS_POINTER_MAGIC = b"version https://git-lfs.github.com/spec/v1"
 
 #: Rewrite the references from this run instead of comparing against them.
@@ -121,115 +121,69 @@ MAX_MEAN_ABS_DIFF = 2.0        # mean |difference| over all pixels/channels, of 
 DIFF_THRESHOLD = 16            # a pixel "differs" if any channel moves by more
 MAX_FRACTION_DIFFERING = 0.02  # at most this fraction of pixels may differ
 
-# The two limits above are both weak against a change that moves a *small* number
-# of pixels by a *large* amount, which is what a geometry or contour shift looks
-# like: the mean is diluted by the ~97% of pixels that did not move, and a shifted
-# contour only just clears the fraction limit. The #679 vertex-shader change was
-# caught with 1.4x margin on the fraction and would have passed the mean outright
-# (1.574 against a limit of 2.0), despite moving 2.8% of pixels by a median of
-# 67/255.
+# The two limits above are both weak against a change that moves a *small*
+# number of pixels by a *large* amount, which is what a geometry or contour
+# shift looks like: the mean is diluted by the pixels that did not move. So two
+# further criteria, each covering what the others miss:
+#   - mean and fraction>16 catch broad, low-amplitude shifts, which the gross
+#     fraction misses entirely.
+#   - fraction>32 catches sparse, high-amplitude ones. 32 rather than 64 because
+#     gh-695's premultiplied-alpha change scores 0% at 64 -- the suite would miss
+#     it -- and its mean sits below the cosmetic floor, so no tighter mean helps.
+#   - SSIM catches structural change, but is computed on luminance and so is
+#     blind to a channel permutation. It adds sensitivity alongside the others;
+#     it cannot replace them.
 #
-# So two further criteria, each covering what the others miss. Measured against
-# simulated cosmetic drift (a 596<->594 resample, +-1 LSB quantisation, gamma
-# 1.02) versus the real #679 change:
-#
-#            metric                cosmetic     #679    separation
-#            mean                    0.596      1.574       2.6x
-#            fraction > 16           0.48%      2.79%       5.8x
-#            fraction > 32          0.0052%     2.16%       large
-#            SSIM loss              0.0022     0.0393      18.3x
-#
-# They are complementary rather than ranked, so all four are checked:
-#   - mean and fraction>16 catch broad, low-amplitude shifts (a gamma change
-#     scores 6.68 mean but 0.00% on fraction>32).
-#   - fraction>32 catches sparse, high-amplitude ones (the #679 case).
-#   - SSIM catches structural change, but is computed on luminance and is
-#     therefore blind to a channel permutation -- an R/B swap scores 0.0000 SSIM
-#     loss while scoring 21.75 on the mean. It only adds sensitivity alongside
-#     the others; it cannot replace them.
-#
-# Caveat on the limits below: the cosmetic figures are *simulated*, not measured
-# across a real Chromium or matplotlib upgrade. A genuine toolchain bump changes
-# anti-aliasing, which can move a few pixels a long way and so does show up in
-# fraction>32. Both limits are set well above the simulated drift rather than at
-# it, to leave room for that.
-#
-# The gross threshold is 32 rather than 64 because of a second worked example.
-# gh-695 ("unify NaN and alpha handling", cb976270 on fix/nan-alpha-parity as of
-# writing) changes four quickflat volumetric renders through premultiplied-alpha
-# thickness averaging, and at 64 every one of
-# them scores 0.000% -- the suite missed it entirely. Its mean cannot be tightened
-# into a catch either: at 0.19 it sits *below* the simulated cosmetic floor of
-# 0.60, so a tighter mean yields false positives before it yields a catch. At 32
-# the signal is 0.256% against this 0.1% limit while the worst simulated cosmetic
-# drift is 0.0052%, i.e. 19x below it. Dropping to 32 also strengthens the #679
-# catch (1.46% -> 2.16%). The cost is headroom: at 64 no cosmetic perturbation
-# registered at all, so a real toolchain bump now has 19x of room rather than
-# effectively unlimited.
+# The limits sit well above measured cosmetic drift rather than at it, since a
+# real toolchain bump changes anti-aliasing and does show up in fraction>32.
 GROSS_DIFF_THRESHOLD = 32             # a pixel differs "grossly" if any channel moves by more
 MAX_FRACTION_GROSSLY_DIFFERING = 0.001
 MAX_SSIM_LOSS = 0.01                  # 1 - mean SSIM over the luminance channel
 
-# quickflat and webgl's flatmap renders disagree by a fixed anisotropic
-# scale + translation, not a genuine content difference: fitting a homography
-# (cv2.findTransformECC, MOTION_HOMOGRAPHY) between the two on curvature-only
-# content (data alpha=0, so no dataview-specific signal) landed on essentially
-# zero rotation and zero projective terms -- i.e. no real perspective
-# distortion -- but scale_x=0.9690, scale_y=0.9365, and a ~7px translation.
-# Applying just that (affine, webgl -> quickflat's frame) dropped curvature-only
-# mean|diff| from 18.9 to 4.4. Translation is stored as a fraction of
-# quickflat's own (width, height) so it scales if that size varies slightly
-# between dataviews; the scale factors are already dimensionless.
-CROSS_RENDERER_SCALE_X = 0.9690
-CROSS_RENDERER_SCALE_Y = 0.9365
-CROSS_RENDERER_TRANSLATE_X_FRAC = 6.9008 / 392
-CROSS_RENDERER_TRANSLATE_Y_FRAC = 6.9650 / 204
-
 # Cross-renderer tolerances: quickflat vs webgl for the *same* dataview, rather
 # than each against its own reference. Looser than the within-renderer ones
-# above because matplotlib and Three.js still differ in anti-aliasing and
-# colormap sampling even after the affine correction above removes the
-# dominant coordinate-frame mismatch. What must not happen is the kind of
-# broad color/shape disagreement (wrong colormap, dropped alpha, swapped
-# channels) that a real regression causes, which is far larger than this.
-#
-# Calibrated across all twelve flatmap pairs, which with the affine correction
-# span mean|diff| 1.06-2.01 and 0.10-1.64% of pixels differing. The limits sit
-# 3-4x above those worst cases: tight enough that losing the correction, or a
-# real colormap/alpha/channel regression, fails immediately, loose enough to
-# absorb a Chromium or matplotlib upgrade.
-CROSS_MAX_MEAN_ABS_DIFF = 8.0
-CROSS_DIFF_THRESHOLD = 64
-CROSS_MAX_FRACTION_DIFFERING = 0.05
+# above, since the two renderers genuinely differ in anti-aliasing and colormap
+# sampling. Re-measure after any change to either renderer's output size.
+CROSS_MAX_MEAN_ABS_DIFF = 3.5
+CROSS_DIFF_THRESHOLD = 32  # same as GROSS_DIFF_THRESHOLD.
+CROSS_MAX_FRACTION_DIFFERING = 0.032
 
-# Render settings chosen to minimize cross-renderer disagreement, from a factorial
-# sweep of both renderers' settings (curvature brightness/contrast/threshold,
-# depth, sampler, thick/layers, and webgl's three lighting controls).
+# Render settings chosen to minimize cross-renderer disagreement, from a
+# factorial sweep of both renderers' settings. Only curvature thresholding was
+# worth changing from the defaults: a thresholded curvature puts a hard binary
+# edge at curvature=0 that each rasterizer resolves differently, where smooth
+# curvature is low-frequency and resamples cleanly. On curvature-only content
+# it costs 1.8x on the mean -- passing, now that the renders are the same size,
+# but eating most of the headroom for no benefit. quickflat's
+# ``curvature_threshold`` and webgl's ``curvature.smoothness`` are the same knob
+# from opposite ends -- smoothness 0.0 *is* thresholded -- so both have to move
+# together.
 #
-# Only one setting was worth changing from the defaults: curvature thresholding.
-# Thresholded curvature puts a hard binary edge at curvature=0 whose sub-pixel
-# placement each rasterizer resolves differently, so it is maximally sensitive to
-# the residual misalignment; smooth curvature is low-frequency and resamples
-# cleanly. Averaged over the brightness/contrast grid the thresholded pairing
-# scored 8.50 against 3.66 for the smooth one, and 4.98 vs 2.66 at the default
-# brightness/contrast. quickflat's ``curvature_threshold`` and webgl's
-# ``curvature.smoothness`` are the same knob from opposite ends -- smoothness 0.0
-# *is* thresholded -- so both have to move together or they disagree by more.
+# Lighting, sampler, depth and thick/layers all stayed at their defaults; none
+# moved the disagreement measurably on a flatmap, whose normals face the camera.
 #
-# Everything else stayed at its default, on the evidence:
-#   - lighting: the default (all off) already ties the best combination at 2.304;
-#     `uniform_illumination=1` renders identically on a flatmap (0.003). Only
-#     `topleft_lighting=1` hurts (15.30), and it is off by default.
-#   - sampler: trilinear beat nearest by ~1% (2.336 vs 2.365), i.e. noise.
-#   - depth / thick / layers: total spread 0.38 over the whole grid, below the
-#     noise floor -- the polarity difference between quickflat's `depth` and
-#     webgl's `thickmix` is not resolvable and does not matter here.
-#
-# NB this deliberately renders with curvature *un*-thresholded, which is not
-# pycortex's default appearance, so these references do not cover the default
-# curvature path. That is the trade for a ~2x tighter cross-renderer floor.
+# NB this is not pycortex's default appearance, so these references do not cover
+# the default curvature path. That is the trade for a tighter floor;
+# nonflat_views/ keeps the default and recovers the coverage.
+#: Height of the quickflat render. make_png scales the width to the subject's
+#: flatmap aspect, giving roughly 490x256.
+QUICKFLAT_HEIGHT = 256
+
+#: Browser canvas for every webgl render. After trimming, lands at roughly
+# quickflat's 490x256 (from QUICKFLAT_HEIGHT).
+WEBGL_CANVAS = (925, 695)
+
+# Don't threshold curvature to reduce cross-renderer disagreement due to
+# anti-aliasing implementations.
 QUICKFLAT_CURVATURE_THRESHOLD = False
 WEBGL_CURVATURE_SMOOTHNESS = 1.0
+
+
+def _normalize_transparent(rgba: npt.NDArray) -> npt.NDArray:
+    """Zero the RGB of fully transparent pixels, which is undefined there."""
+    out = rgba.astype(np.int16).copy()
+    out[out[..., 3] == 0, :3] = 0
+    return out
 
 
 def _ssim(a: npt.NDArray, b: npt.NDArray) -> float:
@@ -320,9 +274,7 @@ def _check_against_reference(
 
     A shape mismatch is not an immediate failure: the render is resized to the
     reference's size before diffing, since the two are still expected to show
-    the same content at a slightly different trim/crop. That is a plain resize,
-    without the affine that ``_check_cross_renderer`` also applies -- one
-    renderer against itself has no coordinate-frame mismatch to undo.
+    the same content at a slightly different trim/crop.
 
     On any breach, writes the (possibly resized) render and an amplified
     difference image into ``debug_dir``, so the change can be inspected rather
@@ -390,32 +342,23 @@ def _check_cross_renderer(
     """Compare a quickflat render directly against its webgl counterpart.
 
     Unlike ``_check_against_reference`` this has no stored fixture: it diffs
-    the two renders produced by *this* test run against each other. webgl's
-    render is resized to quickflat's own size, then the fixed affine
-    correction above (scale + translation) is applied to align it onto
-    quickflat's coordinate frame before diffing -- see
-    ``CROSS_RENDERER_SCALE_X`` for how that was derived. Returns a mismatch
-    description, or None if they agree within the (loose) cross-renderer
-    tolerance.
+    the two renders produced by *this* test run against each other. Both are
+    content-tight and transparent outside the flatmap, so webgl is resized to
+    quickflat's size and diffed as RGBA -- no coordinate correction is needed.
+
+    RGB under fully transparent pixels is normalized first. It is undefined
+    there, and the two writers disagree: matplotlib leaves white, the browser
+    leaves black. Alpha itself stays in the comparison, so a render that
+    lost its transparency is still caught.
     """
     from PIL import Image
 
     qf_im = Image.open(quickflat_path).convert("RGBA")
     wg_im = Image.open(webgl_path).convert("RGBA")
-    shape_note = f" (aligned: quickflat was {qf_im.size}, webgl was {wg_im.size})"
+    shape_note = f" (resized: quickflat was {qf_im.size}, webgl was {wg_im.size})"
 
-    size = qf_im.size
-    w, h = size
-    tx = CROSS_RENDERER_TRANSLATE_X_FRAC * w
-    ty = CROSS_RENDERER_TRANSLATE_Y_FRAC * h
-    wg_aligned = wg_im.resize(size, Image.BILINEAR).transform(
-        size, Image.AFFINE,
-        (CROSS_RENDERER_SCALE_X, 0.0, tx, 0.0, CROSS_RENDERER_SCALE_Y, ty),
-        resample=Image.BILINEAR,
-    )
-
-    qf = np.asarray(qf_im).astype(np.int16)
-    wg = np.asarray(wg_aligned).astype(np.int16)
+    qf = _normalize_transparent(np.asarray(qf_im))
+    wg = _normalize_transparent(np.asarray(wg_im.resize(qf_im.size, Image.BILINEAR)))
 
     diff = np.abs(qf - wg)
     mean_abs = float(diff.mean())
@@ -567,11 +510,10 @@ def _build_nan_dataview(name: str) -> Dataview:
     # of the nan_alpha suite: this covers alpha NaNs superposed on color NaNs,
     # where nan_alpha isolates them with every color channel clean.
     #
-    # Expect the alpha map's surviving NaN fraction to look smaller than its mask.
-    # Where a color channel is already NaN the pipeline writes alpha's vmin over
-    # it, so of the z>=15 region only the quarter with red and green both clean
-    # stays NaN; the rest is resolved to a hard 0. Both halves of that are worth
-    # rendering, which is why the regions are allowed to overlap.
+    # Expect the alpha map's surviving NaN fraction to look smaller than its
+    # mask: where a color channel is already NaN the pipeline writes alpha's
+    # vmin over it. Both halves of that are worth rendering, which is why the
+    # regions are allowed to overlap.
     def vol_nan(arr, mask):
         out = arr.copy()
         out[mask] = np.nan
@@ -657,7 +599,7 @@ def _render_and_check_dataview(
     reference_dir: Path,
     tmp_path: Path,
 ) -> list[str]:
-    """Render a single dataview via quickshow + webgl and check against reference.
+    """Render a single dataview through both renderers and check it.
 
     Each render is checked three ways: quickflat vs its own reference, webgl vs
     its own reference (both tight tolerances, see ``_check_against_reference``),
@@ -668,53 +610,49 @@ def _render_and_check_dataview(
     if reference images are missing, and regenerates them if ``REGENERATE_REFERENCES``
     is set.
     """
-    import matplotlib.pyplot as plt
+    from cortex.export.save_views import angle_view_params, save_3d_views
 
-    # quickshow → low-res PNG
+    flatmap_angle = (
+        "flatmap",
+        {
+            **angle_view_params["flatmap"],
+            "surface.{subject}.curvature.smoothness": WEBGL_CURVATURE_SMOOTHNESS,
+        },
+    )
+
+    # quickflat -> transparent PNG via make_png, the public entry point for
+    # writing a flatmap to a file, so the suite exercises what callers use.
     qf_path = tmp_path / f"quickflat_{name}.png"
-    qf_fig = cortex.quickshow(
+    cortex.quickflat.make_png(
+        str(qf_path),
         view,
+        height=QUICKFLAT_HEIGHT,
         with_curvature=True,
         with_rois=False,
         with_labels=False,
         with_colorbar=False,
         with_sulci=False,
         with_borders=False,
-        height=256,
         curvature_threshold=QUICKFLAT_CURVATURE_THRESHOLD,
     )
-    qf_fig.savefig(qf_path, bbox_inches="tight", pad_inches=0, dpi=80)
-    plt.close(qf_fig)
 
-    # webgl → trimmed flatmap PNG via plot_panels (single flatmap panel).
-    # Not save_3d_views, whose output is transparent where quickshow's figure is
-    # opaque; going through matplotlib keeps both sides comparable for the
-    # cross-renderer check.
-    flatmap_panel = [
-        {
-            "extent": [0.0, 0.0, 1.0, 1.0],
-            "view": {"angle": "flatmap", "surface": "flatmap"},
-        }
-    ]
-    wg_path = tmp_path / f"webgl_{name}.png"
-    wg_fig = cortex.export.plot_panels(
-        view,
-        panels=flatmap_panel,
-        figsize=(6, 3),
-        windowsize=(512, 384),
-        save_name=str(wg_path),
-        sleep=10,
-        # ``curvature_smoothness`` is a named parameter of ``show()``, which
-        # ``plot_panels`` forwards to. Dotted viewer-state names are *not* --
-        # ``show()`` drops those into the HTML template unused -- so anything
-        # without a declared keyword has to go through ``_set_view`` instead.
-        viewer_params=dict(
-            labels_visible=[], overlays_visible=[],
-            curvature_smoothness=WEBGL_CURVATURE_SMOOTHNESS,
-        ),
-        headless=True,
+    # webgl -> trimmed flatmap screenshot. Not plot_panels, which would compose
+    # this into a matplotlib figure and store an upsampled interpolation of it;
+    # both sides are transparent outside the flatmap, so they are directly
+    # comparable without a figure to give them a common background.
+    wg_path = Path(
+        save_3d_views(
+            view,
+            base_name=str(tmp_path / f"webgl_{name}"),
+            list_angles=[flatmap_angle],
+            list_surfaces=["flatmap"],
+            trim=True,
+            size=WEBGL_CANVAS,
+            sleep=10,
+            viewer_params=dict(labels_visible=[], overlays_visible=[]),
+            headless=True,
+        )[0]
     )
-    plt.close(wg_fig)
 
     # Checked after rendering, not before, so that a dataview which cannot be
     # rendered at all fails here rather than skipping on the missing reference
@@ -758,15 +696,9 @@ def _render_and_check_webgl_only(
     """Render one non-flatmap view through webgl and check it against a reference.
 
     A cut-down ``_render_and_check_dataview``: there is no quickflat render to
-    compare against, because ``cortex.quickshow`` produces flatmaps and nothing
-    else, so both the quickflat reference check and the cross-renderer check are
-    absent by necessity rather than by choice.
-
-    It therefore calls ``save_3d_views`` directly rather than ``plot_panels``,
-    which would compose the screenshot into a matplotlib figure and store an
-    upsampled interpolation of the render instead of the render. The flatmap
-    path pays that cost to keep both renderers comparable; without a second
-    renderer there is nothing to buy with it.
+    compare against, because quickflat produces flatmaps and nothing else, so
+    both the quickflat reference check and the cross-renderer check are absent
+    by necessity rather than by choice.
 
     Curvature is left at pycortex's default (thresholded) here, unlike the
     flatmap suites. Those un-threshold it to reduce cross-renderer
@@ -782,7 +714,7 @@ def _render_and_check_webgl_only(
         list_angles=[angle],
         list_surfaces=[surface],
         trim=True,
-        size=(512, 384),
+        size=WEBGL_CANVAS,
         sleep=10,
         viewer_params=dict(labels_visible=[], overlays_visible=[]),
         headless=True,
@@ -806,7 +738,7 @@ def _render_and_check_webgl_only(
 
 @pytest.mark.parametrize("name", DATAVIEW_NAMES)
 def test_visual_comparison_alpha_dataviews(tmp_path, name):
-    """Render an alpha-bearing dataview via quickshow + webgl, and assert it matches.
+    """Render an alpha-bearing dataview through both renderers, and assert it matches.
 
     Plain Volume / Vertex have no native per-element alpha (pycortex's
     bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
@@ -826,7 +758,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path, name):
 
 @pytest.mark.parametrize("name", DATAVIEW_NAMES)
 def test_visual_comparison_nan_dataviews(tmp_path, name):
-    """Render a NaN-bearing dataview via quickshow + webgl, and assert it matches.
+    """Render a NaN-bearing dataview through both renderers, and assert it matches.
 
     NaN is pycortex's convention for "no data at this voxel/vertex" -- both
     renderers are expected to draw those elements as fully transparent (falling
@@ -879,7 +811,7 @@ def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
     is larger than 1000 bytes -- enough to catch a render that never happened,
     not one that came out wrong.
 
-    webgl only, necessarily: quickshow renders flatmaps and nothing else, so
+    webgl only, necessarily: quickflat renders flatmaps and nothing else, so
     these views have no quickflat counterpart and therefore no cross-renderer
     check. Volume and Vertex both appear because they take different shader
     paths, and the flatmap is demonstrably not representative of how those

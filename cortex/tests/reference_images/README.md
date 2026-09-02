@@ -22,16 +22,15 @@ than passing silently.
 
 ## Render settings
 
-The three flatmap directories render `quickflat_*` with `cortex.quickshow` and
-`webgl_*` with `cortex.export.plot_panels`, both with curvature
-**un-thresholded** (`curvature_threshold=False` and
+The three flatmap directories render `quickflat_*` with
+`cortex.quickflat.make_png` and `webgl_*` with `save_3d_views`, both with
+curvature **un-thresholded** (`curvature_threshold=False` and
 `surface.{subject}.curvature.smoothness=1.0`). (This is to avoid failures from
 differences in the renderers' anti-aliasing implementations.)
 Everything else is at its default.
 
-`nonflat_views/` calls `save_3d_views` directly, so the stored pixels are the
-browser screenshot with its transparent background, not a matplotlib
-composition of it. It keeps pycortex's default thresholded curvature.
+`nonflat_views/` keeps pycortex's default thresholded curvature, unlike the
+flatmap groups.
 
 The exact keyword arguments are in `_render_and_check_dataview` and
 `_render_and_check_webgl_only`; change either and the references must be
@@ -46,39 +45,10 @@ and against the other renderer's render of the same dataview at a loose one
 (`CROSS_MAX_MEAN_ABS_DIFF`, `CROSS_MAX_FRACTION_DIFFERING`), with no stored
 fixture. `test_visual_comparison_nonflat_views` runs the reference check only.
 
-## The cross-renderer affine correction
-
-The renderers are not perfectly aligned pixel-by-pixel. Before diffing,
-`_check_cross_renderer` maps webgl onto quickflat's frame with a fixed
-anisotropic scale (x 0.9690, y 0.9365) and a ~7 px translation, held in the
-`CROSS_RENDERER_*` constants in `cortex/tests/test_visual_regression.py`. Over
-the twelve stored pairs it takes mean|diff| from 4.83-9.42 down to 1.06-2.01.
-
-The correction is affine, not perspective, despite webgl rendering through a
-`THREE.PerspectiveCamera` (FOV 45°, `axes3d.js`): the flatmap is a planar
-surface viewed down its normal, so the projection degenerates to a scale.
-Fitting a full homography returns a projective row of `[~0, ~0, 1]` and ~0°
-rotation. Do not try to undo a perspective projection here.
-
-To re-derive the constants:
-
-```
-uv run --with opencv-python-headless \
-    python cortex/tests/reference_images/fit_cross_renderer_affine.py
-```
-
-It renders curvature-only content, fits webgl → quickflat with
-`cv2.findTransformECC`, and prints the constants ready to paste. OpenCV is not a
-project dependency, hence `--with`. It also writes `fit_affine_residual.png`,
-which should show a faint sulcal outline only.
-
-Re-run it after a change to `plot_panels`' figure composition, to quickflat's
-`height=`/`dpi=`, or to either renderer's trim logic. Losing the correction
-looks like a mean|diff| around 5-9 rather than 1-2 across most pairs — 11 of the
-12 fail, so one green pair is not evidence the correction is intact. Its
-geometry settings (`height`, `dpi`, `figsize`, `windowsize`) mirror the test's
-and must be updated alongside them; its curvature settings deliberately do not
-(see the note in the script).
+Both renderers write their flatmap content-tight and transparent outside it, so
+the cross-renderer check only resizes webgl to quickflat's size before diffing.
+RGB under fully transparent pixels is normalized first: it is undefined there,
+and matplotlib leaves white where the browser leaves black.
 
 ## Provenance
 
@@ -91,9 +61,8 @@ Generated on `main` (`3779f7ca`).
 | matplotlib | 3.10.9 |
 
 Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build; matplotlib rasterizes the
-quickflat renders and `plot_panels`' composition of the webgl ones, so between
-them they determine all 28 images.
+regenerating. playwright fixes the chromium build, which determines the 16 webgl
+references; matplotlib rasterizes the 12 quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 
@@ -133,5 +102,5 @@ change is cosmetic, then:
 REGENERATE_REFERENCE_IMAGES=1 pytest cortex/tests/test_visual_regression.py
 ```
 
-That rewrites all four directories in one run. It does not refit the affine
-correction. Review the resulting diff before committing.
+That rewrites all four directories in one run. Review the resulting diff before
+committing.
