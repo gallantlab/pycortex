@@ -621,8 +621,7 @@ def _render_and_check_dataview(
         },
     )
 
-    # quickflat -> transparent PNG via make_png, the public entry point for
-    # writing a flatmap to a file, so the suite exercises what callers use.
+    # quickflat -> transparent PNG via make_png.
     qf_path = tmp_path / f"quickflat_{name}.png"
     cortex.quickflat.make_png(
         str(qf_path),
@@ -637,10 +636,7 @@ def _render_and_check_dataview(
         curvature_threshold=QUICKFLAT_CURVATURE_THRESHOLD,
     )
 
-    # webgl -> trimmed flatmap screenshot. Not plot_panels, which would compose
-    # this into a matplotlib figure and store an upsampled interpolation of it;
-    # both sides are transparent outside the flatmap, so they are directly
-    # comparable without a figure to give them a common background.
+    # webgl -> trimmed flatmap screenshot.
     wg_path = Path(
         save_3d_views(
             view,
@@ -698,10 +694,8 @@ def _render_and_check_webgl_only(
 ) -> list[str]:
     """Render one non-flatmap view through webgl and check it against a reference.
 
-    A cut-down ``_render_and_check_dataview``: there is no quickflat render to
-    compare against, because quickflat produces flatmaps and nothing else, so
-    both the quickflat reference check and the cross-renderer check are absent
-    by necessity rather than by choice.
+    A cut-down ``_render_and_check_dataview``: no cross-renderer check because
+    we don't use quickflat.
 
     Curvature is left at pycortex's default (thresholded) here, unlike the
     flatmap suites. Those un-threshold it to reduce cross-renderer
@@ -809,16 +803,12 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
 def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
     """Render a non-flatmap view through webgl and assert it matches its reference.
 
-    Everything else in this file renders the flatmap. That leaves the 3D views
-    covered only by test_webgl_headless.py's smoke tests, which assert the file
-    is larger than 1000 bytes -- enough to catch a render that never happened,
-    not one that came out wrong.
+    The other tests render flatmaps, which in webgl can have different behavior
+    from 3D views (for example, lighting).
 
-    webgl only, necessarily: quickflat renders flatmaps and nothing else, so
-    these views have no quickflat counterpart and therefore no cross-renderer
-    check. Volume and Vertex both appear because they take different shader
-    paths, and the flatmap is demonstrably not representative of how those
-    behave -- both known webgl lighting bugs reproduce on flatmaps only.
+    This is webgl only (quickflat only renders flatmaps), so no cross-renderer
+    check. Test both Volume and Vertex because they take different shader
+    paths.
     """
     view = _build_alpha_dataview(name)
     tag = f"{surface}_{angle}_{name}"
