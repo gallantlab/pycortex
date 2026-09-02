@@ -47,7 +47,8 @@ pytestmark = pytest.mark.skipif(
 # lighting refactor ported the HASFLAT bump-displacement block into the vertex
 # shader, which under headless/SwiftShader leaves that flatmap unrendered. The
 # mark is strict and on RuntimeError specifically, so a render that starts
-# succeeding reports an XPASS rather than passing silently.
+# succeeding does not quietly pass: it reaches the reference check, which fails
+# with a mismatched exception type and tells you to regenerate.
 DATAVIEW_NAMES = [
     "Volume",
     "Vertex",
@@ -654,16 +655,18 @@ def _render_and_check_dataview(
         )[0]
     )
 
-    # Checked after rendering, not before, so that a dataview which cannot be
-    # rendered at all fails here rather than skipping on the missing reference
-    # its failure is the reason for -- see the xfail on Vertex2D.
+    # Fails rather than skips: wholesale absence -- an installed wheel, or a
+    # clone that has not fetched LFS -- is caught at import, so a single gap in
+    # a populated store means either a render that cannot succeed (Vertex2D) or
+    # an incomplete regeneration. A skip here would also be swallowed by the
+    # xfail on Vertex2D, hiding the day its render starts working.
     if not REGENERATE_REFERENCES:
         for prefix in ("quickflat", "webgl"):
             reason = _unusable_reference(
                 reference_dir / f"{prefix}_{name}{REFERENCE_SUFFIX}"
             )
             if reason is not None:
-                pytest.skip(reason)
+                pytest.fail(reason)
 
     failures = []
 
@@ -720,13 +723,13 @@ def _render_and_check_webgl_only(
         headless=True,
     )[0]
 
-    # After the render, as in _render_and_check_dataview.
+    # Fails rather than skips, as in _render_and_check_dataview.
     if not REGENERATE_REFERENCES:
         reason = _unusable_reference(
             reference_dir / f"webgl_{tag}{REFERENCE_SUFFIX}"
         )
         if reason is not None:
-            pytest.skip(reason)
+            pytest.fail(reason)
 
     msg = _check_against_reference(
         f"webgl_{tag}", Path(wg_path), tmp_path, reference_dir
