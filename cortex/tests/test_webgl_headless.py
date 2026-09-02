@@ -72,6 +72,24 @@ def _wait_for_file(path, timeout=30):
     raise RuntimeError(f"File {path!r} not written within {timeout}s")
 
 
+def _assert_not_blank(path):
+    """Fail if the render came out as a single flat color.
+
+    A shader that fails to compile or link (or geometry that never made it to
+    the GPU) leaves the canvas showing nothing but the background, which is
+    otherwise indistinguishable from a successful render: the png is written,
+    and no javascript exception is raised.
+    """
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).reshape(-1, 3)
+    ncolors = len(np.unique(rgb, axis=0))
+    assert ncolors > 10, (
+        f"{path} has only {ncolors} distinct color(s); the brain was probably "
+        "never drawn."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Group 1: Data type smoke tests
 # ---------------------------------------------------------------------------
@@ -90,6 +108,7 @@ def test_datatype_renders(dtype_name, tmp_path):
         _wait_for_file(outfile)
         assert os.path.isfile(outfile)
         assert os.path.getsize(outfile) > 0
+        _assert_not_blank(outfile)
         # No uncaught JS errors
         pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
