@@ -21,7 +21,11 @@ jobs:
       max-parallel: 5
 
     steps:
+    # The visual-regression reference images are LFS-tracked; without this the
+    # checkout leaves pointer files and those tests skip.
     - uses: actions/checkout@v7
+      with:
+        lfs: true
     - name: Set up Python
       uses: actions/setup-python@v7
       with:

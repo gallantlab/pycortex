@@ -196,6 +196,20 @@ def save_3d_views(
                 )
             time.sleep(1)
 
+            if headless:
+                # Only check for WebGL failures in headless mode, since we don't
+                # capture console output in the interactive mode.
+                pw_thread = handle._pw_thread  # `handle` is a `JSMixer`
+                from cortex.export.headless import filter_webgl_failures
+
+                failures = filter_webgl_failures(pw_thread.browser_errors)
+                if failures:
+                    raise RuntimeError(
+                        f"WebGL failed while rendering {view_name!r}/{surface!r}; "
+                        f"{file_name!r} is likely blank.\n  "
+                        + "\n  ".join(sorted(set(failures)))
+                    )
+
             # Trim transparent edges
             if trim:
                 try:

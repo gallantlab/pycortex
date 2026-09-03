@@ -15,6 +15,11 @@ dev = [
 ]
 test = [
     "pycortex[headless]",
+    # The visual-regression tests compare against renders from
+    # these builds. Both are unpinned for users.
+    # See cortex/tests/reference_images/README.md
+    "matplotlib==3.10.9",
+    "playwright==1.62.0",
     "ipykernel>=6.31.0",
     "nbclient>=0.10.2",
     "nbformat>=5.10.4",

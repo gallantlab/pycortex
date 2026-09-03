@@ -37,7 +37,7 @@ def test_save_3d_views_headless():
             list_surfaces=["inflated"],
             size=(1024, 768),
             trim=False,
-            # The WebGL scene needs time to initialise surfaces before
+            # The WebGL scene needs time to initialize surfaces before
             # _set_view can succeed; sleep=10 (the default) is safe.
             sleep=10,
             headless=True,
@@ -82,3 +82,28 @@ def test_plot_panels_headless():
         assert fig is not None
         assert os.path.isfile(save_name)
         assert os.path.getsize(save_name) > 0
+
+
+def test_save_3d_views_raises_on_webgl_failure(monkeypatch):
+    """A reported WebGL failure aborts the render rather than writing a blank png.
+
+    Injected rather than provoked, so it does not depend on a broken shader in
+    the tree under test.
+    """
+    monkeypatch.setattr(
+        "cortex.export.headless.filter_webgl_failures",
+        lambda errors: ["[console.error] THREE.WebGLProgram: Could not initialise shader."],
+    )
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(RuntimeError, match="WebGL failed while rendering"):
+            cortex.export.save_3d_views(
+                vol,
+                base_name=os.path.join(tmpdir, "boom"),
+                list_angles=["lateral_pivot"],
+                list_surfaces=["inflated"],
+                size=(512, 384),
+                trim=False,
+                sleep=10,
+                headless=True,
+            )
