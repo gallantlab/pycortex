@@ -52,7 +52,8 @@ and matplotlib leaves white where the browser leaves black.
 
 ## Provenance
 
-Generated on `main` (`3779f7ca`).
+Generated on `main` (`3779f7ca`), from the demo subject `S1` in the filestore
+bundled with pycortex, which is pinned by `cortex/tests/conftest.py`.
 
 | | |
 | --- | --- |
