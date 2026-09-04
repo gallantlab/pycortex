@@ -37,6 +37,9 @@ types = [
 headless = [
     "playwright>=1.58.0"
 ]
+autoflatten = [
+    "autoflatten>=1.0.0"
+]
 
 [tool.setuptools_scm]
 version_file = "cortex/_version.py"

@@ -124,6 +124,7 @@ freesurfer
     flatten
     import_subj
     import_flat
+    autoflatten_subject
     show_surf
 	make_fiducial
 	parse_surf
