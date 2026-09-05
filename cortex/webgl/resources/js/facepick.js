@@ -46,9 +46,18 @@ function PickPosition(surf, posdata) {
         max:    { type:'v3', value:this.bounds.max},
         thickmix:surf.uniforms.thickmix,
         surfmix:surf.uniforms.surfmix,
+        //Shared object, not a copy, so the picker follows the bumpy flatmap
+        //toggle without having to listen for it.
+        bumpyflat:surf.uniforms.bumpyflat,
     };
 
-    var shaders = Shaders.pick({morphs:surf.names.length, volume:surf.volume});
+    //hasflat has to match what the surface shaders were built with, otherwise
+    //the picker tests against geometry that isn't the one being drawn.
+    var shaders = Shaders.pick({
+        morphs:surf.names.length,
+        volume:surf.volume,
+        hasflat:surf.flatlims !== undefined,
+    });
     this.shade_x = new THREE.ShaderMaterial({
         vertexShader: shaders.vertex,
         fragmentShader: shaders.fragment[0],
