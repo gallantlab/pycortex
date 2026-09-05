@@ -41,6 +41,26 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
+
+def _viewer_urls(port: int) -> tuple[str, str]:
+    """Return the (local, network) URLs of a viewer running on `port`.
+
+    The local URL is the one to open on the machine running the server. The
+    network URL is built from the machine's hostname plus the configured
+    ``webgl.domain_name``, and is the one to hand to someone else.
+
+    They have to be kept apart, because the hostname is not a dependable way
+    for this machine to reach itself. ``socket.gethostname()`` returns the mDNS
+    name on macOS (``mymac.local``), which resolves to a whole list of
+    addresses -- link-local ones among them -- and only reaches the server if
+    the local firewall lets this python process accept connections on a
+    non-loopback interface. None of that applies to localhost.
+    """
+    local = "http://localhost:%d/mixer.html" % port
+    network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
+    return local, network
+
+
 def make_static(
     outpath,
     data,
@@ -1032,17 +1052,28 @@ def show(
                     port)
 
     server.start()
+    local_url, network_url = _viewer_urls(server.port)
     print("Started server on port %d"%server.port)
-    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
+    if network_url == local_url:
+        print("Open the viewer at %s"%local_url)
+    else:
+        print("Open the viewer at %s (from another machine: %s)"
+              %(local_url, network_url))
     if open_browser:
-        webbrowser.open(url)
+        # This runs on the same machine as the server, so localhost is both
+        # correct and the most reliable thing to hand the browser.
+        webbrowser.open(local_url)
         client = server.get_client()
         client.server = server
         return client
     elif display_url:
         try:
             from IPython.display import HTML, display
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
+            if network_url != local_url:
+                link += (' (from another machine: '
+                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
+            display(HTML(link))
         except:
             pass
 
