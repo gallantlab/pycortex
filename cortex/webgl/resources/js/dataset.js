@@ -273,6 +273,12 @@ var dataset = (function(module) {
         }
         this.setFrame(0);
     };
+    // Index of the frame on screen, as setFrame computes it. The shaders blend
+    // toward the next frame by framemix, but the NaN mask comes from this one,
+    // so value readouts report this frame's sample.
+    module.DataView.prototype.frameIndex = function() {
+        return Math.floor(((this.frame + this.delay) * this.rate).mod(this.frames));
+    };
     module.DataView.prototype.setFrame = function(time) {
         this.frame = time;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);

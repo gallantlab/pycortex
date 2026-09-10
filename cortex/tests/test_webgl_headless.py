@@ -319,6 +319,39 @@ def test_overlay_visibility_changes_image(tmp_path):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("dtype_name", ["Vertex", "Volume"])
+def test_picked_value_follows_movie_frame(dtype_name):
+    """The click readout shows the value at the frame on screen.
+
+    Regression test for #636: the readout always indexed frame 0, so after
+    advancing a movie it kept showing the first frame's values.
+    """
+    from cortex.webgl.serve import JSProxy
+
+    nframes = 3
+    frames = np.arange(nframes, dtype=np.float32)
+    if dtype_name == "Vertex":
+        data = np.repeat(frames[:, None], nverts, axis=1)
+        view = cortex.Vertex(data, subj, vmin=0, vmax=nframes - 1)
+    else:
+        data = np.broadcast_to(frames[:, None, None, None], (nframes, *volshape))
+        view = cortex.Volume(data.copy(), subj, xfmname, vmin=0, vmax=nframes - 1)
+
+    with cortex.export.headless_viewer(view, viewer_params={}) as handle:
+        readout = JSProxy(handle.send, "window.picked_value")
+        # Every vertex or voxel in frame k holds k, so any point on the brain works.
+        for frame in [0, 2, 1]:
+            handle.setFrame(frame)
+            time.sleep(0.5)
+            handle.pick({"x": 640, "y": 360})
+            time.sleep(0.5)
+            text = readout.attrs["textContent"][1]
+            assert text, "the pick at the canvas center missed the brain"
+            # Volume floats are decoded through a 2D canvas, whose premultiplied
+            # alpha rounds their low bytes: 1.0 reads back as 1.015625.
+            assert float(text) == pytest.approx(frame, abs=0.05), (frame, text)
+
+
 def _count_red_pixels(png_path):
     """Count strongly red-dominant pixels (R - max(G, B) > 50)."""
     from PIL import Image
