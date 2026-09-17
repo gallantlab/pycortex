@@ -39,6 +39,7 @@ var mriview = (function(module) {
         this._active = null;
         this._sampler = "nearest";
         this._equivolume = false;
+        this._laminarline = false;
         //this.rotation = [ 0, 0, 200 ]; //azimuth, altitude, radius
 
         this.object = new THREE.Group();
@@ -66,6 +67,7 @@ var mriview = (function(module) {
 
                 dataAlpha:  { type:'f', value:1.},
                 overlay:    { type:'t', value:null },
+                laminarline:{ type:'t', value:null },
                 brightness:  { type:'f', value:parseFloat(viewopts.brightness)},
                 smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
@@ -382,6 +384,7 @@ var mriview = (function(module) {
                 dither: this._dither,
                 equivolume: this._equivolume,
                 sampler: this._sampler,
+                laminarline: this._laminarline && this.uniforms.laminarline.value !== null,
             });
             this.shaders[dataview.uuid] = shaders[0];
         }.bind(this));
@@ -558,6 +561,19 @@ var mriview = (function(module) {
             viewer.schedule();
         }
     }
+    /* Turn the depth profile line layer on or off. The sampler is compiled in
+     * or out rather than left bound to a blank texture, so surfaces that never
+     * show a profile don't spend a texture unit on it. */
+    module.Surface.prototype.setLaminarLine = function(val) {
+        if (val === undefined)
+            return this._laminarline;
+        if (this._laminarline === !!val)
+            return;
+        this._laminarline = !!val;
+        this.loaded.done(function() {
+            this.resetShaders();
+        }.bind(this));
+    };
     module.Surface.prototype.setPivot = function(val) {
         if (val === undefined)
             return this._pivot;

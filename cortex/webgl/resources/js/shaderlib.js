@@ -325,6 +325,147 @@ var Shaderlib = (function() {
             return {vertex:header+vertShade, fragment:header+fragShade, attrs:{}};
         },
 
+        // Shader for the laminar depth profile panel (see laminar.js).
+        //
+        // The mesh is a flat strip laid out in "profile space": x runs along
+        // the flatmap line (gamma), y runs across cortical depth (alpha, with
+        // the pial surface at the top). Every vertex carries the pial and
+        // white-matter positions of its flatmap column plus the two surface
+        // areas needed for equivolume depth spacing, so the fragment shader
+        // can resolve a *per-pixel* anatomical coordinate, push it through
+        // volxfm, and colormap it exactly the way the surface shader does.
+        laminar: function(opts) {
+            var header = "";
+            if (opts.rgb)
+                header += "#define RGBCOLORS\n";
+            if (opts.twod)
+                header += "#define TWOD\n";
+            if (opts.equivolume)
+                header += "#define EQUIVOLUME\n";
+
+            var sampler = opts.sampler || "nearest";
+
+            var vertShade = [
+            "attribute vec3 pialpos;",
+            "attribute vec3 wmpos;",
+            "attribute float pialarea;",
+            "attribute float wmarea;",
+            "attribute float alpha;",
+            "attribute float valid;",
+
+            "varying vec3 vPial;",
+            "varying vec3 vWm;",
+            "varying float vPialArea;",
+            "varying float vWmArea;",
+            "varying float vAlpha;",
+            "varying float vValid;",
+
+            "void main() {",
+                "vPial = pialpos;",
+                "vWm = wmpos;",
+                "vPialArea = pialarea;",
+                "vWmArea = wmarea;",
+                "vAlpha = alpha;",
+                "vValid = valid;",
+                "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+            "}"
+            ].join("\n");
+
+            var fragShade = [
+            "uniform mat4 volxfm[2];",
+
+            "uniform sampler2D colormap;",
+            "uniform float vmin[2];",
+            "uniform float vmax[2];",
+            "uniform float framemix;",
+            "uniform float dataAlpha;",
+            "uniform vec2 mosaic[2];",
+            "uniform vec2 dshape[2];",
+            "uniform sampler2D data[4];",
+
+            "varying vec3 vPial;",
+            "varying vec3 vWm;",
+            "varying float vPialArea;",
+            "varying float vWmArea;",
+            "varying float vAlpha;",
+            "varying float vValid;",
+
+            utils.colormap,
+            utils.samplers,
+
+            // Voxel coordinates outside the volume would otherwise be clamped
+            // to the mosaic edge, painting a bogus value; the python
+            // implementation (quickflat/laminar.py) marks them invalid, so
+            // drop them here too.
+            "bool inbounds(vec3 coord, vec2 shape, vec2 mos) {",
+                "if (any(lessThan(coord.xy, vec2(-0.5)))) return false;",
+                "if (any(greaterThan(coord.xy, shape - 0.5))) return false;",
+                "return coord.z >= -0.5 && coord.z <= (mos.x * mos.y - 0.5);",
+            "}",
+
+            "void main() {",
+                "if (vValid < 0.5) discard;",
+
+                // Depth spacing. EQUIVOLUME matches _depth_blend() in
+                // quickflat/laminar.py (and thickmixer_main above): solve for
+                // the linear mix that cuts off an equal fraction of the
+                // cortical volume. The two areas coincide on flat patches,
+                // where the expression is 0/0 and the limit is alpha.
+            "#ifdef EQUIVOLUME",
+                "float denom = vPialArea - vWmArea;",
+                "float use_alpha;",
+                "if (abs(denom) <= 1e-6 * max(abs(vPialArea), abs(vWmArea))) {",
+                    "use_alpha = vAlpha;",
+                "} else {",
+                    "use_alpha = 1. - (-1. * vWmArea + sqrt((1. - vAlpha) * vPialArea * vPialArea + vAlpha * vWmArea * vWmArea)) / denom;",
+                "}",
+            "#else",
+                "float use_alpha = vAlpha;",
+            "#endif",
+
+                "vec3 apos = mix(vPial, vWm, use_alpha);",
+
+                "vec3 coord_x = (volxfm[0] * vec4(apos, 1.)).xyz;",
+                "if (!inbounds(coord_x, dshape[0], mosaic[0])) discard;",
+            "#ifdef TWOD",
+                "vec3 coord_y = (volxfm[1] * vec4(apos, 1.)).xyz;",
+                "if (!inbounds(coord_y, dshape[1], mosaic[1])) discard;",
+            "#endif",
+
+            "#ifdef RGBCOLORS",
+                "vec4 color[2]; color[0] = vec4(0.), color[1] = vec4(0.);",
+                "color[0] += "+sampler+"_x(data[0], coord_x);",
+                "color[1] += "+sampler+"_x(data[1], coord_x);",
+                "vec4 vColor = mix(color[0], color[1], framemix);",
+            "#else",
+                "vec4 values = vec4(0.);",
+                "values.x += "+sampler+"_x(data[0], coord_x).r;",
+                "values.y += "+sampler+"_x(data[1], coord_x).r;",
+                "#ifdef TWOD",
+                "values.z += "+sampler+"_y(data[2], coord_y).r;",
+                "values.w += "+sampler+"_y(data[3], coord_y).r;",
+                "#endif",
+                "vec4 vColor = colorlut(values);",
+            "#endif",
+
+                "vColor *= dataAlpha;",
+                "if (vColor.a < .001) discard;",
+                "gl_FragColor = vColor;",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                pialpos:  { type:'v3', value:null },
+                wmpos:    { type:'v3', value:null },
+                pialarea: { type:'f',  value:null },
+                wmarea:   { type:'f',  value:null },
+                alpha:    { type:'f',  value:null },
+                valid:    { type:'f',  value:null },
+            };
+
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
+        },
+
         surface_pixel: function(opts) {
             var header = "";
             if (opts.voxline)
@@ -343,6 +484,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (opts.rois)
                 header += "#define ROI_RENDER\n";
+            if (opts.laminarline)
+                header += "#define LAMINARLINE\n";
             if (opts.extratex)
                 header += "#define EXTRATEX\n"
             if (opts.halo) {
@@ -458,6 +601,12 @@ var Shaderlib = (function() {
         "varying vec2 vUv;",
         "#ifdef ROI_RENDER",
             "uniform sampler2D overlay;",
+        "#endif",
+        "#ifdef LAMINARLINE",
+            // The depth profile line, drawn in flatmap space by laminar.js and
+            // sampled here through the same vUv the ROI overlay uses -- so it
+            // sits on the surface in every view, not just the flatmap.
+            "uniform sampler2D laminarline;",
         "#endif",
         "#ifdef EXTRATEX",
             "uniform sampler2D extratex;",
@@ -643,6 +792,9 @@ var Shaderlib = (function() {
             "#ifdef ROI_RENDER",
                 "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
             "#endif",
+            "#ifdef LAMINARLINE",
+                "vec4 lColor = (1. - step(.001, vMedial)) * texture2D(laminarline, vUv);",
+            "#endif",
             "#ifdef EXTRATEX",
                 "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
             "#endif",
@@ -655,6 +807,9 @@ var Shaderlib = (function() {
             "#endif",
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
+            "#endif",
+            "#ifdef LAMINARLINE",
+                "gl_FragColor = lColor + (1.-lColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
@@ -695,6 +850,8 @@ var Shaderlib = (function() {
                 header += "#define CORTSHEET\n";
             if (opts.rois)
                 header += "#define ROI_RENDER\n";
+            if (opts.laminarline)
+                header += "#define LAMINARLINE\n";
             if (opts.extratex)
                 header += "#define EXTRATEX\n";
             if (opts.equivolume)
@@ -797,6 +954,12 @@ var Shaderlib = (function() {
         "#ifdef ROI_RENDER",
             "uniform sampler2D overlay;",
         "#endif",
+        "#ifdef LAMINARLINE",
+            // The depth profile line, drawn in flatmap space by laminar.js and
+            // sampled here through the same vUv the ROI overlay uses -- so it
+            // sits on the surface in every view, not just the flatmap.
+            "uniform sampler2D laminarline;",
+        "#endif",
         "#ifdef EXTRATEX",
             "uniform sampler2D extratex;",
         "#endif",
@@ -838,6 +1001,9 @@ var Shaderlib = (function() {
             "#ifdef ROI_RENDER",
                 "vec4 rColor = (1. - step(.001, vMedial)) * texture2D(overlay, vUv);",
             "#endif",
+            "#ifdef LAMINARLINE",
+                "vec4 lColor = (1. - step(.001, vMedial)) * texture2D(laminarline, vUv);",
+            "#endif",
             "#ifdef EXTRATEX",
                 "vec4 tColor = (1. - step(.001, vMedial)) * texture2D(extratex, vUv);",
             "#endif",
@@ -856,6 +1022,9 @@ var Shaderlib = (function() {
             "#endif",
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
+            "#endif",
+            "#ifdef LAMINARLINE",
+                "gl_FragColor = lColor + (1.-lColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"

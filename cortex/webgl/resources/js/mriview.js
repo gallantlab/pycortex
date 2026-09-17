@@ -123,6 +123,8 @@ var mriview = (function(module) {
         this._clipy = false;
         this._clipz = false;
 
+        this.laminar = new laminar.Profile(this);
+
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
         this.ui.add({
@@ -147,6 +149,10 @@ var mriview = (function(module) {
             this.oculus.render(scene, this.camera);
         else
             this.renderer.render(scene, this.camera);
+
+        // The depth profile ribbon isn't part of the surface's scene (see
+        // laminar.js); it goes down on top of the frame, sharing its depth.
+        this.laminar.drawRibbon(this.renderer, this.camera);
     }
 
     module.Viewer.prototype.setOculus = function() {
@@ -1227,6 +1233,7 @@ var mriview = (function(module) {
                         this.ui._desc.camera._desc,
                         this.ui._desc.sliceplanes._desc,
                         this.ui._desc.sliceplanes._desc.move._desc,
+                        this.ui._desc['depth profile']._desc,
                         imageFolder._desc];
 
                 // add surface items to list
@@ -1336,6 +1343,17 @@ var mriview = (function(module) {
             rotate_x: {action:[this.sliceplanes.x, 'setAngle', -89, 89]},
             rotate_y: {action:[this.sliceplanes.y, 'setAngle', -89, 89]},
             rotate_z: {action:[this.sliceplanes.z, 'setAngle', -89, 89]}
+        });
+
+        //add depth profile gui
+        var laminar_ui = this.ui.addFolder("depth profile", true);
+        laminar_ui.add({
+            show: {action:[this.laminar, "setEnabled"]},
+            showToggle: {action: this.laminar.toggle.bind(this.laminar), key:'j', hidden:true, help:'Toggle depth profile'},
+            equivolume: {action:[this.laminar, "setEquivolume"]},
+            ribbon_only: {action:[this.laminar, "setRibbonOnly"]},
+            ribbonToggle: {action: this.laminar.toggleRibbonOnly.bind(this.laminar), key:'b', hidden:true, help:'Show only the depth profile ribbon'},
+            reset_line: {action: this.laminar.resetLine.bind(this.laminar), help:'Reset profile line'},
         });
 
         var sliceplane_clip = sliceplane_ui.addFolder("clip", true);
