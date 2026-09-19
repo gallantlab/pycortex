@@ -103,3 +103,68 @@
     white-space:nowrap;
     color:#fc9;
 }
+
+/* Colormap dropdown: a strip of the colormap beside its name.
+   mriview.css hides the select2 control and leaves only its dropdown
+   visible, which is how the viewer opens its picker from the colorbar. The
+   aligner uses the control itself, so these put select2's own layout back. */
+.select2-container {
+    visibility:visible;
+    position:relative;
+}
+
+.aligner-cmap {
+    display:flex;
+    align-items:center;
+}
+.aligner-cmap img {
+    flex:none;
+    width:64px;
+    height:11px;
+    margin-right:8px;
+    border:1px solid #555;
+}
+.aligner-cmap-name {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+/* the closed control sits in a dat.GUI cell, so its strip is smaller */
+.select2-selection__rendered .aligner-cmap img {
+    width:40px;
+    height:9px;
+    margin-right:6px;
+}
+.select2-container--default .select2-selection--single {
+    background:#303030;
+    border:1px solid #555;
+    border-radius:0;
+    height:20px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color:#eee;
+    line-height:18px;
+    padding-left:4px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height:18px;
+}
+.select2-dropdown {
+    background:#1a1a1a;
+    border-color:#555;
+    color:#ccc;
+}
+.select2-container--default .select2-results__option {
+    padding:2px 6px;
+}
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background:#333;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background:#0a6;
+}
+.select2-search--dropdown .select2-search__field {
+    background:#303030;
+    border:1px solid #555;
+    color:#eee;
+}

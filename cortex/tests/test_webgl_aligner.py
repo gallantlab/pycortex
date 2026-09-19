@@ -72,15 +72,16 @@ def mask_dir(tmp_path, monkeypatch):
     """
     real_get_paths = database.db.get_paths
     masks = tmp_path / "masks"
-    masks.mkdir()
+    (masks / xfmname).mkdir(parents=True)
 
     def get_paths(subject):
         paths = dict(real_get_paths(subject))
-        paths["masks"] = str(masks / "mask_{type}.nii.gz")
+        # a directory per transform, as the filestore has
+        paths["masks"] = str(masks / "{xfmname}" / "mask_{type}.nii.gz")
         return paths
 
     monkeypatch.setattr(database.db, "get_paths", get_paths)
-    return masks
+    return masks / xfmname
 
 
 @pytest.fixture
@@ -196,16 +197,30 @@ def test_aligner_opens_with_cached_masks(stale_masks):
     assert config["masks"] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
 
 
-def test_align_entry_point_forwards(monkeypatch):
+def test_align_entry_point_names_every_option(monkeypatch):
+    """webgl_manual spells out every option the aligner takes, rather than
+    forwarding an opaque **kwargs, and passes them all on."""
+    import inspect
+
+    entry = inspect.signature(align.webgl_manual).parameters
+    shown = inspect.signature(aligner.show).parameters
+    assert not any(p.kind is inspect.Parameter.VAR_KEYWORD for p in entry.values())
+    assert list(entry) == list(shown), "the entry point and the aligner disagree"
+    for name, param in shown.items():
+        assert entry[name].default == param.default, "%s defaults differ" % name
+
     seen = {}
 
-    def fake_show(subject, name, reference=None, **kwargs):
-        seen.update(subject=subject, name=name, reference=reference, kwargs=kwargs)
+    def fake_show(subject, name, **kwargs):
+        seen.update(subject=subject, name=name, kwargs=kwargs)
         return "handle"
 
     monkeypatch.setattr(aligner, "show", fake_show)
-    assert align.webgl_manual(subj, xfmname, view_only=True) == "handle"
-    assert seen == dict(subject=subj, name=xfmname, reference=None, kwargs=dict(view_only=True))
+    assert align.webgl_manual(subj, xfmname, view_only=True, port=1234) == "handle"
+    assert seen["subject"] == subj and seen["name"] == xfmname
+    assert seen["kwargs"]["view_only"] is True and seen["kwargs"]["port"] == 1234
+    # everything after subject and xfmname is passed by name
+    assert set(seen["kwargs"]) == set(list(shown)[2:])
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +274,58 @@ def test_save_deletes_the_stale_masks_first(stale_masks):
     assert seen["xfmtype"] == "coord"
     assert np.allclose(seen["xfm"], xfm)
     assert sorted(mask_dir.glob("mask_*")) == []
+
+
+@pytest.mark.parametrize("name", ["other-xfm", "other_xfm", "Other.2", "x"])
+def test_usable_transform_names(name):
+    assert aligner.check_xfm_name(name) == name
+
+
+@pytest.mark.parametrize("name", ["", " ", "../escape", "a/b", "-leading", ".hidden", "with space", None])
+def test_unusable_transform_names(name):
+    with pytest.raises(ValueError, match="not a usable transform name"):
+        aligner.check_xfm_name(name)
+
+
+def test_save_under_a_new_name_leaves_the_loaded_transform_alone(stale_masks, recorder):
+    """The name field saves the alignment as another transform, so the masks
+    of the one that was loaded are not touched."""
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    xfm = np.arange(16, dtype=float).reshape(4, 4)
+    try:
+        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
+                                dict(xfm=json.dumps(xfm.tolist()), name="aligner-copy")).decode())
+    finally:
+        srv.stop()
+
+    assert resp["status"] == "ok"
+    assert resp["name"] == "aligner-copy"
+    assert resp["masks_deleted"] == []
+    assert len(recorder.calls) == 1
+    call = recorder.calls[0]
+    assert call["name"] == "aligner-copy"
+    assert call["xfmtype"] == "coord"
+    assert call["reference"] is not None, "a new transform needs its reference copied"
+    assert np.allclose(call["xfm"], xfm)
+    # the masks belong to the transform that was loaded, which was not written
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+def test_save_refuses_a_name_that_is_not_one(stale_masks, recorder):
+    """A name that would escape the transform directory never reaches the
+    filesystem, and nothing is saved or deleted."""
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
+                                dict(xfm=json.dumps(np.eye(4).tolist()), name="../elsewhere")).decode())
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert "not a usable transform name" in resp["message"]
+    assert recorder.calls == []
+    assert len(sorted(mask_dir.glob("mask_*"))) == 2
 
 
 def test_a_refused_save_keeps_the_masks(stale_masks):
@@ -447,4 +514,95 @@ def test_aligner_in_headless_browser(recorder):
         assert not filter_webgl_failures(errors), errors
     finally:
         pw.shutdown()
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
+    """WASD moves the mesh like the arrows do, and every colormap in the
+    dropdown is drawn with a strip of itself.
+
+    Drives the page directly rather than through the websocket handle,
+    because both are about what the browser does with real events.
+    """
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def xfm():
+                return np.asarray(page.evaluate("window.viewer.getXfm()"), dtype=float)
+
+            def press(key, shift=False):
+                """Press `key` over the coronal view and return the transform
+                it produced, leaving the mesh where it was."""
+                page.hover("#view-y")
+                page.keyboard.press(("Shift+" if shift else "") + key)
+                moved = xfm()
+                page.evaluate("window.viewer.undo()")
+                return moved
+
+            page.evaluate("window.viewer.setTranslateStep(2)")
+            start = xfm()
+            for key, arrow in [("w", "ArrowUp"), ("a", "ArrowLeft"),
+                               ("s", "ArrowDown"), ("d", "ArrowRight")]:
+                by_letter, by_arrow = press(key), press(arrow)
+                assert not np.allclose(by_letter, start), "%s did not move the mesh" % key
+                assert np.allclose(by_letter, by_arrow), "%s does not match %s" % (key, arrow)
+
+            # shift is the fine step, and shift+w reaches the handler as "W"
+            full = press("w")[:3, 3] - start[:3, 3]
+            fine = press("w", shift=True)[:3, 3] - start[:3, 3]
+            assert np.linalg.norm(full) == pytest.approx(10 * np.linalg.norm(fine), rel=0.01)
+
+            # a key pressed while typing in a control must not move the mesh
+            page.evaluate("() => document.querySelector('#figure_ui input').focus()")
+            page.keyboard.press("w")
+            assert np.allclose(xfm(), start), "typing in a control moved the mesh"
+            page.evaluate("() => document.activeElement.blur()")
+
+            # every colormap in the dropdown carries a strip of itself
+            page.click(".select2-selection")
+            page.wait_for_selector(".select2-results__option .aligner-cmap img", timeout=30000)
+            previews = page.evaluate("""() => {
+                var rows = document.querySelectorAll('.select2-results__option');
+                var imgs = document.querySelectorAll('.select2-results__option .aligner-cmap img');
+                var drawn = 0;
+                imgs.forEach(function(i) { if (i.complete && i.naturalWidth > 0) drawn++; });
+                return {rows: rows.length, imgs: imgs.length, drawn: drawn,
+                        options: window.viewer._cmapSelect.find('option').length};
+            }""")
+            assert previews["options"] > 100, "the dropdown lists few colormaps"
+            assert previews["imgs"] == previews["rows"], "a colormap is shown without its strip"
+            assert previews["drawn"] == previews["imgs"], "a colormap strip did not load"
+
+            # picking one from the list reaches the shader and the menu
+            page.fill(".select2-search__field", "hot")
+            page.click(".select2-results__option--highlighted")
+            page.wait_for_timeout(500)
+            picked = page.evaluate("""() => ({
+                name: window.viewer.setColormap(),
+                menu: window.viewer.ui.get('image.colormap'),
+                shader: window.viewer.volUniforms.colormap.value === window.viewer.colormaps[window.viewer.setColormap()],
+            })""")
+            assert picked["name"] != "gray" and picked["name"] == picked["menu"]
+            assert picked["shader"], "the picked colormap did not reach the shader"
+
+            # and a colormap set from the menu shows up in the closed control
+            page.evaluate("window.viewer.ui.set('image.colormap', 'viridis')")
+            page.wait_for_timeout(500)
+            assert page.evaluate(
+                "() => document.querySelector('.select2-selection__rendered .aligner-cmap-name').textContent"
+            ) == "viridis"
+            browser.close()
+    finally:
         server.stop()

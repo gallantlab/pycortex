@@ -14,7 +14,23 @@ from .options import config
 from .xfm import Transform
 
 
-def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **kwargs):
+def webgl_manual(
+    subject: str,
+    xfmname: str,
+    reference: Optional[str] = None,
+    view_only: bool = False,
+    cmap: Optional[str] = None,
+    mesh_color: Optional[str] = None,
+    mesh_opacity: Optional[float] = None,
+    open_browser: Optional[bool] = None,
+    autoclose: Optional[bool] = None,
+    port: Optional[int] = None,
+    recache: bool = False,
+    types: tuple[str, ...] = ("inflated",),
+    title: Optional[str] = None,
+    display_url: bool = True,
+    template: str = "aligner.html",
+):
     """Open the browser-based aligner for manually aligning a functional volume
     to the cortical surface of `subject`.
 
@@ -28,26 +44,32 @@ def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **
     the three slices. In a slice view, a left drag moves the cursor, which
     sets the slices of the other views and is the pivot of rotations; the
     wheel (or ``[`` and ``]``) changes the slice, ctrl + wheel zooms, and a
-    middle (or shift + left) drag pans. A right drag or the arrow keys
-    translate the surfaces in the plane of the view under the mouse, ctrl +
-    right drag or ``q`` / ``e`` rotate them about the cursor; shift makes
-    the keyboard steps ten times smaller and ctrl + z undoes. The panel on
+    middle (or shift + left) drag pans. A right drag, the WASD keys or the
+    arrow keys translate the surfaces in the plane of the view under the
+    mouse, ctrl + right drag or ``q`` / ``e`` rotate them about the cursor;
+    shift makes the keyboard steps ten times smaller and ctrl + z undoes. The panel on
     the right holds the Save button, the view mode (surface outlines on the
     slices, or the volume painted on the surface, also toggled with ``m``),
     the colormap with its range, brightness, contrast, gamma and flip, the
     color and opacity of the surfaces, the slices and the keyboard steps.
 
-    When Save is pressed the transform is stored into the pycortex database
-    as `xfmname`, as a 'coord' transform. A new transform requires
-    `reference`, which is copied into the database; an existing transform is
-    loaded together with its stored reference.
+    The ``transform`` field above the Save button holds the name the
+    alignment is saved under. It starts as `xfmname`; editing it saves the
+    alignment as a new transform and leaves the one it was loaded from
+    alone. An asterisk on the Save button and in the window title marks an
+    alignment that differs from the one last saved.
 
-    Saving also deletes the masks cached for `xfmname`, since they were cut
-    out of the reference volume through the alignment being replaced. The
-    page warns about this when it opens a transform that has masks, and the
-    save message names the ones it deleted. Data already masked with them
-    has to be masked again from the volumes. Pass ``view_only=True`` to
-    inspect an alignment without saving.
+    When Save is pressed the transform is stored into the pycortex database,
+    as a 'coord' transform. A new transform requires `reference`, which is
+    copied into the database; an existing transform is loaded together with
+    its stored reference.
+
+    Saving also deletes the masks cached for the transform it writes, since
+    they were cut out of the reference volume through the alignment being
+    replaced. The page warns about this when it opens a transform that has
+    masks, and the save message names the ones it deleted. Data already
+    masked with them has to be masked again from the volumes. Pass
+    ``view_only=True`` to inspect an alignment without saving.
 
     Parameters
     ----------
@@ -58,9 +80,41 @@ def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **
     reference : str, optional
         Path to a nibabel-readable functional volume, required for a new
         transform. Must be None for an existing transform.
-    kwargs : dict
-        Passed to :func:`cortex.webgl.aligner.show` (``view_only``, ``cmap``,
-        ``mesh_color``, ``mesh_opacity``, ``open_browser``, ``port``, ...).
+    view_only : bool, optional
+        Open the aligner without the possibility to save, to inspect an
+        alignment. Default False.
+    cmap : str, optional
+        Initial colormap for the reference volume, one of the 1D pycortex
+        colormaps. Defaults to the `colormap` option of the `webgl_aligner`
+        section of the config file.
+    mesh_color : str, optional
+        Initial color of the surface outlines, as a matplotlib color.
+        Defaults to the `mesh_color` config option.
+    mesh_opacity : float, optional
+        Initial opacity of the whole surfaces in the 3D view (0 shows only
+        their outlines on the slices). Defaults to the `mesh_opacity` config
+        option.
+    open_browser : bool, optional
+        Open the aligner in the default browser. Defaults to the
+        `open_browser` option of the `webshow` config section.
+    autoclose : bool, optional
+        Stop the server when the last browser window disconnects. Defaults
+        to the `autoclose` option of the `webshow` config section.
+    port : int, optional
+        Port of the server; a free port is picked when None.
+    recache : bool, optional
+        Regenerate the cached surface (CTM) files. Default False.
+    types : tuple of str, optional
+        Surface types included in the CTM pack, to share the cache with the
+        viewer. Default ("inflated",).
+    title : str, optional
+        Title of the browser window. Defaults to the subject and the
+        transform.
+    display_url : bool, optional
+        When `open_browser` is False, display an IPython link to the
+        aligner. Default True.
+    template : str, optional
+        Name of the tornado template of the page. Default 'aligner.html'.
 
     Returns
     -------
@@ -73,7 +127,23 @@ def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **
     """
     from .webgl import aligner
 
-    return aligner.show(subject, xfmname, reference=reference, **kwargs)
+    return aligner.show(
+        subject,
+        xfmname,
+        reference=reference,
+        view_only=view_only,
+        cmap=cmap,
+        mesh_color=mesh_color,
+        mesh_opacity=mesh_opacity,
+        open_browser=open_browser,
+        autoclose=autoclose,
+        port=port,
+        recache=recache,
+        types=types,
+        title=title,
+        display_url=display_url,
+        template=template,
+    )
 
 
 def fs_manual(subject, xfmname, **kwargs):
