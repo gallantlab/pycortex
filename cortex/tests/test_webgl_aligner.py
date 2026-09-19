@@ -480,26 +480,27 @@ def test_aligner_in_headless_browser(recorder):
         handle.undo()
         assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
 
-        # every view drew something, and the two view modes differ
+        # every view drew something, and the fourth panel differs between the
+        # two four-panel displays
         # (snapshot waits for the frame that shows the last change)
         outline = handle.snapshot()
         for quadrant in _quadrants(outline):
             assert len(np.unique(quadrant)) > 10
-        handle.set_control("view", aligner.MODES["projected"])
+        handle.set_control("display", aligner.DISPLAYS["brain"])
         projected = handle.snapshot()
         for quadrant in _quadrants(projected):
             assert len(np.unique(quadrant)) > 10
         assert outline != projected
 
         # a colormap change and a new mesh color reach the shaders
-        handle.set_control("view", aligner.MODES["outline"])
+        handle.set_control("display", aligner.DISPLAYS["slices"])
         handle.set_control("image.colormap", "hot")
         handle.set_control("mesh.color", "#ff0000")
         recolored = handle.snapshot()
         assert recolored != outline
         assert handle.get_control("mesh.color") == "#ff0000"
         assert handle.get_control("image.colormap") == "hot"
-        assert handle.get_control("view") == aligner.MODES["outline"]
+        assert handle.get_control("display") == aligner.DISPLAYS["slices"]
 
         # saving stores the current transform as a coord transform
         handle.save()
@@ -519,9 +520,10 @@ def test_aligner_in_headless_browser(recorder):
 
 @pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
 @pytest.mark.timeout(400)
-def test_layouts_show_the_surface_and_follow_the_transform():
-    """`layout` puts the surface in the corner or over the whole window, and
-    what it draws there follows the transform as it is edited."""
+def test_displays_show_the_surface_and_follow_the_transform():
+    """`display` puts the surface in the corner or over the whole window,
+    what it draws there follows the transform as it is edited, and the
+    surface of the data view inflates and flattens."""
     from playwright.sync_api import sync_playwright
 
     server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
@@ -539,7 +541,7 @@ def test_layouts_show_the_surface_and_follow_the_transform():
                 return page.evaluate("""() => {
                     var v = window.viewer;
                     return {
-                        layout: v.setLayout(), mode: v.setMode(),
+                        display: v.setDisplay(),
                         rects: v.viewlist.map(w => [w.name, w.rect.width, w.rect.height]),
                         modes: v.viewlist.map(w => [w.name, v._viewMode(w)]),
                         canvas: [v.width, v.height],
@@ -559,18 +561,24 @@ def test_layouts_show_the_surface_and_follow_the_transform():
                 page.evaluate(script)
                 page.wait_for_function("window.viewer.nframes > %d" % frames, timeout=120000)
 
+            # the three displays the one control offers, and no other
+            options = page.evaluate(
+                "Array.from(window.viewer.ui._controls.display.__select.options).map(o => o.value)")
+            assert options == [aligner.DISPLAYS[k] for k in ("slices", "brain", "surface")]
+
             start = state()
-            assert start["layout"] == "4 panels"
+            assert start["display"] == aligner.DISPLAYS["slices"]
             assert len(start["shown"]) == 4
             assert all(w > 0 for _, w, _ in start["rects"])
+            assert all(m == 0 for _, m in start["modes"]), "every view outlines the mesh"
 
             # the surface in the corner, with the slices still showing slices
-            redraw("window.viewer.ui.set('layout', 'panels + surface')")
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["brain"])
             split = state()
-            assert split["layout"] == "panels + surface"
+            assert split["display"] == aligner.DISPLAYS["brain"]
             assert len(split["shown"]) == 4, "the slice views stay"
-            assert dict(split["modes"])["3d"] == "data on surface"
-            assert all(m == "mesh + slices" for name, m in split["modes"] if name != "3d")
+            assert dict(split["modes"])["3d"] == 1, "the corner paints the data"
+            assert all(m == 0 for name, m in split["modes"] if name != "3d")
 
             # what the corner draws follows an edit to the transform, unsaved
             before = page.locator("#view-3d").screenshot()
@@ -582,30 +590,53 @@ def test_layouts_show_the_surface_and_follow_the_transform():
             redraw("window.viewer.undo()")
 
             # and the surface on its own, over the whole window
-            redraw("window.viewer.ui.set('layout', 'surface')")
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["surface"])
             single = state()
-            assert single["layout"] == "surface"
+            assert single["display"] == aligner.DISPLAYS["surface"]
             assert single["shown"] == ["view-3d"], "only the surface is left"
             assert dict((n, (w, h)) for n, w, h in single["rects"])["3d"] == tuple(single["canvas"])
             assert all(w == 0 for n, w, _ in single["rects"] if n != "3d")
-            assert single["mode"] == "data on surface", "the single view paints the data"
+            assert all(m == 2 for _, m in single["modes"]), "the data view paints the data"
+
+            def filled():
+                """Fraction of the window the surface covers."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#aligner-canvas');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var lit = 0;
+                    for (var i = 0; i < d.length; i += 4) { if (d[i] + d[i+1] + d[i+2] > 45) lit++; }
+                    return lit / (s.width * s.height);
+                }""")
 
             # the surface is framed for the window rather than left as it was
             # drawn in a quarter of it
-            filled = page.evaluate("""() => {
-                var c = document.querySelector('#aligner-canvas');
-                var s = document.createElement('canvas');
-                s.width = c.width; s.height = c.height;
-                s.getContext('2d').drawImage(c, 0, 0);
-                var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
-                var lit = 0;
-                for (var i = 0; i < d.length; i += 4) { if (d[i] + d[i+1] + d[i+2] > 45) lit++; }
-                return lit / (s.width * s.height);
-            }""")
-            assert filled > 0.2, "the surface covers only %.2f of the window" % filled
+            assert filled() > 0.2, "the surface covers only %.2f of the window" % filled()
 
-            redraw("window.viewer.toggleLayout()")
-            assert state()["layout"] == "4 panels", "the toggle cycles back round"
+            # it inflates and flattens, as the viewer's does: the flatmap
+            # takes the whole window and drops the medial wall
+            folded = page.locator("#view-3d").screenshot()
+            redraw("window.viewer.ui.set('mesh.unfold', 0.5)")
+            inflated = page.locator("#view-3d").screenshot()
+            assert inflated != folded, "the surface did not inflate"
+            assert page.evaluate("window.viewer._flatness()") == 0
+            assert not page.evaluate("window.viewer._culled"), "the mesh is whole until it flattens"
+
+            redraw("window.viewer.ui.set('mesh.unfold', 1)")
+            assert page.evaluate("window.viewer._flatness()") == 1
+            assert page.evaluate("window.viewer._culled"), "the medial wall is still drawn"
+            assert page.evaluate("window.viewer.setPivot()") == 180
+            assert page.locator("#view-3d").screenshot() != inflated, "the surface did not flatten"
+            assert filled() > 0.1, "the flatmap covers only %.2f of the window" % filled()
+
+            # the surfaces of the other displays get the whole mesh back
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["slices"])
+            assert not page.evaluate("window.viewer._culled")
+
+            redraw("window.viewer.toggleDisplay()")
+            assert state()["display"] == aligner.DISPLAYS["brain"], "the toggle steps on"
             browser.close()
     finally:
         server.stop()
@@ -665,8 +696,23 @@ def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
             page.evaluate("() => document.activeElement.blur()")
 
             # every colormap in the dropdown carries a strip of itself
+            before = page.evaluate(
+                "document.querySelector('#figure_ui').getBoundingClientRect().left")
             page.click(".select2-selection")
             page.wait_for_selector(".select2-results__option .aligner-cmap img", timeout=30000)
+
+            # the open list stays within the window: one that reaches past the
+            # right edge scrolls the page sideways, taking the views with it
+            assert page.evaluate(
+                "document.querySelector('#figure_ui').getBoundingClientRect().left"
+            ) == before, "opening the colormap list moved the page"
+            assert page.evaluate("document.documentElement.scrollLeft") == 0
+            box = page.evaluate("""() => {
+                var r = document.querySelector('.select2-dropdown').getBoundingClientRect();
+                return [r.left, r.right];
+            }""")
+            assert box[0] >= 0 and box[1] <= page.evaluate("window.innerWidth")
+
             previews = page.evaluate("""() => {
                 var rows = document.querySelectorAll('.select2-results__option');
                 var imgs = document.querySelectorAll('.select2-results__option .aligner-cmap img');

@@ -81,15 +81,14 @@ You move the surfaces until this outline follows the anatomy in the image.
 * In the 3D view, a left drag rotates, a middle (or shift + left) drag pans, and a right drag or the wheel zooms.
 
 The panel on the right holds the controls.
-``view`` switches between the surface outlines on the slices and the reference image painted onto the surface (``m`` toggles it too), which shows how the pattern of the data falls on the cortex.
-``layout`` chooses where the surface is shown, with three settings.
-``4 panels`` is the layout described above, where all four views follow ``view``.
-``panels + surface`` keeps the three slices showing their planes and outlines and turns the bottom right corner into the viewer, so the mesh can be nudged in the slices while the data on the surface follows.
-``surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one.
+``display`` chooses what the page shows, with three settings (``m`` steps through them).
+``3 ortho + 3D slices`` is the display described above, where the fourth panel holds the three slice planes in space.
+``3 ortho + 3D brain`` keeps the slice views as they are and turns the bottom right corner into the viewer, so the mesh can be nudged in the slices while the data on the surface follows.
+``data on the surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one, where ``unfold`` inflates it and flattens it and ``pivot`` swings its halves apart.
 Both of the latter paint the reference data on the surface through the alignment as it currently stands, saved or not, and redraw as you move the mesh, so an alignment can be judged from the pattern the data makes on the cortex before committing it.
 Every control stays available in all three.
 ``image`` sets the colormap, its range (``vmin`` and ``vmax``), ``brightness``, ``contrast`` and ``gamma``, and flips the colormap. The colormap dropdown draws a strip of each colormap beside its name.
-``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, and the cortical ``depth`` the data is painted at.
+``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, the cortical ``depth`` the data is painted at, and the ``unfold`` and ``pivot`` of the data view.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
 The ``transform`` field at the top of the panel holds the name the alignment is saved under, and starts as the transform you opened.

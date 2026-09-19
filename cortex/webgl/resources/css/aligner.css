@@ -116,10 +116,21 @@
 /* Colormap dropdown: a strip of the colormap beside its name.
    mriview.css hides the select2 control and leaves only its dropdown
    visible, which is how the viewer opens its picker from the colorbar. The
-   aligner uses the control itself, so these put select2's own layout back. */
-.select2-container {
+   aligner uses the control itself, so this puts select2's own layout back
+   for it. Only for it: the open dropdown is attached beside the body, and
+   giving that one a place in the layout pushes the page sideways. */
+#figure_ui .select2-container {
     visibility:visible;
     position:relative;
+}
+/* The open dropdown is attached beside the body and placed over the control,
+   so a width of its own (mriview.css gives it 30vw for the viewer's picker)
+   reaches past the right edge of the window and scrolls the page sideways.
+   This one is as wide as its strips need and hangs from the right edge of
+   the control, which is a panel's width in from the edge of the window. */
+.select2-dropdown.aligner-cmap-dropdown {
+    width:240px !important;
+    margin-left:-80px;
 }
 
 .aligner-cmap {
