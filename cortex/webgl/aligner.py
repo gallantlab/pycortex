@@ -10,6 +10,9 @@ through the WebGL viewer's machinery (``cortex/webgl/resources/js/aligner.js``);
 the transform is served, edited and saved through a tornado server in this
 process, like ``cortex.webgl.show``.
 
+Saving an edited alignment deletes the masks cached for the transform,
+since they were cut through the alignment it replaces.
+
 The entry point for users is :func:`cortex.align.webgl_manual`.
 """
 import base64
@@ -90,6 +93,59 @@ def _color_hex(color: str) -> str:
     from matplotlib.colors import to_hex
 
     return to_hex(color)
+
+
+def cached_masks(subject: str, xfmname: str) -> list[str]:
+    """The paths of the masks cached for a transform.
+
+    Masks are cut out of the reference volume through the transform, so
+    editing the alignment makes every one of them wrong.
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        Name of the transform.
+
+    Returns
+    -------
+    paths : list of str
+        Paths of the cached mask files, empty when the transform has none.
+    """
+    pattern = db.get_paths(subject)["masks"].format(xfmname=xfmname, type="*")
+    return sorted(glob.glob(pattern))
+
+
+def clear_masks(subject: str, xfmname: str) -> list[str]:
+    """Delete the masks cached for a transform, and return their names.
+
+    The aligner calls this when it saves an edited alignment: the masks it
+    deletes were cut with the previous alignment, and nothing else
+    invalidates them. ``db.save_xfm`` also refuses to write over a transform
+    that still has masks.
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        Name of the transform.
+
+    Returns
+    -------
+    names : list of str
+        Names of the deleted masks, as `db.get_mask` takes them (the `thick`
+        of `mask_thick.nii.gz`). Empty when the transform had no masks.
+    """
+    names = []
+    for path in cached_masks(subject, xfmname):
+        name = os.path.split(path)[1]
+        if name.startswith("mask_") and name.endswith(".nii.gz"):
+            name = name[len("mask_"):-len(".nii.gz")]
+        os.unlink(path)
+        names.append(name)
+    return names
 
 
 class JSAligner(serve.JSProxy[P]):
@@ -234,6 +290,11 @@ def show(
     database as `xfmname`. See :func:`cortex.align.webgl_manual` for the
     controls.
 
+    Saving deletes the masks cached for `xfmname` (the page warns when it
+    opens a transform that has some): they were cut through the alignment
+    being replaced. Data already masked with them has to be masked again
+    from the volumes.
+
     Parameters
     ----------
     subject : str
@@ -246,9 +307,8 @@ def show(
         stored reference is loaded, and the transform is used as the starting
         point.
     view_only : bool, optional
-        Open the aligner without the possibility to save. Required to open a
-        transform whose masks have been cached, since such a transform cannot
-        be changed anymore.
+        Open the aligner without the possibility to save, to inspect an
+        alignment.
     cmap : str, optional
         Initial colormap for the reference volume, one of the 1D pycortex
         colormaps. Defaults to the `colormap` option of the `webgl_aligner`
@@ -310,13 +370,6 @@ def show(
                 "Refusing to overwrite the reference of the existing transform %s; "
                 "pass reference=None to load the stored reference" % xfmname
             )
-        masks = glob.glob(db.get_paths(subject)["masks"].format(xfmname=xfmname, type="*"))
-        if len(masks) > 0 and not view_only:
-            raise ValueError(
-                "Refusing to modify transform %s because it has cached masks (%s). "
-                "Delete the masks to modify the transform, or pass view_only=True "
-                "to inspect it." % (xfmname, ", ".join(sorted(masks)))
-            )
         nii = dbxfm.reference_nifti
         reference = nii.get_filename()
         coord = np.asarray(dbxfm.xfm, dtype=float)
@@ -359,6 +412,8 @@ def show(
         xfmname=xfmname,
         ctm="ctm/%s/" % subject,
         view_only=view_only,
+        # shown as a warning on the page: saving deletes these
+        masks=[os.path.split(path)[1] for path in cached_masks(subject, xfmname)],
         volume=dict(
             name=REFERENCE_NAME,
             subject=subject,
@@ -425,12 +480,20 @@ def show(
                 xfm = np.asarray(json.loads(self.get_argument("xfm")), dtype=float)
                 if xfm.shape != (4, 4):
                     raise ValueError("expected a 4x4 matrix, got shape %s" % (xfm.shape,))
+                # The masks were cut with the alignment being replaced, so
+                # they are wrong from here on; db.save_xfm also refuses to
+                # write over a transform that still has them.
+                dropped = clear_masks(subject, xfmname)
                 db.save_xfm(subject, xfmname, xfm, xfmtype="coord", reference=reference)
             except Exception as exc:
                 self.write(json.dumps(dict(status="error", message="not saved: %s" % exc)))
                 return
-            print("saved xfm %s for %s" % (xfmname, subject))
-            self.write(json.dumps(dict(status="ok", message="saved transform %s for %s" % (xfmname, subject))))
+            message = "saved transform %s for %s" % (xfmname, subject)
+            if len(dropped) > 0:
+                message += "; deleted %d stale mask%s (%s)" % (
+                    len(dropped), "" if len(dropped) == 1 else "s", ", ".join(dropped))
+            print(message)
+            self.write(json.dumps(dict(status="ok", message=message, masks_deleted=dropped)))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = close_on_disconnect

@@ -126,10 +126,15 @@ def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **
 
     When Save is pressed the transform is stored into the pycortex database
     as `xfmname`, as a 'coord' transform. A new transform requires
-    `reference`, which is copied into the database; an existing transform
-    is loaded together with its stored reference, and refuses to open for
-    editing while masks are cached for it (pass ``view_only=True`` to
-    inspect it).
+    `reference`, which is copied into the database; an existing transform is
+    loaded together with its stored reference.
+
+    Saving also deletes the masks cached for `xfmname`, since they were cut
+    out of the reference volume through the alignment being replaced. The
+    page warns about this when it opens a transform that has masks, and the
+    save message names the ones it deleted. Data already masked with them
+    has to be masked again from the volumes. Pass ``view_only=True`` to
+    inspect an alignment without saving.
 
     Parameters
     ----------

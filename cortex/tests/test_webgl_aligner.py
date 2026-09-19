@@ -8,6 +8,7 @@ headless Chromium and is skipped without playwright.
 import base64
 import io
 import json
+import os
 import time
 import urllib.parse
 import urllib.request
@@ -57,6 +58,34 @@ def recorder(monkeypatch):
     rec = _SaveRecorder()
     monkeypatch.setattr(database.db, "save_xfm", rec)
     return rec
+
+
+@pytest.fixture
+def stale_masks(tmp_path, monkeypatch):
+    """Put two cached masks for the transform in `tmp_path`.
+
+    Only the mask paths are redirected; every other path stays as it is, so
+    the bundled filestore is neither read for masks nor written to.
+    """
+    real_get_paths = database.db.get_paths
+
+    def get_paths(subject):
+        paths = dict(real_get_paths(subject))
+        paths["masks"] = str(tmp_path / "mask_{type}.nii.gz")
+        return paths
+
+    monkeypatch.setattr(database.db, "get_paths", get_paths)
+    names = ["thick", "thin"]
+    for name in names:
+        (tmp_path / ("mask_%s.nii.gz" % name)).write_bytes(b"a stale mask")
+    return tmp_path, names
+
+
+def _page_config(html):
+    """The config object the page is generated with."""
+    marker = 'viewer = figure.add(aligner.Aligner, "main", true, '
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start:html.index(");", start)])
 
 
 @pytest.fixture
@@ -144,12 +173,16 @@ def test_existing_transform_refuses_new_reference():
                      open_browser=False, display_url=False)
 
 
-def test_transform_with_masks_requires_view_only(monkeypatch):
-    import types
-
-    monkeypatch.setattr(aligner, "glob", types.SimpleNamespace(glob=lambda pattern: ["mask_thick.nii.gz"]))
-    with pytest.raises(ValueError, match="cached masks"):
-        aligner.show(subj, xfmname, open_browser=False, display_url=False)
+def test_aligner_opens_with_cached_masks(stale_masks):
+    """Cached masks no longer keep a transform from being edited; the page
+    is told about them so it can warn that saving deletes them."""
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        config = _page_config(_open("http://localhost:%d/" % srv.port).decode())
+    finally:
+        srv.stop()
+    assert config["view_only"] is False
+    assert config["masks"] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
 
 
 def test_align_entry_point_forwards(monkeypatch):
@@ -165,6 +198,85 @@ def test_align_entry_point_forwards(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Stale masks
+# ---------------------------------------------------------------------------
+
+
+def test_cached_masks_are_listed_and_cleared(stale_masks):
+    tmp_path, names = stale_masks
+    paths = aligner.cached_masks(subj, xfmname)
+    assert [os.path.basename(p) for p in paths] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+    # clear_masks reports the names db.get_mask takes, not the filenames
+    assert aligner.clear_masks(subj, xfmname) == names
+    assert aligner.cached_masks(subj, xfmname) == []
+    assert sorted(tmp_path.glob("mask_*")) == []
+
+
+def test_clearing_a_transform_without_masks_does_nothing():
+    # also guards against a test leaving masks in the bundled filestore
+    assert aligner.cached_masks(subj, xfmname) == []
+    assert aligner.clear_masks(subj, xfmname) == []
+
+
+def test_save_deletes_the_stale_masks_first(stale_masks):
+    """Saving an edited alignment deletes the masks cut with the old one.
+
+    They have to be gone before the transform is written: db.save_xfm
+    refuses to write over a transform that still has masks.
+    """
+    tmp_path, names = stale_masks
+    seen = {}
+
+    def save_xfm(subject, name, xfm, xfmtype="magnet", reference=None):
+        seen["masks"] = sorted(p.name for p in tmp_path.glob("mask_*"))
+        seen["xfm"] = np.asarray(xfm, dtype=float)
+        seen["xfmtype"] = xfmtype
+
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    xfm = np.arange(16, dtype=float).reshape(4, 4)
+    try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(database.db, "save_xfm", save_xfm)
+            resp = json.loads(_open("http://localhost:%d/save" % srv.port,
+                                    dict(xfm=json.dumps(xfm.tolist()))).decode())
+    finally:
+        srv.stop()
+
+    assert resp["status"] == "ok"
+    assert resp["masks_deleted"] == names
+    assert "deleted 2 stale masks (thick, thin)" in resp["message"]
+    assert seen["masks"] == [], "the masks were still there when the transform was written"
+    assert seen["xfmtype"] == "coord"
+    assert np.allclose(seen["xfm"], xfm)
+    assert sorted(tmp_path.glob("mask_*")) == []
+
+
+def test_a_refused_save_keeps_the_masks(stale_masks):
+    """A save that does not go through leaves the masks alone."""
+    tmp_path, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
+                                dict(xfm=json.dumps([1, 2, 3]))).decode())
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert [p.name for p in sorted(tmp_path.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+def test_view_only_keeps_the_masks(stale_masks):
+    tmp_path, names = stale_masks
+    srv = aligner.show(subj, xfmname, view_only=True, open_browser=False, display_url=False)
+    try:
+        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
+                                dict(xfm=json.dumps(np.eye(4).tolist()))).decode())
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert [p.name for p in sorted(tmp_path.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+# ---------------------------------------------------------------------------
 # Server endpoints (no browser)
 # ---------------------------------------------------------------------------
 
@@ -175,16 +287,14 @@ def test_page_carries_config(server):
     base = "http://localhost:%d" % server.port
     html = _open(base + "/aligner.html").decode()
     assert "aligner.Aligner" in html
-    start = html.index('viewer = figure.add(aligner.Aligner, "main", true, ') + len(
-        'viewer = figure.add(aligner.Aligner, "main", true, ')
-    end = html.index(");", start)
-    config = json.loads(html[start:end])
+    config = _page_config(html)
 
     xfm = database.db.get_xfm(subj, xfmname)
     nii = xfm.reference_nifti
     assert config["subject"] == subj
     assert config["xfmname"] == xfmname
     assert config["view_only"] is False
+    assert config["masks"] == []
     assert np.allclose(config["xfm"], xfm.xfm)
     assert np.allclose(config["world"], aligner.reference_frame(nii))
     assert config["volume"]["shape"] == list(nii.shape[::-1])
