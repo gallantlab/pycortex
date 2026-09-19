@@ -60,25 +60,36 @@ def recorder(monkeypatch):
     return rec
 
 
-@pytest.fixture
-def stale_masks(tmp_path, monkeypatch):
-    """Put two cached masks for the transform in `tmp_path`.
+@pytest.fixture(autouse=True)
+def mask_dir(tmp_path, monkeypatch):
+    """Point the transform's mask paths at an empty directory of this test's.
 
-    Only the mask paths are redirected; every other path stays as it is, so
-    the bundled filestore is neither read for masks nor written to.
+    Saving deletes the masks cached for a transform, and `db.get_mask` writes
+    them on demand, so without this a test would delete or create masks in the
+    bundled filestore, and a mask another test file left there would decide
+    this one's results. Only the mask paths move; every other path stays as it
+    is.
     """
     real_get_paths = database.db.get_paths
+    masks = tmp_path / "masks"
+    masks.mkdir()
 
     def get_paths(subject):
         paths = dict(real_get_paths(subject))
-        paths["masks"] = str(tmp_path / "mask_{type}.nii.gz")
+        paths["masks"] = str(masks / "mask_{type}.nii.gz")
         return paths
 
     monkeypatch.setattr(database.db, "get_paths", get_paths)
+    return masks
+
+
+@pytest.fixture
+def stale_masks(mask_dir):
+    """Two masks cached for the transform, as an earlier alignment left them."""
     names = ["thick", "thin"]
     for name in names:
-        (tmp_path / ("mask_%s.nii.gz" % name)).write_bytes(b"a stale mask")
-    return tmp_path, names
+        (mask_dir / ("mask_%s.nii.gz" % name)).write_bytes(b"a stale mask")
+    return mask_dir, names
 
 
 def _page_config(html):
@@ -203,17 +214,16 @@ def test_align_entry_point_forwards(monkeypatch):
 
 
 def test_cached_masks_are_listed_and_cleared(stale_masks):
-    tmp_path, names = stale_masks
+    mask_dir, names = stale_masks
     paths = aligner.cached_masks(subj, xfmname)
     assert [os.path.basename(p) for p in paths] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
     # clear_masks reports the names db.get_mask takes, not the filenames
     assert aligner.clear_masks(subj, xfmname) == names
     assert aligner.cached_masks(subj, xfmname) == []
-    assert sorted(tmp_path.glob("mask_*")) == []
+    assert sorted(mask_dir.glob("mask_*")) == []
 
 
-def test_clearing_a_transform_without_masks_does_nothing():
-    # also guards against a test leaving masks in the bundled filestore
+def test_clearing_a_transform_without_masks_does_nothing(mask_dir):
     assert aligner.cached_masks(subj, xfmname) == []
     assert aligner.clear_masks(subj, xfmname) == []
 
@@ -224,11 +234,11 @@ def test_save_deletes_the_stale_masks_first(stale_masks):
     They have to be gone before the transform is written: db.save_xfm
     refuses to write over a transform that still has masks.
     """
-    tmp_path, names = stale_masks
+    mask_dir, names = stale_masks
     seen = {}
 
     def save_xfm(subject, name, xfm, xfmtype="magnet", reference=None):
-        seen["masks"] = sorted(p.name for p in tmp_path.glob("mask_*"))
+        seen["masks"] = sorted(p.name for p in mask_dir.glob("mask_*"))
         seen["xfm"] = np.asarray(xfm, dtype=float)
         seen["xfmtype"] = xfmtype
 
@@ -248,12 +258,12 @@ def test_save_deletes_the_stale_masks_first(stale_masks):
     assert seen["masks"] == [], "the masks were still there when the transform was written"
     assert seen["xfmtype"] == "coord"
     assert np.allclose(seen["xfm"], xfm)
-    assert sorted(tmp_path.glob("mask_*")) == []
+    assert sorted(mask_dir.glob("mask_*")) == []
 
 
 def test_a_refused_save_keeps_the_masks(stale_masks):
     """A save that does not go through leaves the masks alone."""
-    tmp_path, names = stale_masks
+    mask_dir, names = stale_masks
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     try:
         resp = json.loads(_open("http://localhost:%d/save" % srv.port,
@@ -261,11 +271,11 @@ def test_a_refused_save_keeps_the_masks(stale_masks):
     finally:
         srv.stop()
     assert resp["status"] == "error"
-    assert [p.name for p in sorted(tmp_path.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
 
 
 def test_view_only_keeps_the_masks(stale_masks):
-    tmp_path, names = stale_masks
+    mask_dir, names = stale_masks
     srv = aligner.show(subj, xfmname, view_only=True, open_browser=False, display_url=False)
     try:
         resp = json.loads(_open("http://localhost:%d/save" % srv.port,
@@ -273,7 +283,7 @@ def test_view_only_keeps_the_masks(stale_masks):
     finally:
         srv.stop()
     assert resp["status"] == "error"
-    assert [p.name for p in sorted(tmp_path.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
 
 
 # ---------------------------------------------------------------------------

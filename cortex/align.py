@@ -14,98 +14,11 @@ from .options import config
 from .xfm import Transform
 
 
-def mayavi_manual(subject, xfmname, reference=None, **kwargs):
-    """Open GUI for manually aligning a functional volume to the cortical surface for `subject`. This
-    creates a new transform called `xfm`. The name of a nibabel-readable file (e.g. nii) should be
-    supplied as `reference`. This image will be copied into the database.
-
-    To modify an existing functional-anatomical transform, `reference` can be left blank, and the
-    previously used reference will be loaded.
-
-    <<ADD DETAILS ABOUT TRANSFORMATION MATRIX FORMAT HERE>>
-
-    When the GUI is closed, the transform will be saved into the pycortex database. The GUI requires
-    Mayavi support.
-
-    Parameters
-    ----------
-    subject : str
-        Subject identifier.
-    xfmname : str
-        String identifying the transform to be created or loaded.
-    reference : str, optional
-        Path to a nibabel-readable image that will be used as the reference for this transform.
-        If given the default value of None, this function will attempt to load an existing reference
-        image from the database.
-    kwargs : dict
-        Passed to mayavi_aligner.get_aligner.
-
-    Returns
-    -------
-    m : 2D ndarray, shape (4, 4)
-        Transformation matrix.
-    """
-
-    warnings.warn("This is the old cortex.align.manual(), and has been "
-                  "deprecated. Please use the new cortex.align.manual() "
-                  "(previously cortex.align.fs_manual()), which uses "
-                  "the `freeview` program in the freesurfer suite, to "
-                  "perform manual alignment.", DeprecationWarning
-                  )
-    from .database import db
-    from .mayavi_aligner import get_aligner
-    def save_callback(aligner):
-        db.save_xfm(subject, xfmname, aligner.get_xfm("magnet"), xfmtype='magnet', reference=reference)
-        print("saved xfm")
-
-    def view_callback(aligner):
-        print('view-only mode! ignoring changes')
-
-    # Check whether transform w/ this xfmname already exists
-    view_only_mode = False
-    try:
-        db.get_xfm(subject, xfmname)
-        # Transform exists, make sure that reference is None
-        if reference is not None:
-            raise ValueError('Refusing to overwrite reference for existing transform %s, use reference=None to load stored reference' % xfmname)
-
-        # if masks have been cached, quit! user must remove them by hand
-        from glob import glob
-        if len(glob(db.get_paths(subject)['masks'].format(xfmname=xfmname, type='*'))):
-            print('Refusing to overwrite existing transform %s because there are cached masks. Delete the masks manually if you want to modify the transform.' % xfmname)
-            checked = False
-            while not checked:
-                resp = input("Do you want to continue in view-only mode? (Y/N) ").lower().strip()
-                if resp in ["y", "yes", "n", "no"]:
-                    checked = True
-                    if resp in ["y", "yes"]:
-                        view_only_mode = True
-                        print("Continuing in view-only mode...")
-                    else:
-                        raise ValueError("Exiting...")
-                else:
-                    print("Didn't get that, please try again..")
-    except IOError:
-        # Transform does not exist, make sure that reference exists
-        if reference is None or not os.path.exists(reference):
-            raise ValueError('Reference image file (%s) does not exist' % reference)
-
-
-
-
-    m = get_aligner(subject, xfmname, epifile=reference, **kwargs)
-    m.save_callback = view_callback if view_only_mode else save_callback
-    m.configure_traits()
-
-    return m
-
-
 def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **kwargs):
     """Open the browser-based aligner for manually aligning a functional volume
     to the cortical surface of `subject`.
 
-    This is the WebGL port of the mayavi aligner (``mayavi_manual``). The
-    functional reference volume stays on its own voxel grid, so its slices
+    The functional reference volume stays on its own voxel grid, so its slices
     are shown without resampling, and the pial and white matter surfaces are
     moved into its space; in each slice view the surfaces are cut off at the
     displayed slice, so that their outline can be compared with the anatomy
@@ -199,8 +112,8 @@ def manual(
     ALSO: all the freesurfer environment stuff shouldn't be necessary, except that
     I don't know what vox2ras-tkr is doing.
 
-    Renamed from fs_manual() to manual(), since old manual() function was no longer 
-    supported (or functional) for a while due to changes in mayavi.
+    Renamed from fs_manual() to manual(), since the old manual() function had
+    been unsupported for a while.
 
 
     Parameters
