@@ -35,6 +35,14 @@ var aligner = (function(module) {
     var MODES = {outline: "mesh + slices", projected: "data on surface"};
     module.MODES = MODES;
 
+    //Where the surface is shown: nowhere in particular (the four views, each
+    //following the view mode), in the corner the 3D view occupies while the
+    //slices keep their planes, or on its own filling the window, which is the
+    //viewer's way of looking at a surface
+    var LAYOUTS = {panels: "4 panels", split: "panels + surface", surface: "surface"};
+    var LAYOUT_ORDER = [LAYOUTS.panels, LAYOUTS.split, LAYOUTS.surface];
+    module.LAYOUTS = LAYOUTS;
+
     //Slice setters, one per world axis, so that the slice controls in the
     //menu and the views stay in sync
     var SLICE_SETTERS = ["setSagittal", "setCoronal", "setAxial"];
@@ -171,6 +179,7 @@ var aligner = (function(module) {
         this.planeCoord = [0, 0, 0];
 
         this._mode = MODES.outline;
+        this._layout = LAYOUTS.panels;
         //The transform the page saves to. It starts as the one being edited
         //and can be changed, which saves the alignment as a new transform.
         this._xfmName = config.xfmname;
@@ -501,9 +510,11 @@ var aligner = (function(module) {
                 geom.addAttribute("wm", geom.attributes.position);
             }
             geom.addAttribute("wmnorm", mriview.computeNormal(geom.attributes.wm, geom.attributes.index, geom.offsets));
+            geom.computeBoundingBox();
             var edges = module.buildEdges(geom);
 
-            var hemi = {geometry: geom, edges: edges, outlines: [], surfaces: []};
+            var hemi = {geometry: geom, edges: edges, bounds: geom.boundingBox,
+                        outlines: [], surfaces: []};
             for (var s = 0; s < 2; s++) {
                 var line = new THREE.Line(edges, this.outlineMaterials[s], THREE.LinePieces);
                 line.frustumCulled = false;
@@ -555,6 +566,7 @@ var aligner = (function(module) {
         }
         top.undo = {action: this.undo.bind(this)};
         top.view = {action: [this, "setMode", [MODES.outline, MODES.projected]]};
+        top.layout = {action: [this, "setLayout", LAYOUT_ORDER]};
         this.ui.add(top);
         this._updateDirty();
 
@@ -1020,16 +1032,97 @@ var aligner = (function(module) {
         this.width = w;
         this.height = h;
         this.renderer.setSize(w, h);
+        var single = this._layout == LAYOUTS.surface;
         for (var i = 0; i < this.viewlist.length; i++) {
             var view = this.viewlist[i];
-            view.rect = {
-                left: Math.floor(view.col * w / 2),
-                top: Math.floor(view.row * h / 2),
-                width: Math.floor(w / 2),
-                height: Math.floor(h / 2),
-            };
+            if (single) {
+                //the 3D view takes the window; draw() skips the empty ones
+                view.rect = view.is2d ? {left: 0, top: 0, width: 0, height: 0}
+                                      : {left: 0, top: 0, width: w, height: h};
+            } else {
+                view.rect = {
+                    left: Math.floor(view.col * w / 2),
+                    top: Math.floor(view.row * h / 2),
+                    width: Math.floor(w / 2),
+                    height: Math.floor(h / 2),
+                };
+            }
         }
         this.schedule();
+    };
+
+    //Whether the page shows the four views or the surface on its own. The
+    //single view keeps every control, so the reference data can be looked at
+    //on the surface, through the transform being edited, without saving it
+    //and opening the viewer. That is what it is for, so entering it paints
+    //the data on the surface; `view` still switches back to the mesh.
+    module.Aligner.prototype.setLayout = function(name) {
+        if (name === undefined)
+            return this._layout;
+        if (LAYOUT_ORDER.indexOf(name) < 0)
+            return;
+        var was = this._layout;
+        this._layout = name;
+        $(this.object).find("#aligner").toggleClass("single", name == LAYOUTS.surface);
+        if (name != was && name != LAYOUTS.panels) {
+            //the surface is what these layouts are for, so the single view
+            //shows the data on it; `view` still switches back to the mesh
+            if (name == LAYOUTS.surface && this._mode == MODES.outline)
+                this.ui.set("view", MODES.projected);
+            //framed only the first time, so that a view the user set up
+            //survives a trip back to the four panels
+            if (!this._framed) {
+                this._frameSurface();
+                this._framed = true;
+            }
+        }
+        this.resize();
+    };
+
+    //What a view draws. They all follow the view mode, except in the split
+    //layout, where the slices keep their planes and outlines while the corner
+    //the 3D view occupies shows the surface with the data on it.
+    module.Aligner.prototype._viewMode = function(view) {
+        if (this._layout == LAYOUTS.split)
+            return view.is2d ? MODES.outline : MODES.projected;
+        return this._mode;
+    };
+
+    //Points the camera at the surface and sits it back far enough to see all
+    //of it, the way the viewer opens on a surface. The angle it is seen from
+    //is left as it was.
+    module.Aligner.prototype._frameSurface = function() {
+        if (this.hemis.length == 0)
+            return;
+        var min = new THREE.Vector3(Infinity, Infinity, Infinity);
+        var max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+        for (var i = 0; i < this.hemis.length; i++) {
+            var box = this.hemis[i].bounds;
+            if (box === undefined)
+                continue;
+            for (var c = 0; c < 8; c++) {
+                var corner = new THREE.Vector3(
+                    (c & 1) ? box.max.x : box.min.x,
+                    (c & 2) ? box.max.y : box.min.y,
+                    (c & 4) ? box.max.z : box.min.z).applyMatrix4(this.xfm);
+                min.min(corner);
+                max.max(corner);
+            }
+        }
+        if (!isFinite(min.x))
+            return;
+        //far enough for the widest side to fit the height of the view: the
+        //diagonal would be the safe distance for any angle, but a brain seen
+        //from any of them covers much less than its diagonal
+        var size = max.clone().sub(min);
+        var half = Math.max(size.x, size.y, size.z) / 2;
+        var fov = this.camera3d.fov * Math.PI / 360;
+        this.controls.setTarget(min.clone().add(max).multiplyScalar(0.5).toArray());
+        this.controls.setRadius(1.1 * half / Math.sin(fov));
+    };
+    module.Aligner.prototype.toggleLayout = function() {
+        var next = (LAYOUT_ORDER.indexOf(this._layout) + 1) % LAYOUT_ORDER.length;
+        this.setLayout(LAYOUT_ORDER[next]);
     };
 
     module.Aligner.prototype.schedule = function() {
@@ -1053,7 +1146,7 @@ var aligner = (function(module) {
             this.renderer.setViewport(r.left, bottom, r.width, r.height);
             this.renderer.setScissor(r.left, bottom, r.width, r.height);
             this._prepareView(view);
-            if (view.is2d && this._mode == MODES.outline) {
+            if (view.is2d && this._viewMode(view) == MODES.outline) {
                 //Two passes: the slice first, then the outlines and the
                 //crosshair on top of it whatever their depth. Drawing them in
                 //one pass would leave the order to three.js, which draws its
@@ -1077,11 +1170,11 @@ var aligner = (function(module) {
     //Sets the visibility of the objects for a view: a slice view shows its
     //plane, the outline of the surfaces cut to that slice and the crosshair;
     //the 3D view shows all three planes, the outlines on all of them and,
-    //when opaque enough, the whole surfaces. In the painted mode every view
+    //when opaque enough, the whole surfaces. In the painted mode the view
     //shows the surfaces colored by the volume instead. `layer` restricts the
     //visible objects to the "plane" or the "lines" of a slice view.
     module.Aligner.prototype._showLayer = function(view, layer) {
-        var outline = this._mode == MODES.outline;
+        var outline = this._viewMode(view) == MODES.outline;
         var plane = layer != "lines", lines = layer != "plane";
         for (var a = 0; a < 3; a++) {
             this.planes2d[a].visible = plane && outline && view.is2d && view.axis == a;

@@ -78,10 +78,16 @@ You move the surfaces until this outline follows the anatomy in the image.
 
 * In a slice view, a left drag moves the cursor. The cursor sets the slices shown in the other views and is the pivot of rotations. The wheel or ``[`` and ``]`` change the slice, ctrl + wheel zooms, and a middle (or shift + left) drag pans.
 * A right drag, the WASD keys or the arrow keys translate the surfaces in the plane of the view under the mouse. A ctrl + right drag or ``q`` and ``e`` rotate them about the cursor, in the plane of the view under the mouse. Holding shift makes the keyboard steps ten times smaller, and ctrl + z undoes. Only rotations and translations are possible; the transform cannot stretch the brain.
-* In the 3D view, a left drag rotates, a right drag pans and the wheel zooms.
+* In the 3D view, a left drag rotates, a middle (or shift + left) drag pans, and a right drag or the wheel zooms.
 
 The panel on the right holds the controls.
 ``view`` switches between the surface outlines on the slices and the reference image painted onto the surface (``m`` toggles it too), which shows how the pattern of the data falls on the cortex.
+``layout`` chooses where the surface is shown, with three settings.
+``4 panels`` is the layout described above, where all four views follow ``view``.
+``panels + surface`` keeps the three slices showing their planes and outlines and turns the bottom right corner into the viewer, so the mesh can be nudged in the slices while the data on the surface follows.
+``surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one.
+Both of the latter paint the reference data on the surface through the alignment as it currently stands, saved or not, and redraw as you move the mesh, so an alignment can be judged from the pattern the data makes on the cortex before committing it.
+Every control stays available in all three.
 ``image`` sets the colormap, its range (``vmin`` and ``vmax``), ``brightness``, ``contrast`` and ``gamma``, and flips the colormap. The colormap dropdown draws a strip of each colormap beside its name.
 ``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, and the cortical ``depth`` the data is painted at.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.

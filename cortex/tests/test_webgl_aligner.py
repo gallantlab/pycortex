@@ -519,6 +519,100 @@ def test_aligner_in_headless_browser(recorder):
 
 @pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
 @pytest.mark.timeout(400)
+def test_layouts_show_the_surface_and_follow_the_transform():
+    """`layout` puts the surface in the corner or over the whole window, and
+    what it draws there follows the transform as it is edited."""
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def state():
+                return page.evaluate("""() => {
+                    var v = window.viewer;
+                    return {
+                        layout: v.setLayout(), mode: v.setMode(),
+                        rects: v.viewlist.map(w => [w.name, w.rect.width, w.rect.height]),
+                        modes: v.viewlist.map(w => [w.name, v._viewMode(w)]),
+                        canvas: [v.width, v.height],
+                        shown: Array.from(document.querySelectorAll('.aligner-view'))
+                            .filter(e => getComputedStyle(e).display != 'none').map(e => e.id),
+                    };
+                }""")
+
+            def redraw(script):
+                """Run `script` and wait for the frame that shows its effect.
+
+                The page draws on demand, so the frame count has to be read
+                before the change: read afterwards, it might already have
+                been drawn and the wait would never end.
+                """
+                frames = page.evaluate("window.viewer.nframes")
+                page.evaluate(script)
+                page.wait_for_function("window.viewer.nframes > %d" % frames, timeout=120000)
+
+            start = state()
+            assert start["layout"] == "4 panels"
+            assert len(start["shown"]) == 4
+            assert all(w > 0 for _, w, _ in start["rects"])
+
+            # the surface in the corner, with the slices still showing slices
+            redraw("window.viewer.ui.set('layout', 'panels + surface')")
+            split = state()
+            assert split["layout"] == "panels + surface"
+            assert len(split["shown"]) == 4, "the slice views stay"
+            assert dict(split["modes"])["3d"] == "data on surface"
+            assert all(m == "mesh + slices" for name, m in split["modes"] if name != "3d")
+
+            # what the corner draws follows an edit to the transform, unsaved
+            before = page.locator("#view-3d").screenshot()
+            redraw("window.viewer.translate([0, 0, 6])")
+            page.wait_for_timeout(300)
+            assert page.locator("#view-3d").screenshot() != before, (
+                "the surface did not redraw when the transform moved")
+            assert page.evaluate("window.viewer.isDirty()")
+            redraw("window.viewer.undo()")
+
+            # and the surface on its own, over the whole window
+            redraw("window.viewer.ui.set('layout', 'surface')")
+            single = state()
+            assert single["layout"] == "surface"
+            assert single["shown"] == ["view-3d"], "only the surface is left"
+            assert dict((n, (w, h)) for n, w, h in single["rects"])["3d"] == tuple(single["canvas"])
+            assert all(w == 0 for n, w, _ in single["rects"] if n != "3d")
+            assert single["mode"] == "data on surface", "the single view paints the data"
+
+            # the surface is framed for the window rather than left as it was
+            # drawn in a quarter of it
+            filled = page.evaluate("""() => {
+                var c = document.querySelector('#aligner-canvas');
+                var s = document.createElement('canvas');
+                s.width = c.width; s.height = c.height;
+                s.getContext('2d').drawImage(c, 0, 0);
+                var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                var lit = 0;
+                for (var i = 0; i < d.length; i += 4) { if (d[i] + d[i+1] + d[i+2] > 45) lit++; }
+                return lit / (s.width * s.height);
+            }""")
+            assert filled > 0.2, "the surface covers only %.2f of the window" % filled
+
+            redraw("window.viewer.toggleLayout()")
+            assert state()["layout"] == "4 panels", "the toggle cycles back round"
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
 def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
     """WASD moves the mesh like the arrows do, and every colormap in the
     dropdown is drawn with a strip of itself.
