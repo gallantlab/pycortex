@@ -171,6 +171,13 @@ var aligner = (function(module) {
         this.planeCoord = [0, 0, 0];
 
         this._mode = MODES.outline;
+        //The transform the page saves to. It starts as the one being edited
+        //and can be changed, which saves the alignment as a new transform.
+        this._xfmName = config.xfmname;
+        this._savedXfm = this.xfm.clone();
+        this._savedName = this._xfmName;
+        this._dirtyShown = false;
+        this._title = document.title;
         this._cmapName = config.cmap;
         this._showSurf = [true, true];
         this._translateStep = 1;
@@ -337,10 +344,10 @@ var aligner = (function(module) {
         var masks = this.config.masks || [];
         if (masks.length > 0 && !this.config.view_only) {
             $(panel).find("#aligner-masks").text(
-                "Saving deletes the " + masks.length + " cached mask" +
-                (masks.length == 1 ? "" : "s") + " of this transform (" +
-                masks.join(", ") + "). Data already masked with them has to be " +
-                "masked again from the volumes.").show();
+                "Saving over " + this.config.xfmname + " deletes its " + masks.length +
+                " cached mask" + (masks.length == 1 ? "" : "s") + " (" + masks.join(", ") +
+                "). Data already masked with them has to be masked again from the " +
+                "volumes. Saving under another name leaves them alone.").show();
         }
         this.statusElement = $(panel).find("#aligner-status");
         figure.gui.open();
@@ -539,12 +546,17 @@ var aligner = (function(module) {
             this._cmapName = names.indexOf("gray") >= 0 ? "gray" : names[0];
         this.volUniforms.colormap.value = this.colormaps[this._cmapName];
 
+        //the name field sits above the save button, so that the alignment can
+        //be saved as a new transform
         var top = {};
-        if (!this.config.view_only)
+        if (!this.config.view_only) {
+            top.transform = {action: [this, "setXfmName"]};
             top.save = {action: this.save.bind(this)};
+        }
         top.undo = {action: this.undo.bind(this)};
         top.view = {action: [this, "setMode", [MODES.outline, MODES.projected]]};
         this.ui.add(top);
+        this._updateDirty();
 
         var vol = this.config.volume;
         this.ui.addFolder("image", false).add({
@@ -574,7 +586,43 @@ var aligner = (function(module) {
             "translate (mm)": {action: [this, "setTranslateStep", 0.05, 10, 0.05]},
             "rotate (deg)":   {action: [this, "setRotateStep", 0.05, 10, 0.05]},
         });
+        this._previewColormaps();
         this.schedule();
+    };
+
+    //Draws a strip of each colormap beside its name in the colormap dropdown.
+    //dat.GUI renders a plain select, so select2 takes it over to draw the
+    //options, the same library the viewer's colormap picker uses. Picking one
+    //writes the value into the select and fires a jQuery event; dat.GUI
+    //listens for the native one, so the pick is passed on as such and the
+    //control goes on working the way the others do.
+    module.Aligner.prototype._previewColormaps = function() {
+        var folder = this.ui["image"];
+        var control = folder === undefined ? undefined : folder._controls.colormap;
+        if (control === undefined || control.__select === undefined || $.fn.select2 === undefined)
+            return;
+
+        var select = control.__select;
+        var colormaps = this.colormaps;
+        var draw = function(state) {
+            if (!state.id)
+                return state.text;
+            var texture = colormaps[state.id];
+            var row = $("<span class='aligner-cmap'></span>");
+            if (texture !== undefined && texture.image !== undefined)
+                row.append($("<img>").attr("src", texture.image.src));
+            row.append($("<span class='aligner-cmap-name'></span>").text(state.text));
+            return row;
+        };
+
+        this._cmapSelect = $(select).select2({
+            templateResult: draw,
+            templateSelection: draw,
+            width: "100%",
+        });
+        this._cmapSelect.on("select2:select", function() {
+            select.dispatchEvent(new Event("change"));
+        });
     };
 
     //Updates the value shown by a menu control without running its action
@@ -721,8 +769,45 @@ var aligner = (function(module) {
     module.Aligner.prototype._xfmChanged = function() {
         this.brain.matrix.copy(this.xfm);
         this.brain.matrixWorldNeedsUpdate = true;
+        this._updateDirty();
         this.dispatchEvent({type: "xfm"});
         this.schedule();
+    };
+
+    //The name of the transform the page saves to. Changing it saves the
+    //alignment as a new transform, leaving the one it was loaded from alone.
+    module.Aligner.prototype.setXfmName = function(name) {
+        if (name === undefined)
+            return this._xfmName;
+        this._xfmName = String(name).trim();
+        this._updateDirty();
+    };
+
+    //Whether the alignment on screen is the one that was last saved. An undo
+    //back to that alignment counts as saved again, which is why this compares
+    //the matrices rather than merely noting that something was moved.
+    module.Aligner.prototype.isDirty = function() {
+        if (this._xfmName !== this._savedName)
+            return true;
+        var now = this.xfm.elements, saved = this._savedXfm.elements;
+        for (var i = 0; i < 16; i++) {
+            if (now[i] !== saved[i])
+                return true;
+        }
+        return false;
+    };
+
+    //Marks unsaved changes with an asterisk, on the save button and in the
+    //title, so that a page left open does not look like a saved alignment.
+    module.Aligner.prototype._updateDirty = function() {
+        var dirty = this.isDirty();
+        if (dirty === this._dirtyShown)
+            return;
+        this._dirtyShown = dirty;
+        document.title = (dirty ? "* " : "") + this._title;
+        var button = this.ui._controls.save;
+        if (button !== undefined)
+            button.name(dirty ? "save *" : "save");
     };
 
     //Translates the surfaces by a world vector (mm)
@@ -757,14 +842,23 @@ var aligner = (function(module) {
             this.showStatus("view only: the transform is not saved", true);
             return "view only";
         }
-        this.showStatus("saving...");
+        //what is being saved, rather than what is on screen when the answer
+        //comes back: the alignment can be moved on while the request is out
+        var name = this._xfmName;
+        var saved = this.xfm.clone();
+        this.showStatus("saving " + name + "...");
         $.ajax({
             type: "POST",
             url: "save",
-            data: {xfm: JSON.stringify(this.getXfm())},
+            data: {xfm: JSON.stringify(this.getXfm()), name: name},
             dataType: "json",
         }).done(function(resp) {
             this.showStatus(resp.message, resp.status != "ok");
+            if (resp.status == "ok") {
+                this._savedXfm = saved;
+                this._savedName = name;
+                this._updateDirty();
+            }
         }.bind(this)).fail(function() {
             this.showStatus("saving failed: no answer from the server", true);
         }.bind(this));
@@ -830,6 +924,10 @@ var aligner = (function(module) {
             return;
         this._cmapName = name;
         this.volUniforms.colormap.value = this.colormaps[name];
+        //keep the dropdown showing the colormap that is in effect when the
+        //change came from somewhere else, a menu set from python for instance
+        if (this._cmapSelect !== undefined && this._cmapSelect.val() != name)
+            this._cmapSelect.val(name).trigger("change.select2");
         this.schedule();
     };
     module.Aligner.prototype.setFlip = function(flip) {
@@ -1222,17 +1320,19 @@ var aligner = (function(module) {
         var rstep = this._rotateStep * fine * Math.PI / 180;
         var toViewer = view.look.clone().negate();
         var handled = true;
+        //WASD moves the mesh the same way the arrows do. Both upper and lower
+        //case, since shift is the fine-step modifier and shift+w arrives as W.
         switch (key) {
-            case "ArrowLeft":
+            case "ArrowLeft": case "a": case "A":
                 this.translate(view.right.clone().multiplyScalar(-tstep).toArray());
                 break;
-            case "ArrowRight":
+            case "ArrowRight": case "d": case "D":
                 this.translate(view.right.clone().multiplyScalar(tstep).toArray());
                 break;
-            case "ArrowUp":
+            case "ArrowUp": case "w": case "W":
                 this.translate(view.up.clone().multiplyScalar(tstep).toArray());
                 break;
-            case "ArrowDown":
+            case "ArrowDown": case "s": case "S":
                 this.translate(view.up.clone().multiplyScalar(-tstep).toArray());
                 break;
             case "q": case "Q":

@@ -21,6 +21,7 @@ import json
 import mimetypes
 import os
 import queue
+import re
 import time
 import uuid
 import warnings
@@ -44,6 +45,39 @@ REFERENCE_NAME = "reference"
 
 #: The two view modes of the page, as its `view` control names them
 MODES = dict(outline="mesh + slices", projected="data on surface")
+
+#: A transform name has to serve as a directory name in the filestore
+XFM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def check_xfm_name(name: str) -> str:
+    """Return `name` if it can be used as the name of a transform.
+
+    The name becomes a directory in the filestore, so anything else is
+    refused here rather than reaching the filesystem.
+
+    Parameters
+    ----------
+    name : str
+        The name to check.
+
+    Returns
+    -------
+    name : str
+        The name, unchanged.
+
+    Raises
+    ------
+    ValueError
+        If the name is empty or holds anything but letters, digits, '.',
+        '_' and '-', or does not start with a letter or a digit.
+    """
+    if not isinstance(name, str) or XFM_NAME.match(name) is None:
+        raise ValueError(
+            "%r is not a usable transform name: use letters, digits, '.', '_' and "
+            "'-', starting with a letter or a digit" % (name,)
+        )
+    return name
 
 
 def reference_frame(nii) -> npt.NDArray[np.float64]:
@@ -480,20 +514,25 @@ def show(
                 xfm = np.asarray(json.loads(self.get_argument("xfm")), dtype=float)
                 if xfm.shape != (4, 4):
                     raise ValueError("expected a 4x4 matrix, got shape %s" % (xfm.shape,))
-                # The masks were cut with the alignment being replaced, so
-                # they are wrong from here on; db.save_xfm also refuses to
-                # write over a transform that still has them.
-                dropped = clear_masks(subject, xfmname)
-                db.save_xfm(subject, xfmname, xfm, xfmtype="coord", reference=reference)
+                # The page can save the alignment under another name, which
+                # creates a transform of that name rather than changing the
+                # one that was loaded.
+                name = check_xfm_name(self.get_argument("name", xfmname).strip())
+                # The masks of the transform being written were cut with the
+                # alignment being replaced, so they are wrong from here on;
+                # db.save_xfm also refuses to write over a transform that
+                # still has them.
+                dropped = clear_masks(subject, name)
+                db.save_xfm(subject, name, xfm, xfmtype="coord", reference=reference)
             except Exception as exc:
                 self.write(json.dumps(dict(status="error", message="not saved: %s" % exc)))
                 return
-            message = "saved transform %s for %s" % (xfmname, subject)
+            message = "saved transform %s for %s" % (name, subject)
             if len(dropped) > 0:
                 message += "; deleted %d stale mask%s (%s)" % (
                     len(dropped), "" if len(dropped) == 1 else "s", ", ".join(dropped))
             print(message)
-            self.write(json.dumps(dict(status="ok", message=message, masks_deleted=dropped)))
+            self.write(json.dumps(dict(status="ok", message=message, name=name, masks_deleted=dropped)))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = close_on_disconnect

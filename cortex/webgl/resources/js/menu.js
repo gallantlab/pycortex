@@ -109,11 +109,13 @@ var jsplot = (function (module) {
         return folder;
     }
     module.Menu.prototype._add = function(gui, name, desc) {
+        var ctrl;
         if (desc.action instanceof Function) {
             //A button that runs a function (IE Reset)
             this[name] = desc.action;
-            if (!desc.hidden) 
-                gui.add(desc, "action").name(name);
+            if (!desc.hidden)
+                //keep the controller, so that the button can be renamed later
+                ctrl = gui.add(desc, "action").name(name);
         } else if ( desc.action instanceof Array) {
             var obj = desc.action[0][desc.action[1]];
             if (obj instanceof Function) {
@@ -128,7 +130,7 @@ var jsplot = (function (module) {
                         newargs.push(desc.action[i]);
 
                     //a color picker, for a method that gets and sets a css color string
-                    var ctrl = desc.color ? gui.addColor(this, name) : gui.add.apply(gui, newargs);
+                    ctrl = desc.color ? gui.addColor(this, name) : gui.add.apply(gui, newargs);
                     ctrl.onChange(function(name) {
                         parent[method](this[name]);
                         this.dispatchEvent({type:"update"});
@@ -147,7 +149,7 @@ var jsplot = (function (module) {
                     }.bind(this, name)
                 };
             } else if (!desc.hidden) {
-                var ctrl = gui.add.apply(gui, desc.action).name(name);
+                ctrl = gui.add.apply(gui, desc.action).name(name);
                 ctrl.onChange(function() {
                     this.dispatchEvent({type:"update"});
                 }.bind(this));

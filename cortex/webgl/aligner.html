@@ -1,8 +1,10 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block javascripts %}
-<link rel="stylesheet" href="resources/css/aligner.css" type='text/css' />
 <script type='text/javascript' src='resources/js/aligner.js'></script>
+{% end %}
+{% block css %}
+<link rel="stylesheet" href="resources/css/aligner.css" type='text/css' />
 {% end %}
 {% block jsinit %}
     var viewer, figure, sock;
@@ -47,7 +49,7 @@
         </table>
         <h4>Surfaces</h4>
         <table>
-            <tr><td class='key'>right drag, arrows</td><td>translate in the plane of the view under the mouse</td></tr>
+            <tr><td class='key'>right drag, WASD, arrows</td><td>translate in the plane of the view under the mouse</td></tr>
             <tr><td class='key'>ctrl + right drag, q / e</td><td>rotate about the cursor, in the plane of the view under the mouse</td></tr>
             <tr><td class='key'>shift</td><td>fine keyboard steps (a tenth)</td></tr>
             <tr><td class='key'>ctrl + z</td><td>undo</td></tr>
@@ -58,6 +60,11 @@
             <tr><td class='key'>left drag</td><td>rotate</td></tr>
             <tr><td class='key'>right drag</td><td>pan</td></tr>
             <tr><td class='key'>wheel</td><td>zoom</td></tr>
+        </table>
+        <h4>Saving</h4>
+        <table>
+            <tr><td class='key'>transform</td><td>the name this is saved under; change it to save the alignment as a new transform</td></tr>
+            <tr><td class='key'>*</td><td>on the save button and in the title, an alignment that differs from the one last saved</td></tr>
         </table>
     </div>
 </div>
