@@ -17,6 +17,7 @@ The entry point for users is :func:`cortex.align.webgl_manual`.
 """
 import base64
 import glob
+import hmac
 import json
 import mimetypes
 import os
@@ -38,7 +39,7 @@ from . import serve
 from .data import _pack_png
 from .FallbackLoader import FallbackLoader
 from .serve import P
-from .view import colormaps, domain_name
+from .view import colormaps
 
 #: Name under which the reference volume is served to the page
 REFERENCE_NAME = "reference"
@@ -285,9 +286,36 @@ class JSAligner(serve.JSProxy[P]):
         """Undo the last change to the transform."""
         self._call("undo")
 
-    def save(self) -> Any:
-        """Save the current transform into the database, like the Save button."""
-        return self._call("save")
+    def save(self, timeout: float = 60.0) -> str:
+        """Save the current transform into the database, as the Save button does.
+
+        Returns the message the server answered with, once the transform is
+        written; the page posts the save, so this waits for that request to
+        come back rather than returning while it is still out.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Seconds to wait for the save to land.
+
+        Raises
+        ------
+        RuntimeError
+            If the server refused the save, with the reason it gave.
+        TimeoutError
+            If no answer arrived within `timeout`.
+        """
+        self._call("save")
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            state = self._call("getSaveState")
+            if isinstance(state, dict) and state.get("status") != "saving":
+                message = str(state.get("message", ""))
+                if state.get("status") != "ok":
+                    raise RuntimeError(message or "the transform was not saved")
+                return message
+            time.sleep(0.1)
+        raise TimeoutError("The aligner did not finish saving within %.0f s" % timeout)
 
     def snapshot(self, filename: Optional[str] = None) -> bytes:
         """The current rendering of the four views as PNG bytes, also written
@@ -445,11 +473,17 @@ def show(
     if title is None:
         title = "Aligner: %s %s" % (subject, xfmname)
 
+    # Handed to the page and demanded back on a save, so that the only thing
+    # that can write to the filestore through this server is the page it
+    # served: another site can post to the port, but cannot read the token.
+    save_token = uuid.uuid4().hex
+
     config: dict[str, Any] = dict(
         subject=subject,
         xfmname=xfmname,
         ctm="ctm/%s/" % subject,
         view_only=view_only,
+        save_token=save_token,
         # shown as a warning on the page: saving deletes these
         masks=[os.path.split(path)[1] for path in cached_masks(subject, xfmname)],
         volume=dict(
@@ -511,6 +545,15 @@ def show(
     class SaveHandler(web.RequestHandler):
         def post(self):
             self.set_header("Content-Type", "application/json")
+            # This writes to the filestore, so it only answers the page it was
+            # served to. The token is handed out in that page, which another
+            # site cannot read, so a form posted from one carries no token
+            # even though the browser sends it to the right port.
+            if not hmac.compare_digest(self.get_argument("token", ""), save_token):
+                self.set_status(403)
+                self.write(json.dumps(dict(
+                    status="error", message="not saved: this is not the aligner's own page")))
+                return
             if view_only:
                 self.write(json.dumps(dict(status="error", message="view only: the transform is not saved")))
                 return
@@ -544,10 +587,15 @@ def show(
         def get_client(self):
             self.connect.wait()
             self.connect.clear()
-            return JSAligner(self.send, "window.viewer")
-
-        def get_local_client(self):
-            return JSAligner(self.srvsend, "window.viewer")
+            client = JSAligner(self.send, "window.viewer")
+            # The handle matches replies to its own requests by draining the
+            # server's queue, and needs the server to do it. Without it a
+            # reply delayed past WebApp.send's two second wait -- which the
+            # page takes while it parses the surfaces or draws a slow frame --
+            # is lost rather than waited for.
+            # (bypasses JSProxy.__setattr__, which would query the page)
+            object.__setattr__(client, "server", self)
+            return client
 
     server = WebApp(
         [
@@ -561,13 +609,12 @@ def show(
     )
     server.start()
     print("Started aligner server on port %d" % server.port)
-    url = "http://%s%s:%d/aligner.html" % (serve.hostname, domain_name, server.port)
+    #: the page saves over a transform in the filestore, so the server listens
+    #: on the loopback interface alone and is reached under that name
+    url = "http://%s:%d/aligner.html" % (serve.LOOPBACK, server.port)
     if open_browser:
         webbrowser.open(url)
-        client = server.get_client()
-        # bypass JSProxy.__setattr__, which would query the page
-        object.__setattr__(client, "server", server)
-        return client
+        return server.get_client()
     elif display_url:
         try:
             from IPython.display import HTML, display

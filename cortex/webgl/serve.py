@@ -16,7 +16,7 @@ import mimetypes
 import functools
 import threading
 
-from typing import Callable, Literal, cast, Generic, Union, Any
+from typing import Callable, Literal, Optional, cast, Generic, Union, Any
 
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
@@ -33,6 +33,11 @@ from tornado.web import HTTPError
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
+
+#: The interface the servers listen on, and the host to reach them at. Both
+#: loopback addresses resolve from this name, so a browser finds the server
+#: whether it asks for IPv4 or IPv6.
+LOOPBACK = "localhost"
 
 # on Windows the mimetypes module reads the extension to type mapping out of the
 # registry, where .js is frequently registered as text/plain. browsers refuse to
@@ -310,6 +315,7 @@ class WebApp(threading.Thread):
             ]
         ],
         port: int,
+        address: Optional[str] = LOOPBACK,
     ):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
@@ -331,7 +337,12 @@ class WebApp(threading.Thread):
         # The socket is bound immediately, so the OS accepts and queues client
         # connections in the backlog even before the IOLoop starts serving --
         # eliminating the connect race too.
-        self._sockets = bind_sockets(port if port is not None else 0)
+        # `address` names the interface to listen on. It is the loopback one by
+        # default: these servers hand out the filestore and the aligner's takes
+        # saves that overwrite a transform, so a port that happens to be open is
+        # not something another machine should be able to reach. Pass None to
+        # listen on every interface.
+        self._sockets = bind_sockets(port if port is not None else 0, address=address)
         # When port==0 the OS assigns the port; read the real value back so
         # callers can build a correct URL.
         self.port = self._sockets[0].getsockname()[1]

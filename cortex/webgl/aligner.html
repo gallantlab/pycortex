@@ -39,6 +39,10 @@
     <div id='aligner-viewonly'>View only: the transform is not saved.</div>
     <div id='aligner-masks'></div>
     <div id='aligner-status'></div>
+    <div id='aligner-history'>
+        <h4>History</h4>
+        <ul id='aligner-history-list'></ul>
+    </div>
     <div id='aligner-legend'>
         <h4>Slice views</h4>
         <table>
@@ -63,10 +67,16 @@
             <tr><td class='key'>display</td><td>the slice planes in this corner, the surface with the reference data on it there instead, or that surface on its own filling the window; it carries the data through the alignment being edited and follows it as you move the mesh</td></tr>
             <tr><td class='key'>unfold, pivot</td><td>inflate and flatten the surface of the data view, and swing its halves apart</td></tr>
         </table>
+        <h4>History</h4>
+        <table>
+            <tr><td class='key'>an entry</td><td>the alignment as it stood after that edit; click one to put it back</td></tr>
+            <tr><td class='key'>editing from one</td><td>drops the entries that followed it</td></tr>
+        </table>
         <h4>Saving</h4>
         <table>
             <tr><td class='key'>transform</td><td>the name this is saved under; change it to save the alignment as a new transform</td></tr>
             <tr><td class='key'>*</td><td>on the save button and in the title, an alignment that differs from the one last saved</td></tr>
+            <tr><td class='key'>closing the page</td><td>asks to confirm while the alignment differs from the one last saved</td></tr>
         </table>
     </div>
 </div>

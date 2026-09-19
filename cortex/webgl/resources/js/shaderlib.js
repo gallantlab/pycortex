@@ -1012,7 +1012,11 @@ var Shaderlib = (function() {
                 "float value = "+sampler+"_x(data[0], vPos).r;",
                 "bool valid = inside && (value <= 0. || 0. < value);",
 
-                "float norm = (value - vmin) / (vmax - vmin);",
+                //the range can be closed up from the menu, and a zero span
+                //would leave every fragment undefined
+                "float span = vmax - vmin;",
+                "span = span < 0. ? min(span, -1e-6) : max(span, 1e-6);",
+                "float norm = (value - vmin) / span;",
                 "norm = clamp(norm * contrast + brightness, 0., 1.);",
                 "norm = pow(norm, gamma);",
                 "if (flip == 1) norm = 1. - norm;",

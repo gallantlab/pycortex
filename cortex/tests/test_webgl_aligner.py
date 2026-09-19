@@ -10,6 +10,7 @@ import io
 import json
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -34,6 +35,18 @@ def _open(url, data=None, timeout=30):
     body = None if data is None else urllib.parse.urlencode(data).encode()
     with urllib.request.urlopen(url, data=body, timeout=timeout) as resp:
         return resp.read()
+
+
+def _save_token(srv):
+    """The token the page is served with, which a save has to carry back."""
+    html = _open("http://localhost:%d/aligner.html" % srv.port).decode()
+    return _page_config(html)["save_token"]
+
+
+def _post_save(srv, **data):
+    """Post a save the way the page does, token and all."""
+    data.setdefault("token", _save_token(srv))
+    return json.loads(_open("http://localhost:%d/save" % srv.port, data).decode())
 
 
 class _SaveRecorder:
@@ -260,10 +273,10 @@ def test_save_deletes_the_stale_masks_first(stale_masks):
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     xfm = np.arange(16, dtype=float).reshape(4, 4)
     try:
+        token = _save_token(srv)
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(database.db, "save_xfm", save_xfm)
-            resp = json.loads(_open("http://localhost:%d/save" % srv.port,
-                                    dict(xfm=json.dumps(xfm.tolist()))).decode())
+            resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), token=token)
     finally:
         srv.stop()
 
@@ -294,8 +307,7 @@ def test_save_under_a_new_name_leaves_the_loaded_transform_alone(stale_masks, re
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     xfm = np.arange(16, dtype=float).reshape(4, 4)
     try:
-        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
-                                dict(xfm=json.dumps(xfm.tolist()), name="aligner-copy")).decode())
+        resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), name="aligner-copy")
     finally:
         srv.stop()
 
@@ -318,8 +330,7 @@ def test_save_refuses_a_name_that_is_not_one(stale_masks, recorder):
     mask_dir, names = stale_masks
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     try:
-        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
-                                dict(xfm=json.dumps(np.eye(4).tolist()), name="../elsewhere")).decode())
+        resp = _post_save(srv, xfm=json.dumps(np.eye(4).tolist()), name="../elsewhere")
     finally:
         srv.stop()
     assert resp["status"] == "error"
@@ -333,8 +344,7 @@ def test_a_refused_save_keeps_the_masks(stale_masks):
     mask_dir, names = stale_masks
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     try:
-        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
-                                dict(xfm=json.dumps([1, 2, 3]))).decode())
+        resp = _post_save(srv, xfm=json.dumps([1, 2, 3]))
     finally:
         srv.stop()
     assert resp["status"] == "error"
@@ -345,8 +355,7 @@ def test_view_only_keeps_the_masks(stale_masks):
     mask_dir, names = stale_masks
     srv = aligner.show(subj, xfmname, view_only=True, open_browser=False, display_url=False)
     try:
-        resp = json.loads(_open("http://localhost:%d/save" % srv.port,
-                                dict(xfm=json.dumps(np.eye(4).tolist()))).decode())
+        resp = _post_save(srv, xfm=json.dumps(np.eye(4).tolist()))
     finally:
         srv.stop()
     assert resp["status"] == "error"
@@ -392,9 +401,8 @@ def test_page_carries_config(server):
 
 
 def test_save_endpoint_stores_coord_transform(server, recorder):
-    base = "http://localhost:%d" % server.port
     xfm = np.arange(16, dtype=float).reshape(4, 4)
-    resp = json.loads(_open(base + "/save", dict(xfm=json.dumps(xfm.tolist()))).decode())
+    resp = _post_save(server, xfm=json.dumps(xfm.tolist()))
     assert resp["status"] == "ok"
     assert len(recorder.calls) == 1
     call = recorder.calls[0]
@@ -403,15 +411,48 @@ def test_save_endpoint_stores_coord_transform(server, recorder):
     assert call["xfmtype"] == "coord"
     assert np.allclose(call["xfm"], xfm)
 
-    resp = json.loads(_open(base + "/save", dict(xfm=json.dumps([1, 2, 3]))).decode())
+    resp = _post_save(server, xfm=json.dumps([1, 2, 3]))
     assert resp["status"] == "error"
     assert len(recorder.calls) == 1
+
+
+@pytest.mark.parametrize("token", [None, "", "0" * 32])
+def test_save_needs_the_token_of_the_page(server, recorder, token):
+    """The save endpoint writes to the filestore, so it only answers the page
+    it served: a post from anywhere else carries no token of it.
+    """
+    data = dict(xfm=json.dumps(np.eye(4).tolist()))
+    if token is not None:
+        data["token"] = token
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open("http://localhost:%d/save" % server.port, data)
+    assert caught.value.code == 403
+    assert "not the aligner's own page" in json.loads(caught.value.read().decode())["message"]
+    assert recorder.calls == []
+
+    # and the page's own token is taken
+    assert _post_save(server, **dict(xfm=json.dumps(np.eye(4).tolist())))["status"] == "ok"
+    assert len(recorder.calls) == 1
+
+
+def test_servers_listen_on_the_loopback_interface_alone(server):
+    """Another machine cannot reach a server that hands out the filestore and
+    takes saves that overwrite a transform."""
+    import socket
+
+    for sock in server._sockets:
+        host = sock.getsockname()[0]
+        assert host in ("127.0.0.1", "::1"), "listening on %s" % host
+        assert socket.inet_pton(sock.family, host) == socket.inet_pton(
+            sock.family, "127.0.0.1" if sock.family == socket.AF_INET else "::1")
+    # the URL the page is opened at names the same interface
+    assert _open("http://localhost:%d/aligner.html" % server.port).decode().count("aligner.Aligner") > 0
 
 
 @pytest.mark.parametrize("server", [dict(view_only=True)], indirect=True)
 def test_view_only_never_saves(server, recorder):
     base = "http://localhost:%d" % server.port
-    resp = json.loads(_open(base + "/save", dict(xfm=json.dumps(np.eye(4).tolist()))).decode())
+    resp = _post_save(server, xfm=json.dumps(np.eye(4).tolist()))
     assert resp["status"] == "error"
     assert "view only" in resp["message"]
     assert recorder.calls == []
@@ -452,7 +493,9 @@ def test_aligner_in_headless_browser(recorder):
     try:
         pw.start("http://localhost:%d/aligner.html" % server.port, timeout=120)
         handle = server.get_client()
-        object.__setattr__(handle, "server", server)
+        # the handle skips replies to earlier requests by draining the
+        # server's queue, which it can only do with the server in hand
+        assert vars(handle).get("server") is server
         _wait_for_viewer_loaded(handle, timeout=240)
         # software rendering is slow: the first frame follows the load
         assert handle.wait_for_frame(timeout=120) >= 1
@@ -502,13 +545,33 @@ def test_aligner_in_headless_browser(recorder):
         assert handle.get_control("image.colormap") == "hot"
         assert handle.get_control("display") == aligner.DISPLAYS["slices"]
 
-        # saving stores the current transform as a coord transform
-        handle.save()
-        assert recorder.wait(1), "the save request never reached the server"
+        # the history holds one entry per edit, and going back to one puts
+        # that alignment back
+        history = handle._call("getHistory")
+        assert [entry["kind"] for entry in history] == ["loaded", "translate", "rotate"]
+        assert history[1]["label"].endswith("mm")
+        assert history[2]["label"].endswith("°")
+        handle._call("selectHistory", 0)
+        assert np.allclose(handle.get_xfm(), coord0, atol=1e-3)
+        handle._call("selectHistory", 1)
+        assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
+        # and an edit made from there drops the entries that followed
+        handle.translate([1.0, 0.0, 0.0])
+        assert [entry["kind"] for entry in handle._call("getHistory")] == [
+            "loaded", "translate", "translate"]
+        handle.undo()
+        assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
+
+        # saving stores the current transform as a coord transform, and says
+        # so only once the transform has been written
+        message = handle.save()
+        assert len(recorder.calls) == 1, "save() came back before the save landed"
+        assert xfmname in message
         call = recorder.calls[0]
         assert call["subject"] == subj and call["name"] == xfmname
         assert call["xfmtype"] == "coord"
         assert np.allclose(call["xfm"], coord1, atol=1e-3)
+        assert not handle._call("isDirty"), "the saved alignment still counts as edited"
 
         errors = pw.browser_errors
         assert not [e for e in errors if "[pageerror]" in e], errors
@@ -637,6 +700,105 @@ def test_displays_show_the_surface_and_follow_the_transform():
 
             redraw("window.viewer.toggleDisplay()")
             assert state()["display"] == aligner.DISPLAYS["brain"], "the toggle steps on"
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_history_panel_lists_the_edits_and_goes_back_to_one():
+    """The panel keeps a row per edit since the page opened, and clicking one
+    puts that alignment back. Closing the page with an edit on it asks the
+    browser to confirm, and a saved one does not.
+    """
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def rows():
+                return page.evaluate("""() => Array.from(
+                    document.querySelectorAll('#aligner-history-list li')).map(li => [
+                        li.firstChild.textContent, li.lastChild.textContent,
+                        li.className == 'current'])""")
+
+            def xfm():
+                return np.asarray(page.evaluate("window.viewer.getXfm()"), dtype=float)
+
+            # the page opens on the alignment it was loaded with, and nothing else
+            assert rows() == [["loaded", "", True]]
+            loaded = xfm()
+
+            page.evaluate("window.viewer.translate([4, 0, 0])")
+            page.evaluate("window.viewer.rotate([0, 0, 1], 5)")
+            listed = rows()
+            assert [row[0] for row in listed] == ["loaded", "translate", "rotate"]
+            assert listed[1][1] == "4.00 mm"
+            assert listed[2][1].endswith("°")
+            assert [row[2] for row in listed] == [False, False, True], "the newest edit is marked"
+            moved = xfm()
+
+            # clicking a row puts that alignment back
+            page.click("#aligner-history-list li:first-child")
+            assert np.allclose(xfm(), loaded, atol=1e-3)
+            assert [row[2] for row in rows()] == [True, False, False]
+            page.click("#aligner-history-list li:last-child")
+            assert np.allclose(xfm(), moved, atol=1e-3)
+
+            # a drag over a view is one entry, however many frames it takes
+            page.click("#aligner-history-list li:first-child")
+            box = page.locator("#view-y").bounding_box()
+            page.mouse.move(box["x"] + 100, box["y"] + 100)
+            page.mouse.down(button="right")
+            for step in range(1, 5):
+                page.mouse.move(box["x"] + 100 + 10 * step, box["y"] + 100)
+            page.mouse.up(button="right")
+            dragged = rows()
+            assert [row[0] for row in dragged] == ["loaded", "translate"], (
+                "a drag left more than one entry, or dropped the ones it replaced")
+            assert dragged[1][1].endswith("mm")
+
+            # a right click that moved nothing leaves no entry behind
+            page.mouse.down(button="right")
+            page.mouse.up(button="right")
+            assert len(rows()) == 2, "a click that moved nothing left an entry"
+
+            # a history longer than its list scrolls inside it, leaving the
+            # panel where it stands
+            panel = "document.querySelector('#aligner-panel').scrollTop"
+            where = page.evaluate(panel)
+            for step in range(14):
+                page.evaluate("window.viewer.translate([1, 0, 0])")
+            assert page.evaluate(panel) == where, "the panel scrolled away from the controls"
+            assert page.evaluate("""() => {
+                var list = document.querySelector('#aligner-history-list');
+                var row = list.querySelector('li.current');
+                var r = row.getBoundingClientRect(), l = list.getBoundingClientRect();
+                return r.top >= l.top - 1 && r.bottom <= l.bottom + 1;
+            }"""), "the entry being edited scrolled out of sight"
+
+            # the browser is asked to confirm a close that would lose the edit
+            def asks():
+                return page.evaluate("""() => {
+                    var event = new Event('beforeunload', {cancelable: true});
+                    window.dispatchEvent(event);
+                    return event.defaultPrevented;
+                }""")
+
+            assert page.evaluate("window.viewer.isDirty()")
+            assert asks(), "closing an edited page asked nothing"
+            page.evaluate("window.viewer.selectHistory(0)")
+            assert not page.evaluate("window.viewer.isDirty()")
+            assert not asks(), "closing a page back at the saved alignment asked"
             browser.close()
     finally:
         server.stop()

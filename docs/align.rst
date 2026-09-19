@@ -91,13 +91,19 @@ Every control stays available in all three.
 ``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, the cortical ``depth`` the data is painted at, and the ``unfold`` and ``pivot`` of the data view.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
+Below the controls, ``History`` lists every edit since the page opened, newest at the bottom, with how far each one moved and turned the surfaces.
+The entry the alignment currently stands at is highlighted.
+Click any entry to put that alignment back; editing from there drops the entries that followed it, and ctrl + z steps back one at a time.
+
 The ``transform`` field at the top of the panel holds the name the alignment is saved under, and starts as the transform you opened.
 Edit it to save the alignment as a new transform, which leaves the one you opened untouched, along with its masks.
-An asterisk on the ``save`` button and in the window title marks an alignment that differs from the one last saved.
+An asterisk on the ``save`` button and in the window title marks an alignment that differs from the one last saved, and closing the page while one is showing asks you to confirm.
 
 To save the alignment, click ``save``.
 The transform is stored into the database at once, together with the deletion of any masks cached for it, and the window can then be closed.
-The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it.
+The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it, returning once the transform has been written.
+
+The aligner writes to your filestore, so its server listens on the loopback interface and accepts saves only from the page it served; no other computer can reach it, whatever the port.
 
 The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
 
