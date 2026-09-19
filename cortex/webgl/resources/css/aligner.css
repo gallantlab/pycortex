@@ -70,7 +70,7 @@
     max-height:none;
     overflow:visible;
 }
-#aligner-viewonly {
+#aligner-viewonly, #aligner-masks {
     display:none;
     padding:6px 8px;
     color:#fc9;

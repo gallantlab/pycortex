@@ -332,6 +332,16 @@ var aligner = (function(module) {
         $(panel).find("#aligner-controls")[0].appendChild(figure.ui_element);
         if (this.config.view_only)
             $(panel).find("#aligner-viewonly").show();
+        //The masks of this transform were cut through the alignment being
+        //edited, so saving deletes them
+        var masks = this.config.masks || [];
+        if (masks.length > 0 && !this.config.view_only) {
+            $(panel).find("#aligner-masks").text(
+                "Saving deletes the " + masks.length + " cached mask" +
+                (masks.length == 1 ? "" : "s") + " of this transform (" +
+                masks.join(", ") + "). Data already masked with them has to be " +
+                "masked again from the volumes.").show();
+        }
         this.statusElement = $(panel).find("#aligner-status");
         figure.gui.open();
         try {

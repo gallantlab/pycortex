@@ -66,8 +66,10 @@ To adjust an existing transform, leave the reference out
 ::
 	cortex.align.webgl_manual('S1', 'example-transform')
 
-Note: if you are fixing a transform you had previously used for things, you will need to delete the mask files in the transform's folder.
-To look at such a transform without saving, pass ``view_only=True``.
+A transform you had previously used for things opens the same way: saving deletes the masks cached for it, because they were cut out of the reference volume through the alignment you are replacing.
+The page warns about this when it opens, and the save message names the masks it deleted.
+Data you had already masked with them has to be masked again from the volumes.
+To look at an alignment without saving, pass ``view_only=True``.
 
 The page shows the coronal, axial and sagittal slices of the reference image, and a 3D view of the three slices.
 The reference image is drawn on its own voxel grid, so its voxels appear as they are, without resampling, and the pial and white matter surfaces are moved into its space.
@@ -85,7 +87,7 @@ The panel on the right holds the controls.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
 To save the alignment, click ``save``.
-The transform is stored into the database at once, and the window can then be closed.
+The transform is stored into the database at once, together with the deletion of any masks cached for it, and the window can then be closed.
 The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it.
 
 The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
