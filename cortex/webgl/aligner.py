@@ -43,8 +43,12 @@ from .view import colormaps, domain_name
 #: Name under which the reference volume is served to the page
 REFERENCE_NAME = "reference"
 
-#: The two view modes of the page, as its `view` control names them
-MODES = dict(outline="mesh + slices", projected="data on surface")
+#: What the page shows, as its `display` control names it
+DISPLAYS = dict(
+    slices="3 ortho + 3D slices",
+    brain="3 ortho + 3D brain",
+    surface="data on the surface",
+)
 
 #: A transform name has to serve as a directory name in the filestore
 XFM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -252,7 +256,7 @@ class JSAligner(serve.JSProxy[P]):
 
     def set_control(self, name: str, value: Any) -> None:
         """Set a control of the page by its dotted path, such as
-        ``"image.colormap"`` or ``"view"``."""
+        ``"image.colormap"`` or ``"display"``."""
         self._call("setControl", name, value)
 
     def get_xfm(self) -> npt.NDArray[np.float64]:

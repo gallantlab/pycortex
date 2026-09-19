@@ -923,12 +923,21 @@ var Shaderlib = (function() {
             //lights: whether to apply phong lighting (false for the planes)
             //depthmix: mix the position between the pial (position) and white
             //          matter (wm) surfaces with the depth uniform
+            //morphs: number of surfaces to interpolate between (anatomical,
+            //        inflated, flat), as in surface_pixel. With more than one
+            //        the surface is drawn where the mixer puts it and stays
+            //        put as the alignment is edited, so the volume is sampled
+            //        at the anatomical position through volxfm alone rather
+            //        than at the world position.
             var sampler = opts.sampler || "nearest";
+            var morphs = opts.morphs || 1;
             var header = "";
             if (opts.lights !== undefined && !opts.lights)
                 header += "#define NOLIGHTS\n";
             if (opts.depthmix)
                 header += "#define DEPTHMIX\n";
+            if (morphs > 1)
+                header += "#define MORPHS\n";
 
             var vertShade = [
         "#ifndef NOLIGHTS",
@@ -939,6 +948,9 @@ var Shaderlib = (function() {
             "uniform float depth;",
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
+        "#endif",
+        "#ifdef MORPHS",
+            utils.mixer(morphs),
         "#endif",
 
             "varying vec3 vViewPosition;",
@@ -952,11 +964,19 @@ var Shaderlib = (function() {
                 "mpos = mix(position, wm.xyz, depth);",
                 "mnorm = mix(normal, wmnorm, depth);",
             "#endif",
+            "#ifdef MORPHS",
+                "vec3 dpos, dnorm;",
+                "mixfunc(mpos, mnorm, dpos, dnorm);",
+                "vec4 world = modelMatrix * vec4(dpos, 1.0);",
+                "vPos = (volxfm * vec4(mpos, 1.0)).xyz;",
+                "vNormal = normalMatrix * dnorm;",
+            "#else",
                 "vec4 world = modelMatrix * vec4(mpos, 1.0);",
+                "vPos = (volxfm * world).xyz;",
+                "vNormal = normalMatrix * mnorm;",
+            "#endif",
                 "vec4 mvPosition = viewMatrix * world;",
                 "vViewPosition = -mvPosition.xyz;",
-                "vNormal = normalMatrix * mnorm;",
-                "vPos = (volxfm * world).xyz;",
                 "gl_Position = projectionMatrix * mvPosition;",
             "}",
             ].join("\n");
@@ -1009,6 +1029,10 @@ var Shaderlib = (function() {
             if (opts.depthmix) {
                 attributes.wm = { type: 'v4', value: null };
                 attributes.wmnorm = { type: 'v3', value: null };
+            }
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type: 'v4', value: null };
+                attributes['mixNorms'+i] = { type: 'v3', value: null };
             }
 
             return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
