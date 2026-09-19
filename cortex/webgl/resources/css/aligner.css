@@ -96,10 +96,46 @@
     padding:4px 8px 12px 8px;
     line-height:1.4;
 }
-#aligner-legend h4 {
+#aligner-legend h4, #aligner-history h4 {
     margin:10px 0px 2px 0px;
     color:#eee;
     font-size:9pt;
+}
+/* Edit history: one row per edit, newest at the bottom */
+#aligner-history {
+    padding:0px 8px;
+}
+#aligner-history-list {
+    /* the rows are kept in view by their offset within this list */
+    position:relative;
+    margin:0px;
+    padding:0px;
+    list-style:none;
+    max-height:160px;
+    overflow-y:auto;
+    border:1px solid #333;
+    background:#141414;
+}
+#aligner-history-list li {
+    display:flex;
+    justify-content:space-between;
+    padding:1px 6px;
+    cursor:pointer;
+}
+#aligner-history-list li:hover {
+    background:#262626;
+}
+#aligner-history-list li.current {
+    background:#0a6;
+    color:#fff;
+}
+.aligner-history-size {
+    color:#9ab;
+    padding-left:8px;
+    white-space:nowrap;
+}
+#aligner-history-list li.current .aligner-history-size {
+    color:#dfe;
 }
 #aligner-legend table {
     width:100%;

@@ -164,7 +164,16 @@ var aligner = (function(module) {
         this.world = module.matrixFromRows(config.world);
         this.worldInv = new THREE.Matrix4().getInverse(this.world);
         this.xfm = new THREE.Matrix4().multiplyMatrices(this.world, module.matrixFromRows(config.xfm));
-        this._undo = [];
+        //Everything the alignment has been through since the page opened: the
+        //one it was loaded with, then an entry per edit holding what the edit
+        //was and the alignment it left behind. Picking one puts that
+        //alignment back.
+        this._history = [{kind: "loaded", xfm: this.xfm.clone(), label: ""}];
+        this._historyIndex = 0;
+        this._historyRows = [];
+        this._restoring = false;
+        //the point whose movement measures an edit, until the surfaces load
+        this._meshCenter = new THREE.Vector3();
 
         //Voxel dimensions in voxel axis order, and for each world axis the
         //voxel axis it is drawn from and the voxel size along it
@@ -200,6 +209,7 @@ var aligner = (function(module) {
         this._savedXfm = this.xfm.clone();
         this._savedName = this._xfmName;
         this._dirtyShown = false;
+        this._saveState = null;
         this._title = document.title;
         this._cmapName = config.cmap;
         this._showSurf = [true, true];
@@ -286,6 +296,7 @@ var aligner = (function(module) {
         window.addEventListener("mousemove", this._onMouseMove.bind(this), false);
         window.addEventListener("mouseup", this._onMouseUp.bind(this), false);
         window.addEventListener("keydown", this._onKeyDown.bind(this), true);
+        window.addEventListener("beforeunload", this._onBeforeUnload.bind(this), false);
 
         //Uniforms shared by the planes and the painted surface
         this.volUniforms = {
@@ -382,6 +393,8 @@ var aligner = (function(module) {
                 "volumes. Saving under another name leaves them alone.").show();
         }
         this.statusElement = $(panel).find("#aligner-status");
+        this.historyElement = $(panel).find("#aligner-history-list")[0];
+        this._renderHistory();
         figure.gui.open();
         try {
             figure.gui.width = 284;
@@ -588,6 +601,13 @@ var aligner = (function(module) {
             this.hemis.push(hemi);
         }
         this._updateMorphXfm();
+        //an edit is measured by how far this point travels
+        if (this.hemis.length > 0) {
+            var box = new THREE.Box3();
+            for (var i = 0; i < this.hemis.length; i++)
+                box.union(this.hemis[i].bounds);
+            this._meshCenter = box.center();
+        }
         this._ready.mesh = true;
         this._checkReady();
     };
@@ -906,27 +926,147 @@ var aligner = (function(module) {
         return module.matrixToRows(coord);
     };
     module.Aligner.prototype.setXfm = function(rows) {
-        this.pushUndo();
+        this.beginEdit("set");
         this.xfm.multiplyMatrices(this.world, module.matrixFromRows(rows));
         this._xfmChanged();
     };
-    module.Aligner.prototype.pushUndo = function() {
-        this._undo.push(this.xfm.clone());
-        if (this._undo.length > UNDO_LIMIT)
-            this._undo.shift();
+
+    //Opens an entry in the history for the edit that is about to be made. A
+    //drag holds one open while it runs, so that the entry grows with it
+    //rather than leaving one behind per frame. An edit made after stepping
+    //back drops the entries that followed, as an editor does.
+    module.Aligner.prototype.beginEdit = function(kind) {
+        this._history.length = this._historyIndex + 1;
+        this._history.push({kind: kind || "edit", xfm: this.xfm.clone(), label: ""});
+        //the alignment the page opened with stays as the first entry, so it
+        //is the oldest edit that gives way once the history is full
+        while (this._history.length > UNDO_LIMIT)
+            this._history.splice(1, 1);
+        this._historyIndex = this._history.length - 1;
+        this._describeEdit(this._historyIndex);
+        this._renderHistory();
     };
     module.Aligner.prototype.undo = function() {
-        if (this._undo.length == 0) {
+        if (this._historyIndex == 0) {
             this.showStatus("nothing to undo");
             return;
         }
-        this.xfm.copy(this._undo.pop());
-        this._xfmChanged();
+        this.selectHistory(this._historyIndex - 1);
     };
+
+    //The history, as one entry per edit: what the edit was and how far it
+    //moved and turned the surfaces
+    module.Aligner.prototype.getHistory = function() {
+        var out = [];
+        for (var i = 0; i < this._history.length; i++)
+            out.push({kind: this._history[i].kind, label: this._history[i].label});
+        return out;
+    };
+    //Puts back the alignment as it stood at one entry of the history
+    module.Aligner.prototype.selectHistory = function(index) {
+        if (index === undefined)
+            return this._historyIndex;
+        index = Math.min(Math.max(Math.round(index), 0), this._history.length - 1);
+        this._historyIndex = index;
+        //the entries are what was, so going back writes none of them
+        this._restoring = true;
+        this.xfm.copy(this._history[index].xfm);
+        this._xfmChanged();
+        this._restoring = false;
+    };
+
+    //A gesture that ended where it started left no edit, so it leaves no
+    //entry either
+    module.Aligner.prototype._dropEmptyEdit = function() {
+        var i = this._historyIndex;
+        if (i == 0 || i != this._history.length - 1)
+            return;
+        var now = this._history[i].xfm.elements, before = this._history[i - 1].xfm.elements;
+        for (var k = 0; k < 16; k++) {
+            if (now[k] !== before[k])
+                return;
+        }
+        this._history.pop();
+        this._historyIndex = i - 1;
+        this._renderHistory();
+    };
+
+    //How far the surfaces moved and turned between two alignments. The
+    //distance is the one their center covers, which is what a rotation about
+    //a far-off pivot amounts to on screen; the world frame is millimeters.
+    module.Aligner.prototype._describeEdit = function(index) {
+        var entry = this._history[index];
+        if (index == 0) {
+            entry.label = "";
+            return;
+        }
+        var from = this._history[index - 1].xfm, to = entry.xfm;
+        var center = this._meshCenter;
+        var moved = center.clone().applyMatrix4(to).distanceTo(center.clone().applyMatrix4(from));
+        var relative = new THREE.Matrix4().multiplyMatrices(
+            to, new THREE.Matrix4().getInverse(from));
+        var e = relative.elements;
+        var trace = Math.min(Math.max((e[0] + e[5] + e[10] - 1) / 2, -1), 1);
+        var angle = Math.acos(trace) * 180 / Math.PI;
+        var parts = [];
+        if (moved >= 0.005)
+            parts.push(moved.toFixed(2) + " mm");
+        if (angle >= 0.005)
+            parts.push(angle.toFixed(2) + "°");
+        entry.label = parts.join(", ");
+    };
+
+    //Draws the history in the panel. Only the entry being edited changes
+    //while a drag runs, so the rows are built again only when there are
+    //different ones to show.
+    module.Aligner.prototype._renderHistory = function() {
+        var list = this.historyElement;
+        if (list === undefined || list === null)
+            return;
+        if (this._historyRows.length != this._history.length) {
+            list.innerHTML = "";
+            this._historyRows = [];
+            for (var i = 0; i < this._history.length; i++) {
+                var row = document.createElement("li");
+                row.appendChild(document.createElement("span")).className = "aligner-history-kind";
+                row.appendChild(document.createElement("span")).className = "aligner-history-size";
+                row.addEventListener("click", this.selectHistory.bind(this, i), false);
+                list.appendChild(row);
+                this._historyRows.push(row);
+            }
+        }
+        for (var i = 0; i < this._history.length; i++) {
+            var row = this._historyRows[i];
+            var entry = this._history[i];
+            var kind = i == 0 ? "loaded" : entry.kind;
+            if (row.firstChild.textContent != kind)
+                row.firstChild.textContent = kind;
+            if (row.lastChild.textContent != entry.label)
+                row.lastChild.textContent = entry.label;
+            row.className = i == this._historyIndex ? "current" : "";
+        }
+        //keep the entry in view inside the list, rather than scrolling the
+        //whole panel down to it and taking the controls off the screen
+        if (this._historyRows.length > 0) {
+            var row = this._historyRows[this._historyIndex];
+            var top = row.offsetTop, bottom = top + row.offsetHeight;
+            if (top < list.scrollTop)
+                list.scrollTop = top;
+            else if (bottom > list.scrollTop + list.clientHeight)
+                list.scrollTop = bottom - list.clientHeight;
+        }
+    };
+
     module.Aligner.prototype._xfmChanged = function() {
         this.brain.matrix.copy(this.xfm);
         this.brain.matrixWorldNeedsUpdate = true;
         this._updateMorphXfm();
+        //the open entry of the history follows the edit that is being made
+        if (!this._restoring && this._historyIndex > 0) {
+            this._history[this._historyIndex].xfm.copy(this.xfm);
+            this._describeEdit(this._historyIndex);
+        }
+        this._renderHistory();
         this._updateDirty();
         this.dispatchEvent({type: "xfm"});
         this.schedule();
@@ -970,7 +1110,7 @@ var aligner = (function(module) {
 
     //Translates the surfaces by a world vector (mm)
     module.Aligner.prototype.translate = function(vector) {
-        this.pushUndo();
+        this.beginEdit("translate");
         this._translate(new THREE.Vector3().fromArray(vector));
     };
     module.Aligner.prototype._translate = function(vector) {
@@ -981,7 +1121,7 @@ var aligner = (function(module) {
     //Rotates the surfaces by `angle` degrees about a world axis through the
     //cursor (or through `pivot`, a world point)
     module.Aligner.prototype.rotate = function(axis, angle, pivot) {
-        this.pushUndo();
+        this.beginEdit("rotate");
         this._rotate(new THREE.Vector3().fromArray(axis), angle * Math.PI / 180,
                      pivot === undefined ? this.cursorWorld() : new THREE.Vector3().fromArray(pivot));
     };
@@ -997,7 +1137,9 @@ var aligner = (function(module) {
 
     module.Aligner.prototype.save = function() {
         if (this.config.view_only) {
-            this.showStatus("view only: the transform is not saved", true);
+            var refused = "view only: the transform is not saved";
+            this.showStatus(refused, true);
+            this._saveState = {status: "error", message: refused, name: this._xfmName};
             return "view only";
         }
         //what is being saved, rather than what is on screen when the answer
@@ -1005,22 +1147,39 @@ var aligner = (function(module) {
         var name = this._xfmName;
         var saved = this.xfm.clone();
         this.showStatus("saving " + name + "...");
+        //the state the python side reads to know whether the save landed,
+        //since the request is answered long after this returns
+        this._saveState = {status: "saving", message: "saving " + name + "...", name: name};
         $.ajax({
             type: "POST",
             url: "save",
-            data: {xfm: JSON.stringify(this.getXfm()), name: name},
+            //the server only takes saves from the page it served, which this
+            //token is what makes it
+            data: {xfm: JSON.stringify(this.getXfm()), name: name, token: this.config.save_token},
             dataType: "json",
         }).done(function(resp) {
             this.showStatus(resp.message, resp.status != "ok");
+            this._saveState = {status: resp.status, message: resp.message, name: name};
             if (resp.status == "ok") {
                 this._savedXfm = saved;
                 this._savedName = name;
                 this._updateDirty();
             }
-        }.bind(this)).fail(function() {
-            this.showStatus("saving failed: no answer from the server", true);
+        }.bind(this)).fail(function(xhr) {
+            //an error the server answered with says more than the request
+            //having failed does
+            var message = "saving failed: no answer from the server";
+            if (xhr && xhr.responseJSON && xhr.responseJSON.message)
+                message = xhr.responseJSON.message;
+            this.showStatus(message, true);
+            this._saveState = {status: "error", message: message, name: name};
         }.bind(this));
         return "saving";
+    };
+    //What became of the last save: "saving" while the request is out, then
+    //"ok" or "error" with the message the server answered with
+    module.Aligner.prototype.getSaveState = function() {
+        return this._saveState;
     };
 
     //The canvas as drawn last, as a PNG data url. Drawing is left to the
@@ -1544,7 +1703,9 @@ var aligner = (function(module) {
             state = "pan";
         } else if (event.button === 2) {
             state = (event.ctrlKey || event.altKey || event.metaKey) ? "rotate" : "translate";
-            this.pushUndo();
+            //the whole drag is one edit, so its entry is opened here and
+            //grows until the button comes back up
+            this.beginEdit(state);
         } else {
             return;
         }
@@ -1590,6 +1751,9 @@ var aligner = (function(module) {
     };
 
     module.Aligner.prototype._onMouseUp = function(event) {
+        if (this._drag !== null &&
+            (this._drag.state == "translate" || this._drag.state == "rotate"))
+            this._dropEmptyEdit();
         this._drag = null;
     };
 
@@ -1614,6 +1778,19 @@ var aligner = (function(module) {
             }
         }
         this.schedule();
+    };
+
+    //A page closed with the alignment unsaved loses it, so the browser is
+    //asked to put the question to the user. Browsers word it themselves, and
+    //only ask at all once the page has been interacted with.
+    module.Aligner.prototype._onBeforeUnload = function(event) {
+        if (this.config.view_only || !this.isDirty())
+            return;
+        event.preventDefault();
+        //browsers from before the standard settled read the message off the
+        //event rather than from the return value
+        event.returnValue = "The alignment has changes that have not been saved.";
+        return event.returnValue;
     };
 
     module.Aligner.prototype._onKeyDown = function(event) {
@@ -1658,11 +1835,11 @@ var aligner = (function(module) {
                 this.translate(view.up.clone().multiplyScalar(-tstep).toArray());
                 break;
             case "q": case "Q":
-                this.pushUndo();
+                this.beginEdit("rotate");
                 this._rotate(toViewer, rstep, this.cursorWorld());
                 break;
             case "e": case "E":
-                this.pushUndo();
+                this.beginEdit("rotate");
                 this._rotate(toViewer, -rstep, this.cursorWorld());
                 break;
             case "[": case "{":

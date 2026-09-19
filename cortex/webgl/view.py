@@ -1622,6 +1622,12 @@ def show(
         # collisions that made headless/CI runs intermittently hang.
         port = 0
 
+    # The viewer hands out the filestore, so it listens on the loopback
+    # interface unless the config names a domain to reach it under, which is
+    # what that option is there for.
+    address = None if domain_name else serve.LOOPBACK
+    host = serve.hostname + domain_name if domain_name else serve.LOOPBACK
+
     server = WebApp([(r'/ctm/(.*)', CTMHandler),
                      (r'/data/(.*)', DataHandler),
                      (r'/stim/(.*)', StimHandler),
@@ -1630,7 +1636,7 @@ def show(
                      (r'/timeseries', TimeseriesHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
-                    port)
+                    port, address)
 
     server.start()
     local_url, network_url = _viewer_urls(server.port)
