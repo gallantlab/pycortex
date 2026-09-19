@@ -1,0 +1,105 @@
+/*************************************************
+ * Manual aligner: a 2x2 grid of views on one canvas,
+ * with the controls in a panel on the right
+ *************************************************/
+.jsplot_axes {
+    position:relative;
+    width:100%;
+    height:100%;
+}
+#aligner {
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
+#aligner-canvas {
+    position:absolute;
+    left:0;
+    top:0;
+    z-index:2;
+    display:block;
+}
+/* Transparent overlays, one per view, that receive the mouse events */
+.aligner-view {
+    position:absolute;
+    width:50%;
+    height:50%;
+    z-index:3;
+    box-sizing:border-box;
+    border:1px solid #444;
+    cursor:crosshair;
+}
+#view-y { left:0; top:0; }
+#view-z { left:0; top:50%; }
+#view-x { left:50%; top:0; }
+#view-3d { left:50%; top:50%; cursor:default; }
+.aligner-label {
+    position:absolute;
+    left:8px;
+    top:6px;
+    color:#ddd;
+    font-size:10pt;
+    text-shadow:0px 1px 2px #000;
+    pointer-events:none;
+}
+#aligner-load {
+    left:50%;
+    top:50%;
+    right:auto;
+    width:200px;
+    margin:-20px 0px 0px -120px;
+}
+#aligner-colormaps {
+    display:none;
+}
+
+/* Control panel */
+#aligner-panel {
+    height:100%;
+    overflow-y:auto;
+    background:#1a1a1a;
+    color:#ccc;
+    font-size:9pt;
+    text-align:left;
+}
+#aligner-panel #figure_ui {
+    position:static;
+    width:100% !important;
+    max-height:none;
+    overflow:visible;
+}
+#aligner-viewonly {
+    display:none;
+    padding:6px 8px;
+    color:#fc9;
+}
+#aligner-status {
+    min-height:1.5em;
+    padding:6px 8px;
+    color:#8fd;
+}
+#aligner-status.error {
+    color:#f88;
+}
+#aligner-legend {
+    padding:4px 8px 12px 8px;
+    line-height:1.4;
+}
+#aligner-legend h4 {
+    margin:10px 0px 2px 0px;
+    color:#eee;
+    font-size:9pt;
+}
+#aligner-legend table {
+    width:100%;
+}
+#aligner-legend td {
+    padding:1px 4px;
+    vertical-align:top;
+}
+#aligner-legend td.key {
+    white-space:nowrap;
+    color:#fc9;
+}

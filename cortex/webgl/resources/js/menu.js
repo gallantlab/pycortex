@@ -127,7 +127,8 @@ var jsplot = (function (module) {
                     for (var i = 2; i < desc.action.length; i++)
                         newargs.push(desc.action[i]);
 
-                    var ctrl = gui.add.apply(gui, newargs);
+                    //a color picker, for a method that gets and sets a css color string
+                    var ctrl = desc.color ? gui.addColor(this, name) : gui.add.apply(gui, newargs);
                     ctrl.onChange(function(name) {
                         parent[method](this[name]);
                         this.dispatchEvent({type:"update"});
