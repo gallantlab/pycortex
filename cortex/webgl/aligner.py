@@ -1,7 +1,7 @@
 """Browser-based manual aligner.
 
 Moves the anatomical surfaces (pial and white matter) in the space of a
-functional reference volume, the way the mayavi aligner did. The volume
+functional reference volume. The volume
 stays on its own voxel grid, so its slices are displayed without
 resampling, and the surfaces are cut off at the displayed slices, which
 draws their outline on the anatomy in the image. A second view mode paints

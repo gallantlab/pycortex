@@ -53,7 +53,7 @@ Manual Alignment
 Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
 To do the final 5%, you need to manually fix it up.
 Pycortex offers a GUI aligner that runs in the browser, built on the WebGL viewer.
-The older aligners, built with Mayavi (``cortex.align.mayavi_manual``) and with FreeSurfer's Freeview (``cortex.align.manual``), are described further below.
+``cortex.align.manual`` is an alternative that hands the alignment to FreeSurfer's Freeview.
 
 Aligning in the browser
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,102 +91,6 @@ The transform is stored into the database at once, together with the deletion of
 The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it.
 
 The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
-
-Mayavi aligner
-~~~~~~~~~~~~~~
-
-.. note::
-    The Mayavi aligner only works on Ubuntu 14.04. It uses Mayavi, which
-    doesn't seem to be working in later versions of Ubuntu. Use
-    ``cortex.align.webgl_manual`` instead, or ``cortex.align.manual``,
-    which uses FreeSurfer's Freeview.
-
-To start the Mayavi aligner, call
-::
-	cortex.align.mayavi_manual('S1', 'example-transform')
-Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
-
-You will see a window like this pop up:
-
-.. image:: ./aligner/snapshot1.png
-	:width: 600 px
-
-There's weird gray blobs - click anywhere to get rid of them.
-
-.. image:: ./aligner/snapshot2.png
-	:width: 600 px
-
-Here you see 4 different views, showing the sagittal, coronal, and transverse slices, and also the three slices in 3D.
-The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
-You'll be moving the mesh until it's aligned as much as possible with the reference.
-
-To make things easier to see, the aligner offers different color options.
-
-Changing the views
-~~~~~~~~~~~~~~~~~~
-
-You can change the color scale for the images with the color map option:
-
-.. image:: ./aligner/colormap.png
-	:width: 600 px
-
-Here, we've set it to the red-blue color map.
-
-.. image:: ./aligner/snapshot4.png
-	:width: 600 px
-
-``Fliplut`` can be used to reverse the color map.
-
-.. image:: ./aligner/flipcolor.png
-	:width: 600 px
-
-You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
-
-.. image:: ./aligner/contrast.png
-	:width: 600 px
-
-The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
-Also, the sliders can be used to change line and point weights.
-Here, we changed it to a green points only representation, with smaller points.
-
-.. image:: ./aligner/surface.png
-	:width: 600 px
-
-You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
-Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
-
-.. image:: ./aligner/lines1.png
-	:width: 600 px
-
-.. image:: ./aligner/snapshot13.png
-	:width: 600 px
-
-Use these views to change the slices of the brain that you're looking at, to line things up.
-
-Manually aligning the brain
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-On each view, there is a ball surrounded by a ring. These can be used to adjust the brain using the mouse.
-Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
-It will take a few seconds for the aligner to update the mesh position.
-
-.. image:: ./aligner/adjring.png
-	:width: 600 px
-	
-**Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
-
-You can also use the keyboard to make adjustments.
-Holding down the shift key allows you to make fine adjustments.
-The aligner will apply the transformation in whatever view currently under your mouse cursor.
-
-.. image:: ./aligner/key-controls.png
-	:scale: 50 %
-**Note**: you shouldn't touch the keys outlined in red. There is no reason to stretch the brain.
-
-To save the alignment, just click the ``Save Transform`` button and close the window.
-
-.. image:: ./aligner/save.png
-	:width: 600 px
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
