@@ -67,6 +67,7 @@ Flow: dataviews → JSON + PNG mosaics (`data.py:Package`) + compressed CTM surf
 - All GLSL lives in `resources/js/shaderlib.js` as arrays of string lines assembled per-configuration — there are no `.glsl` files.
 - CTM packs reorder vertices: `cortex.utils.get_ctmmap` / `get_ctm2webgl_map` translate between CTM/WebGL ordering and the original surface ordering. Indexing viewer data with original vertex indices without remapping is a classic bug.
 - `cortex/export/headless.py` (`headless_viewer`) runs the viewer in headless Chromium via Playwright for screenshots/tests.
+- `cortex/webgl/aligner.py` + `resources/js/aligner.js` (`aligner.html`, `resources/css/aligner.css`) is the browser-based manual aligner behind `cortex.align.webgl_manual`. It reuses the CTM pack, the mosaic PNG loader (`dataset.VolumeData`) and the `Shaders.aligner_*` builders in `shaderlib.js`, and works in a world frame that is the reference volume's voxel grid in mm permuted to RAS (`reference_frame`); the edited transform is the pycortex `coord` transform.
 - Some JS resources use CRLF line endings (e.g. `dataset.js`); keep the existing endings when editing.
 - `setup.py` explicitly enumerates `cortex.webgl` `package_data` patterns — new resource subdirectories must be added there or they won't ship in wheels.
 

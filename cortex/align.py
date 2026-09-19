@@ -100,6 +100,64 @@ def mayavi_manual(subject, xfmname, reference=None, **kwargs):
     return m
 
 
+def webgl_manual(subject: str, xfmname: str, reference: Optional[str] = None, **kwargs):
+    """Open the browser-based aligner for manually aligning a functional volume
+    to the cortical surface of `subject`.
+
+    This is the WebGL port of the mayavi aligner (``mayavi_manual``). The
+    functional reference volume stays on its own voxel grid, so its slices
+    are shown without resampling, and the pial and white matter surfaces are
+    moved into its space; in each slice view the surfaces are cut off at the
+    displayed slice, so that their outline can be compared with the anatomy
+    in the image. Only rotations and translations are possible.
+
+    The page shows the coronal, axial and sagittal slices and a 3D view of
+    the three slices. In a slice view, a left drag moves the cursor, which
+    sets the slices of the other views and is the pivot of rotations; the
+    wheel (or ``[`` and ``]``) changes the slice, ctrl + wheel zooms, and a
+    middle (or shift + left) drag pans. A right drag or the arrow keys
+    translate the surfaces in the plane of the view under the mouse, ctrl +
+    right drag or ``q`` / ``e`` rotate them about the cursor; shift makes
+    the keyboard steps ten times smaller and ctrl + z undoes. The panel on
+    the right holds the Save button, the view mode (surface outlines on the
+    slices, or the volume painted on the surface, also toggled with ``m``),
+    the colormap with its range, brightness, contrast, gamma and flip, the
+    color and opacity of the surfaces, the slices and the keyboard steps.
+
+    When Save is pressed the transform is stored into the pycortex database
+    as `xfmname`, as a 'coord' transform. A new transform requires
+    `reference`, which is copied into the database; an existing transform
+    is loaded together with its stored reference, and refuses to open for
+    editing while masks are cached for it (pass ``view_only=True`` to
+    inspect it).
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier.
+    xfmname : str
+        Name of the transform to create or modify.
+    reference : str, optional
+        Path to a nibabel-readable functional volume, required for a new
+        transform. Must be None for an existing transform.
+    kwargs : dict
+        Passed to :func:`cortex.webgl.aligner.show` (``view_only``, ``cmap``,
+        ``mesh_color``, ``mesh_opacity``, ``open_browser``, ``port``, ...).
+
+    Returns
+    -------
+    handle : cortex.webgl.aligner.JSAligner or cortex.webgl.serve.WebApp
+        A handle to the running aligner: ``handle.get_xfm()`` returns the
+        current transform, ``handle.save()`` saves it. When the aligner is
+        started with ``open_browser=False`` the tornado server is returned
+        instead; its ``get_client()`` returns the handle once a browser has
+        connected.
+    """
+    from .webgl import aligner
+
+    return aligner.show(subject, xfmname, reference=reference, **kwargs)
+
+
 def fs_manual(subject, xfmname, **kwargs):
     """Legacy name for cortex.align.manual. Please use that function, and see the help there."""
     warnings.warn(("Deprecated name - function has been renamed cortex.align.manual"

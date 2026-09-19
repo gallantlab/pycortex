@@ -1,0 +1,64 @@
+{% autoescape None %}
+{% extends template.html %}
+{% block javascripts %}
+<link rel="stylesheet" href="resources/css/aligner.css" type='text/css' />
+<script type='text/javascript' src='resources/js/aligner.js'></script>
+{% end %}
+{% block jsinit %}
+    var viewer, figure, sock;
+    var viewopts = {};
+{% end %}
+{% block onload %}
+        figure = new jsplot.W2Figure();
+        viewer = figure.add(aligner.Aligner, "main", true, {{config}});
+        {% if python_interface %}
+        sock = new Websock();
+        {% end %}
+{% end %}
+{% block extrahtml %}
+<script type='text/html' id='aligner_html'>
+<div id='aligner'>
+    <div id='aligner-load' class='loadmsg'><img src='resources/css/images/loading.gif'>Loading surfaces...</div>
+    <canvas id='aligner-canvas'></canvas>
+    <div class='aligner-view' id='view-y'><div class='aligner-label'>coronal</div></div>
+    <div class='aligner-view' id='view-z'><div class='aligner-label'>axial</div></div>
+    <div class='aligner-view' id='view-x'><div class='aligner-label'>sagittal</div></div>
+    <div class='aligner-view' id='view-3d'><div class='aligner-label'>3D</div></div>
+    <div id='aligner-colormaps'>
+    {% for name, img in colormaps %}
+        <div class='cmap' id='{{name}}'><img src='{{img}}'/></div>
+    {% end %}
+    </div>
+</div>
+</script>
+<script type='text/html' id='aligner_panel_html'>
+<div id='aligner-panel'>
+    <div id='aligner-controls'></div>
+    <div id='aligner-viewonly'>View only: the transform has cached masks and is not saved.</div>
+    <div id='aligner-status'></div>
+    <div id='aligner-legend'>
+        <h4>Slice views</h4>
+        <table>
+            <tr><td class='key'>left drag</td><td>move the cursor (sets the other slices, and the pivot of rotations)</td></tr>
+            <tr><td class='key'>wheel, [ ]</td><td>previous / next slice</td></tr>
+            <tr><td class='key'>ctrl + wheel</td><td>zoom</td></tr>
+            <tr><td class='key'>middle drag, shift + left drag</td><td>pan</td></tr>
+        </table>
+        <h4>Surfaces</h4>
+        <table>
+            <tr><td class='key'>right drag, arrows</td><td>translate in the plane of the view under the mouse</td></tr>
+            <tr><td class='key'>ctrl + right drag, q / e</td><td>rotate about the cursor, in the plane of the view under the mouse</td></tr>
+            <tr><td class='key'>shift</td><td>fine keyboard steps (a tenth)</td></tr>
+            <tr><td class='key'>ctrl + z</td><td>undo</td></tr>
+            <tr><td class='key'>m</td><td>toggle between the mesh on the slices and the data painted on the surface</td></tr>
+        </table>
+        <h4>3D view</h4>
+        <table>
+            <tr><td class='key'>left drag</td><td>rotate</td></tr>
+            <tr><td class='key'>right drag</td><td>pan</td></tr>
+            <tr><td class='key'>wheel</td><td>zoom</td></tr>
+        </table>
+    </div>
+</div>
+</script>
+{% end %}

@@ -50,19 +50,58 @@ However, in practice, the search range is too big to be practically useful, and 
 Manual Alignment
 ----------------
 
-.. note::
-    Currently the manual aligner only works on Ubuntu 14.04. The manual
-    aligner uses Mayavi, which doesn't seem to be working in later versions of
-    Ubuntu. As an alternative to ``cortex.align.manual``, you can use
-    ``cortex.align.fs_manual``, which uses FreeSurfer's Freeview instead of Mayavi.
-
 Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
 To do the final 5%, you need to manually fix it up.
-Pycortex offers a GUI aligner, built using Mayavi.
+Pycortex offers a GUI aligner that runs in the browser, built on the WebGL viewer.
+The older aligners, built with Mayavi (``cortex.align.mayavi_manual``) and with FreeSurfer's Freeview (``cortex.align.manual``), are described further below.
 
-To start the manual aligner, call
+Aligning in the browser
+~~~~~~~~~~~~~~~~~~~~~~~
+
+To start the browser-based aligner for a new transform, pass the reference image
 ::
-	cortex.align.manual('S1', 'example-transform')
+	cortex.align.webgl_manual('S1', 'example-transform', reference='./ref-image.nii.gz')
+
+To adjust an existing transform, leave the reference out
+::
+	cortex.align.webgl_manual('S1', 'example-transform')
+
+Note: if you are fixing a transform you had previously used for things, you will need to delete the mask files in the transform's folder.
+To look at such a transform without saving, pass ``view_only=True``.
+
+The page shows the coronal, axial and sagittal slices of the reference image, and a 3D view of the three slices.
+The reference image is drawn on its own voxel grid, so its voxels appear as they are, without resampling, and the pial and white matter surfaces are moved into its space.
+In each slice view the surfaces are cut off at the displayed slice, so what you see is their outline on the slice.
+You move the surfaces until this outline follows the anatomy in the image.
+
+* In a slice view, a left drag moves the cursor. The cursor sets the slices shown in the other views and is the pivot of rotations. The wheel or ``[`` and ``]`` change the slice, ctrl + wheel zooms, and a middle (or shift + left) drag pans.
+* A right drag or the arrow keys translate the surfaces in the plane of the view under the mouse. A ctrl + right drag or ``q`` and ``e`` rotate them about the cursor, in the plane of the view under the mouse. Holding shift makes the keyboard steps ten times smaller, and ctrl + z undoes. Only rotations and translations are possible; the transform cannot stretch the brain.
+* In the 3D view, a left drag rotates, a right drag pans and the wheel zooms.
+
+The panel on the right holds the controls.
+``view`` switches between the surface outlines on the slices and the reference image painted onto the surface (``m`` toggles it too), which shows how the pattern of the data falls on the cortex.
+``image`` sets the colormap, its range (``vmin`` and ``vmax``), ``brightness``, ``contrast`` and ``gamma``, and flips the colormap.
+``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, and the cortical ``depth`` the data is painted at.
+``slices`` selects the slices, and ``steps`` sets the keyboard steps.
+
+To save the alignment, click ``save``.
+The transform is stored into the database at once, and the window can then be closed.
+The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it.
+
+The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
+
+Mayavi aligner
+~~~~~~~~~~~~~~
+
+.. note::
+    The Mayavi aligner only works on Ubuntu 14.04. It uses Mayavi, which
+    doesn't seem to be working in later versions of Ubuntu. Use
+    ``cortex.align.webgl_manual`` instead, or ``cortex.align.manual``,
+    which uses FreeSurfer's Freeview.
+
+To start the Mayavi aligner, call
+::
+	cortex.align.mayavi_manual('S1', 'example-transform')
 Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
 
 You will see a window like this pop up:

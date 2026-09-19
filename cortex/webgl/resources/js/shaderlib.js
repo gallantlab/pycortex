@@ -911,6 +911,157 @@ var Shaderlib = (function() {
             return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
         },
 
+        aligner_volume: function(opts) {
+            //Colors each fragment with the functional volume sampled at the
+            //fragment's world position. The aligner uses it for its slice
+            //planes (unlit) and for painting the volume onto the surface (lit).
+            //The world frame is the functional voxel grid in millimeters, so
+            //volxfm is a plain scaling and the planes show unresampled voxels.
+            //The lookup adds brightness, contrast, gamma and a flip to the
+            //vmin/vmax range of the colormap.
+            //sampler: nearest or trilinear
+            //lights: whether to apply phong lighting (false for the planes)
+            //depthmix: mix the position between the pial (position) and white
+            //          matter (wm) surfaces with the depth uniform
+            var sampler = opts.sampler || "nearest";
+            var header = "";
+            if (opts.lights !== undefined && !opts.lights)
+                header += "#define NOLIGHTS\n";
+            if (opts.depthmix)
+                header += "#define DEPTHMIX\n";
+
+            var vertShade = [
+        "#ifndef NOLIGHTS",
+            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+        "#endif",
+            "uniform mat4 volxfm;",
+        "#ifdef DEPTHMIX",
+            "uniform float depth;",
+            "attribute vec4 wm;",
+            "attribute vec3 wmnorm;",
+        "#endif",
+
+            "varying vec3 vViewPosition;",
+            "varying vec3 vNormal;",
+            "varying vec3 vPos;",
+
+            "void main() {",
+                "vec3 mpos = position;",
+                "vec3 mnorm = normal;",
+            "#ifdef DEPTHMIX",
+                "mpos = mix(position, wm.xyz, depth);",
+                "mnorm = mix(normal, wmnorm, depth);",
+            "#endif",
+                "vec4 world = modelMatrix * vec4(mpos, 1.0);",
+                "vec4 mvPosition = viewMatrix * world;",
+                "vViewPosition = -mvPosition.xyz;",
+                "vNormal = normalMatrix * mnorm;",
+                "vPos = (volxfm * world).xyz;",
+                "gl_Position = projectionMatrix * mvPosition;",
+            "}",
+            ].join("\n");
+
+            var fragShade = [
+            "uniform sampler2D colormap;",
+            "uniform float vmin;",
+            "uniform float vmax;",
+            "uniform float brightness;",
+            "uniform float contrast;",
+            "uniform float gamma;",
+            "uniform int flip;",
+            "uniform vec2 mosaic[2];",
+            "uniform vec2 dshape[2];",
+            "uniform float nslices;",
+            "uniform sampler2D data[4];",
+            "uniform vec3 outside;",
+
+            "varying vec3 vPos;",
+        "#ifndef NOLIGHTS",
+            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+        "#endif",
+
+            utils.standard_frag_vars,
+            utils.samplers,
+
+            "void main() {",
+                //Fragments outside the volume, and the padding between the
+                //mosaic tiles (NaN), get a flat color instead of data
+                "vec3 lo = vec3(-0.5);",
+                "vec3 hi = vec3(dshape[0].x, dshape[0].y, nslices) - 0.5;",
+                "bool inside = all(greaterThanEqual(vPos, lo)) && all(lessThanEqual(vPos, hi));",
+                "float value = "+sampler+"_x(data[0], vPos).r;",
+                "bool valid = inside && (value <= 0. || 0. < value);",
+
+                "float norm = (value - vmin) / (vmax - vmin);",
+                "norm = clamp(norm * contrast + brightness, 0., 1.);",
+                "norm = pow(norm, gamma);",
+                "if (flip == 1) norm = 1. - norm;",
+                "vec4 vColor = texture2D(colormap, vec2(norm, 0.));",
+
+                "gl_FragColor = valid ? vec4(vColor.rgb, 1.) : vec4(outside, 1.);",
+        "#ifndef NOLIGHTS",
+                THREE.ShaderChunk[ "lights_phong_fragment" ],
+        "#endif",
+            "}"
+            ].join("\n");
+
+            var attributes = {};
+            if (opts.depthmix) {
+                attributes.wm = { type: 'v4', value: null };
+                attributes.wmnorm = { type: 'v3', value: null };
+            }
+
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
+        },
+
+        aligner_mesh: function(opts) {
+            //Flat colored surface for the aligner. The depth uniform picks the
+            //surface between pial (0) and white matter (1). With doClip set,
+            //only fragments within the slabs (one per world axis, enabled by
+            //slabMask) survive, which draws the intersection of the surface
+            //with the displayed slices; drawn as lines this gives the outline
+            //of the cortex on each slice.
+            var vertShade = [
+            "uniform float depth;",
+            "attribute vec4 wm;",
+            "varying vec3 vWorld;",
+
+            "void main() {",
+                "vec3 mpos = mix(position, wm.xyz, depth);",
+                "vec4 world = modelMatrix * vec4(mpos, 1.0);",
+                "vWorld = world.xyz;",
+                "gl_Position = projectionMatrix * viewMatrix * world;",
+            "}",
+            ].join("\n");
+
+            var fragShade = [
+            "uniform vec3 color;",
+            "uniform float opacity;",
+            "uniform int doClip;",
+            "uniform vec3 slabLo;",
+            "uniform vec3 slabHi;",
+            "uniform vec3 slabMask;",
+            "varying vec3 vWorld;",
+
+            "void main() {",
+                "if (doClip == 1) {",
+                    "bvec3 inside = bvec3(",
+                        "slabMask.x > .5 && vWorld.x >= slabLo.x && vWorld.x <= slabHi.x,",
+                        "slabMask.y > .5 && vWorld.y >= slabLo.y && vWorld.y <= slabHi.y,",
+                        "slabMask.z > .5 && vWorld.z >= slabLo.z && vWorld.z <= slabHi.z);",
+                    "if (!any(inside)) discard;",
+                "}",
+                "gl_FragColor = vec4(color, opacity);",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                wm: { type: 'v4', value: null },
+            };
+
+            return {vertex:vertShade, fragment:fragShade, attrs:attributes};
+        },
+
         cmap_quad: function() {
             //Colormaps the full-screen quad, used for stage 2 of volume integration
             var vertShade = [
