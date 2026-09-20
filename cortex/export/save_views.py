@@ -18,6 +18,7 @@ ViewParams = TypedDict(
         "surface.{subject}.unfold": float,
         "surface.{subject}.pivot": float,
         "surface.{subject}.shift": float,
+        "surface.{subject}.surface_opacity": float,
         "surface.{subject}.lighting.specularity": float,
         "surface.{subject}.lighting.uniform_illumination": float,
         "surface.{subject}.lighting.topleft_lighting": float,
