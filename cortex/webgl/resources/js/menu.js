@@ -1,4 +1,14 @@
 var jsplot = (function (module) {
+    //dat.GUI works out what a click on a checkbox means from the value it
+    //last set itself, so a change made anywhere else -- a key, a call from
+    //python -- has to be told to it as well, or the next click on the box
+    //asks for the value it already has and nothing happens.
+    function redraw(ctrl) {
+        ctrl.updateDisplay();
+        if (ctrl.__prev !== undefined)
+            ctrl.__prev = ctrl.getValue();
+    }
+
     module.Menu = function(gui) {
         this._gui = gui;
         this._desc = {};
@@ -40,7 +50,7 @@ var jsplot = (function (module) {
             action[0][action[1]](value);
         }
         if (this._controls[n])
-            this._controls[n].updateDisplay();
+            redraw(this._controls[n]);
         this.dispatchEvent({type:"update"});
     }
     module.Menu.prototype.get = function(name) {
@@ -145,7 +155,7 @@ var jsplot = (function (module) {
                         
                         func(val);
                         this[name] = val;
-                        ctrl.updateDisplay();
+                        redraw(ctrl);
                     }.bind(this, name)
                 };
             } else if (!desc.hidden) {
@@ -155,6 +165,11 @@ var jsplot = (function (module) {
                 }.bind(this));
             }
         }
+        //a switch rather than a checkbox, for the settings that are a state
+        //of the page rather than one thing being shown or not
+        if (desc.toggle && ctrl !== undefined && ctrl.__li !== undefined)
+            ctrl.__li.className += " toggle";
+
         //setup keyboard shortcuts for commands
         if (desc.key) {
             var key = desc.key;

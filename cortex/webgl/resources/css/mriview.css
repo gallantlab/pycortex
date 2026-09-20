@@ -599,6 +599,40 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     box-sizing:content-box;
 }
 
+/* A switch, for the settings that put the page into a state rather than
+   show one more thing. dat.GUI draws a checkbox for every boolean, so the
+   box itself is made over into the track and its marker into the knob. */
+.dg li.toggle .c input[type="checkbox"] {
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    position:relative;
+    width:34px;
+    height:16px;
+    margin:4px 0px 0px 0px;
+    border-radius:8px;
+    background:#555;
+    cursor:pointer;
+    transition:background 0.15s;
+}
+.dg li.toggle .c input[type="checkbox"]:after {
+    content:"";
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:12px;
+    height:12px;
+    border-radius:6px;
+    background:#ddd;
+    transition:left 0.15s;
+}
+.dg li.toggle .c input[type="checkbox"]:checked {
+    background:#806787;
+}
+.dg li.toggle .c input[type="checkbox"]:checked:after {
+    left:20px;
+}
+
 /*************************************************
  * Slice views beside the 3D one
  *************************************************/

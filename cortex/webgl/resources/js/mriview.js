@@ -1346,7 +1346,9 @@ var mriview = (function(module) {
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
-            ortho_views: {action:[this, "setSliceViews"], key:'v', help:'Three slice views beside the 3D one'},
+            "ortho views": {action:[this, "setSliceViews"], toggle:true},
+            orthoToggle: {action: this.toggleSliceViews.bind(this), key: 'v', hidden: true,
+                          help:'Three slice views beside the 3D one'},
             x: {action:[this.sliceplanes.x, "setVisible"]},
             xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true, help:'Toggle X slice'},
             y: {action:[this.sliceplanes.y, "setVisible"]},
@@ -1514,6 +1516,9 @@ var mriview = (function(module) {
         this.sliceplanes.z.setVisible(!this.sliceplanes.z._visible);
         viewer.schedule();
     };
+    module.Viewer.prototype.toggleSliceViews = function() {
+        this.setSliceViews(!this._sliceviews);
+    };
     //-------------------------------------------------------------------------
     // Orthogonal slice views
     //-------------------------------------------------------------------------
@@ -1539,7 +1544,7 @@ var mriview = (function(module) {
             return;
 
         var scene = this.views[0].scene;
-        scene.add(this._cursorObject());
+        this._cursorObject();
         var views = [];
         if (this._sliceviews) {
             for (var i = 0; i < SLICE_VIEWS.length; i++) {
@@ -1551,11 +1556,12 @@ var mriview = (function(module) {
                     camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 10000),
                 };
                 view.prepare = this._prepareSlice.bind(this, view);
-                view.overlay = this._drawCursor.bind(this, view);
+                view.overlay = this._drawCursor.bind(this);
                 views.push(view);
             }
             var solid = {left: 0.5, bottom: 0, width: 0.5, height: 0.5, scene: scene, surf: 0};
             solid.prepare = this._showAllPlanes.bind(this);
+            solid.overlay = this._drawCursor.bind(this);
             views.push(solid);
         } else {
             views.push({left: 0, bottom: 0, width: 1, height: 1, scene: scene, surf: 0});
@@ -1576,16 +1582,24 @@ var mriview = (function(module) {
     module.Viewer.prototype._cursorObject = function() {
         if (this._cursor === undefined) {
             var far = 500;
-            //two lines, turned into the plane of whichever view draws them
+            //Three lines along the axes of the view that draws them. In a
+            //slice view the third one runs down the line of sight, so it is
+            //seen end on and only the cross of the other two shows; in the
+            //3D view all three do, which is what marks a point in space.
             var lines = new THREE.Geometry();
             lines.vertices.push(new THREE.Vector3(-far, 0, 0), new THREE.Vector3(far, 0, 0),
-                                new THREE.Vector3(0, -far, 0), new THREE.Vector3(0, far, 0));
+                                new THREE.Vector3(0, -far, 0), new THREE.Vector3(0, far, 0),
+                                new THREE.Vector3(0, 0, -far), new THREE.Vector3(0, 0, far));
             var material = new THREE.LineBasicMaterial({
                 color: 0x44ccff, depthTest: false, depthWrite: false});
             this._cursor = new THREE.Line(lines, material, THREE.LinePieces);
             this._cursor.frustumCulled = false;
             this._cursor.visible = false;
             this._cursorAt = false;
+            //kept out of the scene the views draw, so that it can be laid
+            //over each of them once the rest of it has been drawn
+            this._cursorScene = new THREE.Scene();
+            this._cursorScene.add(this._cursor);
         }
         return this._cursor;
     };
@@ -1735,19 +1749,14 @@ var mriview = (function(module) {
     //The slice planes are transparent, so they are drawn over everything
     //opaque, the crosshair included. It goes back on top in a pass of its
     //own, over the view that was just drawn.
-    module.Viewer.prototype._drawCursor = function(view, camera) {
-        var cursor = this._cursorObject();
-        if (!cursor.visible)
+    module.Viewer.prototype._drawCursor = function(camera) {
+        if (!this._cursorObject().visible)
             return;
-        var plane = view.plane;
-        var shown = plane.mesh !== undefined && plane.mesh.visible;
-        if (shown)
-            plane.mesh.visible = false;
+        //the slices are transparent and the brain is solid, so either would
+        //cover the crosshair if it were drawn among them
         this.renderer.autoClear = false;
-        this.renderer.render(view.scene, camera);
+        this.renderer.render(this._cursorScene, camera);
         this.renderer.autoClear = true;
-        if (shown)
-            plane.mesh.visible = true;
     };
 
     //Puts the surfaces and the planes back the way the 3D view shows them
@@ -1757,7 +1766,10 @@ var mriview = (function(module) {
             this._camQuat = undefined;
         }
         this.root.visible = true;
-        this._cursorObject().visible = false;
+        //the crosshair marks the same point in the 3D view as in the slices,
+        //as long as they are there to be marked in
+        this._cursorObject().visible =
+            this._sliceviews === true && this._cursorAt === true;
         for (var name in this.sliceplanes) {
             var plane = this.sliceplanes[name];
             if (plane.mesh !== undefined)
