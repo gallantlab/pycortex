@@ -146,6 +146,25 @@ def test_group_out_of_range_raises():
         Tractogram(points, offsets, subj, groups={"bad": np.array([5])})
 
 
+def test_group_not_1d_raises():
+    points = np.zeros((10, 3), dtype=np.float32)
+    offsets = np.array([0, 5, 10])
+    with pytest.raises(ValueError):
+        Tractogram(points, offsets, subj, groups={"bad": np.array([[0, 1]])})
+
+
+def test_group_boolean_mask():
+    points = np.zeros((10, 3), dtype=np.float32)
+    offsets = np.array([0, 5, 10])
+    tract = Tractogram(
+        points, offsets, subj, groups={"first": np.array([True, False])}
+    )
+    np.testing.assert_array_equal(tract.groups["first"], [0])
+    # a mask of the wrong length is an error, not silently truncated
+    with pytest.raises(ValueError):
+        Tractogram(points, offsets, subj, groups={"bad": np.array([True])})
+
+
 def test_unrecognized_color_raises():
     points = np.zeros((10, 3), dtype=np.float32)
     offsets = np.array([0, 10])
@@ -185,6 +204,25 @@ def test_name_is_deterministic_hash():
     assert tract1.name != tract3.name
 
 
+def test_name_depends_on_offsets():
+    """Same points, different streamline boundaries -> different identity."""
+    points = np.random.RandomState(0).randn(10, 3).astype(np.float32)
+    one = Tractogram(points, np.array([0, 10]), subj)
+    two = Tractogram(points, np.array([0, 4, 10]), subj)
+    np.testing.assert_array_equal(one.points, two.points)
+    assert one.name != two.name
+
+
+def test_uniques_is_empty_and_dataset_iterates():
+    tract = _make_tractogram(n_streamlines=4, n_points=5)
+    assert list(tract.uniques()) == []
+    assert list(tract.uniques(collapse=True)) == []
+    # `Dataset.uniques` calls `.uniques()` on every view it holds, so a
+    # dataset carrying a tractogram must not blow up there.
+    ds = cortex.Dataset(tract=tract)
+    assert ds.uniques() == set()
+
+
 # ---------------------------------------------------------------------------
 # select / get_group / subsample
 # ---------------------------------------------------------------------------
@@ -212,6 +250,36 @@ def test_select_remaps_groups():
     sub = tract.select([1, 3, 5, 7, 9])  # exactly the "odd" group
     assert set(sub.groups["odd"].tolist()) == {0, 1, 2, 3, 4}
     assert sub.groups["even"].size == 0
+
+
+def test_select_boolean_mask():
+    tract = _make_tractogram(n_streamlines=6, n_points=5)
+    mask = np.zeros(6, dtype=bool)
+    mask[[1, 4]] = True
+    sub = tract.select(mask)
+    assert sub.n_streamlines == 2
+    np.testing.assert_array_equal(sub.streamlines[0], tract.streamlines[1])
+    np.testing.assert_array_equal(sub.streamlines[1], tract.streamlines[4])
+
+
+def test_select_short_boolean_mask_raises():
+    tract = _make_tractogram(n_streamlines=6, n_points=5)
+    with pytest.raises(ValueError):
+        tract.select(np.array([True]))
+
+
+def test_select_non_1d_raises():
+    tract = _make_tractogram(n_streamlines=6, n_points=5)
+    with pytest.raises(ValueError):
+        tract.select(np.array([[0, 1]]))
+
+
+def test_select_out_of_range_raises():
+    tract = _make_tractogram(n_streamlines=6, n_points=5)
+    with pytest.raises(IndexError):
+        tract.select([6])
+    with pytest.raises(IndexError):
+        tract.select([-1])
 
 
 def test_get_group():
@@ -314,6 +382,35 @@ def test_vertex_colors_dps():
     assert np.all(colors[start:stop] == colors[start])
 
 
+def test_vertex_colors_empty_tractogram():
+    """Every colour mode returns an empty (0, 3) array, not an exception."""
+    empty_points = np.zeros((0, 3), dtype=np.float32)
+    empty_offsets = np.array([0], dtype=np.int64)
+    for color, kwargs in [
+        ("orientation", {}),
+        ((1.0, 0.0, 0.0), {}),
+        ("dpv:scalar", dict(dpv={"scalar": np.zeros(0, dtype=np.float32)})),
+        ("dps:length", dict(dps={"length": np.zeros(0, dtype=np.float32)})),
+    ]:
+        tract = Tractogram(
+            empty_points, empty_offsets, subj, color=color, **kwargs
+        )
+        colors = tract.vertex_colors()
+        assert colors.shape == (0, 3)
+        assert colors.dtype == np.uint8
+
+
+def test_vertex_colors_empty_group():
+    """The realistic path to an empty tractogram: a group nothing matched."""
+    tract = _make_tractogram(
+        n_streamlines=6, n_points=5, color="dpv:scalar",
+        groups={"none": np.array([], dtype=np.int64)},
+    )
+    empty = tract.get_group("none")
+    assert empty.n_streamlines == 0
+    assert empty.vertex_colors().shape == (0, 3)
+
+
 # ---------------------------------------------------------------------------
 # to_json / _write_hdf / normalize
 # ---------------------------------------------------------------------------
@@ -343,6 +440,16 @@ def test_to_json_keys():
     assert j["visible"] is True
     assert j["groups"] == {"even": [0, 10], "odd": [10, 20]}
     # must be JSON serializable
+    json.dumps(j)
+
+
+def test_to_json_keeps_base_dataview_fields():
+    """`state`/`attrs`/`desc` travel with every view, tractograms included."""
+    tract = _make_tractogram(state={"foo": 1}, priority=3)
+    j = tract.to_json()
+    assert j["state"] == {"foo": 1}
+    assert j["attrs"]["priority"] == 3
+    assert j["desc"] == tract.description
     json.dumps(j)
 
 
@@ -477,6 +584,13 @@ def test_from_trx_roundtrip(tmp_path):
     np.testing.assert_array_equal(
         np.sort(tract.groups["first_half"]), np.sort(groups["first_half"])
     )
+
+
+def test_from_trx_bad_xfm_raises(tmp_path):
+    pytest.importorskip("trx")
+    path, _, _, _, _, _ = _build_trx_fixture(tmp_path)
+    with pytest.raises(ValueError):
+        Tractogram.from_trx(path, subj, xfm=np.eye(3))
 
 
 def test_from_trx_xfm_shifts_points(tmp_path):

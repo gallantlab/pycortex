@@ -15,7 +15,11 @@ dev = [
 ]
 test = [
     "pycortex[headless]",
-    "pycortex[tractography]",
+    # trx-python requires Python >= 3.11. The marker keeps the rest of the
+    # test group installable on 3.10 -- which the wheel-install workflow
+    # still covers and which the package does not exclude -- where the TRX
+    # tests skip themselves via `pytest.importorskip`.
+    "pycortex[tractography]; python_version >= '3.11'",
     # The visual-regression tests compare against renders from
     # these builds. Both are unpinned for users.
     # See cortex/tests/reference_images/README.md

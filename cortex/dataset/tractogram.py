@@ -8,6 +8,7 @@ alongside cortical surfaces in the pycortex WebGL viewer.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Sequence, Union
 
@@ -55,11 +56,13 @@ class Tractogram(Dataview):
     dps : dict[str, array_like], optional
         Data-per-streamline: for each name, an array with one entry (or row)
         per streamline.
-    groups : dict[str, array_like of int], optional
-        Named subsets of streamlines, given as arrays of streamline indices.
-        Groups may overlap, and a streamline may belong to no group. Dict
-        order is preserved and is significant: it is the order in which
-        `groups_wire` concatenates them into the wire-format buffer.
+    groups : dict[str, array_like of int or bool], optional
+        Named subsets of streamlines, given as 1-D arrays of streamline
+        indices, or as boolean masks of length `n_streamlines` (which are
+        converted to indices). Groups may overlap, and a streamline may
+        belong to no group. Dict order is preserved and is significant: it
+        is the order in which `groups_wire` concatenates them into the
+        wire-format buffer.
     color : str or tuple, optional
         How to color the streamlines. One of:
 
@@ -170,7 +173,24 @@ class Tractogram(Dataview):
 
         self.groups: Dict[str, npt.NDArray] = {}
         for name, idx in (groups or {}).items():
-            idx_arr = np.asarray(idx, dtype=np.int64)
+            idx_arr = np.asarray(idx)
+            if idx_arr.ndim != 1:
+                raise ValueError(
+                    "groups[%r] must be 1-D (streamline indices or a boolean "
+                    "mask), got shape %r" % (name, idx_arr.shape)
+                )
+            if idx_arr.dtype == np.bool_:
+                # A boolean mask, spelled as `select` also accepts it. Without
+                # this branch `astype(int64)` would silently turn it into the
+                # indices 0/1 instead.
+                if idx_arr.size != n_streamlines:
+                    raise ValueError(
+                        "groups[%r] is a boolean mask with %d entries, but "
+                        "there are %d streamlines"
+                        % (name, idx_arr.size, n_streamlines)
+                    )
+                idx_arr = np.nonzero(idx_arr)[0]
+            idx_arr = idx_arr.astype(np.int64)
             if idx_arr.size and (idx_arr.min() < 0 or idx_arr.max() >= n_streamlines):
                 raise ValueError(
                     "groups[%r] contains streamline indices out of range "
@@ -247,13 +267,28 @@ class Tractogram(Dataview):
 
     @property
     def name(self) -> str:
-        """Name of this Tractogram, computed from a hash of `points`.
+        """Name of this Tractogram, computed from a hash of its geometry.
 
         Mirrors :attr:`cortex.dataset.braindata.BrainData.name`, so that
         code keying on that convention (e.g. `cortex.webgl.data.Package`)
-        works unchanged for tractograms.
+        works unchanged for tractograms. Both `points` and `offsets` go
+        into the digest: the same point buffer cut into different
+        streamlines is a different tractogram, and hashing `points` alone
+        would hand the two the same identity.
         """
-        return "__%s" % _hash(self.points)[:16]
+        geometry = (_hash(self.points) + _hash(self.offsets)).encode("ascii")
+        return "__%s" % hashlib.sha1(geometry).hexdigest()[:16]
+
+    def uniques(self, collapse: bool = False) -> "list":
+        """The `BrainData` objects this view is built from: none.
+
+        A tractogram carries its own geometry rather than wrapping
+        :class:`~cortex.dataset.braindata.BrainData`, so it contributes
+        nothing here. The method exists because `Dataset.uniques` calls it
+        on every view it holds, and without it a `Dataset` containing a
+        tractogram could not be packaged or saved at all.
+        """
+        return []
 
     # -- selection / decimation -----------------------------------------
 
@@ -263,8 +298,9 @@ class Tractogram(Dataview):
         Parameters
         ----------
         indices : array_like of int or bool
-            Streamline indices to keep (or a boolean mask of length
-            `n_streamlines`). Order is preserved; repeats are allowed.
+            Streamline indices to keep, or a boolean mask which must have
+            exactly `n_streamlines` entries. Order is preserved; repeats
+            are allowed.
 
         Returns
         -------
@@ -275,9 +311,26 @@ class Tractogram(Dataview):
             `linewidth`, `description`) are copied.
         """
         idx = np.asarray(indices)
+        if idx.ndim != 1:
+            raise ValueError(
+                "indices must be 1-D (streamline indices or a boolean mask), "
+                "got shape %r" % (idx.shape,)
+            )
         if idx.dtype == np.bool_:
+            if idx.size != self.n_streamlines:
+                raise ValueError(
+                    "boolean mask must have %d entries (one per streamline), "
+                    "got %d" % (self.n_streamlines, idx.size)
+                )
             idx = np.nonzero(idx)[0]
         idx = idx.astype(np.int64)
+        if idx.size and (idx.min() < 0 or idx.max() >= self.n_streamlines):
+            # Caught here rather than left to fall through: a negative index
+            # would quietly wrap when slicing `points`, yet never match in the
+            # `groups` remapping below, giving a silently inconsistent result.
+            raise IndexError(
+                "streamline indices out of range [0, %d)" % self.n_streamlines
+            )
 
         starts = self.offsets[:-1]
         stops = self.offsets[1:]
@@ -389,6 +442,12 @@ class Tractogram(Dataview):
         (N, 3) ndarray of uint8
             One RGB color per point in `points`.
         """
+        if self.n_points == 0:
+            # Empty tractograms are legitimate (an empty named group, or a
+            # `select` that matched nothing). Short-circuit before the scalar
+            # paths, whose `reshape(0, -1)` numpy cannot infer.
+            return np.zeros((0, 3), dtype=np.uint8)
+
         color = self.color
         if isinstance(color, str):
             if color == "orientation":
@@ -503,6 +562,11 @@ class Tractogram(Dataview):
 
         Notes
         -----
+        The base :class:`~cortex.dataset.views.Dataview` keys ``state``,
+        ``attrs`` and ``desc`` are carried through alongside the
+        tract-specific ones, so a tractogram's metadata satisfies the same
+        contract as every other view's.
+
         ``result["groups"]`` maps each group name to a ``[start, stop]``
         slice (not a count): these are bounds into the fourth per-tractogram
         wire buffer, ``groups`` (little-endian uint32 streamline indices,
@@ -514,6 +578,10 @@ class Tractogram(Dataview):
             color_repr = self.color
         else:
             color_repr = str(tuple(float(c) for c in self.color))
+
+        desc = self.description
+        if isinstance(desc, bytes):
+            desc = desc.decode()
 
         _, group_slices = self.groups_wire()
         result: dict = {
@@ -528,7 +596,14 @@ class Tractogram(Dataview):
                 name: [int(start), int(stop)]
                 for name, (start, stop) in group_slices.items()
             },
-            "description": self.description,
+            "description": desc,
+            # The base `Dataview` metadata contract: `cortex.webgl.data`
+            # and the javascript dataset machinery read these keys off every
+            # view's json, and `state`/`attrs` would otherwise be dropped on
+            # the way to the viewer.
+            "state": self.state,
+            "attrs": self.attrs.copy(),
+            "desc": desc,
         }
 
         is_scalar_mode = isinstance(self.color, str) and (
@@ -619,6 +694,11 @@ class Tractogram(Dataview):
 
             if xfm is not None:
                 xfm_arr = np.asarray(xfm, dtype=np.float64)
+                if xfm_arr.shape != (4, 4):
+                    raise ValueError(
+                        "xfm must be a (4, 4) affine, got shape %r"
+                        % (xfm_arr.shape,)
+                    )
                 homogeneous = np.concatenate(
                     [points.astype(np.float64), np.ones((n_points, 1))], axis=1
                 )
