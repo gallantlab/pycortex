@@ -4,6 +4,9 @@ Most of this module needs playwright + Chromium (see ``has_playwright`` in
 ``testing_utils``) since it drives the real webgl viewer headlessly. The
 config-default check does not.
 """
+import configparser
+import os.path
+
 import numpy as np
 import pytest
 
@@ -16,10 +19,17 @@ subj = "S1"
 
 def test_surface_opacity_default_is_one():
     """The shipped default must be fully opaque so existing renders are
-    unaffected by this feature (see cortex/defaults.cfg)."""
-    assert (
-        cortex.options.config.getfloat("webgl_viewopts", "surface_opacity") == 1.0
-    )
+    unaffected by this feature.
+
+    Read ``cortex/defaults.cfg`` through its own parser rather than
+    ``cortex.options.config``, which has already overlaid the user's
+    ``options.cfg`` (``cortex/options.py``) -- a contributor who set their
+    own ``surface_opacity`` would otherwise fail this.
+    """
+    path = os.path.join(os.path.dirname(cortex.__file__), "defaults.cfg")
+    defaults = configparser.ConfigParser()
+    assert defaults.read(path), f"could not read {path}"
+    assert defaults.getfloat("webgl_viewopts", "surface_opacity") == 1.0
 
 
 @pytest.mark.skipif(
