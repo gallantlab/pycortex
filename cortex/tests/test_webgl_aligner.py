@@ -730,7 +730,7 @@ def test_displays_show_the_surface_and_follow_the_transform():
                     return {
                         display: v.setDisplay(),
                         rects: v.viewlist.map(w => [w.name, w.rect.width, w.rect.height]),
-                        modes: v.viewlist.map(w => [w.name, v._viewMode(w)]),
+                        modes: v.viewlist.map(w => [w.name, v._viewMode(w) == 0 ? "outline" : "surface"]),
                         canvas: [v.width, v.height],
                         shown: Array.from(document.querySelectorAll('.aligner-view'))
                             .filter(e => getComputedStyle(e).display != 'none').map(e => e.id),
@@ -757,15 +757,15 @@ def test_displays_show_the_surface_and_follow_the_transform():
             assert start["display"] == aligner.DISPLAYS["slices"]
             assert len(start["shown"]) == 4
             assert all(w > 0 for _, w, _ in start["rects"])
-            assert all(m == 0 for _, m in start["modes"]), "every view outlines the mesh"
+            assert all(m == "outline" for _, m in start["modes"]), "every view outlines the mesh"
 
             # the surface in the corner, with the slices still showing slices
             redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["brain"])
             split = state()
             assert split["display"] == aligner.DISPLAYS["brain"]
             assert len(split["shown"]) == 4, "the slice views stay"
-            assert dict(split["modes"])["3d"] == 1, "the corner paints the data"
-            assert all(m == 0 for name, m in split["modes"] if name != "3d")
+            assert dict(split["modes"])["3d"] == "surface", "the corner paints the data"
+            assert all(m == "outline" for name, m in split["modes"] if name != "3d")
 
             # what the corner draws follows an edit to the transform, unsaved
             before = page.locator("#view-3d").screenshot()
@@ -776,6 +776,41 @@ def test_displays_show_the_surface_and_follow_the_transform():
             assert page.evaluate("window.viewer.isDirty()")
             redraw("window.viewer.undo()")
 
+            # the corner unfolds too, by the keys the viewer uses and by the
+            # control in the panel, which are the same ones the data view has
+            def press(key):
+                frames = page.evaluate("window.viewer.nframes")
+                page.keyboard.press(key)
+                page.wait_for_function("window.viewer.nframes > %d" % frames, timeout=120000)
+
+            folded = page.locator("#view-3d").screenshot()
+            press("i")
+            assert page.evaluate("window.viewer.setMix()") == 0.5, "i did not inflate the surface"
+            inflated = page.locator("#view-3d").screenshot()
+            assert inflated != folded, "the corner did not inflate"
+            press("f")
+            assert page.evaluate("window.viewer._flatness()") == 1, "f did not flatten the surface"
+            assert page.locator("#view-3d").screenshot() != inflated, "the corner did not flatten"
+            press("r")
+            assert page.evaluate("window.viewer.setMix()") == 0, "r did not fold the surface back"
+
+            # the depth of the surface between pial and white matter is the
+            # panel's own control, and moves the one in the corner
+            redraw("window.viewer.ui.set('mesh.depth', 1)")
+            page.wait_for_timeout(300)
+            assert page.locator("#view-3d").screenshot() != folded, (
+                "the corner did not follow the depth control")
+            redraw("window.viewer.ui.set('mesh.depth', 0.5)")
+
+            # the unfolding carries over to the data view, which draws the
+            # same surface
+            redraw("window.viewer.ui.set('mesh.unfold', 0.5)")
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["surface"])
+            assert page.evaluate("window.viewer.setMix()") == 0.5, (
+                "the data view did not open on the unfolding the corner was left at")
+            assert page.evaluate("window.viewer.ui.get('mesh.unfold')") == 0.5
+            redraw("window.viewer.ui.set('mesh.unfold', 0)")
+
             # and the surface on its own, over the whole window
             redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["surface"])
             single = state()
@@ -783,7 +818,7 @@ def test_displays_show_the_surface_and_follow_the_transform():
             assert single["shown"] == ["view-3d"], "only the surface is left"
             assert dict((n, (w, h)) for n, w, h in single["rects"])["3d"] == tuple(single["canvas"])
             assert all(w == 0 for n, w, _ in single["rects"] if n != "3d")
-            assert all(m == 2 for _, m in single["modes"]), "the data view paints the data"
+            assert all(m == "surface" for _, m in single["modes"]), "the data view paints the data"
 
             def filled():
                 """Fraction of the window the surface covers."""
