@@ -80,6 +80,40 @@ def check_autoflatten_available() -> bool:
     return False
 
 
+def _get_hemispheres(
+    autoflatten_args: Optional[Sequence[str]] = None,
+) -> tuple[str, ...]:
+    """Hemispheres that ``autoflatten run`` will flatten, given its extra arguments.
+
+    ``autoflatten`` flattens both hemispheres unless it is told otherwise with
+    ``--hemispheres lh`` (or ``--hemispheres=lh``), so the patch files to expect
+    afterwards depend on `autoflatten_args`.
+
+    Parameters
+    ----------
+    autoflatten_args : list of str, optional
+        Extra command line arguments passed to ``autoflatten run``.
+
+    Returns
+    -------
+    hemis : tuple of str
+        ``("lh", "rh")``, or a single hemisphere if one was selected.
+    """
+    both = ("lh", "rh")
+    if autoflatten_args is None:
+        return both
+    args = list(autoflatten_args)
+    value = None
+    for i, arg in enumerate(args):
+        if arg == "--hemispheres" and i + 1 < len(args):
+            value = args[i + 1]
+        elif arg.startswith("--hemispheres="):
+            value = arg.split("=", 1)[1]
+    if value in both:
+        return (value,)
+    return both
+
+
 def autoflatten_subject(
     freesurfer_subject: str,
     pycortex_subject: Optional[str] = None,
@@ -122,8 +156,9 @@ def autoflatten_subject(
     Returns
     -------
     flat_files : dict
-        Mapping from hemisphere (``lh``, ``rh``) to the flat patch file that
-        ``autoflatten`` produced.
+        Mapping from hemisphere (``lh``, ``rh``, or just one of them if
+        ``autoflatten_args`` selects a single hemisphere) to the flat patch file
+        that ``autoflatten`` produced.
 
     Notes
     -----
@@ -158,9 +193,10 @@ def autoflatten_subject(
         type="patch",
         freesurfer_subject_dir=freesurfer_subject_dir,
     )
+    hemis = _get_hemispheres(autoflatten_args)
     flat_files = {
         hemi: patch_template.format(hemi=hemi, name=PATCH_NAME + ".flat")
-        for hemi in ("lh", "rh")
+        for hemi in hemis
     }
     # autoflatten skips patches that already exist, so there is nothing slow to
     # warn about if both hemispheres have already been flattened
@@ -171,9 +207,13 @@ def autoflatten_subject(
     if autoflatten_args is not None:
         cmd = cmd + list(autoflatten_args)
     print("Calling:\n{}".format(" ".join(cmd)))
+    # autoflatten resolves the subject (and the fsaverage template it maps the
+    # cuts from) by name through $SUBJECTS_DIR in the subprocess, so it has to
+    # agree with `freesurfer_subject_dir`, which may have been passed explicitly.
+    env = dict(os.environ, SUBJECTS_DIR=freesurfer_subject_dir)
     # Let autoflatten write its progress directly to stdout/stderr, since this
     # takes a long time and the user will want to see how far along it is.
-    sp.check_call(cmd)
+    sp.check_call(cmd, env=env)
 
     missing = [path for path in flat_files.values() if not os.path.exists(path)]
     if missing:
@@ -186,6 +226,7 @@ def autoflatten_subject(
         freesurfer.import_flat(
             freesurfer_subject,
             PATCH_NAME,
+            hemis=list(hemis),
             cx_subject=pycortex_subject,
             flat_type="freesurfer",
             auto_overwrite=True,
