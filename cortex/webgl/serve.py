@@ -16,7 +16,7 @@ import mimetypes
 import functools
 import threading
 
-from typing import Callable, Literal, Optional, cast, Generic, Union, Any
+from typing import Callable, Literal, Optional, Sequence, cast, Generic, Union, Any
 
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
@@ -34,15 +34,80 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
-#: The interface the servers listen on, and the host to reach them at. Both
-#: loopback addresses resolve from this name, so a browser finds the server
-#: whether it asks for IPv4 or IPv6.
+#: The host to reach the servers at. Both loopback addresses resolve from this
+#: name, so a browser finds the server whether it asks for IPv4 or IPv6.
 LOOPBACK = "localhost"
+
+#: The names the servers listen for by default: the loopback addresses and
+#: whatever this computer's own hostname resolves to, so that the page opens
+#: as localhost, as 127.0.0.1 or under the name of the machine.
+LOCAL = (LOOPBACK, hostname)
 
 # on Windows the mimetypes module reads the extension to type mapping out of the
 # registry, where .js is frequently registered as text/plain. browsers refuse to
 # execute scripts served with that type, so force the correct type here.
 mimetypes.add_type("text/javascript", ".js")
+
+
+def bind_local_sockets(
+    port: Optional[int], addresses: Union[str, Sequence[str], None] = LOCAL
+) -> list[socket.socket]:
+    """Listening sockets on `port`, one per address `addresses` resolves to.
+
+    Parameters
+    ----------
+    port : int or None
+        The port to listen on; 0 or None asks the operating system for a free
+        one. Every socket ends up on the same port, whichever way it is chosen.
+    addresses : str or sequence of str or None, optional
+        The names to listen for, `LOCAL` by default. None listens on every
+        interface. A name that does not resolve is passed over, as is one
+        that resolves to an address another name already covers, so that a
+        computer whose hostname is its loopback address still gets a server.
+
+    Returns
+    -------
+    sockets : list of socket.socket
+        The bound sockets, to hand to ``HTTPServer.add_sockets``.
+    """
+    if addresses is None:
+        return bind_sockets(0 if port is None else port)
+    if isinstance(addresses, str):
+        addresses = [addresses]
+
+    # Resolve first and bind afterwards: two of the names can stand for the
+    # same address (a hostname is often the loopback address), and binding
+    # that one twice fails rather than being ignored.
+    wanted: list[str] = []
+    for name in addresses:
+        try:
+            found = socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            continue
+        for info in found:
+            host = info[4][0]
+            # the address of an IP socket is a string; anything else is a
+            # family this cannot listen on
+            if isinstance(host, str) and host not in wanted:
+                wanted.append(host)
+
+    sockets: list[socket.socket] = []
+    port = 0 if port is None else port
+    failures: list[str] = []
+    for host in wanted:
+        try:
+            bound = bind_sockets(port, address=host)
+        except OSError as exc:
+            failures.append("%s: %s" % (host, exc))
+            continue
+        sockets.extend(bound)
+        # the first address that binds decides the port, so the rest listen
+        # on that one rather than each on a free port of its own
+        port = bound[0].getsockname()[1]
+    if len(sockets) == 0:
+        raise OSError("Could not listen on %s (%s)" % (
+            ", ".join(addresses), "; ".join(failures) if failures else "no address resolved"))
+    return sockets
 
 
 def make_base64(imgfile: str) -> str:
@@ -315,7 +380,7 @@ class WebApp(threading.Thread):
             ]
         ],
         port: int,
-        address: Optional[str] = LOOPBACK,
+        address: Union[str, Sequence[str], None] = LOCAL,
     ):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
@@ -337,12 +402,11 @@ class WebApp(threading.Thread):
         # The socket is bound immediately, so the OS accepts and queues client
         # connections in the backlog even before the IOLoop starts serving --
         # eliminating the connect race too.
-        # `address` names the interface to listen on. It is the loopback one by
-        # default: these servers hand out the filestore and the aligner's takes
-        # saves that overwrite a transform, so a port that happens to be open is
-        # not something another machine should be able to reach. Pass None to
-        # listen on every interface.
-        self._sockets = bind_sockets(port if port is not None else 0, address=address)
+        # `address` names what to listen for: the loopback addresses and this
+        # computer's own hostname by default, so the page opens as localhost,
+        # as 127.0.0.1 or under the name of the machine. Pass None to listen
+        # on every interface.
+        self._sockets = bind_local_sockets(port, address)
         # When port==0 the OS assigns the port; read the real value back so
         # callers can build a correct URL.
         self.port = self._sockets[0].getsockname()[1]
