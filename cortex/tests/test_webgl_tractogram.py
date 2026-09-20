@@ -245,6 +245,50 @@ def test_make_static_writes_tract_buffers(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# save_3d_views subject resolution
+# ---------------------------------------------------------------------------
+
+
+def test_save_3d_views_resolves_subject_from_dataset():
+    """A tractogram can only be rendered inside a Dataset, so the screenshot
+    helpers have to find the subject there rather than on a lone dataview."""
+    from cortex.export.save_views import _view_subject
+
+    ds, _ = _dataset()
+    assert _view_subject(ds) == subj
+    assert _view_subject(_vertex()) == subj
+
+
+def test_save_3d_views_subject_survives_a_view_named_subject():
+    """`Dataset.__getattr__` falls through to the views it holds, so a view
+    named "subject" would answer `getattr(ds, "subject")` with a dataview.
+    Resolution has to go by type, not by duck-typing on the attribute."""
+    from cortex.export.save_views import _view_subject
+
+    _, tract = _dataset()
+    ds = cortex.Dataset(subject=_vertex(), bundles=tract)
+    assert _view_subject(ds) == subj
+
+
+def test_save_3d_views_rejects_ambiguous_subject():
+    """Two subjects in one Dataset is not renderable: the viewer's surface
+    controls are addressed by subject name, so there is nothing to format
+    "surface.{subject}.unfold" with. Stand-ins rather than real dataviews,
+    since the bundled filestore only has one subject."""
+    from types import SimpleNamespace
+
+    from cortex.export.save_views import _view_subject
+
+    two_subjects = cortex.Dataset(a=_vertex())
+    two_subjects.views["b"] = SimpleNamespace(subject="S2")
+    with pytest.raises(ValueError, match="exactly one subject"):
+        _view_subject(two_subjects)
+
+    with pytest.raises(ValueError, match="Cannot determine the subject"):
+        _view_subject(object())
+
+
+# ---------------------------------------------------------------------------
 # Headless browser
 # ---------------------------------------------------------------------------
 

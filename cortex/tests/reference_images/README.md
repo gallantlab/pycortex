@@ -10,9 +10,11 @@ Stored renders that `cortex/tests/test_visual_regression.py` asserts against.
 | `nan_dataviews/` | 10 | the same five, with NaNs over roughly half the primary data channel |
 | `nan_alpha_dataviews/` | 4 | `VolumeRGB`/`VertexRGB` only, with the NaNs in the `alpha=` map |
 | `nonflat_views/` | 4 | `Volume`/`Vertex` on the inflated and fiducial surfaces at `lateral_pivot`, webgl only |
+| `tracts/` | 3 | three crossing bundles of synthetic streamlines inside the brain, fiducial surface, oblique left camera: opaque cortex, translucent cortex, and translucent cortex with translucent streamlines, webgl only |
 
 Filenames are `quickflat_<Class>` and `webgl_<Class>`, except `nonflat_views/`,
-which uses `webgl_<surface>_<angle>_<Class>`.
+which uses `webgl_<surface>_<angle>_<Class>`, and `tracts/`, which uses
+`webgl_tracts_<opaque|translucent|translucent_tracts>`.
 
 `Vertex2D` is the sixth class and has no images: its webgl flatmap renders
 blank (gh-714) and `save_3d_views` raises, so it cannot be tested through the
@@ -30,7 +32,13 @@ differences in the renderers' anti-aliasing implementations.)
 Everything else is at its default.
 
 `nonflat_views/` keeps pycortex's default thresholded curvature, unlike the
-flatmap groups.
+flatmap groups, and so does `tracts/`. The three `tracts/` renders differ only
+in `surface.{subject}.surface_opacity` (1.0, 0.35, 0.35) and the tractogram's
+own `alpha` (1.0, 1.0, 0.6). They use an oblique left camera rather than a
+named preset, because `lateral_pivot` swings the hemispheres apart and leaves
+the streamlines in the gap between them, touching almost no surface. The
+streamlines come from `_tract_bundles` in the test module, so editing that
+generator invalidates them.
 
 The exact keyword arguments are in `_render_and_check_dataview` and
 `_render_and_check_webgl_only`; change either and the references must be
@@ -43,7 +51,8 @@ reference at a tight tolerance (`MAX_MEAN_ABS_DIFF`, `MAX_FRACTION_DIFFERING`,
 `MAX_FRACTION_GROSSLY_DIFFERING`, `MAX_SSIM_LOSS`, all four of which must pass),
 and against the other renderer's render of the same dataview at a loose one
 (`CROSS_MAX_MEAN_ABS_DIFF`, `CROSS_MAX_FRACTION_DIFFERING`), with no stored
-fixture. `test_visual_comparison_nonflat_views` runs the reference check only.
+fixture. `test_visual_comparison_nonflat_views` and
+`test_visual_comparison_tracts` run the reference check only.
 
 Both renderers write their flatmap content-tight and transparent outside it, so
 the cross-renderer check only resizes webgl to quickflat's size before diffing.
@@ -62,7 +71,7 @@ bundled with pycortex, which is pinned by `cortex/tests/conftest.py`.
 | matplotlib | 3.10.9 |
 
 Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build, which determines the 16 webgl
+regenerating. playwright fixes the chromium build, which determines the 19 webgl
 references; matplotlib rasterizes the 12 quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
@@ -70,7 +79,8 @@ Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 ## Format
 
 Lossless WebP (`method=6`, `quality=100`, `exact=True`): bit-exact after decode,
-and 59% the size of optimized PNG (1229 KiB versus 2061 KiB for the set of 28).
+and 59% the size of optimized PNG (1229 KiB versus 2061 KiB, measured over the
+28 references that predate the `tracts/` group).
 
 ## Storage
 
@@ -103,5 +113,5 @@ change is cosmetic, then:
 REGENERATE_REFERENCE_IMAGES=1 pytest cortex/tests/test_visual_regression.py
 ```
 
-That rewrites all four directories in one run. Review the resulting diff before
+That rewrites all five directories in one run. Review the resulting diff before
 committing.

@@ -1,6 +1,6 @@
 """Visual regression tests: quickflat and webgl renders vs stored references.
 
-Four suites. Three of them render flatmaps of the six public dataview classes
+Five suites. Three of them render flatmaps of the six public dataview classes
 (``Volume``, ``Vertex``, ``Volume2D``, ``Vertex2D``, ``VolumeRGB``,
 ``VertexRGB``) through both matplotlib (``cortex.quickflat.make_png``) and the
 headless WebGL viewer (``save_3d_views``), varying what the data carries:
@@ -15,6 +15,10 @@ inflated and fiducial surfaces, through ``save_3d_views``. Those are
 webgl-only and get the reference check alone: quickflat produces flatmaps and
 nothing else, so there is nothing to diff them against.
 
+The fifth renders a ``Tractogram`` -- synthetic streamlines running through the
+brain -- against an opaque and a translucent cortical surface, and is
+webgl-only for the same reason, quickflat having no streamline path at all.
+
 Every render is transparent outside the flatmap, so the two renderers are
 directly comparable without compositing or a coordinate correction.
 
@@ -26,7 +30,7 @@ All tests are skipped if playwright is not installed.
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -88,6 +92,37 @@ NAN_ALPHA_DATAVIEW_NAMES = ["VolumeRGB", "VertexRGB"]
 #: nothing but flatmaps, so these have no counterpart to diff against and no
 #: cross-renderer leg -- see test_visual_comparison_nonflat_views.
 NONFLAT_REFERENCE_DIR = REFERENCE_ROOT / "nonflat_views"
+
+#: Tractograms drawn through the brain, checked against a webgl reference only:
+#: quickflat has no streamline path at all. See test_visual_comparison_tracts.
+#:
+#: NB a missing reference *fails* rather than skips (see _unusable_reference),
+#: so this directory has to be populated before the suite can pass anywhere
+#: Chromium is available:
+#:     REGENERATE_REFERENCE_IMAGES=1 pytest cortex/tests/test_visual_regression.py -k tracts
+TRACT_REFERENCE_DIR = REFERENCE_ROOT / "tracts"
+
+#: (tag, surface_opacity, tract_alpha) for the tractogram suite. The opaque
+#: surface hides every streamline that runs inside the brain and keeps only the
+#: parts emerging from it; the translucent one is what the feature exists for,
+#: and is the case that depends on the transparent-object draw order
+#: (streamlines have to stay behind the surface at every tract opacity). The
+#: third makes the *streamlines* translucent as well, which is where ordering
+#: has gone wrong twice: once drawing tracts over the surface, once letting
+#: bundles blend in buffer order so which one looked nearest changed the moment
+#: opacity left 1.
+#: An oblique left camera, not one of the named presets. ``lateral_pivot``, as
+#: the other webgl-only suite uses, swings the hemispheres apart and leaves the
+#: streamlines floating in the gap between them, touching almost no surface --
+#: the one thing this suite exists to check. The tuple form names the view for
+#: the output filename.
+TRACT_ANGLE = ("oblique_left", {"camera.azimuth": 125, "camera.altitude": 70})
+
+TRACT_SURFACE_OPACITIES = [
+    ("opaque", 1.0, 1.0),
+    ("translucent", 0.35, 1.0),
+    ("translucent_tracts", 0.35, 0.6),
+]
 
 #: (surface, angle, dataview). Volume and Vertex cover both shader paths, which
 #: matters because the flatmap suite exercises them under conditions that turn
@@ -686,8 +721,8 @@ def _render_and_check_dataview(
 
 def _render_and_check_webgl_only(
     tag: str,
-    view: Dataview,
-    surface: str,
+    view: Union[Dataview, cortex.Dataset],
+    surface: Union[str, dict],
     angle: str,
     reference_dir: Path,
     tmp_path: Path,
@@ -696,6 +731,10 @@ def _render_and_check_webgl_only(
 
     A cut-down ``_render_and_check_dataview``: no cross-renderer check because
     we don't use quickflat.
+
+    ``view`` may be a ``Dataset`` rather than a single dataview (a
+    ``Tractogram`` cannot be displayed on its own), and ``surface`` may be an
+    explicit parameter dict rather than one of the named presets.
 
     Curvature is left at pycortex's default (thresholded) here, unlike the
     flatmap suites. Those un-threshold it to reduce cross-renderer
@@ -814,5 +853,109 @@ def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
     tag = f"{surface}_{angle}_{name}"
     failures = _render_and_check_webgl_only(
         tag, view, surface, angle, NONFLAT_REFERENCE_DIR, tmp_path
+    )
+    _assert_no_failures(failures, tmp_path)
+
+
+def _tract_bundles() -> list[list[npt.NDArray]]:
+    """Three dense, mutually crossing bundles of curves inside S1's brain.
+
+    Not the tractogram unit tests' generator, which draws chords between
+    random fiducial vertices: those are thin, scattered and mostly outside the
+    surface, so they move too few pixels for this suite's whole-image
+    tolerances to see anything. These are ribbons -- many near-parallel bowed
+    curves -- laid along the three anatomical axes so that they cross each
+    other inside the white matter. Their pixels are where every property this
+    suite checks lives: a ribbon that stops occluding itself, or two ribbons
+    that swap depth order, repaints all of it. Measured against the real
+    renderer, dropping the streamlines' depth writes (the regression this scene
+    exists for) moves 0.7% of the untrimmed render by more than 32 levels,
+    against a 0.1% limit, while staying inside the mean and >16 limits -- so it
+    is MAX_FRACTION_GROSSLY_DIFFERING that does the catching here, exactly the
+    sparse-and-large case that criterion was added for.
+
+    Coordinates are scanner RAS millimeters inside S1, and match the gallery
+    example so the two pictures are recognizably the same scene.
+    """
+    specs = [
+        # start, end, the direction the bundle bows toward
+        ((-45, 15, 20), (45, 15, 20), (0, 0, 1)),
+        ((-38, -35, 5), (-38, 55, 5), (0, 0, 1)),
+        ((-22, 10, -30), (-22, 10, 45), (0, 1, 0)),
+    ]
+    n_streamlines, n_points, spread, bow = 60, 60, 5.0, 10.0
+
+    bundles = []
+    for seed, (start, end, bow_direction) in enumerate(specs):
+        rng = np.random.default_rng(seed)
+        start, end = np.asarray(start, float), np.asarray(end, float)
+        axis = end - start
+        unit = axis / np.linalg.norm(axis)
+
+        across = np.cross(unit, np.asarray(bow_direction, float))
+        across /= np.linalg.norm(across)
+        bow_unit = np.cross(across, unit)
+
+        t = np.linspace(0, 1, n_points)[:, None]
+        core = start + t * axis + bow * np.sin(np.pi * t) * bow_unit
+        offsets = spread * rng.normal(size=(n_streamlines, 2))
+        bundles.append(
+            [
+                (core + off[0] * across + off[1] * bow_unit).astype(np.float32)
+                for off in offsets
+            ]
+        )
+    return bundles
+
+
+def _build_tract_dataset(tract_alpha: float = 1.0) -> cortex.Dataset:
+    """A Vertex overlay plus a synthetic tractogram, for the tract suite.
+
+    The overlay is the same ``Vertex`` the other suites render, so a change in
+    the tract references that is really a change in surface rendering shows up
+    in those suites too. The streamlines are ``_tract_bundles``, grouped one
+    group per bundle.
+    """
+    bundles = _tract_bundles()
+    streamlines, groups, start = [], {}, 0
+    for name, lines in zip(["transverse", "longitudinal", "vertical"], bundles):
+        groups[name] = np.arange(start, start + len(lines))
+        streamlines.extend(lines)
+        start += len(lines)
+
+    tract = cortex.Tractogram.from_streamlines(
+        streamlines, subj, groups=groups, alpha=tract_alpha
+    )
+    return cortex.Dataset(overlay=_build_alpha_dataview("Vertex"), tracts=tract)
+
+
+@pytest.mark.parametrize("tag,opacity,tract_alpha", TRACT_SURFACE_OPACITIES)
+def test_visual_comparison_tracts(tmp_path, tag, opacity, tract_alpha):
+    """Render synthetic streamlines over the fiducial surface and assert they match.
+
+    Three renders covering the regimes the streamline renderer has: occluded by
+    an opaque mesh, blended with a transparent one, and translucent themselves
+    behind a transparent one. All are webgl-only -- quickflat draws flatmaps and
+    has no notion of a streamline -- so there is no cross-renderer leg.
+
+    The third is the one that earns its keep. Translucent streamlines have to
+    occlude each other by depth exactly as opaque ones do; when they do not,
+    the bundle that sits last in the geometry paints over the ones in front of
+    it and the picture reorders itself as the opacity slider moves, which no
+    tolerance on the other two renders would catch.
+    """
+    from cortex.export.save_views import unfold_view_params
+
+    surface = {
+        **unfold_view_params["fiducial"],
+        "surface.{subject}.surface_opacity": opacity,
+    }
+    failures = _render_and_check_webgl_only(
+        f"tracts_{tag}",
+        _build_tract_dataset(tract_alpha),
+        surface,
+        TRACT_ANGLE,
+        TRACT_REFERENCE_DIR,
+        tmp_path,
     )
     _assert_no_failures(failures, tmp_path)
