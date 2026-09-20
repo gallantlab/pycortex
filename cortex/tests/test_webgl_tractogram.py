@@ -6,12 +6,13 @@ when playwright + Chromium are available, the javascript side
 """
 
 import os
+import re
 
 import numpy as np
 import pytest
 
 import cortex
-from cortex.webgl.data import Package
+from cortex.webgl.data import Package, _tract_id
 
 from .testing_utils import has_playwright
 from .test_tractogram import _make_tractogram, _overlapping_groups
@@ -86,6 +87,55 @@ def test_package_tract_metadata_and_buffers():
         pos += len(idx)
 
 
+def test_tract_id_is_url_and_path_safe():
+    # Ordinary names travel unchanged, so urls and file names stay readable.
+    assert _tract_id("af") == "af"
+    assert _tract_id("AF_left-1") == "AF_left-1"
+
+    # Anything else is slugified: a dataset key is an arbitrary string, and
+    # both the "/tract/{id}/{buf}/" urls and the "tracts/{id}_{buf}.bin"
+    # files would otherwise take a "/" or a ".." literally.
+    for name in ["../escape", "a/b", "tract name", "#frag?q", ".."]:
+        ident = _tract_id(name)
+        assert re.match(r"^[A-Za-z0-9_-]+$", ident), ident
+        assert ident == _tract_id(name), "ids must be deterministic"
+
+    # Names that slugify alike stay distinct.
+    assert _tract_id("a/b") != _tract_id("a b")
+    # ... and a very long key cannot produce an unopenable file name.
+    assert len(_tract_id("x" * 500)) <= 64
+
+
+def test_package_tract_ids_used_in_urls():
+    tract = _make_tractogram(n_streamlines=4, n_points=10)
+    name = "../escape"
+    pkg = Package(cortex.Dataset(**{name: tract}), require_brains=False)
+
+    ident = pkg.tract_ids[name]
+    assert ".." not in ident and "/" not in ident
+    # The metadata is still keyed by the name the user gave; only the
+    # transport urls use the id.
+    urls = pkg.metadata()["tracts"][name]["urls"]
+    assert urls["points"] == "/tract/%s/points/" % ident
+
+
+def test_make_static_sanitizes_tract_names(tmp_path):
+    # A dataset key is an arbitrary string, and it used to be spliced
+    # straight into the buffer file names: "../../escape" would have written
+    # two directories up from `outpath`.
+    tract = _make_tractogram(n_streamlines=4, n_points=10)
+    ds = cortex.Dataset(**{"overlay": _vertex(), "../../escape": tract})
+    outpath = tmp_path / "static"
+    cortex.webgl.make_static(str(outpath), ds, recache=False)
+
+    written = sorted(os.listdir(str(outpath / "tracts")))
+    assert len(written) == 4
+    for fname in written:
+        assert ".." not in fname
+    # Nothing landed next to (rather than inside) the output directory.
+    assert sorted(os.listdir(str(tmp_path))) == ["static"]
+
+
 def test_package_empty_groups_gives_empty_buffer():
     tract = _make_tractogram(n_streamlines=4, n_points=10, groups={})
     pkg = Package(cortex.Dataset(af=tract), require_brains=False)
@@ -132,6 +182,22 @@ def test_package_tractogram_only_raises():
     assert "af" in pkg.tracts
 
 
+def test_package_tract_without_a_dataview_of_its_subject_raises():
+    # A tractogram is only drawn while a dataview of its own subject is
+    # active, so one whose subject has no dataview at all would never show.
+    tract = _make_tractogram(n_streamlines=4, n_points=10)
+    tract.subject = "someone_else"
+    with pytest.raises(ValueError, match="someone_else"):
+        Package(cortex.Dataset(overlay=_vertex(), af=tract))
+
+    # Not the boot path's problem when the viewer is already up, though: the
+    # caller there gets the "unknown subject" check in JSMixer.addData.
+    pkg = Package(
+        cortex.Dataset(overlay=_vertex(), af=tract), require_brains=False
+    )
+    assert pkg.tract_meta["af"]["subject"] == "someone_else"
+
+
 # ---------------------------------------------------------------------------
 # make_static
 # ---------------------------------------------------------------------------
@@ -175,20 +241,15 @@ def test_tractogram_renders_in_headless_viewer():
         # `handle` is a JSProxy rooted at window.viewer: attribute access
         # queries the live javascript object graph over the websocket.
         # The tracts load asynchronously and deliberately do not block
-        # viewer.loaded, so poll until the geometry has been built
-        # (Tractogram.n_points stays 0 until then).
-        import time
-
-        deadline = time.monotonic() + 30
-        n_points = 0
-        while time.monotonic() < deadline:
-            n_points = handle.tracts.af.n_points
-            if n_points:
-                break
-            time.sleep(0.2)
+        # viewer.loaded, but headless_viewer waits for viewer.tractsState()
+        # on top of it -- so the geometry is already built here, with no
+        # polling of our own (Tractogram.n_points stays 0 until then).
+        assert handle.send(
+            method="run", params=["window.viewer.tractsState", []]
+        ) == ["resolved"]
 
         n, m = tract.n_points, tract.n_streamlines
-        assert n_points == n
+        assert handle.tracts.af.n_points == n
         assert handle.tracts.af.n_streamlines == m
         assert handle.tracts.af.object.visible is True
         # Controls now live in a dedicated DOM panel (#tracts) instead of a
@@ -240,3 +301,106 @@ def test_tractogram_renders_in_headless_viewer():
         assert handle.tracts.af.setOpacity()[0] == 1
         handle.tracts.af.setOpacity("")
         assert handle.tracts.af.setOpacity()[0] == 1
+
+        # A tractogram belongs to one subject's scanner space, so it steps
+        # aside (lines and panel entry both) while another subject's dataview
+        # is the active one -- there is only one subject in the test
+        # filestore, so move the tractogram to a fictitious one instead of
+        # building a two-subject dataset.
+        handle.send(
+            method="set",
+            params=["window.viewer.tracts.af.meta.subject", "not_" + subj],
+        )
+        handle.send(method="run", params=["window.viewer._updateTractSubjects", []])
+        assert handle.tracts.af.object.visible is False
+        assert handle.tracts.af.setSubjectShown()[0] is False
+        handle.send(
+            method="set", params=["window.viewer.tracts.af.meta.subject", subj]
+        )
+        handle.send(method="run", params=["window.viewer._updateTractSubjects", []])
+        assert handle.tracts.af.object.visible is True
+
+
+@pytest.mark.skipif(
+    not has_playwright, reason="playwright + Chromium not available"
+)
+def test_tractogram_index_modes_in_headless_viewer():
+    """The three element-index strategies, and the fallback's geometry.
+
+    Which one a geometry gets depends on its size and on whether the GL
+    context has OES_element_index_uint, so a small tractogram in one browser
+    only ever exercises one of them. `mriview.indexModeFor` is the choice on
+    its own (checkable with plain arguments), and `forceIndexMode` pins it,
+    so the duplicated-vertex fallback can be built and compared against the
+    indexed geometry it replaces without uploading 65536+ points.
+    """
+    ds, tract = _dataset()
+    n, m = tract.n_points, tract.n_streamlines
+
+    def run(func, *args):
+        return handle.send(method="run", params=[func, list(args)])[0]
+
+    with cortex.export.headless_viewer(ds, viewer_params={}) as handle:
+        # Small geometries stay on uint16 whatever the extension says; above
+        # 65535 vertices the extension decides between a 32-bit index and
+        # duplicating the endpoints of every segment.
+        assert run("window.mriview.indexModeFor", 100, True) == "uint16"
+        assert run("window.mriview.indexModeFor", 100, False) == "uint16"
+        assert run("window.mriview.indexModeFor", 65535, False) == "uint16"
+        assert run("window.mriview.indexModeFor", 65536, True) == "uint32"
+        assert run("window.mriview.indexModeFor", 65536, False) == "duplicate"
+
+        af = handle.tracts.af
+        assert af.indexType == "uint16"
+        indexed_segments = af.n_segments
+        assert indexed_segments == n - m
+        assert af.n_vertices == n
+        # Endpoints and colors of a segment, as they reach the GPU.
+        indexed = run("window.viewer.tracts.af.segment", 3)
+
+        # Same geometry without an element index: the endpoints of every
+        # segment are duplicated instead, so the vertex count doubles per
+        # segment while the drawn segments -- and their positions and
+        # colors -- must come out identical.
+        handle.send(
+            method="set",
+            params=["window.viewer.tracts.af.forceIndexMode", "duplicate"],
+        )
+        handle.tracts.af._rebuildGeometry()
+        assert handle.tracts.af.indexType == "duplicate"
+        assert handle.tracts.af.n_segments == indexed_segments
+        assert handle.tracts.af.n_vertices == 2 * indexed_segments
+        assert run("window.viewer.tracts.af.segment", 3) == indexed
+
+        # ... and back, so the fallback is not left pinned on the viewer.
+        handle.send(
+            method="set",
+            params=["window.viewer.tracts.af.forceIndexMode", None],
+        )
+        handle.tracts.af._rebuildGeometry()
+        assert handle.tracts.af.indexType == "uint16"
+        assert handle.tracts.af.n_vertices == n
+
+
+@pytest.mark.skipif(
+    not has_playwright, reason="playwright + Chromium not available"
+)
+def test_tractogram_named_like_an_object_prototype_member():
+    """A dataset key is an arbitrary string, including "constructor".
+
+    The viewer keys its tractograms by name in a plain object, so a name that
+    collides with an inherited Object.prototype member used to look like a
+    tractogram that was already loaded -- addTracts would then "replace" it
+    and rmTracts would trip over the inherited value.
+    """
+    tract = _make_tractogram(n_streamlines=4, n_points=10)
+    ds = cortex.Dataset(overlay=_vertex(), constructor=tract)
+
+    with cortex.export.headless_viewer(ds, viewer_params={}) as handle:
+        assert handle.send(
+            method="run", params=["window.viewer.hasTract", ["constructor"]]
+        ) == [True]
+        assert handle.send(
+            method="run", params=["window.viewer.hasTract", ["toString"]]
+        ) == [False]
+        assert handle.tracts.constructor.n_points == tract.n_points
