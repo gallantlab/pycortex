@@ -154,9 +154,11 @@ with a visibility checkbox, its name, and a toggle that expands the entry to
 reveal an opacity slider with a value box beside it for typing an exact
 number, and, when the tractogram has groups, a *bundles*
 section: an ``all`` / ``none`` pair of links and one checkbox per group,
-labeled with its streamline count, in the order the groups were given. A
-streamline is drawn while it belongs to at least one checked group; streamlines
-in no group at all are covered by a trailing ``(ungrouped)`` checkbox.
+labeled with its streamline count. Bundles are listed alphabetically rather
+than in the order the file gives them, with digit runs compared as numbers so
+that ``CST_2`` precedes ``CST_10``. A streamline is drawn while it belongs to
+at least one checked group; streamlines in no group at all are covered by a
+trailing ``(ungrouped)`` checkbox, which always sorts last.
 
 Streamlines are hidden as soon as the surface starts to inflate or flatten,
 since their coordinates only mean anything against the folded surface.
@@ -177,7 +179,9 @@ Lowering a tractogram's own opacity fades it toward whatever is behind it, but
 does not let you see one streamline through another: streamlines occlude each
 other by depth at every opacity, so which bundle looks nearest never changes as
 the slider moves. Showing a crossing bundle that is hidden behind another means
-unchecking the one in front, not fading it.
+unchecking the one in front, not fading it. At an opacity of zero the
+tractogram disappears completely, rather than leaving streamline-shaped
+cut-outs in a translucent surface.
 
 
 Large tractograms
