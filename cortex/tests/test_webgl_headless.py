@@ -989,6 +989,27 @@ def test_ortho_views_split_the_canvas():
             assert page.locator("#brain").screenshot() != top_left, (
                 "the slice views did not redraw when the planes moved")
 
+            # a pick in the 3D view takes the slice views to that point and
+            # marks it in each of them
+            box = page.locator("#brain").bounding_box()
+            page.mouse.click(box["x"] + box["width"] * 0.76, box["y"] + box["height"] * 0.76)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursorAt === true"), "nothing was picked"
+            picked = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert picked != after, "the slice views did not go to the picked point"
+            # the crosshair stands where the slices were taken to, which is
+            # the point that was picked
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in picked], (
+                "the crosshair is not where the slices are")
+            assert page.evaluate("window.viewer._cursor.visible") is False, (
+                "the crosshair is drawn in the 3D view, which has the picker's own marker")
+
             # and the 3D view comes back on its own
             page.evaluate("window.viewer.ui.set('sliceplanes.ortho_views', false)")
             page.wait_for_timeout(1500)

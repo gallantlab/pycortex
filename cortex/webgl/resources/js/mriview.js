@@ -977,11 +977,23 @@ var mriview = (function(module) {
         // Cache last pick position so setData() can refresh the picked
         // indicator for the newly-active dataset at the same screen point.
         this._lastPickEvt = {x: evt.x, y: evt.y};
+        var x = evt.x, y = evt.y;
+        if (this._sliceviews) {
+            // The picker draws the 3D view over the whole canvas, while the
+            // split shows it in the corner. Both have the canvas's aspect, so
+            // they are the same image at half the scale and a click in that
+            // corner lands here; a click in a slice view picks nothing.
+            if (x < this.width / 2 || y < this.height / 2)
+                return;
+            x = (x - this.width / 2) * 2;
+            y = (y - this.height / 2) * 2;
+        }
         let coords
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].pick)
-                coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+                coords = this.surfs[i].pick(this.renderer, this.camera, x, y);
         }
+        this.setCursor(coords);
         // set the picked value display
         // Length check first so we don't index data[0] on an empty array.
         // Skip RGB, then ensure all child buffers have populated.
@@ -1527,6 +1539,7 @@ var mriview = (function(module) {
             return;
 
         var scene = this.views[0].scene;
+        scene.add(this._cursorObject());
         var views = [];
         if (this._sliceviews) {
             for (var i = 0; i < SLICE_VIEWS.length; i++) {
@@ -1538,6 +1551,7 @@ var mriview = (function(module) {
                     camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 10000),
                 };
                 view.prepare = this._prepareSlice.bind(this, view);
+                view.overlay = this._drawCursor.bind(this, view);
                 views.push(view);
             }
             var solid = {left: 0.5, bottom: 0, width: 0.5, height: 0.5, scene: scene, surf: 0};
@@ -1555,6 +1569,61 @@ var mriview = (function(module) {
         this.schedule();
     };
 
+    //The crosshair that marks the picked point in the slice views. It is
+    //not the picker's own marker, which rides with the surface as it
+    //unfolds: this one stays where the point is in the anatomy, which is
+    //where the slices cut it.
+    module.Viewer.prototype._cursorObject = function() {
+        if (this._cursor === undefined) {
+            var far = 500;
+            //two lines, turned into the plane of whichever view draws them
+            var lines = new THREE.Geometry();
+            lines.vertices.push(new THREE.Vector3(-far, 0, 0), new THREE.Vector3(far, 0, 0),
+                                new THREE.Vector3(0, -far, 0), new THREE.Vector3(0, far, 0));
+            var material = new THREE.LineBasicMaterial({
+                color: 0x44ccff, depthTest: false, depthWrite: false});
+            this._cursor = new THREE.Line(lines, material, THREE.LinePieces);
+            this._cursor.frustumCulled = false;
+            this._cursor.visible = false;
+            this._cursorAt = false;
+        }
+        return this._cursor;
+    };
+
+    //Puts the crosshair on a picked point and takes the slice views to the
+    //slices through it, so that the four views agree on where it is. Picking
+    //nothing leaves them where they are.
+    module.Viewer.prototype.setCursor = function(coords) {
+        var cursor = this._cursorObject();
+        var voxel = (coords === undefined || coords === -1) ? undefined : coords.voxel;
+        var xfm = (this.active === null || this.active === undefined)
+                ? undefined : this.active.uniforms.volxfm;
+        //nothing was picked, or the data is on the vertices and has no
+        //volume to point into
+        if (voxel === undefined || !isFinite(voxel.x) || !isFinite(voxel.y) ||
+            !isFinite(voxel.z) || xfm === undefined || xfm.value[0] === undefined) {
+            this._cursorAt = false;
+            cursor.visible = false;
+            this.schedule();
+            return;
+        }
+        var toWorld = new THREE.Matrix4().getInverse(xfm.value[0]);
+        cursor.position.copy(voxel.clone().applyMatrix4(toWorld));
+        this._cursorAt = true;
+
+        //The slice views take the slices the point is on, so that it is on
+        //screen in each of them. The 3D view on its own leaves its planes
+        //where they were put.
+        if (this._sliceviews) {
+            var slices = {x: voxel.x, y: voxel.y, z: voxel.z};
+            for (var name in this.sliceplanes) {
+                if (this.sliceplanes[name].mesh !== undefined)
+                    this.sliceplanes[name].update(slices[name]);
+            }
+        }
+        this.schedule();
+    };
+
     //Draws one slice view: the plane of this view alone, seen from straight
     //down its normal and framed on the slice it cuts. Data that has no
     //volume to slice, such as data on the vertices, leaves the surface in
@@ -1563,6 +1632,9 @@ var mriview = (function(module) {
         var plane = view.plane;
         var sliced = plane.mesh !== undefined && plane.geometry !== undefined;
         this.root.visible = !sliced;
+        //the 3D view has the picker's own marker, so this one is for these
+        var cursor = this._cursorObject();
+        cursor.visible = this._cursorAt === true;
         for (var name in this.sliceplanes) {
             var mesh = this.sliceplanes[name].mesh;
             if (mesh !== undefined)
@@ -1597,8 +1669,8 @@ var mriview = (function(module) {
                ? edges[0] : edges[1];
             if (up.getComponent(upAxis) < 0)
                 up.negate();
-            right = new THREE.Vector3().crossVectors(look, up).normalize();
-            up.crossVectors(right, look).normalize();
+            right = new THREE.Vector3().crossVectors(up, look).normalize();
+            up.crossVectors(look, right).normalize();
 
             //the quad of the slice, which is centered on the object itself
             for (var v = 0; v < corners.length; v++) {
@@ -1612,13 +1684,21 @@ var mriview = (function(module) {
                 return;
             look.setComponent(view.axis, 1);
             up = view.axis == 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
-            right = new THREE.Vector3().crossVectors(look, up).normalize();
+            right = new THREE.Vector3().crossVectors(up, look).normalize();
             var size = box.size();
             halfUp = Math.abs(size.dot(up)) / 2;
             halfRight = Math.abs(size.dot(right)) / 2;
             center = box.center();
         }
         this._aimOrtho(view.camera, center, look, up, halfRight, halfUp, width / height);
+        //the crosshair lies in the plane of the view that draws it, so its
+        //two lines cross at the point rather than running off at an angle
+        var basis = new THREE.Matrix4();
+        basis.set(right.x, up.x, look.x, 0,
+                  right.y, up.y, look.y, 0,
+                  right.z, up.z, look.z, 0,
+                  0, 0, 0, 1);
+        cursor.quaternion.setFromRotationMatrix(basis);
 
         //The lights ride with the camera the controls move, so a view drawn
         //with another one would be lit from wherever that camera happens to
@@ -1644,6 +1724,24 @@ var mriview = (function(module) {
         camera.updateMatrixWorld();
     };
 
+    //The slice planes are transparent, so they are drawn over everything
+    //opaque, the crosshair included. It goes back on top in a pass of its
+    //own, over the view that was just drawn.
+    module.Viewer.prototype._drawCursor = function(view, camera) {
+        var cursor = this._cursorObject();
+        if (!cursor.visible)
+            return;
+        var plane = view.plane;
+        var shown = plane.mesh !== undefined && plane.mesh.visible;
+        if (shown)
+            plane.mesh.visible = false;
+        this.renderer.autoClear = false;
+        this.renderer.render(view.scene, camera);
+        this.renderer.autoClear = true;
+        if (shown)
+            plane.mesh.visible = true;
+    };
+
     //Puts the surfaces and the planes back the way the 3D view shows them
     module.Viewer.prototype._showAllPlanes = function() {
         if (this._camQuat !== undefined) {
@@ -1651,6 +1749,7 @@ var mriview = (function(module) {
             this._camQuat = undefined;
         }
         this.root.visible = true;
+        this._cursorObject().visible = false;
         for (var name in this.sliceplanes) {
             var plane = this.sliceplanes[name];
             if (plane.mesh !== undefined)
