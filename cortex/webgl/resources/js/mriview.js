@@ -1539,9 +1539,15 @@ var mriview = (function(module) {
     module.Viewer.prototype.setSliceViews = function(val) {
         if (val === undefined)
             return this._sliceviews;
+        //A point picked in the 3D view on its own left the planes alone, so
+        //the slices are taken to it as the views open; once they are open a
+        //pick moves them, and the slice keys are free to move them again.
+        var opening = !!val && this._sliceviews !== true;
         this._sliceviews = !!val;
         if (this.views.length == 0)
             return;
+        if (opening)
+            this._slicesToCursor();
 
         var scene = this.views[0].scene;
         this._cursorObject();
@@ -1630,18 +1636,24 @@ var mriview = (function(module) {
         var toWorld = new THREE.Matrix4().getInverse(xfm.value[0]);
         cursor.position.copy(voxel.clone().applyMatrix4(toWorld));
         this._cursorAt = true;
+        this._cursorVoxel = voxel.clone();
 
         //The slice views take the slices the point is on, so that it is on
         //screen in each of them. The 3D view on its own leaves its planes
-        //where they were put.
-        if (this._sliceviews) {
-            var slices = {x: voxel.x, y: voxel.y, z: voxel.z};
-            for (var name in this.sliceplanes) {
-                if (this.sliceplanes[name].mesh !== undefined)
-                    this.sliceplanes[name].update(slices[name]);
-            }
-        }
+        //where they were put, and is given them when it is split.
+        if (this._sliceviews)
+            this._slicesToCursor();
         this.schedule();
+    };
+    module.Viewer.prototype._slicesToCursor = function() {
+        var voxel = this._cursorVoxel;
+        if (this._cursorAt !== true || voxel === undefined)
+            return;
+        var slices = {x: voxel.x, y: voxel.y, z: voxel.z};
+        for (var name in this.sliceplanes) {
+            if (this.sliceplanes[name].mesh !== undefined)
+                this.sliceplanes[name].update(slices[name]);
+        }
     };
 
     //Draws one slice view: the plane of this view alone, seen from straight

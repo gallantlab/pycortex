@@ -1066,6 +1066,32 @@ def test_ortho_views_split_the_canvas():
             assert page.evaluate("window.viewer._cursor.visible") is False
             assert page.evaluate(
                 "window.viewer.surfs[0].surf.picker.markers.left.visible") is True
+
+            # a point picked with the 3D view on its own leaves the planes
+            # where they are, and the slice views open on it
+            was = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.45, box["y"] + box["height"] * 0.45)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != was, (
+                "the pick in the 3D view landed on nothing")
+            alone = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in alone] == [round(v) for v in moved], (
+                "the 3D view on its own moved the slices")
+            page.keyboard.press("v")
+            page.wait_for_timeout(2000)
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            opened = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in opened] == [round(v) for v in voxel], (
+                "the slice views opened on slices the crosshair is not on")
+            assert [round(v) for v in opened] != [round(v) for v in alone], (
+                "the planes were already there, so nothing was shown by this")
             assert not errors, errors
             browser.close()
     finally:
