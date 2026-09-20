@@ -15,6 +15,7 @@ dev = [
 ]
 test = [
     "pycortex[headless]",
+    "pycortex[tractography]",
     # The visual-regression tests compare against renders from
     # these builds. Both are unpinned for users.
     # See cortex/tests/reference_images/README.md
@@ -36,6 +37,9 @@ types = [
 [project.optional-dependencies]
 headless = [
     "playwright>=1.58.0"
+]
+tractography = [
+    "trx-python"
 ]
 
 [tool.setuptools_scm]
@@ -60,5 +64,11 @@ module = [
     "progressbar",
     "scikits.sparse.cholmod",
     "tvtk.api",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "trx.*",
 ]
 ignore_missing_imports = true
