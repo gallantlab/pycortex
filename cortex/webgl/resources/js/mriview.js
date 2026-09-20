@@ -1346,9 +1346,9 @@ var mriview = (function(module) {
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
-            "ortho views": {action:[this, "setSliceViews"], toggle:true},
+            "Show ortho views": {action:[this, "setSliceViews"], toggle:true},
             orthoToggle: {action: this.toggleSliceViews.bind(this), key: 'v', hidden: true,
-                          help:'Three slice views beside the 3D one'},
+                          help:'Show ortho views along with 3D'},
             x: {action:[this.sliceplanes.x, "setVisible"]},
             xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true, help:'Toggle X slice'},
             y: {action:[this.sliceplanes.y, "setVisible"]},
