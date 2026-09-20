@@ -84,11 +84,13 @@ The panel on the right holds the controls.
 ``display`` chooses what the page shows, with three settings (``m`` steps through them).
 ``3 ortho + 3D slices`` is the display described above, where the fourth panel holds the three slice planes in space.
 ``3 ortho + 3D brain`` keeps the slice views as they are and turns the bottom right corner into the viewer, so the mesh can be nudged in the slices while the data on the surface follows.
-``data on the surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one, where ``unfold`` inflates it and flattens it and ``pivot`` swings its halves apart.
+``data on the surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one.
+Both draw the same surface, so it carries the same unfolding and depth from one to the other: ``unfold`` inflates it and flattens it, ``pivot`` swings its halves apart, and ``r``, ``i`` and ``f`` jump to the folded surface, the inflated one and the flatmap as they do in the viewer.
 Both of the latter paint the reference data on the surface through the alignment as it currently stands, saved or not, and redraw as you move the mesh, so an alignment can be judged from the pattern the data makes on the cortex before committing it.
 Every control stays available in all three.
 ``image`` sets the colormap, its range (``vmin`` and ``vmax``), ``brightness``, ``contrast`` and ``gamma``, and flips the colormap. The colormap dropdown draws a strip of each colormap beside its name.
-``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, the cortical ``depth`` the data is painted at, and the ``unfold`` and ``pivot`` of the data view.
+``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, and the ``unfold`` and ``pivot`` of the surface that carries the data.
+``depth`` takes that surface through the cortex, from the pial surface (0) to the white matter (1), moving both the surface and the point the volume is read at.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
 Below the controls, ``History`` lists every edit since the page opened, newest at the top.

@@ -45,10 +45,10 @@ var aligner = (function(module) {
     var DISPLAY_ORDER = [DISPLAY.slices, DISPLAY.brain, DISPLAY.surface];
     module.DISPLAY = DISPLAY;
 
-    //What one view draws: the surfaces outlined on the slices, the data on
-    //the surfaces where they sit in the volume, or the data on the surfaces
-    //in the anatomy's own frame, where they inflate and flatten
-    var OUTLINE = 0, PROJECTED = 1, MORPHED = 2;
+    //What one view draws: the surfaces outlined on the slices, or the data
+    //on the surfaces in the anatomy's own frame, where they inflate and
+    //flatten
+    var OUTLINE = 0, MORPHED = 1;
 
     //Millimeters of the flatmap per unit of its 2D coordinates, as in
     //mriview_surface.js, so that a flattened surface comes out brain-sized
@@ -330,7 +330,9 @@ var aligner = (function(module) {
             flat:  this._makeVolumeMaterial({lights: false, depthTest: false}),
             solid: this._makeVolumeMaterial({lights: false, depthTest: true}),
         };
-        this.projectedMaterial = this._makeVolumeMaterial({lights: true, depthmix: true});
+        //Where through the cortex the surface that carries the data is
+        //taken, from the pial surface (0) to the white matter (1)
+        this.depthUniform = {type:'f', value: 0.5};
         this.outlineMaterials = [this._makeMeshMaterial(0, true), this._makeMeshMaterial(1, true)];
         this.surfaceMaterials = [this._makeMeshMaterial(0, false), this._makeMeshMaterial(1, false)];
 
@@ -597,10 +599,6 @@ var aligner = (function(module) {
                 hemi.surfaces.push(surf);
                 this.brain.add(surf);
             }
-            hemi.projected = new THREE.Mesh(geom, this.projectedMaterial);
-            hemi.projected.frustumCulled = false;
-            this.brain.add(hemi.projected);
-
             this._buildMorph(hemi, i, names, hasFlat);
             this.hemis.push(hemi);
         }
@@ -616,17 +614,17 @@ var aligner = (function(module) {
         this._checkReady();
     };
 
-    //The material of the data view. It paints the volume on the surfaces
-    //where the alignment being edited puts them in it, while they are drawn
-    //in the anatomy's own frame, so that editing the alignment moves the
-    //colors over a surface that stays where it is.
+    //The material of the surface that carries the data, in the corner of the
+    //four panels and in the data view alike. It paints the volume on the
+    //surfaces where the alignment being edited puts them in it, while they
+    //are drawn in the anatomy's own frame, so that editing the alignment
+    //moves the colors over a surface that stays where it is.
     module.Aligner.prototype._buildMorphMaterial = function(morphs) {
         this.morphUniforms = {surfmix: {type:'f', value: 0}};
         var material = this._makeVolumeMaterial({lights: true, depthmix: true, morphs: morphs});
         material.uniforms.volxfm = {type:'m4', value: new THREE.Matrix4()};
         material.uniforms.surfmix = this.morphUniforms.surfmix;
-        //one cortical depth for both ways of painting the data
-        material.uniforms.depth = this.projectedMaterial.uniforms.depth;
+        material.uniforms.depth = this.depthUniform;
         this.morphMaterial = material;
     };
 
@@ -1344,11 +1342,14 @@ var aligner = (function(module) {
         this._showSurf[1] = show;
         this.schedule();
     };
-    //Cortical depth the data is painted at, from pial (0) to white matter (1)
+    //Where through the cortex the surface that carries the data is taken,
+    //from the pial surface (0) to the white matter (1). It moves that
+    //surface as well as the point the volume is read at, so the corner of
+    //the four panels and the data view show the same cortical depth.
     module.Aligner.prototype.setDepth = function(value) {
         if (value === undefined)
-            return this.projectedMaterial.uniforms.depth.value;
-        this.projectedMaterial.uniforms.depth.value = value;
+            return this.depthUniform.value;
+        this.depthUniform.value = value;
         this.schedule();
     };
     module.Aligner.prototype.setTranslateStep = function(value) {
@@ -1404,11 +1405,12 @@ var aligner = (function(module) {
         this._display = name;
         var single = name == DISPLAY.surface;
         $(this.object).find("#aligner").toggleClass("single", single);
-        //the surfaces stand in the anatomy's own frame in the data view and
-        //in the volume's in the other two, so the camera is pointed at
-        //whichever of them is on screen
-        this.controls.setMix(single ? this._flatness() : 0);
-        this._frameFor(single ? "anatomical" : "world");
+        //the surface stands in the anatomy's own frame, wherever it is drawn,
+        //and the slice planes in the volume's, so the camera is pointed at
+        //whichever of them the 3D view is showing
+        var surface = this._showsSurface();
+        this.controls.setMix(surface ? this._flatness() : 0);
+        this._frameFor(surface ? "anatomical" : "world");
         this._applyIndex();
         this.resize();
     };
@@ -1417,12 +1419,19 @@ var aligner = (function(module) {
         this.setDisplay(DISPLAY_ORDER[next]);
     };
 
+    //Whether the 3D view is showing the surface with the data on it, which
+    //is the one that unfolds. The corner of the four panels and the data
+    //view draw the same surface, so it carries the same state in both.
+    module.Aligner.prototype._showsSurface = function() {
+        return this._display == DISPLAY.brain || this._display == DISPLAY.surface;
+    };
+
     //What one view draws
     module.Aligner.prototype._viewMode = function(view) {
         if (this._display == DISPLAY.surface)
             return MORPHED;
         if (this._display == DISPLAY.brain && !view.is2d)
-            return PROJECTED;
+            return MORPHED;
         return OUTLINE;
     };
 
@@ -1497,9 +1506,19 @@ var aligner = (function(module) {
             uniforms.emissive.value.set(ambient, ambient, ambient);
         }
         //the camera swings round to face the flatmap as it opens
-        if (this._display == DISPLAY.surface)
+        if (this._showsSurface())
             this.controls.setMix(flat);
         this.schedule();
+    };
+
+    //The unfolding that lands on one of the surfaces the pack carries, or
+    //null when it has no such surface
+    module.Aligner.prototype._mixFor = function(name) {
+        var names = this.surfNames;
+        if (names === undefined || names.length < 2)
+            return null;
+        var index = names.indexOf(name);
+        return index < 0 ? null : index / (names.length - 1);
     };
 
     //How much of the flatmap is showing, which is what the medial wall and
@@ -1532,7 +1551,7 @@ var aligner = (function(module) {
     //while one is showing. The surfaces of the other displays share these
     //geometries, so they are given the whole mesh back on the way out.
     module.Aligner.prototype._applyIndex = function() {
-        var cull = this._display == DISPLAY.surface && this._flatness() > 0;
+        var cull = this._showsSurface() && this._flatness() > 0;
         if (cull === this._culled)
             return;
         this._culled = cull;
@@ -1612,7 +1631,6 @@ var aligner = (function(module) {
                 hemi.outlines[s].visible = lines && outline && shown;
                 hemi.surfaces[s].visible = lines && surfaces && shown;
             }
-            hemi.projected.visible = lines && mode == PROJECTED;
             if (hemi.morph !== undefined)
                 hemi.morph.visible = lines && mode == MORPHED;
         }
@@ -1851,6 +1869,18 @@ var aligner = (function(module) {
             return;
         if (key == "m" || key == "M") {
             this.toggleDisplay();
+            event.preventDefault();
+            return;
+        }
+        //The keys the viewer unfolds a surface with: the anatomical surface,
+        //the inflated one and the flatmap. They act wherever the surface is
+        //shown, so the corner of the four panels follows them too.
+        var unfold = {r: "anatomical", i: "inflated", f: "flat"}[key.toLowerCase()];
+        if (unfold !== undefined) {
+            var mix = this._mixFor(unfold);
+            //the menu wraps this setter, so the control follows the key
+            if (mix !== null)
+                this.setMix(mix);
             event.preventDefault();
             return;
         }
