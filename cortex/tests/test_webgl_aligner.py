@@ -465,6 +465,28 @@ def test_server_answers_for_this_computer_only(server):
         assert "aligner.Aligner" in html, "the page did not open as %s" % name
 
 
+def test_the_link_names_the_machine(server):
+    """The link names this computer, which is the name a port forward from
+    another machine is set up under, and falls back to the loopback name when
+    the server is not on an address that name leads to."""
+    import socket
+
+    from cortex.webgl import serve
+
+    assert server.host == socket.gethostname()
+    assert "aligner.Aligner" in _open(
+        "http://%s:%d/aligner.html" % (server.host, server.port)).decode()
+
+    try:
+        elsewhere = serve.WebApp([], 0, address="127.0.0.2")
+    except OSError:
+        return  # the spare loopback address is not routed here
+    try:
+        assert elsewhere.host == serve.LOOPBACK
+    finally:
+        elsewhere.stop()
+
+
 def test_every_name_of_the_computer_gets_a_socket_on_one_port():
     """Each name is listened for, one that another name already covers is
     bound once, and one that does not resolve is passed over."""
@@ -600,8 +622,9 @@ def test_aligner_in_headless_browser(recorder):
         # that alignment back
         history = handle._call("getHistory")
         assert [entry["kind"] for entry in history] == ["loaded", "translate", "rotate"]
-        assert history[1]["label"].endswith("mm")
-        assert history[2]["label"].endswith("°")
+        # each edit is named in the terms it was made in
+        assert history[1]["label"] == "2.00 mm right, 3.00 mm posterior, 1.50 mm superior"
+        assert history[2]["label"] == "10.00° CW in axial"
         handle._call("selectHistory", 0)
         assert np.allclose(handle.get_xfm(), coord0, atol=1e-3)
         handle._call("selectHistory", 1)
@@ -759,9 +782,10 @@ def test_displays_show_the_surface_and_follow_the_transform():
 @pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
 @pytest.mark.timeout(400)
 def test_history_panel_lists_the_edits_and_goes_back_to_one():
-    """The panel keeps a row per edit since the page opened, and clicking one
-    puts that alignment back. Closing the page with an edit on it asks the
-    browser to confirm, and a saved one does not.
+    """The panel keeps a row per edit since the page opened, newest first,
+    each named in the terms the edit was made in, and clicking one puts that
+    alignment back. Closing the page with an edit on it asks the browser to
+    confirm, and a saved one does not.
     """
     from playwright.sync_api import sync_playwright
 
@@ -792,21 +816,24 @@ def test_history_panel_lists_the_edits_and_goes_back_to_one():
             page.evaluate("window.viewer.translate([4, 0, 0])")
             page.evaluate("window.viewer.rotate([0, 0, 1], 5)")
             listed = rows()
-            assert [row[0] for row in listed] == ["loaded", "translate", "rotate"]
-            assert listed[1][1] == "4.00 mm"
-            assert listed[2][1].endswith("°")
-            assert [row[2] for row in listed] == [False, False, True], "the newest edit is marked"
+            assert [row[0] for row in listed] == ["rotate", "translate", "loaded"], (
+                "the newest edit is not at the top")
+            # each edit is named the way it was made: along the anatomical
+            # axes, or in the plane of the view it turned in
+            assert listed[1][1] == "4.00 mm right"
+            assert listed[0][1] == "5.00° CW in axial"
+            assert [row[2] for row in listed] == [True, False, False], "the newest edit is marked"
             moved = xfm()
 
             # clicking a row puts that alignment back
-            page.click("#aligner-history-list li:first-child")
-            assert np.allclose(xfm(), loaded, atol=1e-3)
-            assert [row[2] for row in rows()] == [True, False, False]
             page.click("#aligner-history-list li:last-child")
+            assert np.allclose(xfm(), loaded, atol=1e-3)
+            assert [row[2] for row in rows()] == [False, False, True]
+            page.click("#aligner-history-list li:first-child")
             assert np.allclose(xfm(), moved, atol=1e-3)
 
             # a drag over a view is one entry, however many frames it takes
-            page.click("#aligner-history-list li:first-child")
+            page.click("#aligner-history-list li:last-child")
             box = page.locator("#view-y").bounding_box()
             page.mouse.move(box["x"] + 100, box["y"] + 100)
             page.mouse.down(button="right")
@@ -814,9 +841,11 @@ def test_history_panel_lists_the_edits_and_goes_back_to_one():
                 page.mouse.move(box["x"] + 100 + 10 * step, box["y"] + 100)
             page.mouse.up(button="right")
             dragged = rows()
-            assert [row[0] for row in dragged] == ["loaded", "translate"], (
+            assert [row[0] for row in dragged] == ["translate", "loaded"], (
                 "a drag left more than one entry, or dropped the ones it replaced")
-            assert dragged[1][1].endswith("mm")
+            # the coronal view is seen from the front, so dragging right on
+            # its screen moves the surfaces to the subject's left
+            assert dragged[0][1].endswith("mm left"), dragged[0][1]
 
             # a right click that moved nothing leaves no entry behind
             page.mouse.down(button="right")

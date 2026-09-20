@@ -1626,7 +1626,6 @@ def show(
     # own names unless the config names a domain to reach it under, which is
     # what that option is there for.
     address = None if domain_name else serve.LOCAL
-    host = serve.hostname + domain_name if domain_name else serve.LOOPBACK
 
     server = WebApp([(r'/ctm/(.*)', CTMHandler),
                      (r'/data/(.*)', DataHandler),
