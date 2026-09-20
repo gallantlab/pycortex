@@ -1568,6 +1568,7 @@ var mriview = (function(module) {
         }
         this.views = views;
         this._orthoLabels(this._sliceviews);
+        this._showPickMarkers(!this._sliceviews);
         //the surfaces and the planes are left as the 3D view wants them, so
         //that a single view, a screenshot or a pick sees what it always did
         this._showAllPlanes();
@@ -1775,6 +1776,20 @@ var mriview = (function(module) {
             if (plane.mesh !== undefined)
                 plane.mesh.visible = plane.setVisible();
         }
+    };
+
+    //The picker marks the vertex it picked on the surface itself. The
+    //crosshair marks the point in the volume, which is the same point and is
+    //in every view, so the two are never up at once.
+    module.Viewer.prototype._showPickMarkers = function(show) {
+        for (var i = 0; i < this.surfs.length; i++) {
+            var surf = this.surfs[i].surf;
+            if (surf === undefined || surf.picker === undefined)
+                continue;
+            surf.picker.markers.left.visible = show;
+            surf.picker.markers.right.visible = show;
+        }
+        this.schedule();
     };
 
     //A click in a slice view puts the crosshair where it landed on that

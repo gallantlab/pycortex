@@ -1012,6 +1012,12 @@ def test_ortho_views_split_the_canvas():
                 "the crosshair is not where the slices are")
             assert page.evaluate("window.viewer._cursor.visible") is True, (
                 "the crosshair is not drawn in the 3D view")
+            # and it is the only mark on the point: the picker's own marker,
+            # which sits on the surface and is in the 3D view alone, stands
+            # down while the crosshair is in every view
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is False, (
+                "the picker's marker is up as well as the crosshair")
 
             # a click that lands on nothing leaves the crosshair where it is:
             # it marks a place, and clicking beside the brain does not unmark it
@@ -1054,9 +1060,12 @@ def test_ortho_views_split_the_canvas():
             page.wait_for_timeout(1500)
             assert page.evaluate("window.viewer.views.length") == 1
             assert page.evaluate("window.viewer.root.visible") is True
-            # the point stays marked across the change of layout
+            # the point stays marked across the change of layout, by the
+            # picker's marker once the crosshair has no slices to be in
             assert page.evaluate("window.viewer._cursorAt") is True
             assert page.evaluate("window.viewer._cursor.visible") is False
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is True
             assert not errors, errors
             browser.close()
     finally:
