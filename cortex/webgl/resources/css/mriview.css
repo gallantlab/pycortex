@@ -127,6 +127,101 @@ a:visited { color:white; }
     font-size:24pt;
     font-weight:bold;
 }
+
+/* Tractogram controls, under the dataset box */
+.tracts-panel {
+    position:absolute;
+    z-index:8;
+    padding:10px 15px;
+    margin:20px;
+    border-radius:10px;
+    background:rgba(255,255,255,.2);
+    width:max-content;
+    min-width:200px;
+    max-width:90vw;
+    max-height:60vh;
+    overflow-y:auto;
+    overflow-x:hidden;
+    color:white;
+    font-family:Helvetica Neue, sans-serif;
+    font-size:10pt;
+    display:none;
+}
+.tract-item + .tract-item {
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px solid rgba(255,255,255,.3);
+}
+.tract-header {
+    display:flex;
+    align-items:center;
+    cursor:default;
+}
+.tract-header .tract-toggle {
+    cursor:pointer;
+    width:1.2em;
+    display:inline-block;
+    text-align:center;
+    user-select:none;
+    color:#DDD;
+}
+.tract-header .tract-name {
+    font-weight:bold;
+    margin-left:4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.tract-header input[type=checkbox] {
+    margin:0 4px 0 0;
+}
+.tract-body {
+    margin:6px 0 0 1.2em;
+}
+.tract-opacity-row {
+    display:flex;
+    align-items:center;
+    margin-bottom:4px;
+}
+.tract-opacity-row label {
+    margin-right:6px;
+    color:#CCC;
+}
+.tract-opacity-row input[type=range] {
+    flex:1 1 auto;
+    max-width:110px;
+}
+.tract-opacity-row input.tract-opacity-value {
+    flex:0 0 auto;
+    width:46px;
+    margin-left:6px;
+    background:rgba(0,0,0,0.35);
+    border:1px solid #666;
+    color:#EEE;
+    font-size:11px;
+    padding:1px 2px;
+}
+.tract-groups-actions {
+    margin-bottom:2px;
+}
+.tract-groups-actions a {
+    color:#9CF;
+    cursor:pointer;
+    text-decoration:underline;
+    margin-right:8px;
+}
+.tract-group-row {
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.tract-group-row input[type=checkbox] {
+    margin:0 4px 0 0;
+}
+.tract-group-count {
+    color:#AAA;
+    font-size:8pt;
+}
 #helpmenu {
     position:absolute;
     z-index:8;
