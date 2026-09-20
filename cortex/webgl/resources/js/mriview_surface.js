@@ -89,6 +89,7 @@ var mriview = (function(module) {
                 brightness:  { type:'f', value:parseFloat(viewopts.brightness)},
                 smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
+                surfaceAlpha:{ type:'f', value:parseFloat(viewopts.surface_opacity)},
                 extratex:   { type:'t', value:null},
 
                 // screen:     { type:'t', value:this.volumebuf},
@@ -115,6 +116,7 @@ var mriview = (function(module) {
             colorbar: {action:[this, "toggleColorbar"]},
             opacity: {action:[this.uniforms.dataAlpha, "value", 0, 1]},
             toggleOpacity: {action: this.toggleOpacity.bind(this), key: 'o', hidden: true, help:'Toggle data opacity'},
+            surface_opacity: {action:[this.uniforms.surfaceAlpha, "value", 0, 1]},
             left: {action:[this, "setLeftVis"]},
             leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true, help:'Toggle left hemisphere'},
             right: {action:[this, "setRightVis"]},
@@ -434,6 +436,21 @@ var mriview = (function(module) {
     module.Surface.prototype.prerender = function(renderer, scene, camera) {
         if (this.svg !== undefined) {
             this.svg.prerender(renderer, scene, camera);
+        }
+        //Only while translucent do we need blending + no depth write; at the
+        //default (opaque) surfaceAlpha this must match the historical
+        //opaque-surface render state exactly, so only touch materials whose
+        //flags actually need to change (avoids recompiling every frame).
+        var opaque = this.uniforms.surfaceAlpha.value >= 1;
+        for (var name in this.shaders) {
+            var material = this.shaders[name];
+            var transparent = !opaque;
+            var depthWrite = opaque;
+            if (material.transparent !== transparent || material.depthWrite !== depthWrite) {
+                material.transparent = transparent;
+                material.depthWrite = depthWrite;
+                material.needsUpdate = true;
+            }
         }
     }
 
