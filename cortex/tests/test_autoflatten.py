@@ -129,6 +129,36 @@ def test_autoflatten_subject_no_runtime_warning_if_already_flattened(
     assert "import_flat" in calls
 
 
+def test_autoflatten_subject_warns_if_overwrite_forces_a_rerun(
+        tmp_path, monkeypatch):
+    subjects_dir, surf_dir = _make_freesurfer_subject(tmp_path)
+    for hemi in ("lh", "rh"):
+        (surf_dir / (hemi + ".autoflatten.flat.patch.3d")).write_bytes(b"")
+    calls = {}
+    _patch_autoflatten_run(monkeypatch, calls)
+
+    # the patches are already there, but --overwrite makes autoflatten redo them,
+    # so the run is slow again and has to be warned about
+    with pytest.warns(UserWarning, match="15-30 minutes"):
+        af.autoflatten_subject("S1", freesurfer_subject_dir=subjects_dir,
+                               autoflatten_args=["--overwrite"])
+
+
+def test_runtime_warning_does_not_promise_an_autoflatten_argument():
+    # the warning is issued by autoflatten_subject, which has no `autoflatten`
+    # argument, so it must point at import_subj for that option
+    assert "import_subj" in af.RUNTIME_WARNING
+    assert "autoflatten=False" in af.RUNTIME_WARNING
+
+
+def test_forces_overwrite_parses_autoflatten_args():
+    assert af._forces_overwrite(None) is False
+    assert af._forces_overwrite([]) is False
+    assert af._forces_overwrite(["--backend", "freesurfer"]) is False
+    assert af._forces_overwrite(["--overwrite"]) is True
+    assert af._forces_overwrite(["--n-cores", "4", "--overwrite"]) is True
+
+
 def test_autoflatten_subject_can_skip_import(tmp_path, monkeypatch):
     subjects_dir, surf_dir = _make_freesurfer_subject(tmp_path)
     calls = {}

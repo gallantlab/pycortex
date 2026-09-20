@@ -23,11 +23,14 @@ from typing import Optional, Sequence
 #: the cut patch and ``?h.autoflatten.flat.patch.3d`` for the flattened patch.
 PATCH_NAME = "autoflatten"
 
-#: Warning issued before starting a run, since it takes a long time.
+#: Warning issued before starting a run, since it takes a long time. It is issued
+#: by `autoflatten_subject`, which is also called by `import_subj`, so it cannot
+#: refer to the `autoflatten` argument as if it were always available.
 RUNTIME_WARNING = (
     "Flattening the surfaces with autoflatten takes a while, typically 15-30 "
-    "minutes for both hemispheres. Pass `autoflatten=False` to skip this step "
-    "and run `cortex.freesurfer.autoflatten_subject(...)` later instead."
+    "minutes for both hemispheres. `cortex.freesurfer.import_subj` takes an "
+    "`autoflatten=False` argument to skip this step, so that the surfaces can "
+    "be flattened later with `cortex.freesurfer.autoflatten_subject(...)`."
 )
 
 #: Error message used when the optional `autoflatten` package is missing.
@@ -112,6 +115,30 @@ def _get_hemispheres(
     if value in both:
         return (value,)
     return both
+
+
+def _forces_overwrite(
+    autoflatten_args: Optional[Sequence[str]] = None,
+) -> bool:
+    """Whether `autoflatten_args` makes ``autoflatten run`` redo existing patches.
+
+    ``autoflatten`` skips patches that are already on disk unless it is passed
+    ``--overwrite``, so this is what decides whether a run that finds the flat
+    patches already in place is slow or returns almost immediately.
+
+    Parameters
+    ----------
+    autoflatten_args : list of str, optional
+        Extra command line arguments passed to ``autoflatten run``.
+
+    Returns
+    -------
+    overwrite : bool
+        True if ``--overwrite`` is among the arguments.
+    """
+    if autoflatten_args is None:
+        return False
+    return "--overwrite" in list(autoflatten_args)
 
 
 def autoflatten_subject(
@@ -199,8 +226,11 @@ def autoflatten_subject(
         for hemi in hemis
     }
     # autoflatten skips patches that already exist, so there is nothing slow to
-    # warn about if both hemispheres have already been flattened
-    if any(not os.path.exists(path) for path in flat_files.values()):
+    # warn about if both hemispheres have already been flattened -- unless
+    # `--overwrite` forces it to flatten them again anyway
+    if _forces_overwrite(autoflatten_args) or any(
+        not os.path.exists(path) for path in flat_files.values()
+    ):
         warnings.warn(RUNTIME_WARNING)
 
     cmd = cmd + ["run", subject_dir]
