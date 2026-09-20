@@ -159,6 +159,24 @@ def test_package_keeps_tracts_out_of_views_and_data():
     assert all(not isinstance(u, cortex.Tractogram) for u in pkg.uniques)
 
 
+def test_package_uniques_are_deduplicated_by_name():
+    # Two dataviews holding the same array are one brain on the wire (they
+    # share a name, which is a hash of the data), so they must appear once in
+    # `uniques`: reorder() rewrites self.images[name] in place, and a second
+    # pass would run over the first pass's output.
+    zeros = np.zeros(cortex.db.get_surf(subj, "fiducial", merge=True)[0].shape[0],
+                     dtype=np.float32)
+    ds = cortex.Dataset(
+        a=cortex.Vertex(zeros.copy(), subj),
+        b=cortex.Vertex(zeros.copy(), subj),
+    )
+    pkg = Package(ds)
+    assert len(pkg.uniques) == 1
+    assert len(pkg.brains) == 1
+    # ... while both dataviews still reach the viewer.
+    assert [view["name"] for view in pkg.views] == ["a", "b"]
+
+
 def test_package_reorder_ignores_tracts():
     tract = _make_tractogram(n_streamlines=8, n_points=15)
     pkg = Package(cortex.Dataset(af=tract), require_brains=False)
