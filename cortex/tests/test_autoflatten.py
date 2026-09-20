@@ -25,8 +25,9 @@ def _patch_autoflatten_run(monkeypatch, calls, surf_dir=None):
     """
     monkeypatch.setattr(af, "get_command", lambda: ["fake-autoflatten"])
 
-    def fake_check_call(cmd):
+    def fake_check_call(cmd, env=None, **kwargs):
         calls["cmd"] = cmd
+        calls["env"] = env
         if surf_dir is not None:
             for hemi in ("lh", "rh"):
                 (surf_dir / (hemi + ".autoflatten.flat.patch.3d")).write_bytes(b"")
@@ -104,6 +105,11 @@ def test_autoflatten_subject_runs_cli_and_imports_flatmaps(tmp_path, monkeypatch
     assert kwargs["flat_type"] == "freesurfer"
     assert kwargs["auto_overwrite"] is True
     assert kwargs["freesurfer_subject_dir"] == subjects_dir
+    assert kwargs["hemis"] == ["lh", "rh"]
+
+    # autoflatten resolves the subject and fsaverage by name through
+    # $SUBJECTS_DIR in the subprocess, so it must match what was passed in
+    assert calls["env"]["SUBJECTS_DIR"] == subjects_dir
 
 
 def test_autoflatten_subject_no_runtime_warning_if_already_flattened(
@@ -247,3 +253,39 @@ def test_autoflatten_subject_end_to_end(tmp_path, monkeypatch):
         spread = np.ptp(pts[in_patch], axis=0)
         assert (np.sort(spread)[-2:] > 1.0).all(), (hemi, spread)
         assert np.sort(spread)[0] < 1e-3, (hemi, spread)
+
+
+def test_autoflatten_subject_respects_a_single_hemisphere(tmp_path, monkeypatch):
+    subjects_dir, surf_dir = _make_freesurfer_subject(tmp_path)
+    calls = {}
+    monkeypatch.setattr(af, "get_command", lambda: ["fake-autoflatten"])
+
+    def fake_check_call(cmd, env=None, **kwargs):
+        # autoflatten only writes the hemisphere it was asked for
+        (surf_dir / "lh.autoflatten.flat.patch.3d").write_bytes(b"")
+
+    monkeypatch.setattr(af.sp, "check_call", fake_check_call)
+    monkeypatch.setattr(
+        fs, "import_flat",
+        lambda *args, **kwargs: calls.setdefault("import_flat", (args, kwargs)),
+    )
+
+    with pytest.warns(UserWarning):
+        flat_files = af.autoflatten_subject(
+            "S1",
+            freesurfer_subject_dir=subjects_dir,
+            autoflatten_args=["--hemispheres", "lh"],
+        )
+
+    assert list(flat_files) == ["lh"]
+    assert calls["import_flat"][1]["hemis"] == ["lh"]
+
+
+def test_get_hemispheres_parses_autoflatten_args():
+    assert af._get_hemispheres(None) == ("lh", "rh")
+    assert af._get_hemispheres([]) == ("lh", "rh")
+    assert af._get_hemispheres(["--hemispheres", "both"]) == ("lh", "rh")
+    assert af._get_hemispheres(["--hemispheres", "rh"]) == ("rh",)
+    assert af._get_hemispheres(["--hemispheres=lh"]) == ("lh",)
+    # a trailing flag with no value must not blow up
+    assert af._get_hemispheres(["--hemispheres"]) == ("lh", "rh")
