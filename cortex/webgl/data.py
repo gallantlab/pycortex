@@ -127,12 +127,19 @@ class Package(object):
             else:
                 brain_views.append(view)
 
-        # Deduplicate while keeping the dataset order (BrainData hashes by
-        # identity, so a plain set would shuffle the brains between runs).
+        # Deduplicate while keeping the dataset order (a plain set would
+        # shuffle the brains between runs). By name rather than by object: a
+        # name is a hash of the array, and self.brains/self.images are keyed
+        # by it, so two distinct BrainData holding the same data are one
+        # brain on the wire -- while as two entries here (BrainData compares
+        # by identity) they would have reorder() rewrite the second one on
+        # top of the first one's output.
         self.uniques = []
+        seen = set()
         for view in brain_views:
             for sv in view.uniques(collapse=True):
-                if sv not in self.uniques:
+                if sv.name not in seen:
+                    seen.add(sv.name)
                     self.uniques.append(sv)
         # Tract subjects count too: `show` builds CTM packs per subject,
         # `addData` rejects unknown subjects and `make_static(anonymize=True)`
