@@ -1,6 +1,14 @@
 var mriview = (function(module) {
     var flatscale = 0.3;
 
+    //Surface opacity, from the config. A missing or unreadable setting must
+    //fall back to fully opaque: a NaN uniform would make the whole cortex
+    //invisible with nothing to point at why.
+    function parseOpacity(val) {
+        var parsed = parseFloat(val);
+        return isNaN(parsed) ? 1 : Math.min(Math.max(parsed, 0), 1);
+    }
+
     //Base lighting terms used when illumination is fully directional. Uniform
     //illumination fades diffuse and specular out and emissive in.
     var base_diffuse = .8, base_emissive = .2, base_specular = .005;
@@ -89,7 +97,7 @@ var mriview = (function(module) {
                 brightness:  { type:'f', value:parseFloat(viewopts.brightness)},
                 smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
-                surfaceAlpha:{ type:'f', value:parseFloat(viewopts.surface_opacity)},
+                surfaceAlpha:{ type:'f', value:parseOpacity(viewopts.surface_opacity)},
                 extratex:   { type:'t', value:null},
 
                 // screen:     { type:'t', value:this.volumebuf},
@@ -439,18 +447,13 @@ var mriview = (function(module) {
         }
         //Only while translucent do we need blending + no depth write; at the
         //default (opaque) surfaceAlpha this must match the historical
-        //opaque-surface render state exactly, so only touch materials whose
-        //flags actually need to change (avoids recompiling every frame).
+        //opaque-surface render state exactly. Both flags are read per draw
+        //call (they are render state, not part of the compiled program), so
+        //assigning them here costs nothing and needs no material rebuild.
         var opaque = this.uniforms.surfaceAlpha.value >= 1;
         for (var name in this.shaders) {
-            var material = this.shaders[name];
-            var transparent = !opaque;
-            var depthWrite = opaque;
-            if (material.transparent !== transparent || material.depthWrite !== depthWrite) {
-                material.transparent = transparent;
-                material.depthWrite = depthWrite;
-                material.needsUpdate = true;
-            }
+            this.shaders[name].transparent = !opaque;
+            this.shaders[name].depthWrite = opaque;
         }
     }
 

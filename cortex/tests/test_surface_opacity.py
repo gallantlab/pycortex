@@ -26,9 +26,15 @@ def test_surface_opacity_default_is_one():
     not has_playwright, reason="playwright + Chromium not available"
 )
 def test_surface_opacity_renders_translucent(tmp_path):
-    """A translucent surface_opacity should visibly differ from the opaque
-    default, with brain-silhouette pixels shifting toward the background
-    color as the surface goes translucent."""
+    """A translucent surface_opacity must reach the rendered fragment alpha
+    without darkening the surface color along with it.
+
+    The saved PNG carries straight (non-premultiplied) alpha, so a
+    ``surface_opacity`` of 0.25 has to show up as alpha 0.25 over the brain
+    while the RGB stays the color the opaque render gives. Folding the
+    opacity into RGB as well would make whatever composites the image fade
+    it a second time.
+    """
     from PIL import Image
 
     from cortex.export.save_views import save_3d_views, unfold_view_params
@@ -54,35 +60,35 @@ def test_surface_opacity_renders_translucent(tmp_path):
             viewer_params=dict(labels_visible=[], overlays_visible=[]),
             headless=True,
         )[0]
-        return np.asarray(Image.open(path).convert("RGBA")).astype(np.int16)
+        return np.asarray(Image.open(path).convert("RGBA")).astype(np.int32)
 
+    opacity = 0.25
     opaque = _render(1.0, "opaque")
-    translucent = _render(0.25, "translucent")
+    translucent = _render(opacity, "translucent")
 
     assert opaque.shape == translucent.shape
 
-    # The two renders should differ substantially -- not just anti-aliasing
-    # noise -- once the surface goes translucent.
-    diff = np.abs(opaque.astype(np.int32) - translucent.astype(np.int32))
-    assert diff.mean() > 1.0, (
-        "translucent (surface_opacity=0.25) render is nearly identical to "
-        "the opaque one; the slider may not be wired up"
-    )
-
-    # Corners are outside the inflated brain's silhouette in this view, so
-    # sample one as the background color, and take the brain silhouette to
-    # be every pixel of the opaque render that differs from it.
-    bg_color = opaque[0, 0, :3].astype(np.int32)
-    brain = np.any(opaque[..., :3].astype(np.int32) != bg_color, axis=-1)
+    # The opaque render is the historical one: the render target has no
+    # multisampling, so every pixel is either fully drawn or fully empty.
+    assert set(np.unique(opaque[..., 3]).tolist()) <= {0, 255}
+    brain = opaque[..., 3] == 255
     assert brain.mean() > 0.05, "opaque render shows (almost) no brain"
 
-    dist_opaque_to_bg = np.abs(opaque[brain, :3].astype(np.int32) - bg_color).sum(-1).mean()
-    dist_translucent_to_bg = (
-        np.abs(translucent[brain, :3].astype(np.int32) - bg_color).sum(-1).mean()
+    # Most of the silhouette is a single layer of surface, and there the
+    # fragment alpha must be exactly the slider value. (Where the surface
+    # folds over itself the layers composite to a higher alpha, which is
+    # what makes the far side show through.)
+    single = np.abs(translucent[..., 3] - opacity * 255) <= 1
+    assert not (single & ~brain).any(), "translucent render leaked outside the brain"
+    assert single.sum() > 0.5 * brain.sum(), (
+        "surface_opacity did not reach the rendered alpha; the slider may not "
+        f"be wired up (alphas seen: {np.unique(translucent[..., 3]).tolist()})"
     )
 
-    assert dist_translucent_to_bg < dist_opaque_to_bg, (
-        "translucent brain pixels did not move toward the background color "
-        f"(opaque->bg={dist_opaque_to_bg:.1f}, "
-        f"translucent->bg={dist_translucent_to_bg:.1f}, bg={bg_color.tolist()})"
+    # Straight, not premultiplied: those pixels keep the opaque color.
+    rgb_error = np.abs(translucent[single][:, :3] - opaque[single][:, :3]).max()
+    assert rgb_error <= 8, (
+        "translucent surface color drifted from the opaque one by "
+        f"{rgb_error}/255; the exported image looks premultiplied, so it "
+        "will be faded twice once composited"
     )

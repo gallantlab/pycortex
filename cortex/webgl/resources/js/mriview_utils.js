@@ -100,6 +100,27 @@ var mriview = (function(module) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
         gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(img.data.buffer));
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        //readPixels hands back the drawing buffer's *premultiplied* colors,
+        //but ImageData is straight alpha. While everything drawn here was
+        //opaque the two agreed; now that the surface itself can be
+        //translucent, a fragment written as (alpha*color, alpha) would be
+        //exported as if its color were already that dark and then faded
+        //again by whatever composites the PNG. Undo the premultiplication so
+        //the saved image carries the surface's real color. Fully opaque and
+        //fully empty pixels -- every pixel of an opaque render -- are left
+        //bit-for-bit alone.
+        var px = img.data;
+        for (var i = 0; i < px.length; i += 4) {
+            var alpha = px[i + 3];
+            if (alpha === 0 || alpha === 255)
+                continue;
+            var scale = 255 / alpha;
+            px[i]     = px[i]     * scale;
+            px[i + 1] = px[i + 1] * scale;
+            px[i + 2] = px[i + 2] * scale;
+        }
+
         glctx.putImageData(img, 0, 0);
 
         // //This ridiculousness is necessary to flip the image...
