@@ -17,7 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # 3.11 is the floor because the test group pulls in trx-python (via
+        # the `tractography` extra), which requires it. On 3.10 the install
+        # fails outright rather than the TRX tests quietly skipping.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
       max-parallel: 5
 
     steps:

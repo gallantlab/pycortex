@@ -3,4 +3,5 @@
 
 from __future__ import annotations
 from .views import Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, Vertex2D, Dataview, Dataview2D, _from_hdf_data, Colors, DataviewJSON
+from .tractogram import Tractogram
 from .dataset import Dataset, normalize, DatasetLike

@@ -101,6 +101,35 @@ In order to specify 2D data views in webgl, this helper class lets you specify a
     dim2 = cortex.Volume.random(subject, xfmname)
     twod = cortex.Volume2D(dim1, dim2, subject=None, xfmname=None, vmin2=None, vmax2=None, **kwargs)
 
+Tractogram
+~~~~~~~~~~
+:class:`Tractogram` is a :class:`Dataview` object that holds a bundle of streamlines (3-D polylines), for overlaying tractography results on top of a cortical surface in the WebGL viewer. Unlike :class:`Volume`/:class:`Vertex`, it is not backed by volume- or surface-sampled data: its geometry is a flat ``(N, 3)`` array of points plus an ``(M+1,)`` offset table delimiting the ``M`` streamlines (the same convention used by the TRX format)::
+
+    tract = cortex.Tractogram(points, offsets, subject, dpv=None, dps=None, groups=None,
+                               color="orientation", cmap=None, vmin=None, vmax=None,
+                               alpha=1.0, linewidth=1.0, **kwargs)
+
+The easiest way to build one is from a TRX file (requires the optional ``trx-python`` dependency, installed via the ``pycortex[tractography]`` extra)::
+
+    tract = cortex.Tractogram.from_trx("bundles.trx", "S1")
+
+or from a plain list of ``(L_i, 3)`` streamline arrays::
+
+    tract = cortex.Tractogram.from_streamlines(list_of_arrays, "S1")
+
+``color`` controls how streamlines are colored (via :meth:`Tractogram.vertex_colors`):
+
+    * ``"orientation"`` (default): color by the local (unit) tangent direction, the standard directionally-encoded-color convention used in tractography visualization.
+    * an ``(r, g, b)`` tuple: a constant color for all streamlines.
+    * ``"dpv:<name>"`` / ``"dps:<name>"``: color by a named data-per-vertex or data-per-streamline scalar array (from `dpv`/`dps`), mapped through `cmap`/`vmin`/`vmax` like any other Dataview.
+
+``groups`` holds named subsets of streamlines (as arrays of streamline indices, e.g. bundle names); groups may overlap, and a streamline may belong to no group. :meth:`Tractogram.get_group` and :meth:`Tractogram.select` return new tractograms restricted to a subset, and :meth:`Tractogram.subsample` decimates a large tractogram for faster interactive display.
+
+.. note::
+   `points` must be expressed in the same mm space as the subject's fiducial surfaces (FreeSurfer scanner RAS mm). Tractography output is often already in this space when the diffusion data was registered to the same T1 used to generate the surfaces; otherwise, pass an `xfm` (4x4 affine) to :meth:`Tractogram.from_trx` to align the streamline positions onto the fiducial surface.
+
+HDF5 persistence of :class:`Tractogram` (saving to / loading from a :class:`Dataset`) is not implemented yet.
+
 Dataset
 -------
 Dataset objects hold a dictionary of DataView objects. Its main function is saving out data into a standardized HDF format. Datasets also allow subject data packing, if you desire to send data to someone without the subject database.
