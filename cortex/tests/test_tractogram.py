@@ -71,11 +71,15 @@ def _overlapping_groups(n_streamlines):
     Used by tests (and by `test_webgl_tractogram.py`) that need to exercise
     the "streamline belongs to >=1 group" / "streamline belongs to no
     group" cases together, which the disjoint even/odd split above does not.
+
+    Insertion order is deliberately the reverse of alphabetical: the viewer
+    lists bundles alphabetically rather than in wire order, and a fixture
+    where the two agree cannot tell the difference.
     """
     half = n_streamlines // 2
     return {
-        "first_half": np.arange(0, half + 1),
         "second_half": np.arange(half - 1, n_streamlines - 1),
+        "first_half": np.arange(0, half + 1),
     }
 
 
