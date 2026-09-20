@@ -959,7 +959,7 @@ def test_ortho_views_split_the_canvas():
             page.wait_for_timeout(2500)
             assert page.evaluate("window.viewer.setSliceViews()") is True, (
                 "the v key did not split the canvas")
-            assert page.evaluate("window.viewer.ui.sliceplanes['ortho views']") is True, (
+            assert page.evaluate("window.viewer.ui.sliceplanes['Show ortho views']") is True, (
                 "the control did not follow the key")
 
             views = page.evaluate(
@@ -1051,12 +1051,12 @@ def test_ortho_views_split_the_canvas():
             # the help lists the key that splits the canvas
             page.keyboard.press("h")
             page.wait_for_timeout(500)
-            assert "Three slice views beside the 3D one" in page.inner_text("#helpmenu"), (
+            assert "Show ortho views along with 3D" in page.inner_text("#helpmenu"), (
                 "the key is not in the help")
             page.keyboard.press("h")
 
             # and the 3D view comes back on its own
-            page.evaluate("window.viewer.ui.set('sliceplanes.ortho views', false)")
+            page.evaluate("window.viewer.ui.set('sliceplanes.Show ortho views', false)")
             page.wait_for_timeout(1500)
             assert page.evaluate("window.viewer.views.length") == 1
             assert page.evaluate("window.viewer.root.visible") is True
