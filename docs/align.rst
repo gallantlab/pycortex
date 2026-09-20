@@ -104,8 +104,10 @@ To save the alignment, click ``save``.
 The transform is stored into the database at once, together with the deletion of any masks cached for it, and the window can then be closed.
 The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it, returning once the transform has been written.
 
-The aligner writes to your filestore, so it accepts saves only from the page it served.
-Its server listens for ``localhost``, ``127.0.0.1`` and the name of the machine, and for nothing else.
+The aligner serves your filestore and writes to it, so its server answers only requests that carry the session token in the address it prints.
+The page it opens keeps that token in a cookie, so nothing else has to carry it; open the aligner by that address, or with the browser you already opened it in.
+Pass ``token=''`` to turn this off for a script that talks to the server itself.
+The server listens for ``localhost``, ``127.0.0.1`` and the name of the machine, and for nothing else, and takes saves only from the page it served.
 
 The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
 

@@ -44,7 +44,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 
-def _viewer_urls(port: int) -> tuple[str, str]:
+def _viewer_urls(port: int, token: str = "") -> tuple[str, str]:
     """Return the (local, network) URLs of a viewer running on `port`.
 
     The local URL is the one to open on the machine running the server. The
@@ -57,9 +57,16 @@ def _viewer_urls(port: int) -> tuple[str, str]:
     addresses -- link-local ones among them -- and only reaches the server if
     the local firewall lets this python process accept connections on a
     non-loopback interface. None of that applies to localhost.
+
+    Both URLs carry `token`, which is what the server takes as proof that a
+    request comes from whoever started it; the page keeps it in a cookie from
+    there on, so the addresses it asks for afterwards do not have to carry it.
     """
     local = "http://localhost:%d/mixer.html" % port
     network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
+    if token:
+        local += "?token=" + token
+        network += "?token=" + token
     return local, network
 
 
@@ -434,6 +441,7 @@ def show(
     title: str="Brain",
     layout: Optional[str]=None,
     display_url: bool=True,
+    token: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -512,6 +520,10 @@ def show(
         link to access the viewer. Set to False to suppress this display message,
         which can be useful in contexts like Marimo notebooks or programmatic
         headless viewers. Default True
+    token : str, optional
+        The session token the server demands, which the URL it displays carries
+        and the page then keeps in a cookie. A new one is made for each viewer;
+        pass '' to answer anything that reaches the port.
     **kwargs
         All additional keyword arguments are passed to the template renderer.
 
@@ -1635,10 +1647,10 @@ def show(
                      (r'/timeseries', TimeseriesHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
-                    port, address)
+                    port, address, token)
 
     server.start()
-    local_url, network_url = _viewer_urls(server.port)
+    local_url, network_url = _viewer_urls(server.port, server.token)
     print("Started server on port %d"%server.port)
     if network_url == local_url:
         print("Open the viewer at %s"%local_url)

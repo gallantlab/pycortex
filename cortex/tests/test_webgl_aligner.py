@@ -37,16 +37,20 @@ def _open(url, data=None, timeout=30):
         return resp.read()
 
 
+def _url(srv, page="", host="localhost"):
+    """The address of a page of `srv`, carrying its session token."""
+    return srv.url(page, host=host)
+
+
 def _save_token(srv):
     """The token the page is served with, which a save has to carry back."""
-    html = _open("http://localhost:%d/aligner.html" % srv.port).decode()
-    return _page_config(html)["save_token"]
+    return _page_config(_open(_url(srv, "aligner.html")).decode())["save_token"]
 
 
 def _post_save(srv, **data):
-    """Post a save the way the page does, token and all."""
-    data.setdefault("token", _save_token(srv))
-    return json.loads(_open("http://localhost:%d/save" % srv.port, data).decode())
+    """Post a save the way the page does, both tokens and all."""
+    data.setdefault("save_token", _save_token(srv))
+    return json.loads(_open(_url(srv, "save"), data).decode())
 
 
 class _SaveRecorder:
@@ -203,7 +207,7 @@ def test_aligner_opens_with_cached_masks(stale_masks):
     is told about them so it can warn that saving deletes them."""
     srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
     try:
-        config = _page_config(_open("http://localhost:%d/" % srv.port).decode())
+        config = _page_config(_open(_url(srv)).decode())
     finally:
         srv.stop()
     assert config["view_only"] is False
@@ -276,7 +280,7 @@ def test_save_deletes_the_stale_masks_first(stale_masks):
         token = _save_token(srv)
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(database.db, "save_xfm", save_xfm)
-            resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), token=token)
+            resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), save_token=token)
     finally:
         srv.stop()
 
@@ -370,8 +374,7 @@ def test_view_only_keeps_the_masks(stale_masks):
 def test_page_carries_config(server):
     from PIL import Image
 
-    base = "http://localhost:%d" % server.port
-    html = _open(base + "/aligner.html").decode()
+    html = _open(_url(server, "aligner.html")).decode()
     assert "aligner.Aligner" in html
     config = _page_config(html)
 
@@ -389,15 +392,15 @@ def test_page_carries_config(server):
     assert config["vmin"] < config["vmax"]
 
     # the reference is served as the float mosaic the viewer expects
-    png = _open(base + "/data/reference.png")
+    png = _open(_url(server, "data/reference.png"))
     image = Image.open(io.BytesIO(png))
     nwide, ntall = config["volume"]["mosaic"]
     assert image.size == (nwide * (nii.shape[0] + 1) + 1, ntall * (nii.shape[1] + 1) + 1)
 
     # the surfaces come from the viewer's CTM pack
-    ctm = json.loads(_open(base + "/ctm/%s/" % subj).decode())
+    ctm = json.loads(_open(_url(server, "ctm/%s/" % subj)).decode())
     assert len(ctm["offsets"]) == 2
-    assert len(_open(base + "/ctm/%s/%s" % (subj, ctm["data"]))) > 0
+    assert len(_open(_url(server, "ctm/%s/%s" % (subj, ctm["data"])))) > 0
 
 
 def test_save_endpoint_stores_coord_transform(server, recorder):
@@ -416,23 +419,72 @@ def test_save_endpoint_stores_coord_transform(server, recorder):
     assert len(recorder.calls) == 1
 
 
-@pytest.mark.parametrize("token", [None, "", "0" * 32])
-def test_save_needs_the_token_of_the_page(server, recorder, token):
+@pytest.mark.parametrize("save_token", [None, "", "0" * 32])
+def test_save_needs_the_token_of_the_page(server, recorder, save_token):
     """The save endpoint writes to the filestore, so it only answers the page
-    it served: a post from anywhere else carries no token of it.
+    it served: a post from a site the browser is also on carries the session
+    cookie but no token of the page.
     """
     data = dict(xfm=json.dumps(np.eye(4).tolist()))
-    if token is not None:
-        data["token"] = token
+    if save_token is not None:
+        data["save_token"] = save_token
     with pytest.raises(urllib.error.HTTPError) as caught:
-        _open("http://localhost:%d/save" % server.port, data)
+        _open(_url(server, "save"), data)
     assert caught.value.code == 403
     assert "not the aligner's own page" in json.loads(caught.value.read().decode())["message"]
     assert recorder.calls == []
 
     # and the page's own token is taken
-    assert _post_save(server, **dict(xfm=json.dumps(np.eye(4).tolist())))["status"] == "ok"
+    assert _post_save(server, xfm=json.dumps(np.eye(4).tolist()))["status"] == "ok"
     assert len(recorder.calls) == 1
+
+
+@pytest.mark.parametrize("page", ["aligner.html", "", "ctm/%s/" % subj, "data/reference.png"])
+def test_every_page_needs_the_session_token(server, page):
+    """Nothing is served to a request that does not carry the token from the
+    address the aligner was opened at."""
+    bare = "http://localhost:%d/%s" % (server.port, page)
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open(bare)
+    assert caught.value.code == 403
+
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open(bare + "?token=" + "0" * 32)
+    assert caught.value.code == 403
+
+    assert len(_open(_url(server, page))) > 0
+
+
+def test_the_token_comes_back_as_a_cookie(server):
+    """The page hands the token over once and is given a cookie for it, so
+    that the addresses it asks for afterwards do not have to carry it."""
+    import http.cookiejar
+
+    from cortex.webgl import serve
+
+    jar = http.cookiejar.CookieJar()
+    browser = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    with browser.open(_url(server, "aligner.html"), timeout=30) as resp:
+        assert "aligner.Aligner" in resp.read().decode()
+    cookie = {c.name: c.value for c in jar}
+    assert cookie == {serve.token_cookie(server.port): server.token}
+
+    # the cookie is enough from here on
+    with browser.open("http://localhost:%d/ctm/%s/" % (server.port, subj), timeout=30) as resp:
+        assert len(resp.read()) > 0
+
+
+def test_a_server_without_a_token_answers_anything(recorder):
+    """The token can be turned off, for a script that talks to the server
+    itself rather than through the page."""
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False, token="")
+    try:
+        assert srv.token == ""
+        assert srv.url("aligner.html") == "http://%s:%d/aligner.html" % (srv.host, srv.port)
+        assert "aligner.Aligner" in _open(
+            "http://localhost:%d/aligner.html" % srv.port).decode()
+    finally:
+        srv.stop()
 
 
 def test_server_answers_for_this_computer_only(server):
@@ -461,7 +513,7 @@ def test_server_answers_for_this_computer_only(server):
             socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)
         except socket.gaierror:
             continue  # a machine whose own name does not resolve
-        html = _open("http://%s:%d/aligner.html" % (name, server.port)).decode()
+        html = _open(_url(server, "aligner.html", host=name)).decode()
         assert "aligner.Aligner" in html, "the page did not open as %s" % name
 
 
@@ -474,8 +526,7 @@ def test_the_link_names_the_machine(server):
     from cortex.webgl import serve
 
     assert server.host == socket.gethostname()
-    assert "aligner.Aligner" in _open(
-        "http://%s:%d/aligner.html" % (server.host, server.port)).decode()
+    assert "aligner.Aligner" in _open(_url(server, "aligner.html", host=server.host)).decode()
 
     try:
         elsewhere = serve.WebApp([], 0, address="127.0.0.2")
@@ -524,12 +575,11 @@ def test_every_name_of_the_computer_gets_a_socket_on_one_port():
 
 @pytest.mark.parametrize("server", [dict(view_only=True)], indirect=True)
 def test_view_only_never_saves(server, recorder):
-    base = "http://localhost:%d" % server.port
     resp = _post_save(server, xfm=json.dumps(np.eye(4).tolist()))
     assert resp["status"] == "error"
     assert "view only" in resp["message"]
     assert recorder.calls == []
-    assert '"view_only": true' in _open(base + "/").decode()
+    assert '"view_only": true' in _open(_url(server)).decode()
 
 
 # ---------------------------------------------------------------------------
@@ -564,7 +614,7 @@ def test_aligner_in_headless_browser(recorder):
     pw = _PlaywrightThread()
     handle = None
     try:
-        pw.start("http://localhost:%d/aligner.html" % server.port, timeout=120)
+        pw.start(_url(server, "aligner.html"), timeout=120)
         handle = server.get_client()
         # the handle skips replies to earlier requests by draining the
         # server's queue, which it can only do with the server in hand
@@ -670,7 +720,7 @@ def test_displays_show_the_surface_and_follow_the_transform():
             browser = pw.chromium.launch(headless=True, args=[
                 "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
             page = browser.new_page(viewport={"width": 1000, "height": 700})
-            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
             page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
             page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
 
@@ -796,7 +846,7 @@ def test_history_panel_lists_the_edits_and_goes_back_to_one():
             browser = pw.chromium.launch(headless=True, args=[
                 "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
             page = browser.new_page(viewport={"width": 1000, "height": 700})
-            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
             page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
             page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
 
@@ -902,7 +952,7 @@ def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
             browser = pw.chromium.launch(headless=True, args=[
                 "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
             page = browser.new_page(viewport={"width": 1000, "height": 700})
-            page.goto("http://localhost:%d/aligner.html" % server.port, wait_until="load", timeout=120000)
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
             page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
             page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
 

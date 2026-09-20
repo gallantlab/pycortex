@@ -1198,7 +1198,8 @@ var aligner = (function(module) {
             url: "save",
             //the server only takes saves from the page it served, which this
             //token is what makes it
-            data: {xfm: JSON.stringify(this.getXfm()), name: name, token: this.config.save_token},
+            data: {xfm: JSON.stringify(this.getXfm()), name: name,
+                   save_token: this.config.save_token},
             dataType: "json",
         }).done(function(resp) {
             this.showStatus(resp.message, resp.status != "ok");

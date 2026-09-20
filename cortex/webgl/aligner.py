@@ -17,7 +17,6 @@ The entry point for users is :func:`cortex.align.webgl_manual`.
 """
 import base64
 import glob
-import hmac
 import json
 import mimetypes
 import os
@@ -345,6 +344,7 @@ def show(
     types: tuple[str, ...] = ("inflated",),
     title: Optional[str] = None,
     display_url: bool = True,
+    token: Optional[str] = None,
     template: str = "aligner.html",
 ) -> Union[JSAligner, serve.WebApp]:
     """Open the browser-based aligner for a transform of `subject`.
@@ -403,6 +403,11 @@ def show(
         Title of the browser window.
     display_url : bool, optional
         When `open_browser` is False, display an IPython link to the aligner.
+    token : str, optional
+        The session token the server demands, which the address it prints
+        carries and the page then keeps in a cookie. A new one is made for
+        each aligner; pass '' to take requests from anything that reaches
+        the port, which a script talking to the server itself may want.
     template : str, optional
         Name of the tornado template of the page. Default 'aligner.html'.
 
@@ -473,9 +478,10 @@ def show(
     if title is None:
         title = "Aligner: %s %s" % (subject, xfmname)
 
-    # Handed to the page and demanded back on a save, so that the only thing
-    # that can write to the filestore through this server is the page it
-    # served: another site can post to the port, but cannot read the token.
+    # Handed to the page and demanded back on a save. The session token says
+    # the request comes from this computer; this one says it comes from the
+    # page itself, which a site the browser is also on cannot read, so a form
+    # it posts carries the session cookie but no save token.
     save_token = uuid.uuid4().hex
 
     config: dict[str, Any] = dict(
@@ -546,10 +552,10 @@ def show(
         def post(self):
             self.set_header("Content-Type", "application/json")
             # This writes to the filestore, so it only answers the page it was
-            # served to. The token is handed out in that page, which another
-            # site cannot read, so a form posted from one carries no token
-            # even though the browser sends it to the right port.
-            if not hmac.compare_digest(self.get_argument("token", ""), save_token):
+            # served to. The save token is handed out in that page, which a
+            # site the browser is also on cannot read, so a form it posts
+            # carries the session cookie but not this.
+            if not serve.same_token(self.get_argument("save_token", None), save_token):
                 self.set_status(403)
                 self.write(json.dumps(dict(
                     status="error", message="not saved: this is not the aligner's own page")))
@@ -606,12 +612,13 @@ def show(
             (r"/", AlignerHandler),
         ],
         0 if port is None else port,
+        token=token,
     )
     server.start()
     print("Started aligner server on port %d" % server.port)
-    #: the machine's own name, which is what a port forward from another
-    #: computer is set up under; localhost when that name leads nowhere
-    url = "http://%s:%d/aligner.html" % (server.host, server.port)
+    #: under the machine's own name, which is what a port forward from
+    #: another computer is set up under, and carrying the session token
+    url = server.url("aligner.html")
     if open_browser:
         webbrowser.open(url)
         return server.get_client()
