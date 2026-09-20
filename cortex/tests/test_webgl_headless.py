@@ -750,11 +750,17 @@ def _served_metadata(handle):
     ``show()`` regenerates the page from the same ``metadata`` dict that
     ``addData`` merges into, so this is how we check that a reload of the
     viewer would show everything that has been added so far.
+
+    The payload is the right-hand side of ``mixer.html``'s ``metadata = ...``
+    assignment, not the argument of the ``dataset.fromJSON()`` below it: that
+    call takes the variable, so decoding from there lands on an identifier and
+    raises. Line 4 of the template declares ``metadata`` without an ``=``, so
+    the assignment is the first ``metadata = `` in the page.
     """
     url = "http://localhost:%d/mixer.html" % handle.server.port
     with urllib.request.urlopen(url, timeout=30) as resp:
         page = resp.read().decode("utf-8")
-    marker = "dataset.fromJSON("
+    marker = "metadata = "
     start = page.index(marker) + len(marker)
     return json.JSONDecoder().raw_decode(page, start)[0]
 
