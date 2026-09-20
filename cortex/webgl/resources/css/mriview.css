@@ -157,6 +157,8 @@ a:visited { color:white; }
     align-items:center;
     cursor:default;
 }
+/* A real <button> (focusable, keyboard-operable), stripped back to the
+   plain glyph it used to be. */
 .tract-header .tract-toggle {
     cursor:pointer;
     width:1.2em;
@@ -164,6 +166,12 @@ a:visited { color:white; }
     text-align:center;
     user-select:none;
     color:#DDD;
+    background:none;
+    border:none;
+    padding:0;
+    margin:0;
+    font:inherit;
+    line-height:1;
 }
 .tract-header .tract-name {
     font-weight:bold;
@@ -183,7 +191,7 @@ a:visited { color:white; }
     align-items:center;
     margin-bottom:4px;
 }
-.tract-opacity-row label {
+.tract-opacity-row .tract-opacity-label {
     margin-right:6px;
     color:#CCC;
 }
@@ -204,13 +212,25 @@ a:visited { color:white; }
 .tract-groups-actions {
     margin-bottom:2px;
 }
-.tract-groups-actions a {
+.tract-groups-actions .tract-groups-title {
+    color:#CCC;
+    margin-right:8px;
+}
+/* Buttons rather than links: they act on the scene, not on a url, and they
+   have to be reachable by keyboard. */
+.tract-groups-actions button.tract-link {
     color:#9CF;
     cursor:pointer;
     text-decoration:underline;
     margin-right:8px;
+    background:none;
+    border:none;
+    padding:0;
+    font:inherit;
 }
 .tract-group-row {
+    display:block;
+    cursor:pointer;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;

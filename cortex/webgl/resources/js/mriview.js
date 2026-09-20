@@ -67,7 +67,8 @@ var mriview = (function(module) {
             //the morph (unfold slider, python _set_view, Viewer.setMix)
             //ends up dispatching this event.
             for (var name in this.tracts)
-                this.tracts[name].setMix(evt.mix);
+                if (this.hasTract(name))
+                    this.tracts[name].setMix(evt.mix);
         }.bind(this);
 
         //allowTilt function to attach to surface when it's added
@@ -727,6 +728,7 @@ var mriview = (function(module) {
                 $("#dataopts").show();
             }
             this.fitDataname();
+            this._updateTractSubjects();
             this._updateTractsPanel();
             this.schedule();
             this.loaded.resolve();
@@ -771,7 +773,13 @@ var mriview = (function(module) {
             return;
 
         for (var name in meta) {
-            if (this.tracts[name] !== undefined)
+            if (!Object.prototype.hasOwnProperty.call(meta, name))
+                continue;
+            //Tractogram names are dataset keys, so they may well be
+            //"constructor" or "toString": every lookup in this.tracts goes
+            //through hasOwnProperty, or an inherited Object.prototype member
+            //would pass for a tractogram already on screen.
+            if (this.hasTract(name))
                 this.rmTracts(name);
 
             var tract = new module.Tractogram(name, meta[name], this.renderer);
@@ -781,6 +789,9 @@ var mriview = (function(module) {
             //deliberately does not wait for them, so redraw when they land.
             tract.loaded.done(function(tract) {
                 $(this.object).find("#tracts").append(tract.element);
+                //The element is built only once the buffers land, so the
+                //subject gate has to be reapplied to it here.
+                this._updateTractSubjects();
                 this._updateTractsPanel();
                 this.schedule();
             }.bind(this));
@@ -788,13 +799,61 @@ var mriview = (function(module) {
             if (tract.setMix !== undefined && this.surfs.length > 0)
                 tract.setMix(this.setMix());
         }
+        this._updateTractSubjects();
         this.schedule();
     };
 
+    //Whether `name` is a tractogram this viewer holds. Never `in` or a plain
+    //`!== undefined`: see the comment in addTracts.
+    module.Viewer.prototype.hasTract = function(name) {
+        return Object.prototype.hasOwnProperty.call(this.tracts, name);
+    };
+
+    //Have every tractogram's buffers arrived? "resolved" once they all have
+    //(and immediately when there are none), "rejected" if any download failed,
+    //"pending" while any is still in flight. Polled by
+    //cortex/export/headless.py, which must not screenshot a half-loaded
+    //scene; the viewer's own `loaded` Deferred deliberately does not wait
+    //for tracts, so that a slow tractogram cannot hold up the viewer.
+    module.Viewer.prototype.tractsState = function() {
+        var state = "resolved";
+        for (var name in this.tracts) {
+            if (!this.hasTract(name))
+                continue;
+            var s = this.tracts[name].loaded.state();
+            if (s === "rejected")
+                return "rejected";
+            if (s !== "resolved")
+                state = "pending";
+        }
+        return state;
+    };
+
+    //Streamlines live in one subject's scanner space, so a tractogram only
+    //means something while that subject's surface is the one on screen. In a
+    //multi-subject dataset, switching the active dataview swaps the surface:
+    //the tractograms of every other subject have to step aside (see
+    //Tractogram.setSubjectShown).
+    module.Viewer.prototype._updateTractSubjects = function() {
+        var subject = null;
+        if (this.active !== null && this.active !== undefined &&
+            this.active.data !== undefined && this.active.data.length > 0)
+            subject = this.active.data[0].subject;
+        for (var name in this.tracts) {
+            if (!this.hasTract(name))
+                continue;
+            var tract = this.tracts[name];
+            //With no active dataview yet (tracts can arrive first) there is
+            //nothing to contradict, so leave them shown.
+            tract.setSubjectShown(subject === null ||
+                                  tract.meta.subject === subject);
+        }
+    };
+
     module.Viewer.prototype.rmTracts = function(name) {
-        var tract = this.tracts[name];
-        if (tract === undefined)
+        if (!this.hasTract(name))
             return;
+        var tract = this.tracts[name];
         this.root.remove(tract.object);
         if (tract.element !== null)
             tract.element.remove();
@@ -812,7 +871,12 @@ var mriview = (function(module) {
         var panel = $(this.object).find("#tracts");
         if (panel.length === 0)
             return;
-        var hasTracts = Object.keys(this.tracts).length > 0;
+        //Only the entries actually on screen count: a panel holding nothing
+        //but another subject's (hidden) tractograms would be an empty box.
+        var hasTracts = false;
+        for (var name in this.tracts)
+            if (this.hasTract(name) && this.tracts[name].setSubjectShown())
+                hasTracts = true;
         panel.toggle(hasTracts);
         if (!hasTracts)
             return;

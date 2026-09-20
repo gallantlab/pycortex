@@ -6,7 +6,8 @@ dict(
     data  = dict(__braindata_name=dict(subject=subject, min=min, max=max)),
     images=(__braindata_name=["img1.png", "img2.png"]),
     tracts = dict(name=dict(subject=subject, n_points=N, n_streamlines=M, ...,
-                            urls=dict(points=url, offsets=url, colors=url))),
+                            urls=dict(points=url, offsets=url, colors=url,
+                                      groups=url))),
 )
 
 Tractograms (`cortex.Tractogram`) are handled separately from the BrainData
@@ -19,15 +20,54 @@ the order they appear in ``tract_meta[name]["groups"]``, whose values are
 ``[start, stop]`` slice bounds into this buffer rather than counts) -- which
 the viewer fetches and turns into a THREE.js line geometry
 (``resources/js/tractogram.js``).
+
+The urls of those buffers (and the file names `make_static` writes them to)
+are built from a *transport id* rather than from the tractogram's name: a
+name is a dataset key, which may hold anything at all -- including a ``/``
+or a ``..`` that would otherwise escape the output directory (see
+`_tract_id`).
 """
 
+import hashlib
 import os
 import json
+import re
 from io import BytesIO
 import numpy as np
 
 from .. import dataset
 from .. import volume
+
+
+#: Characters allowed verbatim in a tractogram transport id: safe both as a
+#: single url path segment and as a file name on every platform.
+_TRACT_ID_UNSAFE = re.compile(r"[^A-Za-z0-9_-]")
+
+#: Longest slug kept before falling back to the hashed form, so that a very
+#: long dataset key cannot produce an unopenable file name.
+_TRACT_ID_MAXLEN = 48
+
+
+def _tract_id(name: str) -> str:
+    """A url- and filesystem-safe transport id for a tractogram name.
+
+    Tractogram names are dataset keys, so they are arbitrary strings:
+    ``Dataset(**{"../escape": tract})`` is perfectly legal, and both the
+    ``/tract/{name}/{buf}/`` urls and the ``tracts/{name}_{buf}.bin`` files
+    written by `make_static` would take it literally. Ordinary names
+    (letters, digits, ``_`` and ``-``) are returned unchanged so the urls
+    and file names stay readable; anything else is slugified and
+    disambiguated with a digest of the original name, which keeps the
+    mapping deterministic and collision-free across separate `Package`
+    instances (`cortex.webgl.show` serves tractograms pushed later by
+    `addData` from the same table).
+    """
+    slug = _TRACT_ID_UNSAFE.sub("_", name).strip("_")
+    if slug == name and len(slug) <= _TRACT_ID_MAXLEN:
+        return slug
+    digest = hashlib.sha1(name.encode("utf-8")).hexdigest()[:8]
+    slug = slug[:_TRACT_ID_MAXLEN]
+    return "%s-%s" % (slug, digest) if slug else "tract-%s" % digest
 
 
 # TODO: How to package multiviews?
@@ -62,6 +102,9 @@ class Package(object):
         # expects views/data/images to hold colormapped brain data only.
         self.tracts = dict()
         self.tract_meta = dict()
+        #: tractogram name -> the url/file-name-safe id its buffers are
+        #: served under (see `_tract_id`).
+        self.tract_ids = dict()
         brain_views = []
         for name, view in items:
             if isinstance(view, dataset.Tractogram):
@@ -80,6 +123,7 @@ class Package(object):
                     groups=group_indices.astype("<u4").tobytes(),
                 )
                 self.tract_meta[tname] = view.to_json()
+                self.tract_ids[tname] = _tract_id(tname)
             else:
                 brain_views.append(view)
 
@@ -144,13 +188,31 @@ class Package(object):
                 self.brains[name]["mosaic"] = self.images[name][0][1]
                 self.images[name] = [_pack_png(m) for m, shape in self.images[name]]
 
-        if require_brains and self.tracts and not self.brains:
-            raise ValueError(
-                "A Tractogram cannot be displayed on its own: the webgl "
-                "viewer needs at least one Volume or Vertex dataview to "
-                "build the surfaces and boot. Pass them together, e.g. "
-                "cortex.webshow(cortex.Dataset(curvature=vertex, af=tract))."
+        if require_brains and self.tracts:
+            if not self.brains:
+                raise ValueError(
+                    "A Tractogram cannot be displayed on its own: the webgl "
+                    "viewer needs at least one Volume or Vertex dataview to "
+                    "build the surfaces and boot. Pass them together, e.g. "
+                    "cortex.webshow(cortex.Dataset(curvature=vertex, af=tract))."
+                )
+            # Streamlines are drawn against their own subject's surface only
+            # (mriview.js: Viewer._updateTractSubjects), so a tractogram whose
+            # subject has no dataview of its own would simply never appear.
+            # Say so here rather than opening a viewer that silently omits it.
+            brain_subjects = set(brain.subject for brain in self.uniques)
+            orphans = sorted(
+                set(meta["subject"] for meta in self.tract_meta.values())
+                - brain_subjects
             )
+            if orphans:
+                raise ValueError(
+                    "No Volume or Vertex dataview for tractogram subject(s) "
+                    "%s: the viewer only draws a tractogram while a dataview "
+                    "of its own subject is active, so these streamlines would "
+                    "never be visible. Add a dataview for them, or drop the "
+                    "tractogram." % ", ".join(repr(s) for s in orphans)
+                )
 
     @property
     def views(self):
@@ -205,9 +267,9 @@ class Package(object):
             anonymizing).
         tract_fmt : str
             Format string for the tractogram buffer urls, with ``{name}``
-            (tractogram name) and ``{buf}`` (one of points/offsets/colors)
-            fields. Defaults to the live-server route served by
-            `cortex.webgl.view.TractHandler`.
+            (the tractogram's transport id, see `_tract_id`) and ``{buf}``
+            (one of points/offsets/colors/groups) fields. Defaults to the
+            live-server route served by `cortex.webgl.view.TractHandler`.
         kwargs
             Passed to `image_names` (i.e. its ``fmt``).
         """
@@ -234,11 +296,16 @@ class Package(object):
         return names
 
     def tract_names(self, fmt="/tract/{name}/{buf}/"):
-        """Urls of the binary buffers of every tractogram, keyed by name."""
+        """Urls of the binary buffers of every tractogram, keyed by name.
+
+        ``{name}`` is filled with the tractogram's transport id, not with
+        its (arbitrary) dataset key -- see `_tract_id`.
+        """
         names = dict()
         for name, bufs in self.tracts.items():
+            ident = self.tract_ids[name]
             names[name] = dict(
-                (buf, fmt.format(name=name, buf=buf)) for buf in sorted(bufs)
+                (buf, fmt.format(name=ident, buf=buf)) for buf in sorted(bufs)
             )
         return names
 
