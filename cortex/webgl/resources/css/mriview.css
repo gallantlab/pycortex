@@ -598,3 +598,28 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
 .dg .selector, .dg .selector * {
     box-sizing:content-box;
 }
+
+/*************************************************
+ * Slice views beside the 3D one
+ *************************************************/
+/* One of these sits over each slice view: it names the view and keeps a drag
+   there from turning the 3D one, which is not what the pointer is over. */
+.mriview-ortho {
+    display:none;
+    position:absolute;
+    width:50%;
+    height:50%;
+    z-index:3;
+    box-sizing:border-box;
+    border:1px solid #444;
+    cursor:default;
+}
+.mriview-ortho span {
+    position:absolute;
+    left:8px;
+    top:6px;
+    color:#ddd;
+    font-size:10pt;
+    text-shadow:0px 1px 2px #000;
+    pointer-events:none;
+}

@@ -902,3 +902,99 @@ def test_addData_vertex_data(tmp_path):
 
         _assert_no_browser_failures(handle)
 
+
+
+# ---------------------------------------------------------------------------
+# Group 7: Three slice views beside the 3D one
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_ortho_views_split_the_canvas():
+    """`ortho_views` draws each slice plane straight down its own axis in a
+    quarter of the canvas, leaving the 3D view the last quarter, and the keys
+    that move the planes keep working.
+
+    Drives the page directly rather than through the websocket handle,
+    because what is being tested is what reaches the canvas.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def quadrants():
+                """How much of each quarter of the canvas was drawn on."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var lit = [0, 0, 0, 0], seen = [0, 0, 0, 0];
+                    for (var y = 0; y < s.height; y++) {
+                        for (var x = 0; x < s.width; x++) {
+                            var q = (x < s.width / 2 ? 0 : 1) + (y < s.height / 2 ? 0 : 2);
+                            var i = 4 * (y * s.width + x);
+                            seen[q]++;
+                            if (d[i] + d[i+1] + d[i+2] > 45) lit[q]++;
+                        }
+                    }
+                    return lit.map(function(n, q) { return n / seen[q]; });
+                }""")
+
+            assert page.evaluate("window.viewer.setSliceViews()") is False
+            page.evaluate("window.viewer.ui.set('sliceplanes.ortho_views', true)")
+            page.wait_for_timeout(2500)
+            assert page.evaluate("window.viewer.setSliceViews()") is True
+
+            views = page.evaluate(
+                "window.viewer.views.map(v => [v.left, v.bottom, v.camera !== undefined])")
+            assert views == [[0, 0.5, True], [0, 0, True], [0.5, 0.5, True], [0.5, 0, False]], (
+                "the canvas is not split between three slice views and the 3D one")
+
+            filled = quadrants()
+            assert all(part > 0.05 for part in filled), (
+                "a quarter of the canvas was left empty: %s" % filled)
+
+            # the slice planes show in their own views whatever the checkboxes
+            # say, since that is what those views are for
+            assert page.evaluate(
+                "Object.keys(window.viewer.sliceplanes).every(k => !window.viewer.sliceplanes[k].setVisible())")
+
+            # the keys that step through the slices keep working
+            before = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            top_left = page.locator("#brain").screenshot()
+            for key in ["q", "a", "z"]:
+                page.keyboard.press(key)
+            page.wait_for_timeout(1000)
+            after = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in after] == [round(v) + 1 for v in before], (
+                "the slice keys did not move the planes")
+            assert page.locator("#brain").screenshot() != top_left, (
+                "the slice views did not redraw when the planes moved")
+
+            # and the 3D view comes back on its own
+            page.evaluate("window.viewer.ui.set('sliceplanes.ortho_views', false)")
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer.views.length") == 1
+            assert page.evaluate("window.viewer.root.visible") is True
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

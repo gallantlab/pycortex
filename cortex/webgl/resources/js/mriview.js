@@ -128,6 +128,9 @@ var mriview = (function(module) {
         this._clipx = false;
         this._clipy = false;
         this._clipz = false;
+        //whether the canvas is split between the three slice views and the
+        //3D one, rather than the 3D one alone
+        this._sliceviews = false;
 
         this.ui = new jsplot.Menu();
         this.ui.addEventListener("update", this.schedule.bind(this));
@@ -143,16 +146,17 @@ var mriview = (function(module) {
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
 
-    module.Viewer.prototype.drawView = function(scene, idx) {
-        if (this.surfs[idx].prerender !== undefined)
-            this.surfs[idx].prerender(this.renderer, scene, this.camera);
+    module.Viewer.prototype.drawView = function(scene, idx, camera) {
+        camera = camera === undefined ? this.camera : camera;
+        if (this.surfs[idx] !== undefined && this.surfs[idx].prerender !== undefined)
+            this.surfs[idx].prerender(this.renderer, scene, camera);
 
         for (var i = 0; i < this.surfs.length; i++)
             this.surfs[i].apply(this.active);
         if (this.oculus)
-            this.oculus.render(scene, this.camera);
+            this.oculus.render(scene, camera);
         else
-            this.renderer.render(scene, this.camera);
+            this.renderer.render(scene, camera);
     }
 
     module.Viewer.prototype.setOculus = function() {
@@ -716,6 +720,9 @@ var mriview = (function(module) {
             this.sliceplanes.x.setData(this.active);
             this.sliceplanes.y.setData(this.active);
             this.sliceplanes.z.setData(this.active);
+            //setGrid above builds the views again, so the slice views, which
+            //are views of its scene, are built again on top of it
+            this.setSliceViews(this._sliceviews);
 
         }.bind(this));
     };
@@ -1327,6 +1334,7 @@ var mriview = (function(module) {
         //add sliceplane gui
         var sliceplane_ui = this.ui.addFolder("sliceplanes", true)
         sliceplane_ui.add({
+            ortho_views: {action:[this, "setSliceViews"], key:'v', help:'Three slice views beside the 3D one'},
             x: {action:[this.sliceplanes.x, "setVisible"]},
             xToggle: {action: this.toggleXVis.bind(this), key: 'e', hidden: true, help:'Toggle X slice'},
             y: {action:[this.sliceplanes.y, "setVisible"]},
@@ -1494,6 +1502,188 @@ var mriview = (function(module) {
         this.sliceplanes.z.setVisible(!this.sliceplanes.z._visible);
         viewer.schedule();
     };
+    //-------------------------------------------------------------------------
+    // Orthogonal slice views
+    //-------------------------------------------------------------------------
+    //Where each slice view sits in the canvas, in the fractions of it
+    //three.js takes (the origin is its bottom left corner). The 3D view
+    //keeps the last quarter.
+    var SLICE_VIEWS = [
+        {plane: "y", axis: 1, left: 0,   bottom: 0.5},
+        {plane: "z", axis: 2, left: 0,   bottom: 0},
+        {plane: "x", axis: 0, left: 0.5, bottom: 0.5},
+    ];
+
+    //Splits the canvas between the three slice planes, each drawn straight
+    //down its own axis in a quarter of it, and the 3D view, which keeps the
+    //last quarter along with the camera the controls move and the surface as
+    //it is always drawn. A slice view shows its plane alone: the surface
+    //would stand in front of the data the view is there to show.
+    module.Viewer.prototype.setSliceViews = function(val) {
+        if (val === undefined)
+            return this._sliceviews;
+        this._sliceviews = !!val;
+        if (this.views.length == 0)
+            return;
+
+        var scene = this.views[0].scene;
+        var views = [];
+        if (this._sliceviews) {
+            for (var i = 0; i < SLICE_VIEWS.length; i++) {
+                var spec = SLICE_VIEWS[i];
+                var view = {
+                    left: spec.left, bottom: spec.bottom, width: 0.5, height: 0.5,
+                    scene: scene, surf: 0, plane: this.sliceplanes[spec.plane],
+                    axis: spec.axis,
+                    camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 10000),
+                };
+                view.prepare = this._prepareSlice.bind(this, view);
+                views.push(view);
+            }
+            var solid = {left: 0.5, bottom: 0, width: 0.5, height: 0.5, scene: scene, surf: 0};
+            solid.prepare = this._showAllPlanes.bind(this);
+            views.push(solid);
+        } else {
+            views.push({left: 0, bottom: 0, width: 1, height: 1, scene: scene, surf: 0});
+        }
+        this.views = views;
+        this._orthoLabels(this._sliceviews);
+        //the surfaces and the planes are left as the 3D view wants them, so
+        //that a single view, a screenshot or a pick sees what it always did
+        this._showAllPlanes();
+        this.resize();
+        this.schedule();
+    };
+
+    //Draws one slice view: the plane of this view alone, seen from straight
+    //down its normal and framed on the slice it cuts. Data that has no
+    //volume to slice, such as data on the vertices, leaves the surface in
+    //view instead, seen down the axis this view stands for.
+    module.Viewer.prototype._prepareSlice = function(view, width, height) {
+        var plane = view.plane;
+        var sliced = plane.mesh !== undefined && plane.geometry !== undefined;
+        this.root.visible = !sliced;
+        for (var name in this.sliceplanes) {
+            var mesh = this.sliceplanes[name].mesh;
+            if (mesh !== undefined)
+                mesh.visible = this.sliceplanes[name] === plane;
+        }
+
+        var look = new THREE.Vector3(), up, right, center, halfUp = 0, halfRight = 0;
+        if (sliced) {
+            //the face normal rather than the clipping one, which the flip
+            //controls turn around
+            look.copy(plane.geometry.faces[0].normal).applyEuler(plane.mesh.rotation).normalize();
+            //seen from the subject's right, front or top, whichever of those
+            //the plane faces, so that the slices are laid out as they are read
+            var axis = 0;
+            for (var a = 1; a < 3; a++) {
+                if (Math.abs(look.getComponent(a)) > Math.abs(look.getComponent(axis)))
+                    axis = a;
+            }
+            if (look.getComponent(axis) < 0)
+                look.negate();
+
+            //Up is one of the plane's own edges, not a world axis: the volume
+            //sits at an angle to the anatomy, and a world axis would leave
+            //the slice tilted on screen. Of the two edges, the one that
+            //points most nearly superior is up, or most nearly anterior on
+            //the plane that superior is normal to.
+            var corners = plane.geometry.vertices;
+            var edges = [new THREE.Vector3().subVectors(corners[1], corners[0]).normalize(),
+                         new THREE.Vector3().subVectors(corners[2], corners[0]).normalize()];
+            var upAxis = axis == 2 ? 1 : 2;
+            up = Math.abs(edges[0].getComponent(upAxis)) >= Math.abs(edges[1].getComponent(upAxis))
+               ? edges[0] : edges[1];
+            if (up.getComponent(upAxis) < 0)
+                up.negate();
+            right = new THREE.Vector3().crossVectors(look, up).normalize();
+            up.crossVectors(right, look).normalize();
+
+            //the quad of the slice, which is centered on the object itself
+            for (var v = 0; v < corners.length; v++) {
+                halfUp = Math.max(halfUp, Math.abs(corners[v].dot(up)));
+                halfRight = Math.max(halfRight, Math.abs(corners[v].dot(right)));
+            }
+            center = plane.center;
+        } else {
+            var box = new THREE.Box3().setFromObject(this.root);
+            if (box.empty())
+                return;
+            look.setComponent(view.axis, 1);
+            up = view.axis == 2 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, 1);
+            right = new THREE.Vector3().crossVectors(look, up).normalize();
+            var size = box.size();
+            halfUp = Math.abs(size.dot(up)) / 2;
+            halfRight = Math.abs(size.dot(right)) / 2;
+            center = box.center();
+        }
+        this._aimOrtho(view.camera, center, look, up, halfRight, halfUp, width / height);
+
+        //The lights ride with the camera the controls move, so a view drawn
+        //with another one would be lit from wherever that camera happens to
+        //point. Turn them to face this view for as long as it is drawn; the
+        //3D view, which is drawn last, puts them back.
+        if (this._camQuat === undefined)
+            this._camQuat = this.camera.quaternion.clone();
+        this.camera.quaternion.copy(view.camera.quaternion);
+    };
+
+    //Points an orthographic camera at `center` from along `look`, with `up`
+    //on the screen and wide enough to hold what is being looked at
+    module.Viewer.prototype._aimOrtho = function(camera, center, look, up, halfRight, halfUp, aspect) {
+        var half = Math.max(halfUp, halfRight / aspect) * 1.05;
+        camera.up.copy(up);
+        camera.position.copy(center).add(look.clone().multiplyScalar(1000));
+        camera.lookAt(center);
+        camera.left = -half * aspect;
+        camera.right = half * aspect;
+        camera.top = half;
+        camera.bottom = -half;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+    };
+
+    //Puts the surfaces and the planes back the way the 3D view shows them
+    module.Viewer.prototype._showAllPlanes = function() {
+        if (this._camQuat !== undefined) {
+            this.camera.quaternion.copy(this._camQuat);
+            this._camQuat = undefined;
+        }
+        this.root.visible = true;
+        for (var name in this.sliceplanes) {
+            var plane = this.sliceplanes[name];
+            if (plane.mesh !== undefined)
+                plane.mesh.visible = plane.setVisible();
+        }
+    };
+
+    //The name of each slice view, written in its corner
+    module.Viewer.prototype._orthoLabels = function(show) {
+        if (this._orthoDivs === undefined) {
+            this._orthoDivs = [];
+            for (var i = 0; i < SLICE_VIEWS.length; i++) {
+                var div = document.createElement("div");
+                div.className = "mriview-ortho";
+                div.style.left = (100 * SLICE_VIEWS[i].left) + "%";
+                //the views count from the bottom of the canvas, CSS from the top
+                div.style.top = (100 * (0.5 - SLICE_VIEWS[i].bottom)) + "%";
+                div.appendChild(document.createElement("span")).textContent =
+                    SLICE_VIEWS[i].plane + " slice";
+                //a drag here would otherwise turn the 3D view, which is not
+                //what the pointer is over
+                var swallow = function(event) { event.stopPropagation(); };
+                div.addEventListener("mousedown", swallow, false);
+                div.addEventListener("wheel", swallow, false);
+                div.addEventListener("dblclick", swallow, false);
+                this.object.appendChild(div);
+                this._orthoDivs.push(div);
+            }
+        }
+        for (var i = 0; i < this._orthoDivs.length; i++)
+            this._orthoDivs[i].style.display = show ? "block" : "none";
+    };
+
     module.Viewer.prototype.setClippingX = function(val) {
         if (val === undefined)
             return this._clipx;
