@@ -185,6 +185,9 @@ var jsplot = (function (module) {
                     this.camera.updateProjectionMatrix();
                 }
                 this.drawView(view.scene, view.surf === undefined ? i : view.surf, camera);
+                //anything that belongs over the view rather than in it
+                if (view.overlay !== undefined)
+                    view.overlay(camera);
             }
         } else if (this.views.length > 0) {
             this.renderer.enableScissorTest(false);
