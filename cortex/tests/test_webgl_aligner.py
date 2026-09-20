@@ -1038,3 +1038,51 @@ def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
             browser.close()
     finally:
         server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_the_hue_bar_of_the_color_picker_is_within_reach():
+    """The mesh color picker shows only while the pointer is over it, so its
+    hue bar has to sit beside the saturation square and inside the picker.
+    Laid out below it, the pointer leaves the picker on the way and the
+    picker closes before the bar can be used."""
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            page.hover("#figure_ui .cr.color .c")
+            boxes = page.evaluate("""() => {
+                var picker = document.querySelector('#figure_ui .selector');
+                var box = function(el) {
+                    var r = el.getBoundingClientRect();
+                    return {left: r.left, right: r.right, top: r.top, bottom: r.bottom};
+                };
+                return {picker: box(picker),
+                        square: box(picker.querySelector('.saturation-field')),
+                        hue: box(picker.querySelector('.hue-field'))};
+            }""")
+            picker, square, hue = boxes["picker"], boxes["square"], boxes["hue"]
+            assert hue["left"] >= square["right"] - 1, "the hue bar is not beside the square"
+            assert hue["top"] < square["bottom"], "the hue bar is below the square"
+            assert hue["right"] <= picker["right"] + 1 and hue["bottom"] <= picker["bottom"] + 1, (
+                "the hue bar hangs out of the picker")
+
+            # and the picker is still there once the pointer is on the bar
+            page.mouse.move((hue["left"] + hue["right"]) / 2, (hue["top"] + hue["bottom"]) / 2)
+            page.wait_for_timeout(200)
+            assert page.evaluate(
+                "() => getComputedStyle(document.querySelector('#figure_ui .selector')).display"
+            ) != "none", "the picker closed on the way to the hue bar"
+            browser.close()
+    finally:
+        server.stop()
