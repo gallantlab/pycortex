@@ -182,6 +182,9 @@ plt.show()
 #     handle.tracts.bundles.setGroupVisible("vertical", False)
 #
 # Large tractograms are worth decimating before display -- every point costs
-# three floats and three color bytes in the browser::
+# three floats and three color bytes in the browser. ``subsample`` returns a
+# decimated copy rather than modifying the tractogram, so display what it
+# returns::
 #
-#     tract.subsample(max_streamlines=5000)
+#     smaller = tract.subsample(max_streamlines=5000)
+#     handle = cortex.webgl.show(cortex.Dataset(overlay=overlay, bundles=smaller))

@@ -191,10 +191,13 @@ Every point is uploaded to the browser as three floats plus three color bytes,
 and each streamline segment costs two indices, so a whole-brain tractogram of a
 few million points is tens of megabytes and will make the viewer sluggish long
 before it runs out of memory. :meth:`Tractogram.subsample` decimates one for
-interactive use::
+interactive use. It returns a new tractogram and leaves the original untouched,
+so it is the returned one that goes into the :class:`Dataset`::
 
-    tract.subsample(max_streamlines=5000)   # random subset, seeded and reproducible
-    tract.subsample(step=10)                # every 10th streamline
+    smaller = tract.subsample(max_streamlines=5000)  # a seeded random subset
+    smaller = tract.subsample(step=10)               # or every 10th streamline
+
+    ds = cortex.Dataset(overlay=cortex.Vertex(values, "S1"), bundles=smaller)
 
 :meth:`Tractogram.select` and :meth:`Tractogram.get_group` return new
 tractograms restricted to a chosen set of streamlines or to a single named

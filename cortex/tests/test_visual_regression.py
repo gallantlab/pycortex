@@ -40,6 +40,7 @@ import cortex
 import cortex.export
 import cortex.polyutils
 from cortex.dataset import Dataview
+from cortex.export.save_views import ViewParams
 from cortex.tests.testing_utils import has_playwright
 
 pytestmark = pytest.mark.skipif(
@@ -116,7 +117,10 @@ TRACT_REFERENCE_DIR = REFERENCE_ROOT / "tracts"
 #: streamlines floating in the gap between them, touching almost no surface --
 #: the one thing this suite exists to check. The tuple form names the view for
 #: the output filename.
-TRACT_ANGLE = ("oblique_left", {"camera.azimuth": 125, "camera.altitude": 70})
+TRACT_ANGLE: tuple[str, ViewParams] = (
+    "oblique_left",
+    {"camera.azimuth": 125, "camera.altitude": 70},
+)
 
 TRACT_SURFACE_OPACITIES = [
     ("opaque", 1.0, 1.0),
@@ -722,8 +726,8 @@ def _render_and_check_dataview(
 def _render_and_check_webgl_only(
     tag: str,
     view: Union[Dataview, cortex.Dataset],
-    surface: Union[str, dict],
-    angle: str,
+    surface: Union[str, ViewParams],
+    angle: Union[str, tuple[str, ViewParams]],
     reference_dir: Path,
     tmp_path: Path,
 ) -> list[str]:
@@ -733,8 +737,10 @@ def _render_and_check_webgl_only(
     we don't use quickflat.
 
     ``view`` may be a ``Dataset`` rather than a single dataview (a
-    ``Tractogram`` cannot be displayed on its own), and ``surface`` may be an
-    explicit parameter dict rather than one of the named presets.
+    ``Tractogram`` cannot be displayed on its own), ``surface`` may be an
+    explicit parameter dict rather than one of the named presets, and ``angle``
+    may be a ``(name, parameters)`` pair rather than a named preset -- the same
+    forms ``save_3d_views`` itself accepts.
 
     Curvature is left at pycortex's default (thresholded) here, unlike the
     flatmap suites. Those un-threshold it to reduce cross-renderer
@@ -946,7 +952,7 @@ def test_visual_comparison_tracts(tmp_path, tag, opacity, tract_alpha):
     """
     from cortex.export.save_views import unfold_view_params
 
-    surface = {
+    surface: ViewParams = {
         **unfold_view_params["fiducial"],
         "surface.{subject}.surface_opacity": opacity,
     }
