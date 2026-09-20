@@ -1598,10 +1598,15 @@ var mriview = (function(module) {
         var voxel = (coords === undefined || coords === -1) ? undefined : coords.voxel;
         var xfm = (this.active === null || this.active === undefined)
                 ? undefined : this.active.uniforms.volxfm;
-        //nothing was picked, or the data is on the vertices and has no
-        //volume to point into
-        if (voxel === undefined || !isFinite(voxel.x) || !isFinite(voxel.y) ||
-            !isFinite(voxel.z) || xfm === undefined || xfm.value[0] === undefined) {
+        //A click that picked nothing leaves the crosshair where it is: it
+        //marks a place, and clicking beside the brain is not a way of saying
+        //to forget it.
+        if (voxel === undefined)
+            return;
+        //Data on the vertices has no volume to point into, so there is no
+        //place for the crosshair to be.
+        if (!isFinite(voxel.x) || !isFinite(voxel.y) || !isFinite(voxel.z) ||
+            xfm === undefined || xfm.value[0] === undefined) {
             this._cursorAt = false;
             cursor.visible = false;
             this.schedule();
@@ -1691,6 +1696,9 @@ var mriview = (function(module) {
             center = box.center();
         }
         this._aimOrtho(view.camera, center, look, up, halfRight, halfUp, width / height);
+        //where the view is aimed, which is what a click in it is read against
+        view.look = look.clone();
+        view.center = center.clone();
         //the crosshair lies in the plane of the view that draws it, so its
         //two lines cross at the point rather than running off at an angle
         var basis = new THREE.Matrix4();
@@ -1757,7 +1765,40 @@ var mriview = (function(module) {
         }
     };
 
-    //The name of each slice view, written in its corner
+    //A click in a slice view puts the crosshair where it landed on that
+    //slice, and takes the other two views to the slices through it.
+    module.Viewer.prototype._pickSlice = function(index, event) {
+        var view = this.views[index];
+        //the view aims itself as it is drawn, so its own frame says where in
+        //the volume the pointer is
+        if (view === undefined || view.camera === undefined ||
+            view.look === undefined || view.center === undefined)
+            return;
+        //with data on the vertices these views show the surface instead, and
+        //there is no slice for a click to land on
+        if (view.plane === undefined || view.plane.mesh === undefined)
+            return;
+        var xfm = (this.active === null || this.active === undefined)
+                ? undefined : this.active.uniforms.volxfm;
+        if (xfm === undefined || xfm.value[0] === undefined)
+            return;
+
+        var rect = event.currentTarget.getBoundingClientRect();
+        var point = new THREE.Vector3(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            1 - ((event.clientY - rect.top) / rect.height) * 2, 0).unproject(view.camera);
+        //the camera looks down the normal of the slice, so the point under
+        //the pointer is that one carried along the line of sight onto it
+        var depth = view.look.dot(new THREE.Vector3().subVectors(view.center, point));
+        point.add(view.look.clone().multiplyScalar(depth));
+
+        var voxel = point.applyMatrix4(xfm.value[0]);
+        this.setCursor({voxel: new THREE.Vector3(
+            Math.round(voxel.x), Math.round(voxel.y), Math.round(voxel.z))});
+    };
+
+    //One div over each slice view, which names it in its corner and
+    //takes the clicks made in it
     module.Viewer.prototype._orthoLabels = function(show) {
         if (this._orthoDivs === undefined) {
             this._orthoDivs = [];
@@ -1775,6 +1816,7 @@ var mriview = (function(module) {
                 div.addEventListener("mousedown", swallow, false);
                 div.addEventListener("wheel", swallow, false);
                 div.addEventListener("dblclick", swallow, false);
+                div.addEventListener("click", this._pickSlice.bind(this, i), false);
                 this.object.appendChild(div);
                 this._orthoDivs.push(div);
             }

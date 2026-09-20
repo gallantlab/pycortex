@@ -1010,11 +1010,43 @@ def test_ortho_views_split_the_canvas():
             assert page.evaluate("window.viewer._cursor.visible") is False, (
                 "the crosshair is drawn in the 3D view, which has the picker's own marker")
 
+            # a click that lands on nothing leaves the crosshair where it is:
+            # it marks a place, and clicking beside the brain does not unmark it
+            where = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.97, box["y"] + box["height"] * 0.97)
+            page.wait_for_timeout(1000)
+            assert page.evaluate("window.viewer._cursorAt") is True, (
+                "a click on nothing took the crosshair away")
+            assert page.evaluate("window.viewer._cursor.position.toArray()") == where
+
+            # a click in a slice view puts the crosshair under the pointer and
+            # takes the other two views to it, leaving its own slice alone
+            page.mouse.click(box["x"] + box["width"] * 0.2, box["y"] + box["height"] * 0.2)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != where, (
+                "a click in the coronal view did not move the crosshair")
+            moved = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in moved], (
+                "the crosshair is not on the slices the click took the views to")
+            assert round(moved[1]) == round(picked[1]), (
+                "the coronal view moved the very slice the click was made on")
+            assert [round(v) for v in moved] != [round(v) for v in picked], (
+                "the click in the coronal view left the other views where they were")
+
             # and the 3D view comes back on its own
             page.evaluate("window.viewer.ui.set('sliceplanes.ortho_views', false)")
             page.wait_for_timeout(1500)
             assert page.evaluate("window.viewer.views.length") == 1
             assert page.evaluate("window.viewer.root.visible") is True
+            # the point stays marked across the change of layout
+            assert page.evaluate("window.viewer._cursorAt") is True
+            assert page.evaluate("window.viewer._cursor.visible") is False
             assert not errors, errors
             browser.close()
     finally:

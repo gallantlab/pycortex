@@ -189,6 +189,10 @@ var jsplot = (function (module) {
                 if (view.overlay !== undefined)
                     view.overlay(camera);
             }
+            //Anything drawn after this, the picker's own passes among them,
+            //covers the whole canvas: a scissor left on would cut it down to
+            //the last view of the loop.
+            this.renderer.enableScissorTest(false);
         } else if (this.views.length > 0) {
             this.renderer.enableScissorTest(false);
             this.drawView(this.views[0].scene, 0, this.camera);
