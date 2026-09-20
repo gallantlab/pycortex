@@ -94,6 +94,50 @@ def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
     )
 
 
+def _wait_for_tracts_loaded(handle, timeout: float = 60.0) -> None:
+    """Block until every tractogram's buffers have arrived in the browser.
+
+    ``viewer.loaded`` deliberately does not wait for tractograms -- a slow
+    streamline download must not hold up a viewer that is perfectly usable
+    without it (mriview.js: ``addTracts``). That leaves a race for anything
+    that screenshots straight after loading: ``getImage``/``save_3d_views``
+    would catch a scene whose streamlines are still in flight. So poll
+    ``viewer.tractsState()`` too, which answers "resolved" immediately when
+    there are no tractograms at all.
+
+    A failed download is reported rather than waited out: the screenshot
+    would silently be missing streamlines.
+    """
+    deadline = time.monotonic() + timeout
+    poll_interval = 0.1
+    last_err: Optional[str] = None
+    while time.monotonic() < deadline:
+        try:
+            result = handle.send(
+                method="run", params=["window.viewer.tractsState", []]
+            )
+        except Exception as exc:
+            last_err = repr(exc)
+            result = None
+        val = result[0] if isinstance(result, list) and result else result
+        if val == "resolved":
+            return
+        if val == "rejected":
+            raise RuntimeError(
+                "A tractogram's streamline buffers failed to download in the "
+                "headless browser; the viewer would render without them."
+            )
+        if val is not None:
+            last_err = (
+                str(val.get("error", val)) if isinstance(val, dict) else str(val)
+            )
+        time.sleep(poll_interval)
+    raise RuntimeError(
+        f"Tractogram buffers did not finish loading within {timeout:.0f}s "
+        f"(last response: {last_err!r})."
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Helper: run Playwright in a dedicated thread to avoid asyncio conflicts     #
 # --------------------------------------------------------------------------- #
@@ -461,6 +505,10 @@ def headless_viewer(
         # calls in tests and callers, and shortens the wait when the
         # browser is faster than the worst-case timeout.
         _wait_for_viewer_loaded(handle, timeout=timeout)
+        # ... and until any tractogram has finished downloading: those load
+        # outside viewer.loaded on purpose, so without this a screenshot
+        # taken right away can come back without its streamlines.
+        _wait_for_tracts_loaded(handle, timeout=timeout)
 
         yield handle
 

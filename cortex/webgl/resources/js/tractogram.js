@@ -4,6 +4,9 @@ var mriview = (function(module) {
     //one. Not a bundle, so it is listed after them (see sortGroupNames).
     var UNGROUPED = "(ungrouped)";
 
+    //Source of unique DOM ids, for the aria-controls wiring in _buildElement.
+    module._tractElementId = 0;
+
     //Fetch a binary payload (one of the tractogram's buffers) as an
     //ArrayBuffer. Same XMLHttpRequest style as surfload.js / CTMLoader.js.
     function loadBuffer(url, callback, errback) {
@@ -47,6 +50,21 @@ var mriview = (function(module) {
         }
     };
 
+    //Which element-index strategy a geometry of `npts` vertices needs:
+    //"uint16" (indexed, 16-bit elements), "uint32" (indexed, 32-bit elements)
+    //or "duplicate" (no index buffer at all, the endpoints of every segment
+    //duplicated). Split out from `indexMode` so it can be checked directly,
+    //without a GL context to fake.
+    module.indexModeFor = function(npts, uint32ok) {
+        if (npts <= 65535)
+            return "uint16";
+        return uint32ok ? "uint32" : "duplicate";
+    };
+
+    module.indexMode = function(npts, renderer) {
+        return module.indexModeFor(npts, module.supportsUint32Index(renderer));
+    };
+
     //A bundle of streamlines, rendered as GL_LINES.
     //
     //`meta` is one entry of the `tracts` dict of the metadata package built by
@@ -61,6 +79,9 @@ var mriview = (function(module) {
         this._visible = (meta.visible === undefined) ? true : !!meta.visible;
         this._opacity = (meta.alpha === undefined) ? 1 : meta.alpha;
         this._mix = 0;
+        //Whether this tractogram's subject is the one currently on screen;
+        //maintained by Viewer._updateTractSubjects (see mriview.js).
+        this._subjectShown = true;
 
         this.n_points = 0;
         this.n_streamlines = 0;
@@ -72,6 +93,13 @@ var mriview = (function(module) {
         this.geometry = null;
         this.material = null;
         this.line = null;
+        //"uint16", "uint32" or "duplicate": how the last built geometry
+        //addresses its vertices (see module.indexMode). Set by _buildLine.
+        this.indexType = null;
+        //Set to one of those three strings to override that choice, e.g. to
+        //force the duplicated-vertex fallback on a driver that advertises
+        //OES_element_index_uint but mishandles it. null follows the renderer.
+        this.forceIndexMode = null;
 
         //Per-group visibility (name -> bool), including a synthetic
         //"(ungrouped)" entry when at least one streamline belongs to no
@@ -82,13 +110,16 @@ var mriview = (function(module) {
         //pseudo-group). this._hasGroups records whether group filtering
         //applies at all, so setVisible-only tractograms skip it entirely.
         this._hasGroups = false;
-        this._groupVisible = {};
+        //Group names come from the dataset, so these maps are prototype-free:
+        //a bundle called "__proto__" or "constructor" must be an ordinary key
+        //rather than a reference to (or an overwrite of) Object.prototype.
+        this._groupVisible = Object.create(null);
         //Uint32Array: concatenation of every real group's streamline
         //indices (server "groups" buffer) followed by the synthetic
         //"(ungrouped)" group's indices, if any -- see _build.
         this._groupIndices = null;
         //name -> [start, stop] slice into _groupIndices.
-        this._groupSlices = {};
+        this._groupSlices = Object.create(null);
         //Uint8Array of length n_streamlines, recomputed by
         //_updateStreamlineVisibility whenever _groupVisible changes: 1 if
         //the streamline is a member of >=1 visible group (or, with no
@@ -121,7 +152,7 @@ var mriview = (function(module) {
         this._visibleCheckbox = null;
         this._opacitySlider = null;
         this._opacityBox = null;
-        this._groupCheckboxes = {};
+        this._groupCheckboxes = Object.create(null);
 
         var buffers = {}, names = ["points", "offsets", "colors", "groups"];
         var pending = names.length;
@@ -212,14 +243,18 @@ var mriview = (function(module) {
     //false and group filtering out of the picture entirely.
     module.Tractogram.prototype._setupGroups = function(groupsBuffer, nstream) {
         var groupIndices = new Uint32Array(groupsBuffer);
-        var groupSlices = {};
+        //Prototype-free: group names are dataset-supplied, so "__proto__" has
+        //to land as an ordinary key rather than reset the prototype.
+        var groupSlices = Object.create(null);
         //Object key order for non-integer-like string keys follows
         //insertion order in all JS engines we target, and JSON.parse
         //preserves the order the metadata was serialized in -- but a group
         //named e.g. "2" would be reordered numerically by the JS engine;
         //not handled here (group names are expected to be bundle names).
-        for (var gname in this.meta.groups)
-            groupSlices[gname] = this.meta.groups[gname];
+        var metagroups = this.meta.groups || {};
+        for (var gname in metagroups)
+            if (Object.prototype.hasOwnProperty.call(metagroups, gname))
+                groupSlices[gname] = metagroups[gname];
         var hasGroups = Object.keys(groupSlices).length > 0;
 
         if (hasGroups) {
@@ -242,7 +277,7 @@ var mriview = (function(module) {
         this._hasGroups = hasGroups;
         this._groupIndices = groupIndices;
         this._groupSlices = groupSlices;
-        this._groupVisible = {};
+        this._groupVisible = Object.create(null);
         for (var name in groupSlices)
             this._groupVisible[name] = true;
     };
@@ -286,9 +321,10 @@ var mriview = (function(module) {
                 nseg += Math.max(offsets[s+1] - offsets[s] - 1, 0);
         }
 
-        if (module.supportsUint32Index(this.renderer) || npts <= 65535) {
+        var mode = this.forceIndexMode || module.indexMode(npts, this.renderer);
+        if (mode !== "duplicate") {
             //Uint16 is enough (and universally supported) for small tractograms.
-            var index = (npts <= 65535) ? new Uint16Array(2 * nseg) : new Uint32Array(2 * nseg);
+            var index = (mode === "uint16") ? new Uint16Array(2 * nseg) : new Uint32Array(2 * nseg);
             var k = 0;
             for (var s = 0; s < nstream; s++) {
                 if (!visible[s])
@@ -300,7 +336,7 @@ var mriview = (function(module) {
             }
             //Position/color stay the full (unfiltered) buffers -- only the
             //index changes with visibility.
-            return {indexed: true, position: points, color: colors, index: index};
+            return {mode: mode, indexed: true, position: points, color: colors, index: index};
         } else {
             //Fallback: duplicate the endpoints of every segment so no element
             //index buffer is needed at all.
@@ -320,7 +356,7 @@ var mriview = (function(module) {
                     k++;
                 }
             }
-            return {indexed: false, position: pos, color: col};
+            return {mode: mode, indexed: false, position: pos, color: col};
         }
     };
 
@@ -342,6 +378,7 @@ var mriview = (function(module) {
             this.geometry.dispose();
 
         this.geometry = geometry;
+        this.indexType = arrays.mode;
         this.line = new THREE.Line(geometry, this.material, THREE.LinePieces);
         this.line.name = "Tractogram:" + this.name + ":lines";
         this.n_vertices = geometry.attributes.position.array.length / 3;
@@ -353,6 +390,38 @@ var mriview = (function(module) {
             : this.n_vertices / 2;
         this._updateRenderOrder();
         this.object.add(this.line);
+    };
+
+    //Positions and colors of drawn segment `i`, as they reach the GPU:
+    //{position:[x0,y0,z0,x1,y1,z1], color:[r0,g0,b0,r1,g1,b1]} with colors in
+    //0-1. Both geometry paths answer identically, which is what makes the
+    //duplicated-vertex fallback checkable against the indexed geometry (it is
+    //the only way to see the difference from outside, since the two draw the
+    //same picture). Returns null for an out-of-range segment.
+    module.Tractogram.prototype.segment = function(i) {
+        if (this.geometry === null || i < 0 || i >= this.n_segments)
+            return null;
+        var pos = this.geometry.attributes.position.array;
+        var col = this.geometry.attributes.color.array;
+        var index = this.geometry.attributes.index;
+        var a, b;
+        if (index !== undefined) {
+            a = index.array[2*i];
+            b = index.array[2*i + 1];
+        } else {
+            a = 2*i;
+            b = 2*i + 1;
+        }
+        var out = {position: [], color: []}, d;
+        for (d = 0; d < 3; d++) {
+            out.position.push(pos[3*a + d]);
+            out.color.push(col[3*a + d]);
+        }
+        for (d = 0; d < 3; d++) {
+            out.position.push(pos[3*b + d]);
+            out.color.push(col[3*b + d]);
+        }
+        return out;
     };
 
     //Rebuild the rendered geometry from the current this._streamlineVisible
@@ -377,31 +446,52 @@ var mriview = (function(module) {
     module.Tractogram.prototype._buildElement = function() {
         var names = this.groupNames();
         var collapsed = this._hasGroups && names.length > 8;
+        //Every control carries its own accessible name: the panel is built
+        //from bare inputs, so nothing else would announce what they act on.
+        //The collapse control is a real <button> for the same reason -- a
+        //<span> holding a glyph is neither focusable nor operable by keyboard.
+        var bodyId = "tract-body-" + (module._tractElementId++);
 
         var el = $("<div class='tract-item'></div>");
         var header = $("<div class='tract-header'></div>");
-        var toggle = $("<span class='tract-toggle'></span>").text(collapsed ? "▸" : "▾");
-        var visibleCheckbox = $("<input type='checkbox'>");
+        var toggle = $("<button type='button' class='tract-toggle'></button>")
+            .text(collapsed ? "▸" : "▾")
+            .attr({"aria-expanded": collapsed ? "false" : "true",
+                   "aria-controls": bodyId,
+                   "aria-label": "settings for " + this.name,
+                   title: "show/hide the settings for " + this.name});
+        var visibleCheckbox = $("<input type='checkbox'>")
+            .attr({"aria-label": "show " + this.name,
+                   title: "show/hide " + this.name});
         var nameLabel = $("<span class='tract-name'></span>").text(this.name);
         header.append(visibleCheckbox, toggle, nameLabel);
 
-        var body = $("<div class='tract-body'></div>");
+        var body = $("<div class='tract-body'></div>").attr("id", bodyId);
         if (collapsed)
             body.hide();
 
         var opacityRow = $("<div class='tract-opacity-row'></div>");
-        var opacitySlider = $("<input type='range' min='0' max='1' step='0.01'>");
+        var opacitySlider = $("<input type='range' min='0' max='1' step='0.01'>")
+            .attr({"aria-label": "opacity of " + this.name,
+                   title: "opacity of " + this.name});
         var opacityBox = $("<input type='number' class='tract-opacity-value' " +
-                           "min='0' max='1' step='0.01'>");
-        opacityRow.append($("<label>opacity</label>"), opacitySlider, opacityBox);
+                           "min='0' max='1' step='0.01'>")
+            .attr({"aria-label": "opacity of " + this.name + ", as a number",
+                   title: "opacity of " + this.name});
+        opacityRow.append($("<span class='tract-opacity-label'>opacity</span>"),
+                          opacitySlider, opacityBox);
         body.append(opacityRow);
 
-        this._groupCheckboxes = {};
+        this._groupCheckboxes = Object.create(null);
         if (this._hasGroups) {
-            var groupsSection = $("<div class='tract-groups'></div>");
+            var groupsSection = $("<div class='tract-groups'></div>")
+                .attr({role: "group", "aria-label": "bundles of " + this.name});
             var actions = $("<div class='tract-groups-actions'></div>");
-            var allLink = $("<a>all</a>");
-            var noneLink = $("<a>none</a>");
+            actions.append($("<span class='tract-groups-title'>bundles</span>"));
+            var allLink = $("<button type='button' class='tract-link'>all</button>")
+                .attr("aria-label", "show every bundle of " + this.name);
+            var noneLink = $("<button type='button' class='tract-link'>none</button>")
+                .attr("aria-label", "hide every bundle of " + this.name);
             actions.append(allLink, noneLink);
             groupsSection.append(actions);
 
@@ -409,7 +499,9 @@ var mriview = (function(module) {
                 (function(tract, gname) {
                     var slice = tract._groupSlices[gname];
                     var count = slice[1] - slice[0];
-                    var row = $("<div class='tract-group-row'></div>");
+                    //A <label> wrapping the checkbox names it for a screen
+                    //reader and makes the whole row a click target.
+                    var row = $("<label class='tract-group-row'></label>");
                     var cb = $("<input type='checkbox'>");
                     var label = $("<span class='tract-group-name'></span>")
                         .text(gname + " ")
@@ -431,6 +523,8 @@ var mriview = (function(module) {
         }
 
         el.append(header, body);
+        if (!this._subjectShown)
+            el.hide();
 
         //Clicks/drags inside the panel must not reach the WebGL canvas
         //handlers underneath (camera rotation, picking, etc).
@@ -458,6 +552,7 @@ var mriview = (function(module) {
         toggle.on("click", function() {
             collapsed = !collapsed;
             toggle.text(collapsed ? "▸" : "▾");
+            toggle.attr("aria-expanded", collapsed ? "false" : "true");
             body.toggle(!collapsed);
         });
 
@@ -539,6 +634,8 @@ var mriview = (function(module) {
     module.Tractogram.prototype.setGroupVisible = function(name, value) {
         if (value === undefined)
             return !!this._groupVisible[name];
+        if (this._groupSlices[name] === undefined)
+            return;
         this._groupVisible[name] = !!value;
         this._updateStreamlineVisibility();
         this._rebuildGeometry();
@@ -604,8 +701,24 @@ var mriview = (function(module) {
         this._updateVisible();
     };
 
+    //Whether this tractogram's subject is the one currently on screen (see
+    //Viewer._updateTractSubjects). A tractogram belongs to one subject's
+    //scanner space, so against another subject's surface its streamlines are
+    //meaningless -- both the lines and the panel entry step aside until that
+    //subject's dataview is active again.
+    module.Tractogram.prototype.setSubjectShown = function(shown) {
+        if (shown === undefined)
+            return this._subjectShown;
+        this._subjectShown = !!shown;
+        this._updateVisible();
+        if (this.element !== null)
+            this.element.toggle(this._subjectShown);
+        this._requestRedraw();
+    };
+
     module.Tractogram.prototype._updateVisible = function() {
-        this.object.visible = this._visible && this._mix === 0;
+        this.object.visible = this._visible && this._mix === 0 &&
+                              this._subjectShown;
     };
 
     module.Tractogram.prototype.dispose = function() {
