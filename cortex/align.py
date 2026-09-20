@@ -29,6 +29,7 @@ def webgl_manual(
     types: tuple[str, ...] = ("inflated",),
     title: Optional[str] = None,
     display_url: bool = True,
+    token: Optional[str] = None,
     template: str = "aligner.html",
 ):
     """Open the browser-based aligner for manually aligning a functional volume
@@ -113,6 +114,11 @@ def webgl_manual(
     display_url : bool, optional
         When `open_browser` is False, display an IPython link to the
         aligner. Default True.
+    token : str, optional
+        The session token the server demands, which the address it prints
+        carries and the page then keeps in a cookie. A new one is made for
+        each aligner; pass '' to take requests from anything that reaches
+        the port, which a script talking to the server itself may want.
     template : str, optional
         Name of the tornado template of the page. Default 'aligner.html'.
 
@@ -142,6 +148,7 @@ def webgl_manual(
         types=types,
         title=title,
         display_url=display_url,
+        token=token,
         template=template,
     )
 

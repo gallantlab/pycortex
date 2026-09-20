@@ -64,6 +64,7 @@ Flow: dataviews → JSON + PNG mosaics (`data.py:Package`) + compressed CTM surf
 
 - `view.py`: `show` (live Tornado server from `serve.py`, returns a `JSProxy` websocket RPC handle for driving JS from Python) and `make_static` (self-contained directory; `htmlembed.py` can inline everything into a single file).
 - `serve.WebApp` binds its listening sockets in `__init__` through `bind_local_sockets`, one per address the names in `serve.LOCAL` resolve to (the loopback addresses and the machine's hostname), all on one port, unless a caller passes another `address`; `view.show` opens up to every interface only when the `domain_name` config option names a domain to reach the viewer under.
+- Every handler is wrapped in `serve.TokenGuard` (by `serve.guarded`, in `WebApp.run`), which demands the server's `token`: `serve.WebApp.url` puts it in the address as `?token=`, the guard hands it back as a per-port cookie, and requests without either get a 403. Build URLs with `server.url(page)` rather than by hand, and pass `token=""` to turn the check off.
 - The bundled Three.js is **r69** — very old; the shader pipeline depends on its conventions, do not casually upgrade.
 - All GLSL lives in `resources/js/shaderlib.js` as arrays of string lines assembled per-configuration — there are no `.glsl` files.
 - CTM packs reorder vertices: `cortex.utils.get_ctmmap` / `get_ctm2webgl_map` translate between CTM/WebGL ordering and the original surface ordering. Indexing viewer data with original vertex indices without remapping is a classic bug.

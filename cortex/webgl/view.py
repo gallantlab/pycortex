@@ -302,6 +302,7 @@ def show(
     title: str="Brain",
     layout: Optional[str]=None,
     display_url: bool=True,
+    token: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -380,6 +381,10 @@ def show(
         link to access the viewer. Set to False to suppress this display message,
         which can be useful in contexts like Marimo notebooks or programmatic
         headless viewers. Default True
+    token : str, optional
+        The session token the server demands, which the URL it displays carries
+        and the page then keeps in a cookie. A new one is made for each viewer;
+        pass '' to answer anything that reaches the port.
     **kwargs
         All additional keyword arguments are passed to the template renderer.
     """
@@ -1034,13 +1039,14 @@ def show(
                      (r'/picker', PickerHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
-                    port, address)
+                    port, address, token)
 
     server.start()
     print("Started server on port %d"%server.port)
-    # the machine's own name, which is what a port forward from another
-    # computer is set up under, plus the domain the config gives it
-    url = "http://%s%s:%d/mixer.html"%(server.host, domain_name, server.port)
+    # under the machine's own name, which is what a port forward from another
+    # computer is set up under, plus the domain the config gives it, and
+    # carrying the session token
+    url = server.url("mixer.html", host=server.host + domain_name)
     if open_browser:
         webbrowser.open(url)
         client = server.get_client()

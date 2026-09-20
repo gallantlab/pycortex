@@ -751,7 +751,7 @@ def _served_metadata(handle):
     ``addData`` merges into, so this is how we check that a reload of the
     viewer would show everything that has been added so far.
     """
-    url = "http://localhost:%d/mixer.html" % handle.server.port
+    url = handle.server.url("mixer.html", host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         page = resp.read().decode("utf-8")
     marker = "dataset.fromJSON("
@@ -761,7 +761,7 @@ def _served_metadata(handle):
 
 def _fetch(handle, path):
     """GET ``path`` from the viewer's tornado server, returning the body."""
-    url = "http://localhost:%d%s" % (handle.server.port, path)
+    url = handle.server.url(path, host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         return resp.read()
 
