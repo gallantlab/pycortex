@@ -588,3 +588,13 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     color: #888;
     opacity: 0.5;
 }
+/* dat.GUI's color picker sizes the saturation square and the hue bar by
+   their content and lays them out to add up to the width of the picker.
+   The panel sits inside a w2ui one, whose reset makes every box count its
+   border and padding within its width instead, which leaves the hue bar
+   two pixels too wide to fit beside the square and puts it underneath, out
+   of the picker and out of reach: the picker only shows while the pointer
+   is over it. */
+.dg .selector, .dg .selector * {
+    box-sizing:content-box;
+}
