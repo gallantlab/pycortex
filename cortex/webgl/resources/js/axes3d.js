@@ -161,7 +161,7 @@ var jsplot = (function (module) {
 
         this.controls.update(this.camera);
 
-        var view, left, bottom, width, height;
+        var view, left, bottom, width, height, camera;
         if (this.views.length > 1) {
             for (var i = 0; i < this.views.length; i++) {
                 view = this.views[i];
@@ -174,21 +174,29 @@ var jsplot = (function (module) {
                 this.renderer.setScissor( left, bottom, width, height );
                 this.renderer.enableScissorTest ( true );
 
-                this.camera.aspect = width / height;
-                this.camera.updateProjectionMatrix();
-                this.drawView(this.views[i].scene, i);
+                //A view can bring a camera of its own, and say what its
+                //scene is to show before it is drawn; the rest are drawn
+                //with the camera the controls move, one after another.
+                if (view.prepare !== undefined)
+                    view.prepare(width, height);
+                camera = view.camera === undefined ? this.camera : view.camera;
+                if (camera === this.camera) {
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                }
+                this.drawView(view.scene, view.surf === undefined ? i : view.surf, camera);
             }
         } else if (this.views.length > 0) {
             this.renderer.enableScissorTest(false);
-            this.drawView(this.views[0].scene, 0);
+            this.drawView(this.views[0].scene, 0, this.camera);
         }
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
 
         //requestAnimationFrame( this._schedule );
     };
-    module.Axes3D.prototype.drawView = function(scene) {
-        this.renderer.render(scene, this.camera);
+    module.Axes3D.prototype.drawView = function(scene, idx, camera) {
+        this.renderer.render(scene, camera === undefined ? this.camera : camera);
     };
     module.Axes3D.prototype.animate = function(animation) {
         var state = {};
