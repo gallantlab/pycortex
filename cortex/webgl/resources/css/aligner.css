@@ -119,8 +119,12 @@
 #aligner-history-list li {
     display:flex;
     justify-content:space-between;
+    align-items:baseline;
     padding:1px 6px;
     cursor:pointer;
+}
+.aligner-history-kind {
+    flex:none;
 }
 #aligner-history-list li:hover {
     background:#262626;
@@ -132,7 +136,7 @@
 .aligner-history-size {
     color:#9ab;
     padding-left:8px;
-    white-space:nowrap;
+    text-align:right;
 }
 #aligner-history-list li.current .aligner-history-size {
     color:#dfe;

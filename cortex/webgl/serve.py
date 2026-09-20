@@ -410,6 +410,7 @@ class WebApp(threading.Thread):
         # When port==0 the OS assigns the port; read the real value back so
         # callers can build a correct URL.
         self.port = self._sockets[0].getsockname()[1]
+        self.bound = {cast(str, sock.getsockname()[0]) for sock in self._sockets}
         self.response: Queue[Union[str, bytes]] = Queue()
         self.connect = threading.Event()
         # Set by run() once self.server and self.ioloop exist and the server is
@@ -418,6 +419,25 @@ class WebApp(threading.Thread):
         # attributes nor gets silently lost.
         self._ready = threading.Event()
         self.sockets: list[websocket.WebSocketHandler] = []
+
+    @property
+    def host(self) -> str:
+        """The name to build a link to this server from.
+
+        This computer's own hostname, which is the name a port forward from
+        another machine is usually set up under. A machine whose name resolves
+        to nothing, or to an address this server is not listening on, gets the
+        loopback name instead, so that the link works either way.
+        """
+        if self.bound & {"0.0.0.0", "::"}:
+            return hostname
+        try:
+            found = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            return LOOPBACK
+        if any(info[4][0] in self.bound for info in found):
+            return hostname
+        return LOOPBACK
 
     @property
     def n_clients(self) -> int:

@@ -54,6 +54,10 @@ var aligner = (function(module) {
     //mriview_surface.js, so that a flattened surface comes out brain-sized
     var FLATSCALE = 0.3;
 
+    //What a movement along each world axis is called, in the order the axis
+    //runs: world x, y and z point right, anterior and superior
+    var DIRECTIONS = [["left", "right"], ["posterior", "anterior"], ["inferior", "superior"]];
+
     //Slice setters, one per world axis, so that the slice controls in the
     //menu and the views stay in sync
     var SLICE_SETTERS = ["setSagittal", "setCoronal", "setAxial"];
@@ -991,9 +995,9 @@ var aligner = (function(module) {
         this._renderHistory();
     };
 
-    //How far the surfaces moved and turned between two alignments. The
-    //distance is the one their center covers, which is what a rotation about
-    //a far-off pivot amounts to on screen; the world frame is millimeters.
+    //What one edit did, in the terms it was made in: where the surfaces went
+    //along the anatomical axes, and how far and which way round they turned
+    //in the plane of the view it was made in.
     module.Aligner.prototype._describeEdit = function(index) {
         var entry = this._history[index];
         if (index == 0) {
@@ -1002,23 +1006,59 @@ var aligner = (function(module) {
         }
         var from = this._history[index - 1].xfm, to = entry.xfm;
         var center = this._meshCenter;
-        var moved = center.clone().applyMatrix4(to).distanceTo(center.clone().applyMatrix4(from));
+        var moved = center.clone().applyMatrix4(to).sub(center.clone().applyMatrix4(from));
         var relative = new THREE.Matrix4().multiplyMatrices(
             to, new THREE.Matrix4().getInverse(from));
-        var e = relative.elements;
-        var trace = Math.min(Math.max((e[0] + e[5] + e[10] - 1) / 2, -1), 1);
-        var angle = Math.acos(trace) * 180 / Math.PI;
         var parts = [];
-        if (moved >= 0.005)
-            parts.push(moved.toFixed(2) + " mm");
-        if (angle >= 0.005)
-            parts.push(angle.toFixed(2) + "°");
+        //a rotation carries its pivot's own displacement, which is not
+        //anything the user asked for, so it is left out of that label
+        if (entry.kind != "rotate")
+            parts = parts.concat(this._describeMove(moved));
+        if (entry.kind != "translate") {
+            var turn = this._describeTurn(relative);
+            if (turn !== null)
+                parts.push(turn);
+        }
         entry.label = parts.join(", ");
     };
 
-    //Draws the history in the panel. Only the entry being edited changes
-    //while a drag runs, so the rows are built again only when there are
-    //different ones to show.
+    //A movement along the world axes, as the directions they point in
+    module.Aligner.prototype._describeMove = function(vector) {
+        var parts = [];
+        for (var a = 0; a < 3; a++) {
+            var step = vector.getComponent(a);
+            if (Math.abs(step) >= 0.005)
+                parts.push(Math.abs(step).toFixed(2) + " mm " + DIRECTIONS[a][step > 0 ? 1 : 0]);
+        }
+        return parts;
+    };
+
+    //A rotation as it looks in the view of the plane it turns in: the view
+    //faces one end of the axis, and a turn that way round is counterclockwise
+    //on its screen.
+    module.Aligner.prototype._describeTurn = function(relative) {
+        var e = relative.elements;
+        var at = function(row, col) { return e[row + 4 * col]; };
+        var trace = Math.min(Math.max((at(0, 0) + at(1, 1) + at(2, 2) - 1) / 2, -1), 1);
+        var angle = Math.acos(trace) * 180 / Math.PI;
+        if (angle < 0.005)
+            return null;
+        //the skew part of a rotation matrix is its axis, scaled by the sine
+        //of the angle
+        var axis = new THREE.Vector3(at(2, 1) - at(1, 2),
+                                     at(0, 2) - at(2, 0),
+                                     at(1, 0) - at(0, 1));
+        if (axis.length() < 1e-9)
+            return angle.toFixed(2) + "°";
+        var view = this.views["xyz"[this._majorAxis(axis)]];
+        var facing = view.look.clone().negate();
+        var way = axis.dot(facing) >= 0 ? "CCW" : "CW";
+        return angle.toFixed(2) + "° " + way + " in " + view.title;
+    };
+
+    //Draws the history in the panel, newest first. Only the entry being
+    //edited changes while a drag runs, so the rows are built again only when
+    //there are different ones to show.
     module.Aligner.prototype._renderHistory = function() {
         var list = this.historyElement;
         if (list === undefined || list === null)
@@ -1026,13 +1066,16 @@ var aligner = (function(module) {
         if (this._historyRows.length != this._history.length) {
             list.innerHTML = "";
             this._historyRows = [];
-            for (var i = 0; i < this._history.length; i++) {
-                var row = document.createElement("li");
+            for (var i = 0; i < this._history.length; i++)
+                this._historyRows.push(document.createElement("li"));
+            //the newest edit is the one to read first, so the list runs the
+            //other way round from the history it draws
+            for (var i = this._history.length - 1; i >= 0; i--) {
+                var row = this._historyRows[i];
                 row.appendChild(document.createElement("span")).className = "aligner-history-kind";
                 row.appendChild(document.createElement("span")).className = "aligner-history-size";
                 row.addEventListener("click", this.selectHistory.bind(this, i), false);
                 list.appendChild(row);
-                this._historyRows.push(row);
             }
         }
         for (var i = 0; i < this._history.length; i++) {

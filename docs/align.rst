@@ -91,7 +91,8 @@ Every control stays available in all three.
 ``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, the cortical ``depth`` the data is painted at, and the ``unfold`` and ``pivot`` of the data view.
 ``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
-Below the controls, ``History`` lists every edit since the page opened, newest at the bottom, with how far each one moved and turned the surfaces.
+Below the controls, ``History`` lists every edit since the page opened, newest at the top.
+A translation says where it took the surfaces along the anatomical axes, as in ``2.00 mm left, 3.00 mm anterior``; a rotation says how far and which way round it turned them in the plane of the view it was made in, as in ``0.20° CW in coronal``.
 The entry the alignment currently stands at is highlighted.
 Click any entry to put that alignment back; editing from there drops the entries that followed it, and ctrl + z steps back one at a time.
 

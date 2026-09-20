@@ -609,9 +609,9 @@ def show(
     )
     server.start()
     print("Started aligner server on port %d" % server.port)
-    #: the server listens for this computer's own names; localhost is the one
-    #: that works whatever the machine is called
-    url = "http://%s:%d/aligner.html" % (serve.LOOPBACK, server.port)
+    #: the machine's own name, which is what a port forward from another
+    #: computer is set up under; localhost when that name leads nowhere
+    url = "http://%s:%d/aligner.html" % (server.host, server.port)
     if open_browser:
         webbrowser.open(url)
         return server.get_client()
