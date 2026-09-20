@@ -1,5 +1,9 @@
 var mriview = (function(module) {
 
+    //Name of the synthetic group covering streamlines that belong to no real
+    //one. Not a bundle, so it is listed after them (see sortGroupNames).
+    var UNGROUPED = "(ungrouped)";
+
     //Fetch a binary payload (one of the tractogram's buffers) as an
     //ArrayBuffer. Same XMLHttpRequest style as surfload.js / CTMLoader.js.
     function loadBuffer(url, callback, errback) {
@@ -177,6 +181,16 @@ var mriview = (function(module) {
             opacity: alpha,
             //Always write depth, at every opacity -- see setOpacity for why.
             depthWrite: true,
+            //...which on its own makes a fully transparent tractogram visible
+            //rather than invisible: fragments that contribute no colour still
+            //write depth, so they hide the translucent surface behind them and
+            //the streamlines show up as silhouettes cut out of the brain.
+            //r69's basic shader runs the alphatest discard while gl_FragColor.a
+            //is still just `opacity` (before vertex colours are folded in), so
+            //a small alphaTest drops exactly the fragments that would have been
+            //invisible anyway, depth write and all. It is a constant, so the
+            //ALPHATEST define is compiled once and opacity changes stay cheap.
+            alphaTest: 0.01,
             linewidth: (this.meta.linewidth === undefined) ? 1 : this.meta.linewidth,
         });
 
@@ -220,7 +234,7 @@ var mriview = (function(module) {
                 var combined = new Uint32Array(groupIndices.length + ungrouped.length);
                 combined.set(groupIndices, 0);
                 combined.set(ungrouped, groupIndices.length);
-                groupSlices["(ungrouped)"] = [groupIndices.length, combined.length];
+                groupSlices[UNGROUPED] = [groupIndices.length, combined.length];
                 groupIndices = combined;
             }
         }
@@ -546,11 +560,23 @@ var mriview = (function(module) {
         this._rebuildGeometry();
     };
 
-    //Names of every group this tractogram knows about, in metadata order,
-    //including the synthetic "(ungrouped)" entry if present. Empty when the
-    //tractogram has no groups.
+    //Alphabetical, case-insensitively and with digit runs compared as
+    //numbers, so CST_2 sorts before CST_10. The synthetic "(ungrouped)" entry
+    //always sorts last: it is not a bundle, and a leading parenthesis would
+    //otherwise float it to the top.
+    module.sortGroupNames = function(names) {
+        return names.slice().sort(function(a, b) {
+            if (a === UNGROUPED) return 1;
+            if (b === UNGROUPED) return -1;
+            return a.localeCompare(b, undefined, {numeric: true, sensitivity: "base"});
+        });
+    };
+
+    //Names of every group this tractogram knows about, alphabetically (see
+    //sortGroupNames), including the synthetic "(ungrouped)" entry if present.
+    //Empty when the tractogram has no groups.
     module.Tractogram.prototype.groupNames = function() {
-        return Object.keys(this._groupSlices || {});
+        return module.sortGroupNames(Object.keys(this._groupSlices || {}));
     };
 
     //Three.js r69 draws opaque objects first, then transparent ones sorted by

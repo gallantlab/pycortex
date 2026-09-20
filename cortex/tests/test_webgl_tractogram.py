@@ -206,11 +206,14 @@ def test_tractogram_renders_in_headless_viewer():
         # return the per-client response list, hence the [0].
         full_n_segments = handle.tracts.af.n_segments
         assert full_n_segments == n - m
-        assert set(handle.tracts.af.groupNames()[0]) == {
+        # Alphabetical, with the synthetic "(ungrouped)" entry last -- not
+        # the order the groups arrived in, which the fixture deliberately
+        # makes the reverse of alphabetical.
+        assert handle.tracts.af.groupNames()[0] == [
             "first_half",
             "second_half",
             "(ungrouped)",
-        }
+        ]
         handle.tracts.af.setGroupVisible("first_half", False)
         shrunk_n_segments = handle.tracts.af.n_segments
         assert 0 < shrunk_n_segments < full_n_segments
