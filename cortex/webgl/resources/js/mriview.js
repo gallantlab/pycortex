@@ -48,7 +48,9 @@ var mriview = (function(module) {
         for (var i = 0; i < data.length; i++) {
             var d = data[i];
             if (d.mosaic !== undefined) {
-                if (!d.textures || d.textures.length === 0) return false;
+                // textures is a sparse Array(frames): length is fixed, so
+                // check that frame 0 (what hover/click read) has arrived
+                if (!d.textures || d.textures[0] === undefined) return false;
             } else {
                 if (!d.verts || d.verts.length === 0) return false;
             }
@@ -367,6 +369,7 @@ var mriview = (function(module) {
         for (var i = 0; i < this.surfs.length; i++) {
             this.active.removeEventListener("update", this.surfs[i]._update);
             this.active.removeEventListener("attribute", this.surfs[i]._attrib);
+            this.active.removeEventListener("frameloaded", this._schedule_frame);
         }
         //set the new active data and update shaders for all surfaces
         this.active = this.dataviews[name];
@@ -383,6 +386,9 @@ var mriview = (function(module) {
                 this.surfs[i].update(this.active);
                 this.active.addEventListener("update", this.surfs[i]._update);
                 this.active.addEventListener("attribute", this.surfs[i]._attrib);
+                if (!this._schedule_frame)
+                    this._schedule_frame = this.schedule.bind(this);
+                this.active.addEventListener("frameloaded", this._schedule_frame);
             }
         }
         this.active.loaded.done(function() {
@@ -975,6 +981,12 @@ var mriview = (function(module) {
             if (this.surfs[i].pick)
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
         }
+        // On-demand timeseries fetch. 
+        if (coords && coords !== -1) {
+            this._lastPickCoords = coords;
+            if (this.tsplot && this.tsplot_visible)
+                this.fetchTimeseries(coords);
+        }
         // set the picked value display
         // Length check first so we don't index data[0] on an empty array.
         // Skip RGB, then ensure all child buffers have populated.
@@ -1030,16 +1042,103 @@ var mriview = (function(module) {
         }
     }
 
+    module.Viewer.prototype.toggleTimeseries = function() {
+        if (this.tsplot_visible) {
+            this.figure.hide("bottom");
+            this.tsplot_visible = false;
+        } else {
+            if (!this.tsplot) {
+                // pixel size: setSize's "%" form is relative to figure width,
+                // which oversizes a bottom (height) panel
+                this.figure.setSize("bottom", 280);
+                this.tsplot = this.figure.add(jsplot.TimeseriesAxes, "bottom", true, this);
+            } else {
+                this.figure.show("bottom");
+            }
+            this.tsplot_visible = true;
+            // a voxel picked before the panel was opened: plot it right away
+            if (this._lastPickCoords)
+                this.fetchTimeseries(this._lastPickCoords);
+        }
+        setTimeout(this.resize.bind(this), 500);
+    }
+
+    module.Viewer.prototype.fetchTimeseries = function(coords) {
+        this._tsCoords = coords;
+        var tsplot = this.tsplot;
+        var voxel = null, label = "";
+        if (coords.voxel) {
+            voxel = Math.round(coords.voxel.x) + "," +
+                    Math.round(coords.voxel.y) + "," +
+                    Math.round(coords.voxel.z);
+            label = "voxel (" + voxel.split(",").join(", ") + ")";
+        }
+        // fetch every dataset with at least one checked channel
+        var names = [];
+        for (var i = 0; i < tsplot.order.length; i++) {
+            var t = tsplot.traces[tsplot.order[i]];
+            if (t.type === "data" && tsplot._anyOn(t))
+                names.push(tsplot.order[i]);
+        }
+        if (names.length === 0)
+            return;
+        names.forEach(function(name) {
+            // Send the raw CTM-order pick index; the server maps it back to
+            // the original vertex numbering via the ctmpack index array.
+            var params = {name: name, hemi: coords.hemi || "",
+                          vertex: coords.vertex};
+            if (voxel !== null)
+                params.voxel = voxel;
+            $.getJSON("/timeseries", params)
+                .done(function(resp) {
+                    var lbl = label;
+                    if (resp.vertex !== undefined && resp.vertex !== null)
+                        lbl = "vertex " + resp.vertex +
+                              (params.hemi ? " (" + params.hemi + ")" : "");
+                    tsplot.update(name, resp, lbl);
+                })
+                .fail(function(xhr) {
+                    var msg = "timeseries unavailable";
+                    try { msg = JSON.parse(xhr.responseText).error || msg; }
+                    catch (e) {}
+                    tsplot.setMessage(name + ": " + msg);
+                });
+        });
+    }
+
+    // Jump the brain to one timepoint
+    module.Viewer.prototype.seekFrame = function(dataIdx) {
+        for (var i = 0; i < this.active.data.length; i++)
+            if (this.active.data[i].setPriority)
+                this.active.data[i].setPriority(dataIdx);
+        if (this.tsplot && this.tsplot_visible)
+            this.tsplot.setFrame(dataIdx);
+        if (!this.active.data[0].movie)
+            return;
+        var t = dataIdx / this.active.rate - this.active.delay;
+        if (this.state == "play")
+            this.playpause();
+        this.frame = t;
+        this.active.setFrame(t);
+        if (this.movie)
+            this.movie.setFrame(t);
+        this.schedule();
+    }
+
     var movie_ui;
     module.Viewer.prototype.setupStim = function() {
+        // controls for a movie view
+        if ("movie" in this.ui._folders)
+            this.ui.remove("movie");
+        var anyMovie = false;
+        for (var dname in this.dataviews)
+            if (this.dataviews[dname].frames > 1)
+                anyMovie = true;
         if (this.active.data[0].movie) {
-            if ("movie" in this.ui._folders) {
-                // nothing?
-            } else {
-                movie_ui = this.ui.addFolder("movie", true);
-                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
-                movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
-            }
+            movie_ui = this.ui.addFolder("movie", true);
+            movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
+            movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
+            movie_ui.add({timeseries: {action: this.toggleTimeseries.bind(this)}});
 
             if (this.movie) {
                 this.movie.destroy();
@@ -1056,7 +1155,10 @@ var mriview = (function(module) {
             if (this.state == "play") {
                 this.playpause();
             }
-            this.ui.remove("movie");
+            if (anyMovie) {
+                movie_ui = this.ui.addFolder("movie", true);
+                movie_ui.add({timeseries: {action: this.toggleTimeseries.bind(this)}});
+            }
         }
         this.schedule();
         if (this.movie) {
@@ -1139,6 +1241,11 @@ var mriview = (function(module) {
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame === undefined)
             return this.frame;
+        // First playback / slider interaction resumes the deferred movie
+        // frame download (movies only load frame 0 up front — see
+        // VolumeData in dataset.js).
+        if (this.active.loadRest)
+            this.active.loadRest();
         if (frame >= this.active.frames) {
             frame %= this.active.frames;
             this._startplay += this.active.frames;
@@ -1153,6 +1260,12 @@ var mriview = (function(module) {
         this.active.setFrame(frame);
         if (this.movie) {
             this.movie.setFrame(frame);
+        }
+        if (this.tsplot && this.tsplot_visible) {
+            // convert playback-clock frame to a data-frame index, matching
+            // DataView.setFrame's (time + delay) * rate convention
+            this.tsplot.setFrame(
+                ((frame + this.active.delay) * this.active.rate).mod(this.active.frames));
         }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
