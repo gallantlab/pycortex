@@ -609,8 +609,8 @@ def show(
     )
     server.start()
     print("Started aligner server on port %d" % server.port)
-    #: the page saves over a transform in the filestore, so the server listens
-    #: on the loopback interface alone and is reached under that name
+    #: the server listens for this computer's own names; localhost is the one
+    #: that works whatever the machine is called
     url = "http://%s:%d/aligner.html" % (serve.LOOPBACK, server.port)
     if open_browser:
         webbrowser.open(url)

@@ -63,7 +63,7 @@ Two orthogonal mixin axes: **braindata** (the array plus subject/transform ident
 Flow: dataviews → JSON + PNG mosaics (`data.py:Package`) + compressed CTM surface packs (`cortex/brainctm.py`, cached per subject) → Tornado template (`template.html`, extended by `static.html` etc., resolved via `FallbackLoader` so user template dirs can override) → Three.js app in `resources/js/`.
 
 - `view.py`: `show` (live Tornado server from `serve.py`, returns a `JSProxy` websocket RPC handle for driving JS from Python) and `make_static` (self-contained directory; `htmlembed.py` can inline everything into a single file).
-- `serve.WebApp` binds its listening socket in `__init__`, on the loopback interface (`serve.LOOPBACK`) unless a caller passes another `address`; `view.show` opens up to every interface only when the `domain_name` config option names a domain to reach the viewer under.
+- `serve.WebApp` binds its listening sockets in `__init__` through `bind_local_sockets`, one per address the names in `serve.LOCAL` resolve to (the loopback addresses and the machine's hostname), all on one port, unless a caller passes another `address`; `view.show` opens up to every interface only when the `domain_name` config option names a domain to reach the viewer under.
 - The bundled Three.js is **r69** — very old; the shader pipeline depends on its conventions, do not casually upgrade.
 - All GLSL lives in `resources/js/shaderlib.js` as arrays of string lines assembled per-configuration — there are no `.glsl` files.
 - CTM packs reorder vertices: `cortex.utils.get_ctmmap` / `get_ctm2webgl_map` translate between CTM/WebGL ordering and the original surface ordering. Indexing viewer data with original vertex indices without remapping is a classic bug.

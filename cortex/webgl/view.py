@@ -1022,10 +1022,10 @@ def show(
         # collisions that made headless/CI runs intermittently hang.
         port = 0
 
-    # The viewer hands out the filestore, so it listens on the loopback
-    # interface unless the config names a domain to reach it under, which is
+    # The viewer hands out the filestore, so it listens for this computer's
+    # own names unless the config names a domain to reach it under, which is
     # what that option is there for.
-    address = None if domain_name else serve.LOOPBACK
+    address = None if domain_name else serve.LOCAL
     host = serve.hostname + domain_name if domain_name else serve.LOOPBACK
 
     server = WebApp([(r'/ctm/(.*)', CTMHandler),

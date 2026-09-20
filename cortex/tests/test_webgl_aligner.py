@@ -435,18 +435,69 @@ def test_save_needs_the_token_of_the_page(server, recorder, token):
     assert len(recorder.calls) == 1
 
 
-def test_servers_listen_on_the_loopback_interface_alone(server):
-    """Another machine cannot reach a server that hands out the filestore and
-    takes saves that overwrite a transform."""
+def test_server_answers_for_this_computer_only(server):
+    """The page opens as localhost, as 127.0.0.1 and under the name of the
+    machine, and the server listens for nothing else."""
     import socket
 
-    for sock in server._sockets:
-        host = sock.getsockname()[0]
-        assert host in ("127.0.0.1", "::1"), "listening on %s" % host
-        assert socket.inet_pton(sock.family, host) == socket.inet_pton(
-            sock.family, "127.0.0.1" if sock.family == socket.AF_INET else "::1")
-    # the URL the page is opened at names the same interface
-    assert _open("http://localhost:%d/aligner.html" % server.port).decode().count("aligner.Aligner") > 0
+    from cortex.webgl import serve
+
+    names = [serve.LOOPBACK, "127.0.0.1", socket.gethostname()]
+    resolved = set()
+    for name in names:
+        try:
+            resolved.update(info[4][0] for info in
+                            socket.getaddrinfo(name, None, type=socket.SOCK_STREAM))
+        except socket.gaierror:
+            continue
+
+    bound = [sock.getsockname()[0] for sock in server._sockets]
+    assert len(bound) > 0
+    assert set(bound) <= resolved, "listening on %s" % sorted(set(bound) - resolved)
+    assert len({sock.getsockname()[1] for sock in server._sockets}) == 1, "one port for all of them"
+
+    for name in names:
+        try:
+            socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            continue  # a machine whose own name does not resolve
+        html = _open("http://%s:%d/aligner.html" % (name, server.port)).decode()
+        assert "aligner.Aligner" in html, "the page did not open as %s" % name
+
+
+def test_every_name_of_the_computer_gets_a_socket_on_one_port():
+    """Each name is listened for, one that another name already covers is
+    bound once, and one that does not resolve is passed over."""
+    import socket
+
+    from cortex.webgl import serve
+
+    # 127.0.0.2 stands in for a machine whose hostname is not its loopback
+    # address, which is where two of these names would be the same one
+    spare = "127.0.0.2"
+    probe = socket.socket()
+    try:
+        probe.bind((spare, 0))
+        usable = True
+    except OSError:
+        usable = False  # the spare loopback address is not routed here
+    finally:
+        probe.close()
+
+    sockets = serve.bind_local_sockets(
+        0, ["localhost", "127.0.0.1", spare, "no-such-host.invalid"])
+    try:
+        bound = [sock.getsockname()[0] for sock in sockets]
+        assert bound.count("127.0.0.1") == 1, "the same address was bound twice"
+        assert len({sock.getsockname()[1] for sock in sockets}) == 1, "one port for all of them"
+        if usable:
+            assert spare in bound
+    finally:
+        for sock in sockets:
+            sock.close()
+
+    with pytest.raises(OSError, match="no address resolved"):
+        serve.bind_local_sockets(0, ["no-such-host.invalid"])
 
 
 @pytest.mark.parametrize("server", [dict(view_only=True)], indirect=True)
