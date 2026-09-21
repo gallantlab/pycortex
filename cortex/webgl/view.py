@@ -382,6 +382,14 @@ def show(
         headless viewers. Default True
     **kwargs
         All additional keyword arguments are passed to the template renderer.
+
+    Returns
+    -------
+    client : JSMixer or WebApp
+        If `open_browser` is True, a `JSMixer` client connected to the
+        opened browser tab, which can be used to control the viewer
+        programmatically (e.g. `client.getImage()`, `client.animate()`).
+        If `open_browser` is False, returns the `WebApp` server object.
     """
 
     # populate default webshow args
