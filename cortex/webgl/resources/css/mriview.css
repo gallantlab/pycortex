@@ -588,3 +588,72 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     color: #888;
     opacity: 0.5;
 }
+/* dat.GUI's color picker sizes the saturation square and the hue bar by
+   their content and lays them out to add up to the width of the picker.
+   The panel sits inside a w2ui one, whose reset makes every box count its
+   border and padding within its width instead, which leaves the hue bar
+   two pixels too wide to fit beside the square and puts it underneath, out
+   of the picker and out of reach: the picker only shows while the pointer
+   is over it. */
+.dg .selector, .dg .selector * {
+    box-sizing:content-box;
+}
+
+/* A switch, for the settings that put the page into a state rather than
+   show one more thing. dat.GUI draws a checkbox for every boolean, so the
+   box itself is made over into the track and its marker into the knob. */
+.dg li.toggle .c input[type="checkbox"] {
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    position:relative;
+    width:34px;
+    height:16px;
+    margin:4px 0px 0px 0px;
+    border-radius:8px;
+    background:#555;
+    cursor:pointer;
+    transition:background 0.15s;
+}
+.dg li.toggle .c input[type="checkbox"]:after {
+    content:"";
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:12px;
+    height:12px;
+    border-radius:6px;
+    background:#ddd;
+    transition:left 0.15s;
+}
+.dg li.toggle .c input[type="checkbox"]:checked {
+    background:#806787;
+}
+.dg li.toggle .c input[type="checkbox"]:checked:after {
+    left:20px;
+}
+
+/*************************************************
+ * Slice views beside the 3D one
+ *************************************************/
+/* One of these sits over each slice view: it names the view and keeps a drag
+   there from turning the 3D one, which is not what the pointer is over. */
+.mriview-ortho {
+    display:none;
+    position:absolute;
+    width:50%;
+    height:50%;
+    z-index:3;
+    box-sizing:border-box;
+    border:1px solid #444;
+    cursor:default;
+}
+.mriview-ortho span {
+    position:absolute;
+    left:8px;
+    top:6px;
+    color:#ddd;
+    font-size:10pt;
+    text-shadow:0px 1px 2px #000;
+    pointer-events:none;
+}

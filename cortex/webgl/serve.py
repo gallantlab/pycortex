@@ -12,11 +12,13 @@ import logging
 import binascii
 import base64
 import datetime
+import hmac
 import mimetypes
 import functools
 import threading
+import uuid
 
-from typing import Callable, Literal, cast, Generic, Union, Any
+from typing import Callable, Literal, Optional, Sequence, cast, Generic, Union, Any
 
 if sys.version_info < (3, 10):
     from typing_extensions import ParamSpec
@@ -34,10 +36,80 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
+#: The host to reach the servers at. Both loopback addresses resolve from this
+#: name, so a browser finds the server whether it asks for IPv4 or IPv6.
+LOOPBACK = "localhost"
+
+#: The names the servers listen for by default: the loopback addresses and
+#: whatever this computer's own hostname resolves to, so that the page opens
+#: as localhost, as 127.0.0.1 or under the name of the machine.
+LOCAL = (LOOPBACK, hostname)
+
 # on Windows the mimetypes module reads the extension to type mapping out of the
 # registry, where .js is frequently registered as text/plain. browsers refuse to
 # execute scripts served with that type, so force the correct type here.
 mimetypes.add_type("text/javascript", ".js")
+
+
+def bind_local_sockets(
+    port: Optional[int], addresses: Union[str, Sequence[str], None] = LOCAL
+) -> list[socket.socket]:
+    """Listening sockets on `port`, one per address `addresses` resolves to.
+
+    Parameters
+    ----------
+    port : int or None
+        The port to listen on; 0 or None asks the operating system for a free
+        one. Every socket ends up on the same port, whichever way it is chosen.
+    addresses : str or sequence of str or None, optional
+        The names to listen for, `LOCAL` by default. None listens on every
+        interface. A name that does not resolve is passed over, as is one
+        that resolves to an address another name already covers, so that a
+        computer whose hostname is its loopback address still gets a server.
+
+    Returns
+    -------
+    sockets : list of socket.socket
+        The bound sockets, to hand to ``HTTPServer.add_sockets``.
+    """
+    if addresses is None:
+        return bind_sockets(0 if port is None else port)
+    if isinstance(addresses, str):
+        addresses = [addresses]
+
+    # Resolve first and bind afterwards: two of the names can stand for the
+    # same address (a hostname is often the loopback address), and binding
+    # that one twice fails rather than being ignored.
+    wanted: list[str] = []
+    for name in addresses:
+        try:
+            found = socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            continue
+        for info in found:
+            host = info[4][0]
+            # the address of an IP socket is a string; anything else is a
+            # family this cannot listen on
+            if isinstance(host, str) and host not in wanted:
+                wanted.append(host)
+
+    sockets: list[socket.socket] = []
+    port = 0 if port is None else port
+    failures: list[str] = []
+    for host in wanted:
+        try:
+            bound = bind_sockets(port, address=host)
+        except OSError as exc:
+            failures.append("%s: %s" % (host, exc))
+            continue
+        sockets.extend(bound)
+        # the first address that binds decides the port, so the rest listen
+        # on that one rather than each on a free port of its own
+        port = bound[0].getsockname()[1]
+    if len(sockets) == 0:
+        raise OSError("Could not listen on %s (%s)" % (
+            ", ".join(addresses), "; ".join(failures) if failures else "no address resolved"))
+    return sockets
 
 
 def make_base64(imgfile: str) -> str:
@@ -272,6 +344,63 @@ class StaticFileHandler(tornado.web.RequestHandler):
             return static_url_prefix + path
 
 
+def token_cookie(port: int) -> str:
+    """Name of the cookie a page keeps its session token in.
+
+    Cookies are not kept apart by port, so the name carries it: two servers
+    on this computer would otherwise be handed each other's tokens and turn
+    each other's pages away.
+    """
+    return "pycortex-token-%d" % port
+
+
+def same_token(given: Optional[str], wanted: str) -> bool:
+    """Whether `given` is the token `wanted`, compared in constant time."""
+    if given is None:
+        return False
+    return hmac.compare_digest(given.encode("utf-8", "replace"), wanted.encode("utf-8"))
+
+
+class TokenGuard:
+    """Turns away a request that does not carry the server's session token.
+
+    The token stands for whoever started the server: it is in the address
+    printed for them and nowhere else, so a request that carries it came
+    from that address. The first request hands it over as ``?token=`` and
+    gets it back as a cookie, which the requests the page makes afterwards
+    carry by themselves.
+
+    Mixed in front of every handler by `guarded`, so that a server reachable
+    under the name of the machine does not hand its filestore to whoever
+    else can reach the port.
+    """
+
+    #: the token to demand, and the port whose cookie carries it; set on the
+    #: subclass that `guarded` builds
+    session_token: str = ""
+    session_port: int = 0
+
+    def prepare(self) -> None:
+        if self.session_token:
+            handler = cast(tornado.web.RequestHandler, self)
+            # the address carries it, so only the query is read: a form field
+            # of the same name would otherwise stand in for it
+            if same_token(handler.get_query_argument("token", None), self.session_token):
+                # the page keeps it from here on, so the addresses it asks
+                # for afterwards do not have to carry it
+                handler.set_cookie(token_cookie(self.session_port), self.session_token)
+            elif not same_token(handler.get_cookie(token_cookie(self.session_port)),
+                                self.session_token):
+                raise HTTPError(403, "the session token is missing or wrong")
+        super().prepare()  # type: ignore[misc]
+
+
+def guarded(handler: type, token: str, port: int) -> type:
+    """`handler` with the session token demanded in front of it."""
+    return type("Guarded" + handler.__name__, (TokenGuard, handler),
+                dict(session_token=token, session_port=port))
+
+
 class ClientSocket(websocket.WebSocketHandler):
     def initialize(self, parent: "WebApp"):
         self.parent = parent
@@ -310,6 +439,8 @@ class WebApp(threading.Thread):
             ]
         ],
         port: int,
+        address: Union[str, Sequence[str], None] = LOCAL,
+        token: Optional[str] = None,
     ):
         super(WebApp, self).__init__()
         self.handlers = handlers + [
@@ -331,10 +462,20 @@ class WebApp(threading.Thread):
         # The socket is bound immediately, so the OS accepts and queues client
         # connections in the backlog even before the IOLoop starts serving --
         # eliminating the connect race too.
-        self._sockets = bind_sockets(port if port is not None else 0)
+        # `address` names what to listen for: the loopback addresses and this
+        # computer's own hostname by default, so the page opens as localhost,
+        # as 127.0.0.1 or under the name of the machine. Pass None to listen
+        # on every interface.
+        self._sockets = bind_local_sockets(port, address)
         # When port==0 the OS assigns the port; read the real value back so
         # callers can build a correct URL.
         self.port = self._sockets[0].getsockname()[1]
+        self.bound = {cast(str, sock.getsockname()[0]) for sock in self._sockets}
+        # What the server takes as proof that a request comes from whoever
+        # started it: it is in the address printed for them, the page it
+        # opens keeps it in a cookie, and every handler demands it. An empty
+        # token turns that off and answers anything that reaches the port.
+        self.token = uuid.uuid4().hex if token is None else token
         self.response: Queue[Union[str, bytes]] = Queue()
         self.connect = threading.Event()
         # Set by run() once self.server and self.ioloop exist and the server is
@@ -343,6 +484,42 @@ class WebApp(threading.Thread):
         # attributes nor gets silently lost.
         self._ready = threading.Event()
         self.sockets: list[websocket.WebSocketHandler] = []
+
+    def url(self, page: str = "", host: Optional[str] = None) -> str:
+        """The address to open `page` of this server at.
+
+        It carries the session token, which the page keeps in a cookie, so
+        that the addresses it asks for afterwards do not have to.
+
+        Parameters
+        ----------
+        page : str, optional
+            The page to open, such as ``"mixer.html"``.
+        host : str, optional
+            The name to reach the server under, `host` by default.
+        """
+        where = self.host if host is None else host
+        address = "http://%s:%d/%s" % (where, self.port, page.lstrip("/"))
+        return address + "?token=" + self.token if self.token else address
+
+    @property
+    def host(self) -> str:
+        """The name to build a link to this server from.
+
+        This computer's own hostname, which is the name a port forward from
+        another machine is usually set up under. A machine whose name resolves
+        to nothing, or to an address this server is not listening on, gets the
+        loopback name instead, so that the link works either way.
+        """
+        if self.bound & {"0.0.0.0", "::"}:
+            return hostname
+        try:
+            found = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            return LOOPBACK
+        if any(info[4][0] in self.bound for info in found):
+            return hostname
+        return LOOPBACK
 
     @property
     def n_clients(self) -> int:
@@ -356,7 +533,11 @@ class WebApp(threading.Thread):
         ioloop.clear_current()
         ioloop.make_current()
         self.ioloop = ioloop
-        application = tornado.web.Application(self.handlers, gzip=True)
+        # every handler, the websocket and the static files included, answers
+        # only a request that carries the session token
+        handlers = [(spec[0], guarded(spec[1], self.token, self.port)) + tuple(spec[2:])
+                    for spec in self.handlers]
+        application = tornado.web.Application(handlers, gzip=True)
         # If tornado version is 5.0 or greater, io_loop arg does not exist
         if tornado.version_info[0] < 5:
             self.server = tornado.httpserver.HTTPServer(application, io_loop=ioloop)

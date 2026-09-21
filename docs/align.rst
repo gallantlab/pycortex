@@ -50,102 +50,68 @@ However, in practice, the search range is too big to be practically useful, and 
 Manual Alignment
 ----------------
 
-.. note::
-    Currently the manual aligner only works on Ubuntu 14.04. The manual
-    aligner uses Mayavi, which doesn't seem to be working in later versions of
-    Ubuntu. As an alternative to ``cortex.align.manual``, you can use
-    ``cortex.align.fs_manual``, which uses FreeSurfer's Freeview instead of Mayavi.
-
 Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
 To do the final 5%, you need to manually fix it up.
-Pycortex offers a GUI aligner, built using Mayavi.
+Pycortex offers a GUI aligner that runs in the browser, built on the WebGL viewer.
+``cortex.align.manual`` is an alternative that hands the alignment to FreeSurfer's Freeview.
 
-To start the manual aligner, call
+Aligning in the browser
+~~~~~~~~~~~~~~~~~~~~~~~
+
+To start the browser-based aligner for a new transform, pass the reference image
 ::
-	cortex.align.manual('S1', 'example-transform')
-Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
+	cortex.align.webgl_manual('S1', 'example-transform', reference='./ref-image.nii.gz')
 
-You will see a window like this pop up:
+To adjust an existing transform, leave the reference out
+::
+	cortex.align.webgl_manual('S1', 'example-transform')
 
-.. image:: ./aligner/snapshot1.png
-	:width: 600 px
+A transform you had previously used for things opens the same way: saving deletes the masks cached for it, because they were cut out of the reference volume through the alignment you are replacing.
+The page warns about this when it opens, and the save message names the masks it deleted.
+Data you had already masked with them has to be masked again from the volumes.
+To look at an alignment without saving, pass ``view_only=True``.
 
-There's weird gray blobs - click anywhere to get rid of them.
+The page shows the coronal, axial and sagittal slices of the reference image, and a 3D view of the three slices.
+The reference image is drawn on its own voxel grid, so its voxels appear as they are, without resampling, and the pial and white matter surfaces are moved into its space.
+In each slice view the surfaces are cut off at the displayed slice, so what you see is their outline on the slice.
+You move the surfaces until this outline follows the anatomy in the image.
 
-.. image:: ./aligner/snapshot2.png
-	:width: 600 px
+* In a slice view, a left drag moves the cursor. The cursor sets the slices shown in the other views and is the pivot of rotations. The wheel or ``[`` and ``]`` change the slice, ctrl + wheel zooms, and a middle (or shift + left) drag pans.
+* A right drag, the WASD keys or the arrow keys translate the surfaces in the plane of the view under the mouse. A ctrl + right drag or ``q`` and ``e`` rotate them about the cursor, in the plane of the view under the mouse. Holding shift makes the keyboard steps ten times smaller, and ctrl + z undoes. Only rotations and translations are possible; the transform cannot stretch the brain.
+* In the 3D view, a left drag rotates, a middle (or shift + left) drag pans, and a right drag or the wheel zooms.
 
-Here you see 4 different views, showing the sagittal, coronal, and transverse slices, and also the three slices in 3D.
-The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
-You'll be moving the mesh until it's aligned as much as possible with the reference.
+The panel on the right holds the controls.
+``display`` chooses what the page shows, with three settings (``m`` steps through them).
+``3 ortho + 3D slices`` is the display described above, where the fourth panel holds the three slice planes in space.
+``3 ortho + 3D brain`` keeps the slice views as they are and turns the bottom right corner into the viewer, so the mesh can be nudged in the slices while the data on the surface follows.
+``data on the surface`` gives that viewer the whole window, framed on the surface the way the WebGL viewer opens on one.
+Both draw the same surface, so it carries the same unfolding and depth from one to the other: ``unfold`` inflates it and flattens it, ``pivot`` swings its halves apart, and ``r``, ``i`` and ``f`` jump to the folded surface, the inflated one and the flatmap as they do in the viewer.
+Both of the latter paint the reference data on the surface through the alignment as it currently stands, saved or not, and redraw as you move the mesh, so an alignment can be judged from the pattern the data makes on the cortex before committing it.
+Every control stays available in all three.
+``image`` sets the colormap, its range (``vmin`` and ``vmax``), ``brightness``, ``contrast`` and ``gamma``, and flips the colormap. The colormap dropdown draws a strip of each colormap beside its name.
+``mesh`` sets the color of the surfaces, their ``opacity`` in the 3D view (0 shows only the outlines), which of the two surfaces are shown, and the ``unfold`` and ``pivot`` of the surface that carries the data.
+``depth`` takes that surface through the cortex, from the pial surface (0) to the white matter (1), moving both the surface and the point the volume is read at.
+``slices`` selects the slices, and ``steps`` sets the keyboard steps.
 
-To make things easier to see, the aligner offers different color options.
+Below the controls, ``History`` lists every edit since the page opened, newest at the top.
+A translation says where it took the surfaces along the anatomical axes, as in ``2.00 mm left, 3.00 mm anterior``; a rotation says how far and which way round it turned them in the plane of the view it was made in, as in ``0.20° CW in coronal``.
+The entry the alignment currently stands at is highlighted.
+Click any entry to put that alignment back; editing from there drops the entries that followed it, and ctrl + z steps back one at a time.
 
-Changing the views
-~~~~~~~~~~~~~~~~~~
+The ``transform`` field at the top of the panel holds the name the alignment is saved under, and starts as the transform you opened.
+Edit it to save the alignment as a new transform, which leaves the one you opened untouched, along with its masks.
+An asterisk on the ``save`` button and in the window title marks an alignment that differs from the one last saved, and closing the page while one is showing asks you to confirm.
 
-You can change the color scale for the images with the color map option:
+To save the alignment, click ``save``.
+The transform is stored into the database at once, together with the deletion of any masks cached for it, and the window can then be closed.
+The function returns a handle to the running aligner: ``handle.get_xfm()`` returns the current transform as a 4x4 matrix, and ``handle.save()`` saves it, returning once the transform has been written.
 
-.. image:: ./aligner/colormap.png
-	:width: 600 px
+The aligner serves your filestore and writes to it, so its server answers only requests that carry the session token in the address it prints.
+The page it opens keeps that token in a cookie, so nothing else has to carry it; open the aligner by that address, or with the browser you already opened it in.
+Pass ``token=''`` to turn this off for a script that talks to the server itself.
+The server listens for ``localhost``, ``127.0.0.1`` and the name of the machine, and for nothing else, and takes saves only from the page it served.
 
-Here, we've set it to the red-blue color map.
-
-.. image:: ./aligner/snapshot4.png
-	:width: 600 px
-
-``Fliplut`` can be used to reverse the color map.
-
-.. image:: ./aligner/flipcolor.png
-	:width: 600 px
-
-You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
-
-.. image:: ./aligner/contrast.png
-	:width: 600 px
-
-The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
-Also, the sliders can be used to change line and point weights.
-Here, we changed it to a green points only representation, with smaller points.
-
-.. image:: ./aligner/surface.png
-	:width: 600 px
-
-You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
-Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
-
-.. image:: ./aligner/lines1.png
-	:width: 600 px
-
-.. image:: ./aligner/snapshot13.png
-	:width: 600 px
-
-Use these views to change the slices of the brain that you're looking at, to line things up.
-
-Manually aligning the brain
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-On each view, there is a ball surrounded by a ring. These can be used to adjust the brain using the mouse.
-Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
-It will take a few seconds for the aligner to update the mesh position.
-
-.. image:: ./aligner/adjring.png
-	:width: 600 px
-	
-**Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
-
-You can also use the keyboard to make adjustments.
-Holding down the shift key allows you to make fine adjustments.
-The aligner will apply the transformation in whatever view currently under your mouse cursor.
-
-.. image:: ./aligner/key-controls.png
-	:scale: 50 %
-**Note**: you shouldn't touch the keys outlined in red. There is no reason to stretch the brain.
-
-To save the alignment, just click the ``Save Transform`` button and close the window.
-
-.. image:: ./aligner/save.png
-	:width: 600 px
+The initial colormap, color of the surfaces and opacity are set in the ``[webgl_aligner]`` section of the config file.
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -751,7 +751,7 @@ def _served_metadata(handle):
     ``addData`` merges into, so this is how we check that a reload of the
     viewer would show everything that has been added so far.
     """
-    url = "http://localhost:%d/mixer.html" % handle.server.port
+    url = handle.server.url("mixer.html", host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         page = resp.read().decode("utf-8")
     marker = "dataset.fromJSON("
@@ -761,7 +761,7 @@ def _served_metadata(handle):
 
 def _fetch(handle, path):
     """GET ``path`` from the viewer's tornado server, returning the body."""
-    url = "http://localhost:%d%s" % (handle.server.port, path)
+    url = handle.server.url(path, host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         return resp.read()
 
@@ -902,3 +902,197 @@ def test_addData_vertex_data(tmp_path):
 
         _assert_no_browser_failures(handle)
 
+
+
+# ---------------------------------------------------------------------------
+# Group 7: Three slice views beside the 3D one
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_ortho_views_split_the_canvas():
+    """`ortho_views` draws each slice plane straight down its own axis in a
+    quarter of the canvas, leaving the 3D view the last quarter, and the keys
+    that move the planes keep working.
+
+    Drives the page directly rather than through the websocket handle,
+    because what is being tested is what reaches the canvas.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def quadrants():
+                """How much of each quarter of the canvas was drawn on."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var lit = [0, 0, 0, 0], seen = [0, 0, 0, 0];
+                    for (var y = 0; y < s.height; y++) {
+                        for (var x = 0; x < s.width; x++) {
+                            var q = (x < s.width / 2 ? 0 : 1) + (y < s.height / 2 ? 0 : 2);
+                            var i = 4 * (y * s.width + x);
+                            seen[q]++;
+                            if (d[i] + d[i+1] + d[i+2] > 45) lit[q]++;
+                        }
+                    }
+                    return lit.map(function(n, q) { return n / seen[q]; });
+                }""")
+
+            assert page.evaluate("window.viewer.setSliceViews()") is False
+            page.keyboard.press("v")
+            page.wait_for_timeout(2500)
+            assert page.evaluate("window.viewer.setSliceViews()") is True, (
+                "the v key did not split the canvas")
+            assert page.evaluate("window.viewer.ui.sliceplanes['Show ortho views']") is True, (
+                "the control did not follow the key")
+
+            views = page.evaluate(
+                "window.viewer.views.map(v => [v.left, v.bottom, v.camera !== undefined])")
+            assert views == [[0, 0.5, True], [0, 0, True], [0.5, 0.5, True], [0.5, 0, False]], (
+                "the canvas is not split between three slice views and the 3D one")
+
+            filled = quadrants()
+            assert all(part > 0.05 for part in filled), (
+                "a quarter of the canvas was left empty: %s" % filled)
+
+            # the slice planes show in their own views whatever the checkboxes
+            # say, since that is what those views are for
+            assert page.evaluate(
+                "Object.keys(window.viewer.sliceplanes).every(k => !window.viewer.sliceplanes[k].setVisible())")
+
+            # the keys that step through the slices keep working
+            before = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            top_left = page.locator("#brain").screenshot()
+            for key in ["q", "a", "z"]:
+                page.keyboard.press(key)
+            page.wait_for_timeout(1000)
+            after = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in after] == [round(v) + 1 for v in before], (
+                "the slice keys did not move the planes")
+            assert page.locator("#brain").screenshot() != top_left, (
+                "the slice views did not redraw when the planes moved")
+
+            # a pick in the 3D view takes the slice views to that point and
+            # marks it in each of them
+            box = page.locator("#brain").bounding_box()
+            page.mouse.click(box["x"] + box["width"] * 0.76, box["y"] + box["height"] * 0.76)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursorAt === true"), "nothing was picked"
+            picked = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert picked != after, "the slice views did not go to the picked point"
+            # the crosshair stands where the slices were taken to, which is
+            # the point that was picked
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in picked], (
+                "the crosshair is not where the slices are")
+            assert page.evaluate("window.viewer._cursor.visible") is True, (
+                "the crosshair is not drawn in the 3D view")
+            # and it is the only mark on the point: the picker's own marker,
+            # which sits on the surface and is in the 3D view alone, stands
+            # down while the crosshair is in every view
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is False, (
+                "the picker's marker is up as well as the crosshair")
+
+            # a click that lands on nothing leaves the crosshair where it is:
+            # it marks a place, and clicking beside the brain does not unmark it
+            where = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.97, box["y"] + box["height"] * 0.97)
+            page.wait_for_timeout(1000)
+            assert page.evaluate("window.viewer._cursorAt") is True, (
+                "a click on nothing took the crosshair away")
+            assert page.evaluate("window.viewer._cursor.position.toArray()") == where
+
+            # a click in a slice view puts the crosshair under the pointer and
+            # takes the other two views to it, leaving its own slice alone
+            page.mouse.click(box["x"] + box["width"] * 0.2, box["y"] + box["height"] * 0.2)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != where, (
+                "a click in the coronal view did not move the crosshair")
+            moved = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in moved], (
+                "the crosshair is not on the slices the click took the views to")
+            assert round(moved[1]) == round(picked[1]), (
+                "the coronal view moved the very slice the click was made on")
+            assert [round(v) for v in moved] != [round(v) for v in picked], (
+                "the click in the coronal view left the other views where they were")
+
+            # the help lists the key that splits the canvas
+            page.keyboard.press("h")
+            page.wait_for_timeout(500)
+            assert "Show ortho views along with 3D" in page.inner_text("#helpmenu"), (
+                "the key is not in the help")
+            page.keyboard.press("h")
+
+            # and the 3D view comes back on its own
+            page.evaluate("window.viewer.ui.set('sliceplanes.Show ortho views', false)")
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer.views.length") == 1
+            assert page.evaluate("window.viewer.root.visible") is True
+            # the point stays marked across the change of layout, by the
+            # picker's marker once the crosshair has no slices to be in
+            assert page.evaluate("window.viewer._cursorAt") is True
+            assert page.evaluate("window.viewer._cursor.visible") is False
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is True
+
+            # a point picked with the 3D view on its own leaves the planes
+            # where they are, and the slice views open on it
+            was = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.45, box["y"] + box["height"] * 0.45)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != was, (
+                "the pick in the 3D view landed on nothing")
+            alone = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in alone] == [round(v) for v in moved], (
+                "the 3D view on its own moved the slices")
+            page.keyboard.press("v")
+            page.wait_for_timeout(2000)
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            opened = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in opened] == [round(v) for v in voxel], (
+                "the slice views opened on slices the crosshair is not on")
+            assert [round(v) for v in opened] != [round(v) for v in alone], (
+                "the planes were already there, so nothing was shown by this")
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

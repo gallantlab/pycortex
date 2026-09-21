@@ -369,7 +369,9 @@ def headless_viewer(
         display_url=False,
         **{k: v for k, v in viewer_params.items() if k not in ["port", "display_url"]},
     )
-    url = f"http://localhost:{server.port}/mixer.html"
+    # localhost rather than the machine's own name: this browser is on the
+    # same computer. The address carries the server's session token.
+    url = server.url("mixer.html", host="localhost")
 
     # Prevent the server from auto-stopping when the last WebSocket client
     # disconnects (ClientSocket.on_close calls server.stop() when

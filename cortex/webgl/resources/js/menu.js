@@ -1,4 +1,14 @@
 var jsplot = (function (module) {
+    //dat.GUI works out what a click on a checkbox means from the value it
+    //last set itself, so a change made anywhere else -- a key, a call from
+    //python -- has to be told to it as well, or the next click on the box
+    //asks for the value it already has and nothing happens.
+    function redraw(ctrl) {
+        ctrl.updateDisplay();
+        if (ctrl.__prev !== undefined)
+            ctrl.__prev = ctrl.getValue();
+    }
+
     module.Menu = function(gui) {
         this._gui = gui;
         this._desc = {};
@@ -40,7 +50,7 @@ var jsplot = (function (module) {
             action[0][action[1]](value);
         }
         if (this._controls[n])
-            this._controls[n].updateDisplay();
+            redraw(this._controls[n]);
         this.dispatchEvent({type:"update"});
     }
     module.Menu.prototype.get = function(name) {
@@ -109,11 +119,13 @@ var jsplot = (function (module) {
         return folder;
     }
     module.Menu.prototype._add = function(gui, name, desc) {
+        var ctrl;
         if (desc.action instanceof Function) {
             //A button that runs a function (IE Reset)
             this[name] = desc.action;
-            if (!desc.hidden) 
-                gui.add(desc, "action").name(name);
+            if (!desc.hidden)
+                //keep the controller, so that the button can be renamed later
+                ctrl = gui.add(desc, "action").name(name);
         } else if ( desc.action instanceof Array) {
             var obj = desc.action[0][desc.action[1]];
             if (obj instanceof Function) {
@@ -127,7 +139,8 @@ var jsplot = (function (module) {
                     for (var i = 2; i < desc.action.length; i++)
                         newargs.push(desc.action[i]);
 
-                    var ctrl = gui.add.apply(gui, newargs);
+                    //a color picker, for a method that gets and sets a css color string
+                    ctrl = desc.color ? gui.addColor(this, name) : gui.add.apply(gui, newargs);
                     ctrl.onChange(function(name) {
                         parent[method](this[name]);
                         this.dispatchEvent({type:"update"});
@@ -142,16 +155,21 @@ var jsplot = (function (module) {
                         
                         func(val);
                         this[name] = val;
-                        ctrl.updateDisplay();
+                        redraw(ctrl);
                     }.bind(this, name)
                 };
             } else if (!desc.hidden) {
-                var ctrl = gui.add.apply(gui, desc.action).name(name);
+                ctrl = gui.add.apply(gui, desc.action).name(name);
                 ctrl.onChange(function() {
                     this.dispatchEvent({type:"update"});
                 }.bind(this));
             }
         }
+        //a switch rather than a checkbox, for the settings that are a state
+        //of the page rather than one thing being shown or not
+        if (desc.toggle && ctrl !== undefined && ctrl.__li !== undefined)
+            ctrl.__li.className += " toggle";
+
         //setup keyboard shortcuts for commands
         if (desc.key) {
             var key = desc.key;
