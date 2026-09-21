@@ -454,6 +454,7 @@ var jsplot = (function (module) {
         "    <input type='number' id='anim-width' class='anim-width' step='1'>",
         "    <span>&times;</span>",
         "    <input type='number' id='anim-height' class='anim-height' step='1'></div>",
+        "  <div class='pycortex-hint anim-flatsize'></div>",
         "  <div class='pycortex-row pycortex-buttons'>",
         "    <button class='anim-render-ok'>OK</button>",
         "    <button class='anim-render-cancel'>cancel</button></div>",
@@ -617,6 +618,7 @@ var jsplot = (function (module) {
             this._el("anim-interp").val(here ? here.interpolation : st.mode);
         }
         this.drawTicks();
+        this.updateFlatHint();
     };
 
     // The keyframe laid down at exactly `frame`, or null.
@@ -634,6 +636,40 @@ var jsplot = (function (module) {
         this._interp = null;
         this._applied = undefined;
         this.drawTicks();
+        this.updateFlatHint();
+    };
+
+    // Whether the animation passes through the flattened surface at any
+    // keyframe. Tested on the unfold value rather than on a view name, because
+    // a keyframe records the pose, not the view it was posed from.
+    AnimationPanel.prototype.usesFlat = function() {
+        var prop = 'surface.' + SUBJ + '.unfold';
+        var kfs = this.state.keyframes;
+        for (var i = 0; i < kfs.length; i++)
+            if (kfs[i][prop] >= 0.999)
+                return true;
+        return false;
+    };
+
+    // Rendering the flat view at the size quickflat uses makes the frames line
+    // up with a flatmap drawn by quickflat.make_png, so say what that size is
+    // once an animation actually visits the flat surface. It is shipped from
+    // python in viewopts.quickflat_size, since it follows from the subject's
+    // flat surface rather than from anything the browser knows.
+    AnimationPanel.prototype.updateFlatHint = function() {
+        var hint = this._el("anim-flatsize");
+        var sizes = (typeof viewopts !== "undefined") ?
+            viewopts.quickflat_size : undefined;
+        var subjects = vt.subjects(this.viewer);
+        var size = (sizes !== undefined && subjects.length > 0) ?
+            sizes[subjects[0]] : null;
+
+        if (!size || !this.usesFlat()) {
+            hint.text("");
+            return;
+        }
+        hint.text("use " + size[0] + " × " + size[1] +
+                  " to match quickflat.make_png()");
     };
 
     // Set the smoothing mode: on the keyframe under the playhead if there is
@@ -995,16 +1031,26 @@ var jsplot = (function (module) {
         // named after one of its own methods would break the menu.
         var RESERVED = {get: 1, set: 1, add: 1, addFolder: 1, remove: 1, init: 1};
 
+        // What each button applies, looked up when it is clicked rather than
+        // captured, so that re-adding a name replaces the view behind an
+        // existing button. That happens when a view is saved over one of the
+        // defaults every subject gets: without this the button would go on
+        // applying the default until the page was reloaded.
+        var view_registry = {};
+
         function addViewButton(label, view) {
             if (RESERVED[label] !== undefined) {
                 console.warn("Skipping view '" + label + "': that name is " +
                              "reserved by the controls menu. Rename the file.");
                 return;
             }
+            view_registry[label] = view;
             if (label in views_ui._desc)   // never add the same row twice
                 return;
             var desc = {};
-            desc[label] = {action: function() { vt.applyView(viewer, view); }};
+            desc[label] = {action: function() {
+                vt.applyView(viewer, view_registry[label]);
+            }};
             views_ui.add(desc);
         }
 
