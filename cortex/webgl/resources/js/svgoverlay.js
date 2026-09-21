@@ -391,6 +391,18 @@ var svgoverlay = (function(module) {
         });
         this.meshes.left = new THREE.PointCloud(this.geometry.left, this.shader);
         this.meshes.right = new THREE.PointCloud(this.geometry.right, this.shader);
+        //Labels carry depthTest:false and do their own occlusion against the
+        //depth texture baked in SVGOverlay.prerender, so they are only ever
+        //correct when they are drawn after the surface. That used to be free:
+        //the surface was opaque, and r69 renders the whole opaque list before
+        //the transparent one. A surface_opacity below 1 moves the surface into
+        //the transparent list, where it sorts against the labels by projected
+        //center depth -- both sit near the origin, so the tie broke by object
+        //id and the surface won, painting over them. Pinning renderDepth keeps
+        //the labels last: r69 sorts the transparent list ascending by z and
+        //walks it from the END (renderObjects iterates backwards), so the
+        //*smallest* renderDepth is drawn last, on top of everything else.
+        this.meshes.left.renderDepth = this.meshes.right.renderDepth = -1e6;
     }
 
     module.Labels.prototype.update = function() {

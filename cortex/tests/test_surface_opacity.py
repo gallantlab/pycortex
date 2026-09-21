@@ -102,3 +102,56 @@ def test_surface_opacity_renders_translucent(tmp_path):
         f"{rgb_error}/255; the exported image looks premultiplied, so it "
         "will be faded twice once composited"
     )
+
+
+@pytest.mark.skipif(
+    not has_playwright, reason="playwright + Chromium not available"
+)
+def test_translucent_surface_keeps_labels_on_top():
+    """ROI labels must keep drawing after the surface once it turns translucent.
+
+    Labels are ``depthTest: false`` -- they do their own occlusion against the
+    depth texture ``SVGOverlay.prerender`` bakes -- so they are only correct
+    while they are drawn last. An opaque surface gave that for free, since
+    three.js r69 renders the whole opaque list before the transparent one. Any
+    ``surface_opacity`` below 1 moves the surface into the transparent list,
+    where it sorted against the labels by projected centre depth; both sit at
+    the origin, so the tie fell to object id and the surface painted over
+    them. Nudging the slider from 1 to 0.99 -- far too small a change to see
+    on the surface itself -- wiped the labels off the brain.
+
+    The bundled S1 overlay carries no label text, so there is nothing to count
+    in a screenshot; assert the ordering invariant on the live objects
+    instead. r69 sorts the transparent list ascending by ``renderDepth``
+    (falling back to the projected z, which clipping keeps inside [-1, 1]) and
+    then walks it backwards, so a label needs a ``renderDepth`` well below -1
+    to stay on top of the surface.
+    """
+    surfs = [
+        cortex.polyutils.Surface(*d) for d in cortex.db.get_surf(subj, "fiducial")
+    ]
+    nverts = sum(s.pts.shape[0] for s in surfs)
+    view = cortex.Vertex(np.zeros(nverts), subj)
+
+    with cortex.export.headless_viewer(view, viewer_params={}) as handle:
+        handle._set_view(**{"surface.{subject}.surface_opacity": 0.5})
+
+        svg = handle.surfs[0].surf.svg
+        checked = 0
+        for layer in ("rois", "sulci"):
+            meshes = getattr(svg, layer).labels.meshes
+            for hemi in ("left", "right"):
+                depth = getattr(meshes, hemi).renderDepth
+                # An unpinned renderDepth is null, which JSProxy hands back as
+                # a proxy object rather than a number -- hence the type check
+                # instead of a bare comparison.
+                assert isinstance(depth, (int, float)), (
+                    f"{layer}/{hemi} labels have no pinned renderDepth, so a "
+                    "translucent surface can sort in front of them"
+                )
+                assert depth < -1, (
+                    f"{layer}/{hemi} labels sort at {depth}, which a surface "
+                    "can beat once surface_opacity drops below 1"
+                )
+                checked += 1
+        assert checked == 4
