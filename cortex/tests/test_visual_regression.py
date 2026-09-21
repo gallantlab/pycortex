@@ -557,10 +557,13 @@ def _build_nan_dataview(name: str) -> Dataview:
     # fully transparent. These references pin the behavior as it is on main.
     # Each of those gets NaN'd over its own region, so a single render exercises
     # several branches of the rule at once and a failure still says which one
-    # moved. The vertex regions are disjoint; the volume ones (x>=50, y>=50,
-    # z>=15) overlap, which is harmless and additionally covers voxels carrying
-    # more than one NaN at once. Blue is deliberately left clean, as a control
-    # that not everything has simply gone transparent.
+    # moved. Both sets of regions are three overlapping halves on independent
+    # axes, which covers elements carrying more than one NaN at once and, more
+    # importantly, leaves a clean remainder: the union is about 7/8, so an
+    # eighth of the data survives every mask. Blue is left clean as well, as a
+    # control that not everything has simply gone transparent -- but the
+    # remainder is what makes that control meaningful, since a channel being
+    # clean does nothing for an element the other masks have already hit.
     #
     # The alpha map is NaN'd here too, on a third axis. That is not a duplicate
     # of the nan_alpha suite: this covers alpha NaNs superposed on color NaNs,
@@ -579,13 +582,19 @@ def _build_nan_dataview(name: str) -> Dataview:
     secondary = yy >= 50    # 2D dimension 2, and green for RGB
     tertiary = zz >= 15     # the alpha map, on a third independent axis
 
-    # As above, in disjoint index ranges rather than spatial ones.
-    total = sum(a["num_verts"])
-    idx = np.arange(total)
-    vtx_primary = idx >= total // 2
-    vtx_secondary = idx < total // 4
-    vtx_tertiary = (idx >= total // 4) & (idx < total // 2)
+    # As above, on the vertex coordinates. These were three disjoint index
+    # ranges -- idx >= total/2, idx < total/4, and the quarter between -- which
+    # tile the surface exactly and so left no clean remainder at all: every
+    # vertex carried a NaN in some channel, and the two classes using all three
+    # (Vertex2D, and VertexRGB via red/green/alpha) rendered as bare curvature.
+    # Their references pinned an empty flatmap and covered nothing. Splitting on
+    # coordinates instead mirrors the volume regions above and leaves 13% of the
+    # surface clean; the median rather than 0.5 keeps each mask at half exactly.
     xyz = a["xyz_norm"]
+    vtx_mid = np.median(xyz, axis=0)
+    vtx_primary = xyz[:, 0] >= vtx_mid[0]     # data, and red for RGB
+    vtx_secondary = xyz[:, 1] >= vtx_mid[1]   # 2D dimension 2, and green for RGB
+    vtx_tertiary = xyz[:, 2] >= vtx_mid[2]    # the alpha map
 
     return _dataview(
         name,
