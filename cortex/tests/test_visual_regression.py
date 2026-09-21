@@ -44,7 +44,11 @@ import cortex.polyutils
 from cortex.dataset import Dataview
 from cortex.tests.testing_utils import has_playwright
 
-pytestmark = pytest.mark.skipif(
+#: The render tests need a browser. The builder checks at the bottom of this
+#: file do not, and they are the ones that catch a suite masking away the very
+#: thing it meant to render, so this is applied per test rather than as a
+#: module-level ``pytestmark`` -- a checkout without playwright still runs them.
+requires_playwright = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
 )
 
@@ -588,13 +592,22 @@ def _build_nan_dataview(name: str) -> Dataview:
     # vertex carried a NaN in some channel, and the two classes using all three
     # (Vertex2D, and VertexRGB via red/green/alpha) rendered as bare curvature.
     # Their references pinned an empty flatmap and covered nothing. Splitting on
-    # coordinates instead mirrors the volume regions above and leaves 13% of the
+    # coordinates instead mirrors the volume regions above and leaves 12% of the
     # surface clean; the median rather than 0.5 keeps each mask at half exactly.
+    #
+    # The z comparison runs the other way on purpose. Leaving a remainder is not
+    # enough on its own -- it also has to be somewhere the data is visible, and
+    # for Vertex2D visibility is governed by the alpha the 2D colormap derives
+    # from dim2, which is the accuracy bump. Of the eight orientations, >= on
+    # every axis is the worst: its survivors carry mean accuracy 0.23, only 3.5%
+    # of them above 0.5, and Vertex2D renders nearly blank (1.2% of its opaque
+    # pixels colored, against 9.9% for Volume2D). Flipping z puts the remainder
+    # on the bump -- mean accuracy 0.62, 70% above 0.5 -- for the same 12%.
     xyz = a["xyz_norm"]
     vtx_mid = np.median(xyz, axis=0)
     vtx_primary = xyz[:, 0] >= vtx_mid[0]     # data, and red for RGB
     vtx_secondary = xyz[:, 1] >= vtx_mid[1]   # 2D dimension 2, and green for RGB
-    vtx_tertiary = xyz[:, 2] >= vtx_mid[2]    # the alpha map
+    vtx_tertiary = xyz[:, 2] <= vtx_mid[2]    # the alpha map
 
     return _dataview(
         name,
@@ -881,6 +894,7 @@ def _render_and_check_webgl_only(
     return [msg] if msg is not None else []
 
 
+@requires_playwright
 @pytest.mark.parametrize("name", DATAVIEW_NAMES)
 def test_visual_comparison_alpha_dataviews(tmp_path, name):
     """Render an alpha-bearing dataview through both renderers, and assert it matches.
@@ -901,6 +915,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path, name):
     _assert_no_failures(failures, tmp_path)
 
 
+@requires_playwright
 @pytest.mark.parametrize("name", DATAVIEW_NAMES)
 def test_visual_comparison_nan_dataviews(tmp_path, name):
     """Render a NaN-bearing dataview through both renderers, and assert it matches.
@@ -922,6 +937,7 @@ def test_visual_comparison_nan_dataviews(tmp_path, name):
     _assert_no_failures(failures, tmp_path)
 
 
+@requires_playwright
 @pytest.mark.parametrize("name", NAN_ALPHA_DATAVIEW_NAMES)
 def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     """Render an RGB dataview whose alpha map carries NaNs, and assert it matches.
@@ -951,6 +967,7 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     _assert_no_failures(failures, tmp_path)
 
 
+@requires_playwright
 @pytest.mark.parametrize("name", MULTILAYER_DATAVIEW_NAMES)
 @pytest.mark.parametrize("nanmean", [True, False], ids=["nanmean", "no_nanmean"])
 @pytest.mark.timeout(600)
@@ -1010,6 +1027,7 @@ def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
     _assert_no_failures(failures, tmp_path)
 
 
+@requires_playwright
 @pytest.mark.parametrize("surface,angle,name", NONFLAT_VIEWS)
 def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
     """Render a non-flatmap view through webgl and assert it matches its reference.
@@ -1027,3 +1045,72 @@ def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
         tag, view, surface, angle, NONFLAT_REFERENCE_DIR, tmp_path
     )
     _assert_no_failures(failures, tmp_path)
+
+
+#: Least fraction of elements a NaN suite may leave untouched by every one of
+#: its masks. The suites sit far above it -- the thinnest is 12% -- so this is
+#: not a tuned threshold, it is a floor under the one way these builders fail
+#: silently. The vertex masks did cover the whole surface once: every element
+#: carried a NaN somewhere, Vertex2D and VertexRGB rendered as bare curvature,
+#: and their references pinned an empty flatmap. Nothing caught it, because an
+#: empty render matches an empty reference exactly, and agrees with the other
+#: renderer's empty render exactly as well.
+MIN_CLEAN_FRACTION = 0.05
+
+#: (suite, class) pairs, one per dataview each NaN suite actually renders.
+NAN_BUILDER_CASES = (
+    [("nan", name) for name in DATAVIEW_NAMES]
+    + [("nan_alpha", name) for name in NAN_ALPHA_DATAVIEW_NAMES]
+    + [("multilayer", name) for name in MULTILAYER_DATAVIEW_NAMES]
+)
+
+
+def _clean_fraction(view: Dataview) -> float:
+    """Fraction of a dataview's elements carrying no NaN in any channel.
+
+    Reads whichever of the channel attributes the class actually has, so it
+    covers all six without knowing which is which: a scalar class has ``data``,
+    the 2D ones ``dim1``/``dim2``, the RGB ones ``red``/``green``/``blue``, and
+    any of them may carry ``alpha``. Squeezed because VolumeRGB keeps its alpha
+    with a leading axis the color channels do not have.
+
+    This is the quantity that decides whether anything is drawn at all: the rule
+    under test is that a NaN anywhere at an element renders it transparent, so
+    an element is visible only if every channel is finite there.
+    """
+    channels = []
+    for attr in ("data", "dim1", "dim2", "red", "green", "blue", "alpha"):
+        channel = getattr(view, attr, None)
+        if channel is None:
+            continue
+        values = np.asarray(getattr(channel, "data", channel), dtype=float)
+        channels.append(np.isfinite(np.squeeze(values)).ravel())
+    return float(np.logical_and.reduce(channels).mean())
+
+
+@pytest.mark.parametrize("suite,name", NAN_BUILDER_CASES)
+def test_nan_builders_leave_clean_elements(suite, name):
+    """Assert each NaN suite leaves elements no mask touched.
+
+    A suite whose masks between them cover everything renders nothing, and
+    nothing is exactly what the rest of this file cannot see -- the reference
+    check passes against a blank reference and the cross-renderer check passes
+    comparing one blank flatmap to another. So it is asserted on the dataviews
+    directly, before any of it is rendered.
+
+    Needs no browser, unlike every other test here, which is the point: this is
+    the check that says the suites are testing something, and it should not be
+    contingent on a working playwright install.
+    """
+    builders = {
+        "nan": _build_nan_dataview,
+        "nan_alpha": _build_nan_alpha_dataview,
+        "multilayer": _build_multilayer_nan_dataview,
+    }
+    clean = _clean_fraction(builders[suite](name))
+    assert clean >= MIN_CLEAN_FRACTION, (
+        f"{suite}/{name}: only {clean:.2%} of elements are free of NaNs, under "
+        f"the {MIN_CLEAN_FRACTION:.0%} floor. Its masks cover nearly everything "
+        "between them, so this renders as bare curvature and the reference "
+        "pinned from it would assert nothing."
+    )
