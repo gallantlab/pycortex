@@ -1545,3 +1545,127 @@ def test_static_viewer_ships_the_interpolation_module(tmp_path):
     assert "interpolation.js" in html
     # It has to come before viewtools.js, which uses it at panel-open time.
     assert html.index("interpolation.js") < html.index("viewtools.js")
+
+
+# ---------------------------------------------------------------------------
+# Group 13: Default views every subject gets
+# ---------------------------------------------------------------------------
+
+
+def test_default_views_reach_the_browser_and_the_menu():
+    """Every subject gets the standard orientations without saving anything."""
+    from cortex.export.save_views import default_subject_views
+    from cortex.webgl.view import _has_flatmap
+
+    expected = set(default_subject_views(_has_flatmap(subj)))
+    assert "dorsal" in expected and "lateral_left_inflated" in expected
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        shipped = _js_attrs(handle, "window.viewopts.saved_views.%s" % subj)
+        assert expected <= set(shipped), expected - set(shipped)
+
+        buttons = _js_attrs(
+            handle, "window.viewer.ui._desc.camera._desc.views._desc")
+        assert expected <= set(buttons), expected - set(buttons)
+
+
+def test_clicking_a_default_view_applies_it():
+    """The buttons are wired, not just present."""
+    from cortex.export.save_views import default_subject_views
+    from cortex.webgl.view import _has_flatmap
+
+    views = default_subject_views(_has_flatmap(subj))
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        # Somewhere that is not the view we are about to ask for.
+        handle._set_view(**{"camera.azimuth": 10, "camera.altitude": 45})
+        time.sleep(1)
+
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc"
+            ".lateral_left.action", []])
+        time.sleep(2)
+
+        want = views["lateral_left"]
+        assert handle.ui.get("camera.azimuth")[0] == pytest.approx(
+            want["camera.azimuth"], abs=1.0)
+        assert handle.ui.get("camera.altitude")[0] == pytest.approx(
+            want["camera.altitude"], abs=1.0)
+
+
+def test_a_saved_view_overrides_the_default_of_the_same_name():
+    """A views/dorsal.json in the filestore wins over the built-in dorsal."""
+    from cortex.export.save_views import default_subject_views
+
+    viewdir = os.path.join(cortex.db.filestore, subj, "views")
+    os.makedirs(viewdir, exist_ok=True)
+    viewfile = os.path.join(viewdir, "dorsal.json")
+    assert not os.path.exists(viewfile), (
+        "%s already exists; this test would overwrite it" % viewfile)
+
+    builtin = default_subject_views()["dorsal"]
+    mine = dict(default_view_params)
+    mine["camera.azimuth"] = 123.0
+    mine["camera.altitude"] = 47.0
+    assert mine["camera.azimuth"] != builtin["camera.azimuth"]
+
+    with open(viewfile, "w") as fp:
+        json.dump(mine, fp)
+    try:
+        vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+            shipped = _js_attrs(
+                handle, "window.viewopts.saved_views.%s.dorsal" % subj)
+            assert "camera.azimuth" in shipped
+
+            handle.send(method="run", params=[
+                "window.viewer.ui._desc.camera._desc.views._desc"
+                ".dorsal.action", []])
+            time.sleep(2)
+            assert handle.ui.get("camera.azimuth")[0] == pytest.approx(
+                mine["camera.azimuth"], abs=1.0)
+
+            # The other defaults are untouched by the override.
+            buttons = _js_attrs(
+                handle, "window.viewer.ui._desc.camera._desc.views._desc")
+            assert "ventral" in buttons and "lateral_right" in buttons
+    finally:
+        os.remove(viewfile)
+
+
+def test_quickflat_size_reaches_the_browser():
+    """The animation panel's flat-render hint is computed in python."""
+    from cortex.webgl.view import _quickflat_size
+
+    expected = _quickflat_size(subj)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        assert subj in _js_attrs(handle, "window.viewopts.quickflat_size")
+        # .slice() hands back a plain array, which survives the JSON round trip
+        # that a bare property read does not.
+        shipped = handle.send(method="run", params=[
+            "window.viewopts.quickflat_size.%s.slice" % subj, []])
+        assert shipped == expected
+
+    if expected is not None:
+        width, height = expected
+        assert height == 1024
+        assert width > 0
+
+
+def test_quickflat_size_matches_a_real_quickflat_png(tmp_path):
+    """The hint has to be the size make_png actually writes, not near it."""
+    from PIL import Image
+
+    from cortex.webgl.view import _quickflat_size
+
+    expected = _quickflat_size(subj)
+    if expected is None:
+        pytest.skip("%s has no flat surface" % subj)
+
+    out = str(tmp_path / "flat.png")
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    cortex.quickflat.make_png(out, vol, with_rois=False, with_labels=False,
+                              with_colorbar=False)
+    assert list(Image.open(out).size) == expected

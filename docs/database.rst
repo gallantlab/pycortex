@@ -293,6 +293,38 @@ Where, ``'subject'`` is the subject identifier and ``'name'`` is a unique name f
 
     viewer.get_view(subject, name)
 
+Default views
+~~~~~~~~~~~~~
+
+Every subject is offered a standard set of views whether or not anything has been saved for it, so a freshly imported subject already has the usual orientations one click away under **camera > views**:
+
+=========================  ====================================================
+View                       Shows
+=========================  ====================================================
+``dorsal``                 From above, frontal lobe towards the top of the
+                           image, the subject's right on the right.
+``ventral``                From below, frontal lobe towards the top.
+``lateral_left``           From the left, brain upright.
+``lateral_right``          From the right, brain upright.
+``*_inflated``             The same four angles on the inflated surface.
+``flat``                   The flattened surface. Omitted for a subject with
+                           no flat surface, which also puts the ``_inflated``
+                           views at full inflation rather than half.
+=========================  ====================================================
+
+They are built from the same tables ``cortex.export.save_views`` uses for :func:`save_3d_views`, and can be inspected from python::
+
+    from cortex.export.save_views import default_subject_views
+    default_subject_views()["dorsal"]
+
+**A view saved in the filestore under one of these names replaces the default.** So if a subject's anatomy wants a different angle, or you prefer a different framing, save your own view under that name and it is used instead — for that subject only, leaving every other default in place::
+
+    viewer.save_view(subject, "dorsal", is_overwrite=True)
+
+The ``flat`` view uses the viewer's standard flatmap preset. It cannot match ``quickflat.make_figure`` exactly, since the viewer draws the flat surface through a perspective camera while quickflat rasterizes it orthographically; if the framing is not what you want for a particular subject, override it as above.
+
+Rendering the flat view at the same pixel size quickflat uses makes the frames line up with a flatmap drawn by ``cortex.quickflat.make_png``. That size depends on the subject's flat surface, so the animation panel works it out and displays it in the render form once an animation actually reaches the flat surface.
+
 Saved views in the browser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

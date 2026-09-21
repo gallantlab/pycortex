@@ -330,3 +330,87 @@ unfold_view_params: dict[str, ViewParams] = {
         "surface.{subject}.unfold": 1,
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# Views every subject gets
+# ---------------------------------------------------------------------------
+#
+# Offered by every viewer, so that a subject with nothing in its filestore
+# views/ directory still has the standard anatomical orientations one click
+# away. A view saved under one of these names takes precedence; see
+# cortex.webgl.view._load_saved_views.
+
+#: Anatomical name to the entry in `angle_view_params` that produces it.
+#:
+#: The viewer's camera sits at
+#: ``radius * (sin(alt)cos(azi+90), sin(alt)sin(azi+90), cos(alt))`` looking at
+#: the target, with up fixed at +z (LandscapeControls.js, axes3d.js). Surfaces
+#: are in surface RAS, so +x is right, +y anterior, +z superior. That puts the
+#: camera left of the brain at azimuth 90 and right of it at 270, above it at
+#: altitude 0 and below at 180; and because `lookAt` resolves the degenerate
+#: straight-up/straight-down cases through the azimuth, anterior ends up at the
+#: top of the image at azimuth 180 seen from above and at azimuth 0 seen from
+#: below. Those are exactly the four angles named here.
+DEFAULT_VIEW_ANGLES: dict[str, str] = {
+    "dorsal": "top",            # from above, frontal lobe up
+    "ventral": "bottom",        # from below, frontal lobe up
+    "lateral_left": "left",     # from the left, brain upright
+    "lateral_right": "right",   # from the right, brain upright
+}
+
+#: Suffix added to the inflated counterpart of each of the above.
+INFLATED_SUFFIX = "_inflated"
+
+#: Name of the flattened view.
+FLAT_VIEW_NAME = "flat"
+
+
+def default_subject_views(has_flatmap: bool = True) -> dict[str, ViewParams]:
+    """The views offered for every subject, whether or not any are saved.
+
+    Nine views: the four orientations in `DEFAULT_VIEW_ANGLES` on the fiducial
+    surface, the same four inflated (suffixed `INFLATED_SUFFIX`), and `flat`.
+    They are assembled from `default_view_params`, `angle_view_params` and
+    `unfold_view_params` rather than spelled out, so the camera conventions stay
+    in one place.
+
+    Parameters
+    ----------
+    has_flatmap : bool, optional
+        Whether the subject has a flat surface. Without one there is no `flat`
+        view to offer, and the inflated surface sits at an unfold of 1 rather
+        than 0.5 -- the same correction `save_3d_views` makes. Default True.
+
+    Returns
+    -------
+    dict
+        ``{view_name: view_params}``, with the literal ``{subject}`` placeholder
+        left in the keys so one view works in a multi-subject viewer.
+    """
+    def build(*overrides: ViewParams) -> ViewParams:
+        params: ViewParams = default_view_params.copy()
+        for override in overrides:
+            params.update(override)
+        return params
+
+    inflated = unfold_view_params["inflated"].copy()
+    if not has_flatmap:
+        inflated["surface.{subject}.unfold"] = min(
+            inflated["surface.{subject}.unfold"] * 2, 1)
+
+    views: dict[str, ViewParams] = {}
+    for name, angle in DEFAULT_VIEW_ANGLES.items():
+        views[name] = build(angle_view_params[angle],
+                            unfold_view_params["fiducial"])
+        views[name + INFLATED_SUFFIX] = build(angle_view_params[angle], inflated)
+
+    if has_flatmap:
+        # The established flatmap preset, the one save_3d_views renders
+        # flatmaps with. It is the closest the viewer comes to the layout
+        # quickflat.make_figure draws; the two cannot match exactly, since the
+        # viewer renders the flat surface through a 45-degree perspective
+        # camera while quickflat rasterizes it orthographically.
+        views[FLAT_VIEW_NAME] = build(angle_view_params["flatmap"],
+                                      unfold_view_params["flatmap"])
+    return views

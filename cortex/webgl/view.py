@@ -46,8 +46,57 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 
+def _has_flatmap(subject: str) -> bool:
+    """Whether `subject` has a flat surface, without raising if it does not."""
+    try:
+        return hasattr(getattr(db, subject).surfaces, "flat")
+    except Exception:
+        return False
+
+
+def _quickflat_size(subject: str, height: int = 1024) -> Optional[list[int]]:
+    """The pixel size ``cortex.quickflat.make_png`` writes by default.
+
+    ``make_png`` resizes the figure to the flatmap image and saves it at `dpi`,
+    so the png comes out exactly as many pixels as that image. The width follows
+    from the flat surface's bounding box, which is the one thing here that
+    varies by subject.
+
+    Reproduces the arithmetic of ``quickflat.utils._make_flatmask`` rather than
+    calling it, because that function rasterizes the surface outline with PIL to
+    build a mask this does not need -- and would cache a mask the viewer may
+    never use.
+
+    Returns
+    -------
+    list of int or None
+        ``[width, height]``, or None if the subject has no flat surface or it
+        could not be read.
+    """
+    if not _has_flatmap(subject):
+        return None
+    try:
+        pts, _ = db.get_surf(subject, "flat", merge=True, nudge=True)
+        span = pts.max(0) - pts.min(0)
+        if span[1] <= 0:
+            return None
+        return [int((height / span[1]) * span[0]), int(height)]
+    except Exception as err:
+        warnings.warn("Could not work out the quickflat size for %s: %s"
+                      % (subject, err))
+        return None
+
+
 def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]]]:
-    """Read the saved views of `subjects` out of the filestore.
+    """The views each of `subjects` offers, defaults overlaid with saved ones.
+
+    Every subject gets the standard anatomical views from
+    ``cortex.export.save_views.default_subject_views`` -- dorsal, ventral, the
+    two lateral views, their inflated counterparts, and flat -- so that a
+    subject with an empty (or missing) views/ directory still has them. A view
+    stored in the filestore under one of those names replaces the default,
+    which is how a subject whose anatomy needs a different angle, or who wants
+    a different framing, overrides one.
 
     `subjects` is the list of subjects the viewer is actually displaying, so a
     viewer never reads (nor ships to the browser) views belonging to unrelated
@@ -61,9 +110,11 @@ def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]
         writes; the javascript side substitutes it per subject when the view is
         applied, so one saved view still works in a multi-subject viewer.
     """
+    from ..export.save_views import default_subject_views
+
     saved: dict[str, dict[str, dict[str, Any]]] = {}
     for subj in subjects:
-        saved[subj] = {}
+        saved[subj] = dict(default_subject_views(_has_flatmap(subj)))
         viewdir = os.path.join(db.filestore, subj, "views")
         # Glob *.json rather than using db.get_paths()['views'], which strips any
         # extension off any file in the directory (so notes.tar.gz would show up
@@ -308,6 +359,8 @@ def make_static(
     # Views saved in the filestore, for the "camera > views" menu. Only the
     # subjects this viewer displays are read.
     my_viewopts["saved_views"] = _load_saved_views(subjects)
+    my_viewopts["quickflat_size"] = {subj: _quickflat_size(subj)
+                                     for subj in subjects}
 
     html = tpl.generate(
         data=json.dumps(metadata),
@@ -516,6 +569,11 @@ def show(
     # Views saved in the filestore, for the "camera > views" menu. Only the
     # subjects this viewer displays are read.
     my_viewopts['saved_views'] = _load_saved_views(subjects)
+
+    # So the animation panel can say what render size reproduces the png
+    # quickflat.make_png writes by default, for animations using the flat view.
+    my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
+                                     for subj in subjects}
 
     # Where the animation panel is allowed to write rendered frames. The browser
     # sends a path relative to this root and MovieHandler refuses anything that
