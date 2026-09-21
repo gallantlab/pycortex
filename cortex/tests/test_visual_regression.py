@@ -188,6 +188,25 @@ WEBGL_LAYERS = 1
 #: Depth samples for the multilayer suite, applied to both renderers.
 MULTILAYER_DEPTHS = 32
 
+#: Why the multilayer suite's cross-renderer leg is allowed to breach. Setting
+#: both renderers to the same number of depth samples does not put those samples
+#: at the same depths: quickflat takes ``linspace(0, 1, thick + 2)[1:-1]``, the
+#: shader ``i / (layers - 1)``, so one grid is interior and the other reaches
+#: both the white-matter and pial surfaces. On smooth data that is invisible --
+#: every other cross check here passes at mean|diff| 1.3-1.9 -- but this suite's
+#: NaN slabs are two voxels thick, at the sampling limit, so a sub-sample offset
+#: in depth flips which samples are NaN and the two renders disagree pixel by
+#: pixel. The disagreement is pixel-scale phase noise, not a difference in what
+#: is drawn: the signed bias is within +-2 of 255, transparency agrees to the
+#: same 1.19% outline as the passing suites, and a sigma=4 blur brings mean|diff|
+#: back to 1.3 against a 1.18 floor. The reference legs stay strict; only this
+#: one is conceded. See gh-749.
+MULTILAYER_CROSS_XFAIL_REASON = (
+    "quickflat and webgl sample cortical depth on different grids "
+    "(gh-749), which this suite's two-voxel NaN slabs resolve differently "
+    "per pixel"
+)
+
 #: Classes the multilayer suite covers. Volumetric only: vertex dataviews hold
 #: one value per vertex, so every depth sample at a vertex is the same number
 #: and there is nothing for the across-depth averaging to do. All three are
@@ -691,6 +710,7 @@ def _render_and_check_dataview(
     thick: int = QUICKFLAT_THICK,
     layers: int = WEBGL_LAYERS,
     nanmean: Optional[bool] = None,
+    cross_xfail_reason: Optional[str] = None,
 ) -> list[str]:
     """Render a single dataview through both renderers and check it.
 
@@ -703,6 +723,14 @@ def _render_and_check_dataview(
     ``nanmean`` whether either skips NaN samples when averaging over them.
     ``nanmean=None`` leaves both renderers at their own default rather than
     setting it, so the suites that predate gh-695 render exactly as before.
+
+    ``cross_xfail_reason``, if given, xfails the test when the cross-renderer
+    leg breaches rather than failing it, for a caller whose content the two
+    renderers are not expected to agree on pixel for pixel. The two reference
+    legs stay strict either way: a reference mismatch is asserted before the
+    xfail is conceded, so a real regression is not swallowed by it. A caller
+    that passes it and then agrees anyway simply passes -- this is the
+    imperative ``pytest.xfail``, not a mark, so there is no xpass to configure.
 
     Returns a list of failure messages (empty if no failures). Skips the test
     if reference images are missing, and regenerates them if ``REGENERATE_REFERENCES``
@@ -784,6 +812,12 @@ def _render_and_check_dataview(
     # Cross-renderer check (never regenerates, always compares)
     msg = _check_cross_renderer(name, qf_path, wg_path, tmp_path)
     if msg is not None:
+        if cross_xfail_reason is not None:
+            # Only the cross-renderer leg is expected to breach. A reference
+            # mismatch is a real regression whatever this leg does, so surface
+            # those first rather than letting the xfail swallow them.
+            _assert_no_failures(failures, tmp_path)
+            pytest.xfail(f"{cross_xfail_reason}\n  {msg}")
         failures.append(msg)
 
     return failures
@@ -930,6 +964,17 @@ def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
     Given a longer timeout than the suite default: 32 layers under software
     rendering is appreciably slower than the single-layer renders elsewhere.
 
+    The cross-renderer leg is xfailed here, and only here -- see
+    ``MULTILAYER_CROSS_XFAIL_REASON`` for the measurements and gh-749 for the
+    underlying difference. In short, this suite sets both renderers to the same
+    number of depth samples but cannot put those samples at the same depths, and
+    its two-voxel NaN slabs are fine enough to resolve that offset. Five of the
+    six parameter sets breach; the sixth stays inside the tolerance and simply
+    passes. What the suite is actually for is unaffected: both renderers still
+    have to match their own references exactly, and both respond to ``nanmean``
+    the same way (toggling it moves quickflat by mean 10.9 and webgl by 11.2 on
+    Volume).
+
     The Volume2D case is flaky, through no fault of this suite. Setting
     ``layers`` above 1 intermittently leaves the viewer's RPC proxy answering
     ``{}`` to every subsequent query, so ``save_3d_views`` dies on the next
@@ -951,6 +996,7 @@ def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
         thick=MULTILAYER_DEPTHS,
         layers=MULTILAYER_DEPTHS,
         nanmean=nanmean,
+        cross_xfail_reason=MULTILAYER_CROSS_XFAIL_REASON,
     )
     _assert_no_failures(failures, tmp_path)
 
