@@ -25,7 +25,7 @@ from tornado import web
 
 from .. import dataset, options, utils, volume
 from ..database import db
-from . import serve
+from . import security, serve
 from .data import Package
 from .FallbackLoader import FallbackLoader
 
@@ -355,6 +355,15 @@ def show(
     Creates a webGL MRI viewer that is dynamically served by a tornado server
     running inside the current python process.
 
+    The server listens on all network interfaces and has no authentication, so
+    before it is started this prints a security warning and waits for a y/n/i
+    answer on the console (see ``cortex.webgl.security``). Answering ``n``
+    raises `~cortex.webgl.security.ViewerStartAborted` instead of starting the
+    viewer; ``i`` persists ``[webshow] skip_security_warning = true`` to the
+    user config so the warning is not shown again. Set the
+    ``PYCORTEX_SKIP_SECURITY_WARNING`` environment variable to skip the prompt
+    for one session, e.g. in scripted or headless use.
+
     Parameters
     ----------
     data : Dataset object or implicit Dataset
@@ -435,6 +444,14 @@ def show(
     **kwargs
         All additional keyword arguments are passed to the template renderer.
     """
+
+    # Warn about the server's network exposure and get the user's go-ahead
+    # before anything else: ahead of the (potentially minutes-long) CTM and
+    # data packaging below, and well ahead of the browser being opened. The
+    # movie root is resolved the same way as the `movie_root` MovieHandler
+    # writes under, so the warning names the directory that is really at risk.
+    security.confirm_server_start(
+        movie_root=os.path.realpath(os.getcwd() if movie_dir is None else movie_dir))
 
     # populate default webshow args
     if autoclose is None:

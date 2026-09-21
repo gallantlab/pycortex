@@ -41,6 +41,19 @@ To run the pycortex demo, using IPython, run::
     In [1]: import cortex
     In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 
+Before the browser opens, pycortex prints a security warning and asks you to
+confirm. The viewer is served by a small web server that listens on *every*
+network interface with no authentication, so while it is running anyone who can
+reach your machine over the network can read the data you are plotting, read
+files underneath your working directory, and supply the contents of the
+screenshots and SVGs the viewer saves. Answer ``y`` to start the viewer once,
+``n`` to abort, or ``i`` to start it and never be asked again — ``i`` writes
+``skip_security_warning = true`` to the ``[webshow]`` section of your user
+configuration file (see `Basic Configuration`_ below), and deleting that line
+restores the prompt. Setting the ``PYCORTEX_SKIP_SECURITY_WARNING`` environment
+variable suppresses the prompt for a single session, which is the right choice
+for scripted or headless use.
+
 If everything went well, this should pop up a web browser window with a demo subject.
 
 .. _IPython: http://www.ipython.org/

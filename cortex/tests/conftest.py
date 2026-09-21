@@ -36,6 +36,12 @@ def _bundled_filestore():
 
 FILESTORE = _bundled_filestore()
 
+# The webgl viewer asks for interactive confirmation before starting its
+# server (cortex/webgl/security.py). Under pytest stdin is captured, so the
+# prompt would fall back to its non-interactive path and print the warning
+# into every headless test's output; opt out explicitly instead.
+os.environ.setdefault("PYCORTEX_SKIP_SECURITY_WARNING", "1")
+
 options.config.set("basic", "filestore", FILESTORE)
 database.default_filestore = FILESTORE
 # The `filestore=default_filestore` defaults throughout database.py were bound

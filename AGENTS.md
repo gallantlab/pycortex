@@ -63,6 +63,7 @@ Two orthogonal mixin axes: **braindata** (the array plus subject/transform ident
 Flow: dataviews → JSON + PNG mosaics (`data.py:Package`) + compressed CTM surface packs (`cortex/brainctm.py`, cached per subject) → Tornado template (`template.html`, extended by `static.html` etc., resolved via `FallbackLoader` so user template dirs can override) → Three.js app in `resources/js/`.
 
 - `view.py`: `show` (live Tornado server from `serve.py`, returns a `JSProxy` websocket RPC handle for driving JS from Python) and `make_static` (self-contained directory; `htmlembed.py` can inline everything into a single file).
+- The server binds all interfaces and authenticates nobody, so `show` opens with `security.confirm_server_start()` — an interactive y/n/i prompt, skipped by `[webshow] skip_security_warning` in the config or the `PYCORTEX_SKIP_SECURITY_WARNING` environment variable (which `cortex/tests/conftest.py` sets for the suite). Anything that starts a viewer non-interactively must set one of those or it will print the warning on every run.
 - The bundled Three.js is **r69** — very old; the shader pipeline depends on its conventions, do not casually upgrade.
 - All GLSL lives in `resources/js/shaderlib.js` as arrays of string lines assembled per-configuration — there are no `.glsl` files.
 - CTM packs reorder vertices: `cortex.utils.get_ctmmap` / `get_ctm2webgl_map` translate between CTM/WebGL ordering and the original surface ordering. Indexing viewer data with original vertex indices without remapping is a classic bug.
