@@ -1,6 +1,15 @@
 var mriview = (function(module) {
     var flatscale = 0.3;
 
+    //Base lighting terms used when illumination is fully directional. Uniform
+    //illumination fades diffuse and specular out and emissive in.
+    var base_diffuse = .8, base_emissive = .2, base_specular = .005;
+
+    //Fades a user setting the rest of the way towards 1 as `amount` goes to 1
+    function fadeToFull(base, amount) {
+        return base + (1 - base) * amount;
+    }
+
     function makeAxes(length, color) {
         function v(x,y,z){ 
             return new THREE.Vector3(x,y,z); 
@@ -33,7 +42,18 @@ var mriview = (function(module) {
         this._nanmean = true;  // average only non-NaN layers (matches quickflat nanmean=True)
         this._pivot = 0;
         this._shift = 0;
-        this._specular = parseFloat(viewopts.specularity);
+        //The lighting controls hold the values that are actually in effect, and
+        //unfolding drives them (like pivot does), so keep the configured values
+        //around as the settings to drive them back towards.
+        this._lighting_defaults = {
+            specularity: parseFloat(viewopts.specularity),
+            uniform_illumination: jsplot.parseFraction(viewopts.uniform_illumination),
+            topleft_lighting: jsplot.parseFraction(viewopts.topleft_lighting),
+        };
+        this._specular = this._lighting_defaults.specularity;
+        this._uniform_illumination = this._lighting_defaults.uniform_illumination;
+        this._topleft_lighting = this._lighting_defaults.topleft_lighting;
+        this._flat = 0;
         this._leftvis = true;
         this._rightvis = true;
         this.shaders = {};
@@ -77,12 +97,8 @@ var mriview = (function(module) {
             }
         ]);
 
-        // Update uniform values based on the uniform illumination option
-        if (viewopts.uniform_illumination == 'true') {
-            this.uniforms.diffuse.value.set(0, 0, 0); // Set diffuse to 0
-            this.uniforms.specular.value.set(0, 0, 0); // Set specular to 0
-            this.uniforms.emissive.value.set(1, 1, 1); // Set emissive to 1
-        }
+        //Fold the illumination options into the lighting uniforms
+        this._autoLighting();
 
         this.ui = (new jsplot.Menu()).add({
             unfold: {action:[this, "setMix", 0., 1.]},
@@ -92,7 +108,7 @@ var mriview = (function(module) {
             "pial surface": {action: this.to_pial_surface.bind(this), key: 'p', help: "Pial surface"},
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
-            bumpy_flatmap: {action:[this.uniforms.bumpyflat, "value"]},
+            bumpy_flatmap: {action:[this, "setBumpyFlat"]},
             allow_tilt: {action:[this, "setAllowTilt"]},
             equivolume: {action:[this, "setEquivolume"]},
             changeDepth: {action: this.changeDepth.bind(this), wheel: true, modKeys: ['altKey'], hidden: true, help:'Change depth'},
@@ -104,15 +120,18 @@ var mriview = (function(module) {
             leftToggle: {action: this.toggleLeftVis.bind(this), key: 'L', modKeys: ['shiftKey'], hidden: true, help:'Toggle left hemisphere'},
             right: {action:[this, "setRightVis"]},
             rightToggle: {action: this.toggleRightVis.bind(this), key: 'R', modKeys: ['shiftKey'], hidden: true, help:'Toggle right hemisphere'},
-	        specularity: {action:[this, "setSpecular", 0, 1]},
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
             toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
             nanmean: {action:[this, "setNanmean"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
-            uniform_illumination: {action:[this, "setUniformIllumination"]},
         });
-        
+
+        this.ui.addFolder("lighting", true).add({
+            topleft_lighting: {action:[this, "setTopLeftLighting", 0, 1]},
+            uniform_illumination: {action:[this, "setUniformIllumination", 0, 1]},
+            specularity: {action:[this, "setSpecular", 0, 1]},
+        });
 
         this.ui.addFolder("curvature", true).add({
             brightness: {action:[this.uniforms.brightness, "value", 0, 1]},
@@ -150,6 +169,18 @@ var mriview = (function(module) {
                 left :{positions:[], normals:[]}, 
                 right:{positions:[], normals:[]},
             };
+
+            // Smoothing parameters for the bumpy flatmap. These must be declared
+            // outside the per-hemisphere loop below: they used to live inside it,
+            // and `var` hoisting meant they were still undefined on the first
+            // iteration, so the left hemisphere was left unsmoothed while the
+            // right one picked up the values assigned during the left pass.
+            var areasmoothfactor = 0.1;
+            var areasmoothiter = 5;
+
+            var distsmoothfactor = 0.1;
+            var distsmoothiter = 20;
+
             for (var name in names) {
                 var hemi = geometries[names[name]];
                 posdata[name].map = hemi.indexMap;
@@ -174,11 +205,11 @@ var mriview = (function(module) {
                 }
                 //Setup flatmap mix
 		var wmareas = module.computeAreas(hemi.attributes.wm, hemi.attributes.index, hemi.offsets);
-                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, smoothfactor, smoothiter);
+                wmareas = module.iterativelySmoothVertexData(hemi.attributes.wm, hemi.attributes.index, hemi.offsets, wmareas, areasmoothfactor, areasmoothiter);
                 hemi.wmareas = wmareas;
 
 		var pialareas = module.computeAreas(hemi.attributes.position, hemi.attributes.index, hemi.offsets);
-                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, smoothfactor, smoothiter);
+                pialareas = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, pialareas, areasmoothfactor, areasmoothiter);
                 hemi.pialareas = pialareas;
 
 		var pialarea_attr = new THREE.BufferAttribute(pialareas, 1);
@@ -198,10 +229,6 @@ var mriview = (function(module) {
                     posdata[name].positions.push(hemi.attributes['mixSurfs'+json.names.length]);
                     posdata[name].normals.push(hemi.attributes['mixNorms'+json.names.length]);
 
-
-                    var smoothfactor = 0.1;
-                    var smoothiter = 50;
-
                     // var flatareas = module.computeAreas(hemi.attributes.mixSurfs1, hemi.culled.index, hemi.culled.offsets);
                     // var flatareascale = flatscale ** 2;
                     // flatareas = flatareas.map(function (a) { return a / flatareascale;});
@@ -209,7 +236,7 @@ var mriview = (function(module) {
                     // hemi.flatareas = flatareas;
 
                     var dists = module.computeDist(hemi.attributes.position, hemi.attributes.wm);
-                    dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, smoothfactor, smoothiter);
+                    dists = module.iterativelySmoothVertexData(hemi.attributes.position, hemi.attributes.index, hemi.offsets, dists, distsmoothfactor, distsmoothiter);
 
                     var vertexvolumes = module.computeVertexPrismVolume(wmareas, pialareas, dists);
                     hemi.vertexvolumes = vertexvolumes;
@@ -501,8 +528,10 @@ var mriview = (function(module) {
         }
         _last_clipped = clipped;
 
-        // this.uniforms.specularStrength.value = this._specular * (1-clipped);
-        this.uniforms.specularStrength.value = this._specular;
+        //Lighting follows the flatmap: see _autoLighting
+        this._flat = clipped;
+        this._autoLighting();
+
         this.setPivot( 180 * clipped);
 
         this.pivots.left.back.rotation.x = clipped * -Math.PI/2;
@@ -591,8 +620,55 @@ var mriview = (function(module) {
             return this._specular;
 
         this._specular = val;
-	this.uniforms.specularStrength.value = this._specular;// * (1-_last_clipped);
-    
+        this.uniforms.specularStrength.value = val;
+    };
+    module.Surface.prototype.setUniformIllumination = function(val) {
+        if (val === undefined)
+            return this._uniform_illumination;
+
+        this._uniform_illumination = val;
+        var diffuse = base_diffuse * (1 - val);
+        var emissive = base_emissive + (1 - base_emissive) * val;
+        var specular = base_specular * (1 - val);
+        this.uniforms.diffuse.value.set(diffuse, diffuse, diffuse);
+        this.uniforms.emissive.value.set(emissive, emissive, emissive);
+        this.uniforms.specular.value.set(specular, specular, specular);
+    };
+    module.Surface.prototype.setTopLeftLighting = function(val) {
+        if (val === undefined)
+            return this._topleft_lighting;
+
+        this._topleft_lighting = val;
+        //The lights themselves hang off the viewer's camera, not the surface
+        this.dispatchEvent({type:'lighting', topleft:val});
+    };
+    module.Surface.prototype.setBumpyFlat = function(val) {
+        if (val === undefined)
+            return this.uniforms.bumpyflat.value;
+
+        this.uniforms.bumpyflat.value = val;
+        //the bumpy flatmap decides which way the lighting is driven
+        this._autoLighting();
+    };
+    //Drives the lighting controls from the current flatness, the way unfolding
+    //drives the pivot. A fully flat, smooth flatmap is a flat sheet:
+    //directional lighting can only add a spurious gradient across it, so
+    //illumination goes fully uniform and the specular highlight fades out as
+    //the surface flattens. A bumpy flatmap does have relief to shade, so it
+    //goes to a fully top-left light instead, which is the direction that reads
+    //as shaded relief. Everything is written through the setters the menu
+    //wraps, so the sliders follow along and stay editable.
+    module.Surface.prototype._autoLighting = function() {
+        var d = this._lighting_defaults;
+        var flat = this.uniforms.bumpyflat.value ? 0 : this._flat;
+        var bumpyflat = this.uniforms.bumpyflat.value ? this._flat : 0;
+
+        var uniform = fadeToFull(d.uniform_illumination, flat);
+        this.setUniformIllumination(uniform);
+        //the specular highlight is part of the directional lighting, so it goes
+        //away as the illumination becomes uniform
+        this.setSpecular(d.specularity * (1 - uniform));
+        this.setTopLeftLighting(fadeToFull(d.topleft_lighting, bumpyflat));
     };
     module.Surface.prototype.setLeftVis = function(val) {
         if (val === undefined)
@@ -879,21 +955,6 @@ var mriview = (function(module) {
         this.mesh = new THREE.Mesh(this.sheets, null);
         this.object.add(this.mesh);
     }
-
-    module.Surface.prototype.setUniformIllumination = function(val) {
-        if (val === undefined)
-            return this.uniforms.emissive.value.x == 1; // Check current state
-        
-        if (val) {
-            this.uniforms.diffuse.value.set(0, 0, 0);
-            this.uniforms.specular.value.set(0, 0, 0);
-            this.uniforms.emissive.value.set(1, 1, 1);
-        } else {
-            this.uniforms.diffuse.value.set(.8, .8, .8);
-            this.uniforms.specular.value.set(.005, .005, .005);
-            this.uniforms.emissive.value.set(.2, .2, .2);
-        }
-    };
 
     return module;
 }(mriview || {}));

@@ -29,6 +29,8 @@ try:
 except ImportError:
     pass
 
+from cortex import hcp
+
 # Create deprecated interface for database
 class dep:
     def __getattr__(self, name):

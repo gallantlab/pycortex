@@ -9,6 +9,7 @@ from cortex.freesurfer import (
     _remove_disconnected_polys,
     _surf2surf_nnfr_matrix,
     get_mri_surf2surf_matrix,
+    upsample_to_fsaverage,
 )
 
 
@@ -120,6 +121,34 @@ def test_get_mri_surf2surf_matrix_ignores_legacy_kwargs(monkeypatch):
 def test_get_mri_surf2surf_matrix_rejects_unknown_kwargs():
     with pytest.raises(TypeError):
         get_mri_surf2surf_matrix("A", "lh", target_subj="B", bogus_kwarg=1)
+
+
+# ---------------------------------------------------------------------------
+# upsample_to_fsaverage (bundled neighbor tables, no freesurfer needed)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("data_space,n_src", [("fsaverage6", 81924),
+                                              ("fsaverage5", 20484)])
+def test_upsample_to_fsaverage_bundled_no_freesurfer(data_space, n_src,
+                                                     monkeypatch):
+    # fsaverage5/6 upsampling tables ship with pycortex, so this must work with
+    # no $SUBJECTS_DIR and no freesurfer install.
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    rng = np.random.RandomState(0)
+    data = rng.randn(3, n_src)
+    out = upsample_to_fsaverage(data, data_space)
+    assert out.shape == (3, 327684)
+    # The low-resolution vertices are carried over unchanged.
+    np.testing.assert_array_equal(out[:, :n_src // 2], data[:, :n_src // 2])
+    # A 1-D input yields a 1-D result.
+    assert upsample_to_fsaverage(data[0], data_space).ndim == 1
+
+
+def test_upsample_to_fsaverage_constant_preserved(monkeypatch):
+    # Nearest-neighbor fill of a constant map stays constant everywhere.
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    out = upsample_to_fsaverage(np.full(81924, 2.5), "fsaverage6")
+    np.testing.assert_array_equal(out, np.full(327684, 2.5))
 
 
 def _have_template(subjects_dir, name, hemi="lh"):

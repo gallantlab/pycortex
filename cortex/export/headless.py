@@ -90,13 +90,42 @@ def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
     raise RuntimeError(
         f"Viewer's .loaded deferred did not resolve within {timeout:.0f}s "
         f"(last response: {last_err!r}). The CTM mesh may have failed to "
-        "download or parse, or mriview.js failed to initialise."
+        "download or parse, or mriview.js failed to initialize."
     )
 
 
 # --------------------------------------------------------------------------- #
 # Helper: run Playwright in a dedicated thread to avoid asyncio conflicts     #
 # --------------------------------------------------------------------------- #
+
+
+#: How often the worker thread calls into Playwright to dispatch queued browser
+#: events; ``browser_errors`` is current to within this interval.
+EVENT_POLL_INTERVAL = 0.25
+
+#: Browser messages that mean WebGL itself failed, as opposed to unrelated
+#: javascript a page may log. Deliberately narrow: a healthy viewer already logs
+#: a console.error for the Leap Motion websocket it cannot reach
+#: (ws://127.0.0.1:6437), so asserting on any error at all fails every run.
+#:
+#: A link failure arrives as a console.error rather than an exception, so
+#: nothing raises and the render comes back blank -- how Vertex2D broke
+#: (gh-714). three.js emits it alongside "gl.VALIDATE_STATUS false" and
+#: "gl.getError() 0"; do not add those. Nothing here calls gl.validateProgram(),
+#: so VALIDATE_STATUS is false for want of a run, and getError() 0 is the
+#: absence of an error. Driver shader-info warnings are excluded likewise.
+WEBGL_FAILURE_PATTERNS = (
+    "THREE.WebGLProgram: Could not initialise shader",
+    "Error creating WebGL context",
+)
+
+
+def filter_webgl_failures(browser_errors: list[str]) -> list[str]:
+    """Return only those browser messages that indicate WebGL itself failed."""
+    return [
+        e for e in browser_errors
+        if any(pattern in e for pattern in WEBGL_FAILURE_PATTERNS)
+    ]
 
 
 class _PlaywrightThread:
@@ -230,7 +259,27 @@ class _PlaywrightThread:
             return
 
         # Keep the thread (and therefore Playwright) alive until shutdown.
-        self._shutdown_event.wait()
+        #
+        # Playwright's sync API dispatches queued events only while something is
+        # calling into it, so parking here for the viewer's lifetime would leave
+        # console messages undelivered until _cleanup(). Poll instead: the cheap
+        # round-trip is what makes Playwright dispatch them.
+        while not self._shutdown_event.wait(EVENT_POLL_INTERVAL):
+            try:
+                self._page.evaluate("0")
+            except Exception:
+                # Stop polling, but do not tear the viewer down underneath the
+                # caller: park until shutdown, as this thread did before
+                # polling existed. Falling through to _cleanup() here would
+                # close the browser mid-session, surfacing much later as the
+                # next getImage timing out.
+                logger.warning(
+                    "event polling stopped; browser_errors will no longer "
+                    "update for this viewer",
+                    exc_info=True,
+                )
+                self._shutdown_event.wait()
+                break
         self._cleanup()
 
     # -- Playwright event handlers (called on the worker thread) ---------- #
@@ -342,38 +391,64 @@ def headless_viewer(
     pw_thread = _PlaywrightThread()
 
     handle = None
+    # ------------------------------------------------------------------
+    # 3. Begin waiting for the WebSocket "connect" message on a *daemon*
+    #    thread *before* navigating, so we cannot miss it even if the browser
+    #    connects before page.goto() returns.
+    #
+    #    A daemon thread (rather than a ThreadPoolExecutor) is essential here:
+    #    server.get_client() blocks on a threading.Event with no timeout, so if
+    #    the browser never sends "connect" the getter parks forever. An
+    #    executor's worker is non-daemon and concurrent.futures joins every
+    #    worker at interpreter exit -- a parked getter would then wedge the
+    #    whole process at shutdown (observed as a multi-minute CI hang after
+    #    the tests have already finished). Daemon threads are never joined at
+    #    exit, so a stuck getter can never hold the process hostage.
+    # ------------------------------------------------------------------
+    connect_result: dict[str, Any] = {}
+
+    def _await_client() -> None:
+        try:
+            connect_result["handle"] = server.get_client()
+        except BaseException as exc:  # noqa: BLE001 - reported to main thread
+            connect_result["error"] = exc
+
+    client_thread = threading.Thread(
+        target=_await_client, name="headless-await-client", daemon=True
+    )
+
     try:
-        # ------------------------------------------------------------------
-        # 3. Begin waiting for the WebSocket "connect" message in a thread
-        #    *before* navigating, so we cannot miss it even if the browser
-        #    connects before page.goto() returns.
-        # ------------------------------------------------------------------
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        fut = pool.submit(server.get_client)
+        client_thread.start()
         try:
             # Launch the browser and navigate.  python_interface.js runs on
             # load and sends "connect" over WebSocket, which unblocks
             # server.get_client().
             pw_thread.start(url, timeout=timeout)
 
-            # Retrieve the handle; it should already be ready by this point,
-            # but the timeout guard surfaces hung state clearly.
-            handle = fut.result(timeout=timeout)
+            # Wait (bounded) for the getter to return; the timeout guard
+            # surfaces hung state clearly instead of blocking indefinitely.
+            client_thread.join(timeout=timeout)
+            if "error" in connect_result:
+                raise connect_result["error"]
+            if "handle" not in connect_result:
+                raise TimeoutError(
+                    f"No WebSocket 'connect' received within {timeout:.0f}s"
+                )
+            handle = connect_result["handle"]
         except Exception as e:
-            fut.cancel()
             browser_errors = pw_thread.browser_errors
             detail = (
                 "\nBrowser errors:\n" + "\n".join(browser_errors)
                 if browser_errors
                 else "\nNo browser errors were captured."
             )
-            pool.shutdown(wait=False, cancel_futures=True)
+            # Unblock the (daemon) getter if it is still parked on the connect
+            # event so it exits promptly rather than lingering across sessions.
+            server.connect.set()
             raise RuntimeError(
                 f"Failed to establish WebSocket connection with headless browser at {url} "
                 f"within {timeout:.0f} seconds. {detail}"
             ) from e
-        else:
-            pool.shutdown(wait=False)
 
         assert not isinstance(handle, list)  # type narrowing to JSMixer
         handle.server = server
@@ -381,7 +456,7 @@ def headless_viewer(
         # any point during the session (each call returns a fresh snapshot).
         handle._pw_thread = pw_thread
 
-        # Block until the WebGL viewer has finished initialising (CTM mesh
+        # Block until the WebGL viewer has finished initializing (CTM mesh
         # download + parse + first setData). Replaces ad-hoc time.sleep(10)
         # calls in tests and callers, and shortens the wait when the
         # browser is faster than the worst-case timeout.

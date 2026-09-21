@@ -3,7 +3,7 @@ import configparser
 from . import appdirs
 
 cwd = os.path.split(os.path.abspath(__file__))[0]
-userdir = appdirs.user_data_dir("pycortex", "JamesGao")
+userdir = appdirs.user_data_dir("pycortex")
 usercfg = os.path.join(userdir, "options.cfg")
 
 # Read defaults from pycortex repo

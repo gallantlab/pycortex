@@ -22,7 +22,7 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import has_playwright
+from cortex.tests.testing_utils import has_playwright, wait_for_file
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -63,13 +63,50 @@ def make_dataview(dtype_name):
         raise ValueError(f"Unknown dtype_name: {dtype_name}")
 
 
-def _wait_for_file(path, timeout=30):
-    """Poll until file exists and has nonzero size, raise after timeout."""
-    for _ in range(int(timeout / 0.1)):
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            return
-        time.sleep(0.1)
-    raise RuntimeError(f"File {path!r} not written within {timeout}s")
+def _assert_no_browser_failures(handle):
+    """Fail on uncaught JS exceptions, or on WebGL reporting its own failure.
+
+    ``[pageerror]`` covers uncaught exceptions; ``filter_webgl_failures`` covers
+    a shader that compiled but failed to *link*, which three.js reports only on
+    console.error, so nothing raises and the render comes back blank.
+
+    ``browser_errors`` is current to within ``EVENT_POLL_INTERVAL``, so it does
+    not matter whether this is called inside the ``with`` block.
+
+    Not the only defense: a driver that silently links an over-allocating shader
+    reports nothing, which is what ``_assert_not_blank`` is for. Neither covers
+    a shader variant no test renders.
+
+    Known limitation: ``browser_errors`` is cumulative and never cleared, so
+    with a handle shared across tests (``TestAddData``) one transient failure
+    fails every later test in the class too. Misattributed, not missed; a
+    watermark index from the previous call would isolate it.
+    """
+    from cortex.export.headless import filter_webgl_failures
+
+    errors = handle._pw_thread.browser_errors
+    pageerrors = [e for e in errors if "[pageerror]" in e]
+    assert not pageerrors, f"JS errors: {pageerrors}"
+    failures = filter_webgl_failures(errors)
+    assert not failures, f"WebGL reported a failure: {failures}"
+
+
+def _assert_not_blank(path):
+    """Fail if the render came out as a single flat color.
+
+    A shader that fails to link, or geometry that never reached the GPU, leaves
+    only the background -- otherwise indistinguishable from success, since the
+    png is written and nothing raises.
+    """
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).reshape(-1, 3).astype(np.uint32)
+    # Packed to one int per pixel; np.unique on a structured view costs ~16x more.
+    ncolors = len(np.unique((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2]))
+    assert ncolors > 10, (
+        f"{path} has only {ncolors} distinct color(s); the brain was probably "
+        "never drawn."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +116,22 @@ def _wait_for_file(path, timeout=30):
 
 @pytest.mark.parametrize(
     "dtype_name",
-    ["Volume", "Vertex", "VolumeRGB", "VertexRGB", "Volume2D", "Vertex2D"],
+    [
+        "Volume",
+        "Vertex",
+        "VolumeRGB",
+        "VertexRGB",
+        "Volume2D",
+        # gh-714: the Vertex2D flatmap shader fails to link, so the render comes
+        # back blank and three.js reports it on console.error. Strict, so a
+        # render that starts succeeding reports an XPASS.
+        pytest.param(
+            "Vertex2D",
+            marks=pytest.mark.xfail(
+                strict=True, reason="gh-714: Vertex2D shader fails to link"
+            ),
+        ),
+    ],
 )
 def test_datatype_renders(dtype_name, tmp_path):
     """Each data type should render in the headless viewer without errors."""
@@ -87,12 +139,13 @@ def test_datatype_renders(dtype_name, tmp_path):
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
         outfile = str(tmp_path / "test.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
         assert os.path.isfile(outfile)
         assert os.path.getsize(outfile) > 0
-        # No uncaught JS errors
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+    # Browser errors first, since one may explain a blank file.
+    _assert_no_browser_failures(handle)
+    _assert_not_blank(outfile)
 
 
 # ---------------------------------------------------------------------------
@@ -127,7 +180,7 @@ class TestAllAngles:
         time.sleep(1)
         outfile = str(type(self).tmp_dir / f"{angle_name}.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
         assert os.path.isfile(outfile)
         assert os.path.getsize(outfile) > 1000, "Image too small — may be blank"
 
@@ -164,7 +217,7 @@ class TestAllSurfaces:
         time.sleep(1)
         outfile = str(type(self).tmp_dir / f"{surface_name}.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
         assert os.path.isfile(outfile)
         assert os.path.getsize(outfile) > 1000, "Image too small — may be blank"
 
@@ -244,7 +297,7 @@ def test_overlay_visibility_changes_image(tmp_path):
         handle._set_view(**view)
         time.sleep(1)
         handle.getImage(f1, (512, 384))
-        _wait_for_file(f1)
+        wait_for_file(f1)
 
     # Render WITHOUT overlays
     f2 = str(tmp_path / "without_overlay.png")
@@ -254,7 +307,7 @@ def test_overlay_visibility_changes_image(tmp_path):
         handle._set_view(**view)
         time.sleep(1)
         handle.getImage(f2, (512, 384))
-        _wait_for_file(f2)
+        wait_for_file(f2)
 
     img1 = np.array(Image.open(f1))
     img2 = np.array(Image.open(f2))
@@ -299,7 +352,7 @@ def test_vertex_no_nan_renders_data(tmp_path):
         time.sleep(1)
         outfile = str(tmp_path / "vtx.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
 
         n_red = _count_red_pixels(outfile)
         assert n_red > 1000, (
@@ -335,7 +388,7 @@ def test_vertex_with_nan_renders_partial(tmp_path):
             time.sleep(1)
             outfile = str(tmp_path / f"{name}.png")
             handle.getImage(outfile, (512, 384))
-            _wait_for_file(outfile)
+            wait_for_file(outfile)
             return _count_red_pixels(outfile)
 
     n_full = render(full, "full")
@@ -398,7 +451,7 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
         time.sleep(1)
         outfile = str(tmp_path / "alpha_zero.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
 
         rgb = np.array(Image.open(outfile))[..., :3].astype(int)
         # Count strongly red-dominant pixels: with the bug, α=0 lets the
@@ -459,7 +512,7 @@ def test_volumergb_alpha_half_renders_correct_blend(tmp_path):
         time.sleep(1)
         outfile = str(tmp_path / "volumergb_alpha_half.png")
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
 
         rgb = np.array(Image.open(outfile))[..., :3].astype(int)
         # Brain-region pixels are red-dominant under both correct and buggy
@@ -549,7 +602,7 @@ def test_vertex2d_alpha_half_renders_correct_blend(tmp_path):
             # left over from a prior iteration (getImage writes async).
             outfile = str(tmp_path / f"vertex2d_alpha_half_{attempt}.png")
             handle.getImage(outfile, (512, 384))
-            _wait_for_file(outfile)
+            wait_for_file(outfile)
             # Give the PNG writer a moment to finish flushing.
             time.sleep(1)
             try:
@@ -641,7 +694,7 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
         outfile = str(tmp_path / f"{name}.png")
         time.sleep(1)
         handle.getImage(outfile, image_size)
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
         return _count_red_pixels(outfile)
 
     # No ROI/sulci overlays or labels: their anti-aliased colored edges would
@@ -687,6 +740,8 @@ def _addData_viewer():
     vol1 = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol1, viewer_params={}) as handle:
         yield handle
+    # A final check after teardown, which flushes anything still queued.
+    _assert_no_browser_failures(handle)
 
 
 def _served_metadata(handle):
@@ -726,7 +781,7 @@ def _image_array(handle, outfile, size=(512, 384)):
     from PIL import Image
 
     handle.getImage(outfile, size)
-    _wait_for_file(outfile)
+    wait_for_file(outfile)
     return np.asarray(Image.open(outfile).convert("RGB"), dtype=np.int16)
 
 
@@ -744,8 +799,7 @@ class TestAddData:
         handle.addData(second=vol2)
         time.sleep(2)
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
         # "data" is the name webshow gives to a bare Dataview.
         assert set(handle.dataviews.attrs) == {"data", "second"}
@@ -800,8 +854,7 @@ class TestAddData:
         assert len(metadata["images"]) == 2
         assert metadata["views"][1]["data"][0] not in previous_brains
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
     def test_rejects_unknown_subject(self, _addData_viewer):
         """Surfaces cannot be added to a running viewer, so neither can subjects."""
@@ -847,210 +900,5 @@ def test_addData_vertex_data(tmp_path):
         assert "mosaic" not in metadata["data"][vertex_name]
         assert _fetch(handle, metadata["images"][vertex_name][0])[1:6] == b"NUMPY"
 
-        pageerrors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
-        assert len(pageerrors) == 0, f"JS errors after addData: {pageerrors}"
+        _assert_no_browser_failures(handle)
 
-
-# ---------------------------------------------------------------------------
-# Group 10: Manual visual A/B comparison across all alpha-bearing dataviews
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skipif(
-    not os.environ.get("RUN_VISUAL_COMPARISON"),
-    reason="Manual visual comparison; set RUN_VISUAL_COMPARISON=1 to run.",
-)
-def test_visual_comparison_alpha_dataviews(tmp_path):
-    """Render all 6 dataview types via quickshow + webgl, side-by-side.
-
-    Skipped by default — set ``RUN_VISUAL_COMPARISON=1`` to run. Builds a
-    grid where each row is one dataview type (Volume, Vertex, Volume2D,
-    Vertex2D, VolumeRGB, VertexRGB) and the two columns are the matplotlib
-    (``cortex.quickshow``) reference vs the headless WebGL flatmap render.
-    Used as a manual smoke check that the alpha-blend fix
-    (``Package``-side premultiply for VertexRGB + cmap-LUT
-    ``premultiplyAlpha=true`` for the 2D-cmap path) keeps both viewers in
-    visual agreement across every alpha-encoding pattern.
-
-    Plain Volume / Vertex have no native per-element alpha (pycortex's
-    bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
-    dataview types), so those two rows act as a no-alpha baseline. The
-    other four rows exercise alpha: Volume2D / Vertex2D via the 2D-alpha
-    cmap ``RdBu_r_alpha``, VolumeRGB / VertexRGB via the ``alpha=`` kwarg.
-
-    Renders are intentionally low-resolution (quickshow ``height=256``,
-    webgl ``size=(512, 384)``) so the final composite PNG stays small.
-    Both viewers run with no labels, no ROIs, and curvature underlay on.
-
-    The composite PNG is written under ``tmp_path`` and the absolute path
-    is printed at the end of the test so the file is easy to open.
-    """
-    import matplotlib.pyplot as plt
-
-    import cortex.polyutils
-
-    # ------- Synthesize data and alpha maps (mirrors plot_data_with_alpha.py) -
-
-    # Volumetric
-    zz, yy, xx = np.mgrid[0:31, 0:100, 0:100]
-    data_vol = (xx - 50) / 50.0  # ~ [-1, 1]
-    center = np.array([15, 50, 50])
-    sigma_v = 25.0
-    dist2 = (
-        (zz - center[0]) ** 2 + (yy - center[1]) ** 2 + (xx - center[2]) ** 2
-    )
-    accuracy_vol = np.exp(-dist2 / (2 * sigma_v**2))  # [0, 1] bump
-    red_vol = np.clip(xx / 99.0, 0, 1)
-    green_vol = np.clip(yy / 99.0, 0, 1)
-    blue_vol = np.clip(zz / 30.0, 0, 1)
-
-    # Surface (vertex) — encode by spatial coordinate, not vertex index
-    surfs = [
-        cortex.polyutils.Surface(*d)
-        for d in cortex.db.get_surf(subj, "fiducial")
-    ]
-    num_verts = [s.pts.shape[0] for s in surfs]
-    pts = np.vstack([surfs[0].pts, surfs[1].pts])
-    y_centered = pts[:, 1] - pts[:, 1].mean()
-    data_vtx = y_centered / np.abs(y_centered).max()  # [-1, 1]
-    xyz_norm = (pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0))
-
-    def _bump(surf, seed, sigma):
-        d = np.linalg.norm(surf.pts - surf.pts[seed], axis=1)
-        return np.exp(-(d**2) / (2 * sigma**2))
-
-    accuracy_vtx = np.hstack(
-        [
-            _bump(surfs[0], num_verts[0] // 2, sigma=40.0),
-            _bump(surfs[1], num_verts[1] // 2, sigma=40.0),
-        ]
-    )
-
-    # ------- Build the six dataviews ----------------------------------------
-    # Volume / Vertex have no native per-element alpha — pycortex's bundled
-    # `*_alpha` colormaps are all 2D LUTs and only apply to Volume2D /
-    # Vertex2D. So plain Volume / Vertex use a non-alpha cmap (`viridis`)
-    # and serve as the no-alpha baseline; Volume2D / Vertex2D pair data
-    # against accuracy via the 2D-alpha cmap `RdBu_r_alpha`; VolumeRGB /
-    # VertexRGB use the native `alpha=` kwarg.
-
-    cmap_plain = "viridis"
-    cmap_2d = "RdBu_r_alpha"
-
-    dataviews = [
-        (
-            "Volume",
-            cortex.Volume(
-                data_vol, subj, xfmname,
-                cmap=cmap_plain, vmin=-1, vmax=1,
-            ),
-        ),
-        (
-            "Vertex",
-            cortex.Vertex(
-                data_vtx, subj,
-                cmap=cmap_plain, vmin=-1, vmax=1,
-            ),
-        ),
-        (
-            "Volume2D",
-            cortex.Volume2D(
-                data_vol, accuracy_vol, subj, xfmname,
-                cmap=cmap_2d,
-                vmin=-1, vmax=1, vmin2=0, vmax2=1,
-            ),
-        ),
-        (
-            "Vertex2D",
-            cortex.Vertex2D(
-                data_vtx, accuracy_vtx, subj,
-                cmap=cmap_2d,
-                vmin=-1, vmax=1, vmin2=0, vmax2=1,
-            ),
-        ),
-        (
-            "VolumeRGB",
-            cortex.VolumeRGB(
-                cortex.Volume(red_vol, subj, xfmname, vmin=0, vmax=1),
-                cortex.Volume(green_vol, subj, xfmname, vmin=0, vmax=1),
-                cortex.Volume(blue_vol, subj, xfmname, vmin=0, vmax=1),
-                subj, xfmname,
-                alpha=cortex.Volume(accuracy_vol, subj, xfmname, vmin=0, vmax=1),
-            ),
-        ),
-        (
-            "VertexRGB",
-            cortex.VertexRGB(
-                cortex.Vertex(xyz_norm[:, 0], subj, vmin=0, vmax=1),
-                cortex.Vertex(xyz_norm[:, 1], subj, vmin=0, vmax=1),
-                cortex.Vertex(xyz_norm[:, 2], subj, vmin=0, vmax=1),
-                subj,
-                alpha=cortex.Vertex(accuracy_vtx, subj, vmin=0, vmax=1),
-            ),
-        ),
-    ]
-
-    # ------- Render each dataview through both paths ------------------------
-    # Each WebGL render spins up its own headless browser via plot_panels;
-    # six sequential launches × ~15s sleep = ~90s+ end to end. That's fine
-    # for a manual A/B and avoids the broken `addData` path on headless.
-
-    n = len(dataviews)
-    fig, axes = plt.subplots(n, 2, figsize=(7, 2.2 * n))
-
-    flatmap_panel = [
-        {
-            "extent": [0.0, 0.0, 1.0, 1.0],
-            "view": {"angle": "flatmap", "surface": "flatmap"},
-        }
-    ]
-
-    for row, (name, view) in enumerate(dataviews):
-        # quickshow → low-res PNG
-        qs_path = tmp_path / f"qs_{name}.png"
-        qs_fig = cortex.quickshow(
-            view,
-            with_curvature=True,
-            with_rois=False,
-            with_labels=False,
-            with_colorbar=False,
-            with_sulci=False,
-            with_borders=False,
-            height=256,
-        )
-        qs_fig.savefig(qs_path, bbox_inches="tight", pad_inches=0, dpi=80)
-        plt.close(qs_fig)
-
-        # webgl → trimmed flatmap PNG via plot_panels (single flatmap panel)
-        wg_path = str(tmp_path / f"wg_{name}.png")
-        wg_fig = cortex.export.plot_panels(
-            view,
-            panels=flatmap_panel,
-            figsize=(6, 3),
-            windowsize=(512, 384),
-            save_name=wg_path,
-            sleep=10,
-            viewer_params=dict(labels_visible=[], overlays_visible=[]),
-            headless=True,
-        )
-        plt.close(wg_fig)
-
-        ax_qs, ax_wg = axes[row]
-        ax_qs.imshow(plt.imread(qs_path))
-        ax_qs.set_title(f"{name} — quickshow", fontsize=9)
-        ax_qs.axis("off")
-        ax_wg.imshow(plt.imread(wg_path))
-        ax_wg.set_title(f"{name} — webgl (flatmap)", fontsize=9)
-        ax_wg.axis("off")
-
-    fig.suptitle(
-        "Alpha-bearing dataviews: quickshow vs WebGL", fontsize=11,
-    )
-    fig.tight_layout()
-    out_path = tmp_path / "alpha_dataview_comparison.png"
-    fig.savefig(out_path, dpi=100, bbox_inches="tight")
-    plt.close(fig)
-
-    print(f"\nVisual comparison saved to:\n  {out_path}\n")
-    assert out_path.exists()
-    assert out_path.stat().st_size > 0

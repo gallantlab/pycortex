@@ -1,0 +1,818 @@
+"""Visual regression tests: quickflat and webgl renders vs stored references.
+
+Four suites. Three of them render flatmaps of the six public dataview classes
+(``Volume``, ``Vertex``, ``Volume2D``, ``Vertex2D``, ``VolumeRGB``,
+``VertexRGB``) through both matplotlib (``cortex.quickflat.make_png``) and the
+headless WebGL viewer (``save_3d_views``), varying what the data carries:
+alpha-bearing values, NaNs in the data channels, and NaNs in the alpha map. The
+last covers only the two RGB classes, the only ones taking an explicit
+``alpha=``. Every one of those renders is checked twice -- against its own
+stored reference at a tight tolerance, and directly against the other renderer's
+render of the same dataview at a loose one.
+
+The fourth suite renders non-flatmap views, ``Volume`` and ``Vertex`` on the
+inflated and fiducial surfaces, through ``save_3d_views``. Those are
+webgl-only and get the reference check alone: quickflat produces flatmaps and
+nothing else, so there is nothing to diff them against.
+
+Every render is transparent outside the flatmap, so the two renderers are
+directly comparable without compositing or a coordinate correction.
+
+See ``reference_images/README.md`` for how the references were produced and how
+to regenerate them.
+
+All tests are skipped if playwright is not installed.
+"""
+
+import os
+from pathlib import Path
+from typing import Optional
+
+import numpy as np
+import numpy.typing as npt
+import pytest
+
+import cortex
+import cortex.export
+import cortex.polyutils
+from cortex.dataset import Dataview
+from cortex.tests.testing_utils import has_playwright
+
+pytestmark = pytest.mark.skipif(
+    not has_playwright, reason="playwright and chromium are required"
+)
+
+# Vertex2D cannot be tested through the webgl path: its flatmap renders blank
+# (gh-714) and save_3d_views raises, so no reference can be generated. #679's
+# lighting refactor ported the HASFLAT bump-displacement block into the vertex
+# shader, which under headless/SwiftShader leaves that flatmap unrendered. The
+# mark is strict and on RuntimeError specifically, so a render that starts
+# succeeding does not quietly pass: it reaches the reference check, which fails
+# with a mismatched exception type and tells you to regenerate.
+DATAVIEW_NAMES = [
+    "Volume",
+    "Vertex",
+    "Volume2D",
+    pytest.param(
+        "Vertex2D",
+        marks=pytest.mark.xfail(
+            raises=RuntimeError,
+            strict=True,
+            reason="gh-714: the Vertex2D flatmap shader fails to link",
+        ),
+    ),
+    "VolumeRGB",
+    "VertexRGB",
+]
+
+subj = "S1"
+xfmname = "fullhead"
+
+#: Stored renders this test asserts against. See that directory's README for how
+#: they were produced and how to regenerate them.
+REFERENCE_ROOT = Path(__file__).parent / "reference_images"
+
+REFERENCE_DIR = REFERENCE_ROOT / "alpha_dataviews"
+
+#: As REFERENCE_DIR, but for dataviews whose source data contains NaNs.
+NAN_REFERENCE_DIR = REFERENCE_ROOT / "nan_dataviews"
+
+#: As NAN_REFERENCE_DIR, but with the NaNs in the *alpha map* rather than in the
+#: data. Only the RGB dataviews take an explicit ``alpha=``, so only those two.
+NAN_ALPHA_REFERENCE_DIR = REFERENCE_ROOT / "nan_alpha_dataviews"
+
+#: Dataviews that accept an explicit alpha map, and so can carry NaNs in it.
+NAN_ALPHA_DATAVIEW_NAMES = ["VolumeRGB", "VertexRGB"]
+
+#: Non-flatmap views, checked against a webgl reference only. quickflat renders
+#: nothing but flatmaps, so these have no counterpart to diff against and no
+#: cross-renderer leg -- see test_visual_comparison_nonflat_views.
+NONFLAT_REFERENCE_DIR = REFERENCE_ROOT / "nonflat_views"
+
+#: (surface, angle, dataview). Volume and Vertex cover both shader paths, which
+#: matters because the flatmap suite exercises them under conditions that turn
+#: out to be a different regime: the two known webgl lighting bugs reproduce on
+#: flatmaps only.
+NONFLAT_VIEWS = [
+    ("inflated", "lateral_pivot", "Volume"),
+    ("inflated", "lateral_pivot", "Vertex"),
+    ("fiducial", "lateral_pivot", "Volume"),
+    ("fiducial", "lateral_pivot", "Vertex"),
+]
+
+#: Lossless WebP: bit-exact after decode and appreciably smaller than optimized
+#: PNG.
+REFERENCE_SUFFIX = ".webp"
+
+#: First bytes of a git-lfs pointer. The reference images are LFS-tracked, so
+#: if LFS hasn't been properly initialized, these 130-byte text stubs exist in
+#: place of the images.
+LFS_POINTER_MAGIC = b"version https://git-lfs.github.com/spec/v1"
+
+#: Rewrite the references from this run instead of comparing against them.
+REGENERATE_REFERENCES = bool(os.environ.get("REGENERATE_REFERENCE_IMAGES"))
+
+# Tolerances. The renders are deterministic -- repeated runs on one machine are
+# bit-identical -- so these are not absorbing noise. They exist because the
+# references are coupled to the Chromium and matplotlib builds that produced them,
+# and an upgrade can shift anti-aliasing and rasterization slightly. They are far
+# tighter than any real regression: a wrong colormap, a dropped alpha channel or
+# swapped color channels all move large areas of the image by much more.
+MAX_MEAN_ABS_DIFF = 2.0        # mean |difference| over all pixels/channels, of 255
+DIFF_THRESHOLD = 16            # a pixel "differs" if any channel moves by more
+MAX_FRACTION_DIFFERING = 0.02  # at most this fraction of pixels may differ
+
+# The two limits above are both weak against a change that moves a *small*
+# number of pixels by a *large* amount, which is what a geometry or contour
+# shift looks like: the mean is diluted by the pixels that did not move. So two
+# further criteria, each covering what the others miss:
+#   - mean and fraction>16 catch broad, low-amplitude shifts, which the gross
+#     fraction misses entirely.
+#   - fraction>32 catches sparse, high-amplitude ones. 32 rather than 64 because
+#     gh-695's premultiplied-alpha change scores 0% at 64 -- the suite would miss
+#     it -- and its mean sits below the cosmetic floor, so no tighter mean helps.
+#   - SSIM catches structural change, but is computed on luminance and so is
+#     blind to a channel permutation. It adds sensitivity alongside the others;
+#     it cannot replace them.
+#
+# The limits sit well above measured cosmetic drift rather than at it, since a
+# real toolchain bump changes anti-aliasing and does show up in fraction>32.
+GROSS_DIFF_THRESHOLD = 32             # a pixel differs "grossly" if any channel moves by more
+MAX_FRACTION_GROSSLY_DIFFERING = 0.001
+MAX_SSIM_LOSS = 0.01                  # 1 - mean SSIM over the luminance channel
+
+# Cross-renderer tolerances: quickflat vs webgl for the *same* dataview, rather
+# than each against its own reference. Looser than the within-renderer ones
+# above, since the two renderers genuinely differ in anti-aliasing and colormap
+# sampling. Re-measure after any change to either renderer's output size.
+CROSS_MAX_MEAN_ABS_DIFF = 3.5
+CROSS_DIFF_THRESHOLD = 32  # same as GROSS_DIFF_THRESHOLD.
+CROSS_MAX_FRACTION_DIFFERING = 0.032
+
+# Render settings chosen to minimize cross-renderer disagreement, from a
+# factorial sweep of both renderers' settings. Only curvature thresholding was
+# worth changing from the defaults: a thresholded curvature puts a hard binary
+# edge at curvature=0 that each rasterizer resolves differently, where smooth
+# curvature is low-frequency and resamples cleanly. On curvature-only content
+# it costs 1.8x on the mean -- passing, now that the renders are the same size,
+# but eating most of the headroom for no benefit. quickflat's
+# ``curvature_threshold`` and webgl's ``curvature.smoothness`` are the same knob
+# from opposite ends -- smoothness 0.0 *is* thresholded -- so both have to move
+# together.
+#
+# Lighting, sampler, depth and thick/layers all stayed at their defaults; none
+# moved the disagreement measurably on a flatmap, whose normals face the camera.
+#
+# NB this is not pycortex's default appearance, so these references do not cover
+# the default curvature path. That is the trade for a tighter floor;
+# nonflat_views/ keeps the default and recovers the coverage.
+#: Height of the quickflat render. make_png scales the width to the subject's
+#: flatmap aspect, giving roughly 490x256.
+QUICKFLAT_HEIGHT = 256
+
+#: Browser canvas for every webgl render. After trimming, lands at roughly
+# quickflat's 490x256 (from QUICKFLAT_HEIGHT).
+WEBGL_CANVAS = (925, 695)
+
+# Don't threshold curvature to reduce cross-renderer disagreement due to
+# anti-aliasing implementations.
+QUICKFLAT_CURVATURE_THRESHOLD = False
+WEBGL_CURVATURE_SMOOTHNESS = 1.0
+
+
+def _normalize_transparent(rgba: npt.NDArray) -> npt.NDArray:
+    """Zero the RGB of fully transparent pixels, which is undefined there."""
+    out = rgba.astype(np.int16).copy()
+    out[out[..., 3] == 0, :3] = 0
+    return out
+
+
+def _ssim(a: npt.NDArray, b: npt.NDArray) -> float:
+    """Mean structural similarity between two RGBA images, over luminance.
+
+    Standard SSIM with an 11x11 Gaussian window (sigma 1.5) and the usual
+    stabilising constants, implemented on scipy because scikit-image, which
+    would otherwise supply it, is not a pycortex dependency. Returns 1.0 for
+    identical input.
+
+    Computed on the channel mean, so it is invariant to a channel permutation --
+    see the note on MAX_SSIM_LOSS. It is a structural check, not a color one.
+    """
+    from scipy.ndimage import gaussian_filter
+
+    x = a[..., :3].mean(axis=-1).astype(np.float64)
+    y = b[..., :3].mean(axis=-1).astype(np.float64)
+    c1, c2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
+
+    blur = lambda img: gaussian_filter(img, sigma=1.5, truncate=(11 - 1) / 2 / 1.5)
+    mu_x, mu_y = blur(x), blur(y)
+    var_x = blur(x * x) - mu_x**2
+    var_y = blur(y * y) - mu_y**2
+    cov = blur(x * y) - mu_x * mu_y
+
+    num = (2 * mu_x * mu_y + c1) * (2 * cov + c2)
+    den = (mu_x**2 + mu_y**2 + c1) * (var_x + var_y + c2)
+    return float((num / den).mean())
+
+
+def _unusable_reference(ref_path: Path) -> Optional[str]:
+    """Why ``ref_path`` cannot be compared against, or None if it can.
+
+    Absent and unfetched-from-LFS are separate cases with separate remedies, and
+    neither should fail the run: an installed wheel legitimately has no
+    references, and a pointer means the clone simply has not fetched them.
+    """
+    if not ref_path.exists():
+        return (
+            f"No reference {ref_path.name} in {ref_path.parent}. "
+            "See that directory's README for regeneration."
+        )
+    with open(ref_path, "rb") as handle:
+        if handle.read(len(LFS_POINTER_MAGIC)) == LFS_POINTER_MAGIC:
+            return (
+                f"{ref_path.name} is an unfetched git-lfs pointer, not an "
+                "image. Run `git lfs pull`."
+            )
+    return None
+
+
+def _reference_store_unusable() -> Optional[str]:
+    """Why the whole reference store is unusable, or None if it is fine.
+
+    Absent-entirely and pointers-everywhere are properties of the checkout, not
+    of one render, so they are settled once at import. Leaving them to the
+    per-file check would render all eighteen views before skipping -- about 90
+    seconds to produce eighteen skips. The per-file check still runs, for the
+    case this cannot see: a populated directory missing one render.
+    """
+    stored = sorted(REFERENCE_ROOT.glob(f"*/*{REFERENCE_SUFFIX}"))
+    if not stored:
+        return (
+            f"No reference images under {REFERENCE_ROOT}. "
+            "See that directory's README for regeneration."
+        )
+    return _unusable_reference(stored[0])
+
+
+if not REGENERATE_REFERENCES:
+    _store_problem = _reference_store_unusable()
+    if _store_problem is not None:
+        pytest.skip(_store_problem, allow_module_level=True)
+
+
+def _check_against_reference(
+    name: str,
+    actual_path: Path,
+    debug_dir: Path,
+    reference_dir: Path,
+) -> Optional[str]:
+    """Compare one render to its reference.
+
+    Checks four criteria, all of which must pass -- see ``MAX_MEAN_ABS_DIFF``
+    and the tolerances below it for why they are complementary rather than
+    redundant. Returns a description of every breach, or None if the render
+    matches.
+
+    A shape mismatch is not an immediate failure: the render is resized to the
+    reference's size before diffing, since the two are still expected to show
+    the same content at a slightly different trim/crop.
+
+    On any breach, writes the (possibly resized) render and an amplified
+    difference image into ``debug_dir``, so the change can be inspected rather
+    than guessed at. With ``REGENERATE_REFERENCES`` set it overwrites the
+    reference instead and reports no mismatch.
+    """
+    from PIL import Image
+
+    ref_path = reference_dir / f"{name}{REFERENCE_SUFFIX}"
+
+    if REGENERATE_REFERENCES:
+        reference_dir.mkdir(parents=True, exist_ok=True)
+        Image.open(actual_path).convert("RGBA").save(
+            ref_path, format="WEBP", lossless=True, method=6, quality=100, exact=True
+        )
+        return None
+
+    actual_im = Image.open(actual_path).convert("RGBA")
+    ref_im = Image.open(ref_path).convert("RGBA")
+    shape_note = ""
+    if actual_im.size != ref_im.size:
+        shape_note = f" (aligned: render was {actual_im.size}, reference is {ref_im.size})"
+        actual_im = actual_im.resize(ref_im.size, Image.BILINEAR)
+
+    actual = np.asarray(actual_im).astype(np.int16)
+    ref = np.asarray(ref_im).astype(np.int16)
+
+    diff = np.abs(actual - ref)
+    per_pixel = diff.max(axis=-1)
+    mean_abs = float(diff.mean())
+    fraction = float((per_pixel > DIFF_THRESHOLD).mean())
+    gross = float((per_pixel > GROSS_DIFF_THRESHOLD).mean())
+    ssim_loss = 1.0 - _ssim(actual, ref)
+
+    breaches = []
+    if mean_abs > MAX_MEAN_ABS_DIFF:
+        breaches.append(f"mean|diff|={mean_abs:.3f} (limit {MAX_MEAN_ABS_DIFF})")
+    if fraction > MAX_FRACTION_DIFFERING:
+        breaches.append(
+            f"{fraction:.2%} of pixels differ by more than {DIFF_THRESHOLD} "
+            f"(limit {MAX_FRACTION_DIFFERING:.0%})"
+        )
+    if gross > MAX_FRACTION_GROSSLY_DIFFERING:
+        breaches.append(
+            f"{gross:.3%} of pixels differ by more than {GROSS_DIFF_THRESHOLD} "
+            f"(limit {MAX_FRACTION_GROSSLY_DIFFERING:.1%})"
+        )
+    if ssim_loss > MAX_SSIM_LOSS:
+        breaches.append(f"SSIM loss={ssim_loss:.4f} (limit {MAX_SSIM_LOSS})")
+    if not breaches:
+        return None
+
+    actual_im.save(debug_dir / f"actual_{name}.png")
+    amplified = np.clip(diff[..., :3] * 8, 0, 255).astype("uint8")
+    Image.fromarray(amplified).save(debug_dir / f"diff_{name}.png")
+    return f"{name}: " + "; ".join(breaches) + shape_note
+
+
+def _check_cross_renderer(
+    name: str,
+    quickflat_path: Path,
+    webgl_path: Path,
+    debug_dir: Path,
+) -> Optional[str]:
+    """Compare a quickflat render directly against its webgl counterpart.
+
+    Unlike ``_check_against_reference`` this has no stored fixture: it diffs
+    the two renders produced by *this* test run against each other. Both are
+    content-tight and transparent outside the flatmap, so webgl is resized to
+    quickflat's size and diffed as RGBA -- no coordinate correction is needed.
+
+    RGB under fully transparent pixels is normalized first. It is undefined
+    there, and the two writers disagree: matplotlib leaves white, the browser
+    leaves black. Alpha itself stays in the comparison, so a render that
+    lost its transparency is still caught.
+    """
+    from PIL import Image
+
+    qf_im = Image.open(quickflat_path).convert("RGBA")
+    wg_im = Image.open(webgl_path).convert("RGBA")
+    shape_note = f" (resized: quickflat was {qf_im.size}, webgl was {wg_im.size})"
+
+    qf = _normalize_transparent(np.asarray(qf_im))
+    wg = _normalize_transparent(np.asarray(wg_im.resize(qf_im.size, Image.BILINEAR)))
+
+    diff = np.abs(qf - wg)
+    mean_abs = float(diff.mean())
+    fraction = float((diff.max(axis=-1) > CROSS_DIFF_THRESHOLD).mean())
+    if mean_abs <= CROSS_MAX_MEAN_ABS_DIFF and fraction <= CROSS_MAX_FRACTION_DIFFERING:
+        return None
+
+    amplified = np.clip(diff[..., :3] * 4, 0, 255).astype("uint8")
+    Image.fromarray(amplified).save(debug_dir / f"cross_diff_{name}.png")
+    return (
+        f"cross_{name}: quickflat vs webgl mean|diff|={mean_abs:.3f} "
+        f"(limit {CROSS_MAX_MEAN_ABS_DIFF}), {fraction:.2%} of pixels differ by "
+        f"more than {CROSS_DIFF_THRESHOLD} (limit {CROSS_MAX_FRACTION_DIFFERING:.0%})"
+        f"{shape_note}"
+    )
+
+
+# Gaussian falloff from `seed`, used as the accuracy/alpha channel.
+def _bump(
+    surf: cortex.polyutils.Surface, seed: int, sigma: float
+) -> npt.NDArray[np.floating]:
+    d = np.linalg.norm(surf.pts - surf.pts[seed], axis=1)
+    return np.exp(-(d**2) / (2 * sigma**2))
+
+
+def _synth_arrays() -> dict:
+    """The clean volume and surface data all three builders start from.
+
+    Shared so they cannot drift apart: what distinguishes the suites is which
+    elements they then NaN out, and that is the thing under test.
+    """
+    zz, yy, xx = np.mgrid[0:31, 0:100, 0:100]
+    center = np.array([15, 50, 50])
+    sigma_v = 25.0
+    dist2 = (zz - center[0]) ** 2 + (yy - center[1]) ** 2 + (xx - center[2]) ** 2
+
+    # Vertex data is encoded by spatial coordinate, not by vertex index.
+    surfs = [
+        cortex.polyutils.Surface(*d) for d in cortex.db.get_surf(subj, "fiducial")
+    ]
+    num_verts = [s.pts.shape[0] for s in surfs]
+    pts = np.vstack([surfs[0].pts, surfs[1].pts])
+    y_centered = pts[:, 1] - pts[:, 1].mean()
+
+    return dict(
+        xx=xx, yy=yy, zz=zz,
+        num_verts=num_verts,
+        data_vol=(xx - 50) / 50.0,                        # ~ [-1, 1]
+        accuracy_vol=np.exp(-dist2 / (2 * sigma_v**2)),   # [0, 1] bump
+        red_vol=np.clip(xx / 99.0, 0, 1),
+        green_vol=np.clip(yy / 99.0, 0, 1),
+        blue_vol=np.clip(zz / 30.0, 0, 1),
+        data_vtx=y_centered / np.abs(y_centered).max(),   # [-1, 1]
+        xyz_norm=(pts - pts.min(axis=0)) / (pts.max(axis=0) - pts.min(axis=0)),
+        accuracy_vtx=np.hstack([
+            _bump(surfs[0], num_verts[0] // 2, sigma=40.0),
+            _bump(surfs[1], num_verts[1] // 2, sigma=40.0),
+        ]),
+    )
+
+
+def _dataview(
+    name: str,
+    *,
+    data_vol: npt.NDArray,
+    dim2_vol: npt.NDArray,
+    rgb_vol: tuple,
+    alpha_vol: npt.NDArray,
+    data_vtx: npt.NDArray,
+    dim2_vtx: npt.NDArray,
+    rgb_vtx: tuple,
+    alpha_vtx: npt.NDArray,
+) -> Dataview:
+    """Construct one of the six dataview classes from prepared channels.
+
+    One dispatch shared by all three suites, so adding a dataview class is a
+    single edit rather than three kept in lockstep.
+    """
+    cmap_plain, cmap_2d = "viridis", "RdBu_r_alpha"
+
+    if name == "Volume":
+        return cortex.Volume(data_vol, subj, xfmname, cmap=cmap_plain, vmin=-1, vmax=1)
+    elif name == "Vertex":
+        return cortex.Vertex(data_vtx, subj, cmap=cmap_plain, vmin=-1, vmax=1)
+    elif name == "Volume2D":
+        return cortex.Volume2D(
+            data_vol, dim2_vol, subj, xfmname, cmap=cmap_2d,
+            vmin=-1, vmax=1, vmin2=0, vmax2=1,
+        )
+    elif name == "Vertex2D":
+        return cortex.Vertex2D(
+            data_vtx, dim2_vtx, subj, cmap=cmap_2d,
+            vmin=-1, vmax=1, vmin2=0, vmax2=1,
+        )
+    elif name == "VolumeRGB":
+        red, green, blue = rgb_vol
+        return cortex.VolumeRGB(
+            cortex.Volume(red, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(green, subj, xfmname, vmin=0, vmax=1),
+            cortex.Volume(blue, subj, xfmname, vmin=0, vmax=1),
+            subj, xfmname,
+            alpha=cortex.Volume(alpha_vol, subj, xfmname, vmin=0, vmax=1),
+        )
+    elif name == "VertexRGB":
+        red, green, blue = rgb_vtx
+        return cortex.VertexRGB(
+            cortex.Vertex(red, subj, vmin=0, vmax=1),
+            cortex.Vertex(green, subj, vmin=0, vmax=1),
+            cortex.Vertex(blue, subj, vmin=0, vmax=1),
+            subj,
+            alpha=cortex.Vertex(alpha_vtx, subj, vmin=0, vmax=1),
+        )
+    else:
+        raise ValueError(f"Unknown dataview: {name}")
+
+
+def _build_alpha_dataview(name: str) -> Dataview:
+    """Build a single alpha-bearing dataview by name, with no NaNs anywhere."""
+    a = _synth_arrays()
+    return _dataview(
+        name,
+        data_vol=a["data_vol"],
+        dim2_vol=a["accuracy_vol"],
+        rgb_vol=(a["red_vol"], a["green_vol"], a["blue_vol"]),
+        alpha_vol=a["accuracy_vol"],
+        data_vtx=a["data_vtx"],
+        dim2_vtx=a["accuracy_vtx"],
+        rgb_vtx=tuple(a["xyz_norm"][:, i] for i in range(3)),
+        alpha_vtx=a["accuracy_vtx"],
+    )
+
+
+def _build_nan_dataview(name: str) -> Dataview:
+    """Build a dataview with NaNs over roughly half of the primary data channel."""
+    a = _synth_arrays()
+    xx, yy, zz = a["xx"], a["yy"], a["zz"]
+
+    # The rule, as gh-695 states it, is that a NaN *anywhere* at a voxel -- the
+    # data, either 2D dimension, any RGB channel, or the alpha map -- renders
+    # fully transparent. These references pin the behavior as it is on main.
+    # Each of those gets NaN'd over its own region, so a single render exercises
+    # several branches of the rule at once and a failure still says which one
+    # moved. The vertex regions are disjoint; the volume ones (x>=50, y>=50,
+    # z>=15) overlap, which is harmless and additionally covers voxels carrying
+    # more than one NaN at once. Blue is deliberately left clean, as a control
+    # that not everything has simply gone transparent.
+    #
+    # The alpha map is NaN'd here too, on a third axis. That is not a duplicate
+    # of the nan_alpha suite: this covers alpha NaNs superposed on color NaNs,
+    # where nan_alpha isolates them with every color channel clean.
+    #
+    # Expect the alpha map's surviving NaN fraction to look smaller than its
+    # mask: where a color channel is already NaN the pipeline writes alpha's
+    # vmin over it. Both halves of that are worth rendering, which is why the
+    # regions are allowed to overlap.
+    def vol_nan(arr, mask):
+        out = arr.copy()
+        out[mask] = np.nan
+        return out
+
+    primary = xx >= 50      # data, and red for RGB
+    secondary = yy >= 50    # 2D dimension 2, and green for RGB
+    tertiary = zz >= 15     # the alpha map, on a third independent axis
+
+    # As above, in disjoint index ranges rather than spatial ones.
+    total = sum(a["num_verts"])
+    idx = np.arange(total)
+    vtx_primary = idx >= total // 2
+    vtx_secondary = idx < total // 4
+    vtx_tertiary = (idx >= total // 4) & (idx < total // 2)
+    xyz = a["xyz_norm"]
+
+    return _dataview(
+        name,
+        data_vol=vol_nan(a["data_vol"], primary),
+        dim2_vol=vol_nan(a["accuracy_vol"], secondary),
+        rgb_vol=(
+            vol_nan(a["red_vol"], primary),
+            vol_nan(a["green_vol"], secondary),
+            a["blue_vol"],
+        ),
+        alpha_vol=vol_nan(a["accuracy_vol"], tertiary),
+        data_vtx=vol_nan(a["data_vtx"], vtx_primary),
+        dim2_vtx=vol_nan(a["accuracy_vtx"], vtx_secondary),
+        rgb_vtx=(
+            vol_nan(xyz[:, 0], vtx_primary),
+            vol_nan(xyz[:, 1], vtx_secondary),
+            xyz[:, 2],
+        ),
+        alpha_vtx=vol_nan(a["accuracy_vtx"], vtx_tertiary),
+    )
+
+
+def _build_nan_alpha_dataview(name: str) -> Dataview:
+    """Build an RGB dataview whose *alpha map* carries NaNs, color channels clean.
+
+    The other NaN suite puts NaNs in the data; this puts them in the alpha map,
+    which is a separate code path -- alpha is not color-mapped, it is used
+    directly as a blend weight, so a NaN reaches the compositing arithmetic
+    rather than a colormap lookup.
+
+    Current behavior is that those elements render fully transparent, i.e. the
+    curvature underlay shows through, which is what the other NaN cases do too.
+    """
+    a = _synth_arrays()
+    alpha_vol = a["accuracy_vol"].copy()
+    alpha_vol[a["xx"] >= 50] = np.nan
+
+    total = sum(a["num_verts"])
+    alpha_vtx = a["accuracy_vtx"].copy()
+    alpha_vtx[np.arange(total) >= total // 2] = np.nan
+
+    return _dataview(
+        name,
+        data_vol=a["data_vol"],
+        dim2_vol=a["accuracy_vol"],
+        rgb_vol=(a["red_vol"], a["green_vol"], a["blue_vol"]),
+        alpha_vol=alpha_vol,
+        data_vtx=a["data_vtx"],
+        dim2_vtx=a["accuracy_vtx"],
+        rgb_vtx=tuple(a["xyz_norm"][:, i] for i in range(3)),
+        alpha_vtx=alpha_vtx,
+    )
+
+
+def _assert_no_failures(failures: list[str], tmp_path: Path) -> None:
+    """Fail with every mismatch at once, and say where to look at them."""
+    assert not failures, (
+        "Renders differ from expectations:\n  "
+        + "\n  ".join(failures)
+        + f"\n\nFor details, see {tmp_path} and {REFERENCE_ROOT}/README.md"
+    )
+
+
+def _render_and_check_dataview(
+    name: str,
+    view: Dataview,
+    reference_dir: Path,
+    tmp_path: Path,
+) -> list[str]:
+    """Render a single dataview through both renderers and check it.
+
+    Each render is checked three ways: quickflat vs its own reference, webgl vs
+    its own reference (both tight tolerances, see ``_check_against_reference``),
+    and quickflat vs webgl directly (loose tolerance, see
+    ``_check_cross_renderer``).
+
+    Returns a list of failure messages (empty if no failures). Skips the test
+    if reference images are missing, and regenerates them if ``REGENERATE_REFERENCES``
+    is set.
+    """
+    from cortex.export.save_views import angle_view_params, save_3d_views
+
+    flatmap_angle = (
+        "flatmap",
+        {
+            **angle_view_params["flatmap"],
+            "surface.{subject}.curvature.smoothness": WEBGL_CURVATURE_SMOOTHNESS,
+        },
+    )
+
+    # quickflat -> transparent PNG via make_png.
+    qf_path = tmp_path / f"quickflat_{name}.png"
+    cortex.quickflat.make_png(
+        str(qf_path),
+        view,
+        height=QUICKFLAT_HEIGHT,
+        with_curvature=True,
+        with_rois=False,
+        with_labels=False,
+        with_colorbar=False,
+        with_sulci=False,
+        with_borders=False,
+        curvature_threshold=QUICKFLAT_CURVATURE_THRESHOLD,
+    )
+
+    # webgl -> trimmed flatmap screenshot.
+    wg_path = Path(
+        save_3d_views(
+            view,
+            base_name=str(tmp_path / f"webgl_{name}"),
+            list_angles=[flatmap_angle],
+            list_surfaces=["flatmap"],
+            trim=True,
+            size=WEBGL_CANVAS,
+            sleep=10,
+            viewer_params=dict(labels_visible=[], overlays_visible=[]),
+            headless=True,
+        )[0]
+    )
+
+    # Fails rather than skips: wholesale absence -- an installed wheel, or a
+    # clone that has not fetched LFS -- is caught at import, so a single gap in
+    # a populated store means either a render that cannot succeed (Vertex2D) or
+    # an incomplete regeneration. A skip here would also be swallowed by the
+    # xfail on Vertex2D, hiding the day its render starts working.
+    if not REGENERATE_REFERENCES:
+        for prefix in ("quickflat", "webgl"):
+            reason = _unusable_reference(
+                reference_dir / f"{prefix}_{name}{REFERENCE_SUFFIX}"
+            )
+            if reason is not None:
+                pytest.fail(reason)
+
+    failures = []
+
+    # _check_against_reference rewrites the reference and returns None when
+    # regenerating, so this collects nothing on that path.
+    for prefix, path in [("quickflat", qf_path), ("webgl", wg_path)]:
+        msg = _check_against_reference(f"{prefix}_{name}", path, tmp_path, reference_dir)
+        if msg is not None:
+            failures.append(msg)
+
+    if REGENERATE_REFERENCES:
+        pytest.skip(f"Regenerated {name} references in {reference_dir}")
+
+    # Cross-renderer check (never regenerates, always compares)
+    msg = _check_cross_renderer(name, qf_path, wg_path, tmp_path)
+    if msg is not None:
+        failures.append(msg)
+
+    return failures
+
+
+def _render_and_check_webgl_only(
+    tag: str,
+    view: Dataview,
+    surface: str,
+    angle: str,
+    reference_dir: Path,
+    tmp_path: Path,
+) -> list[str]:
+    """Render one non-flatmap view through webgl and check it against a reference.
+
+    A cut-down ``_render_and_check_dataview``: no cross-renderer check because
+    we don't use quickflat.
+
+    Curvature is left at pycortex's default (thresholded) here, unlike the
+    flatmap suites. Those un-threshold it to reduce cross-renderer
+    disagreement -- a reason that does not apply when there is no second
+    renderer -- so using the default recovers coverage of the default curvature
+    path, which the flatmap references explicitly do not provide.
+    """
+    from cortex.export.save_views import save_3d_views
+
+    wg_path = save_3d_views(
+        view,
+        base_name=str(tmp_path / f"webgl_{tag}"),
+        list_angles=[angle],
+        list_surfaces=[surface],
+        trim=True,
+        size=WEBGL_CANVAS,
+        sleep=10,
+        viewer_params=dict(labels_visible=[], overlays_visible=[]),
+        headless=True,
+    )[0]
+
+    # Fails rather than skips, as in _render_and_check_dataview.
+    if not REGENERATE_REFERENCES:
+        reason = _unusable_reference(
+            reference_dir / f"webgl_{tag}{REFERENCE_SUFFIX}"
+        )
+        if reason is not None:
+            pytest.fail(reason)
+
+    msg = _check_against_reference(
+        f"webgl_{tag}", Path(wg_path), tmp_path, reference_dir
+    )
+    if REGENERATE_REFERENCES:
+        pytest.skip(f"Regenerated webgl_{tag} in {reference_dir}")
+    return [msg] if msg is not None else []
+
+
+@pytest.mark.parametrize("name", DATAVIEW_NAMES)
+def test_visual_comparison_alpha_dataviews(tmp_path, name):
+    """Render an alpha-bearing dataview through both renderers, and assert it matches.
+
+    Plain Volume / Vertex have no native per-element alpha (pycortex's
+    bundled ``*_alpha`` colormaps are all 2D and only apply to the 2D
+    dataview types), so those two act as a no-alpha baseline. The other four
+    exercise alpha: Volume2D / Vertex2D via the 2D-alpha cmap ``RdBu_r_alpha``,
+    VolumeRGB / VertexRGB via the ``alpha=`` kwarg.
+
+    Compared both within-renderer (against a stored reference) and
+    cross-renderer (quickflat vs webgl); see ``_render_and_check_dataview``. A
+    mismatch leaves ``actual_*.png`` and an amplified ``diff_*.png`` in the
+    test's ``tmp_path``.
+    """
+    view = _build_alpha_dataview(name)
+    failures = _render_and_check_dataview(name, view, REFERENCE_DIR, tmp_path)
+    _assert_no_failures(failures, tmp_path)
+
+
+@pytest.mark.parametrize("name", DATAVIEW_NAMES)
+def test_visual_comparison_nan_dataviews(tmp_path, name):
+    """Render a NaN-bearing dataview through both renderers, and assert it matches.
+
+    NaN is pycortex's convention for "no data at this voxel/vertex" -- both
+    renderers are expected to draw those elements as fully transparent (falling
+    through to the curvature underlay) rather than mapping NaN through the
+    colormap as if it were a real value. This test renders the six dataview
+    classes with the *primary* data channel (not alpha) containing NaNs over
+    roughly half of each volume/surface.
+
+    Compared both within-renderer (against a stored reference) and
+    cross-renderer (quickflat vs webgl); see ``_render_and_check_dataview``. A
+    mismatch leaves ``actual_*.png`` and an amplified ``diff_*.png`` in the
+    test's ``tmp_path``.
+    """
+    view = _build_nan_dataview(name)
+    failures = _render_and_check_dataview(name, view, NAN_REFERENCE_DIR, tmp_path)
+    _assert_no_failures(failures, tmp_path)
+
+
+@pytest.mark.parametrize("name", NAN_ALPHA_DATAVIEW_NAMES)
+def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
+    """Render an RGB dataview whose alpha map carries NaNs, and assert it matches.
+
+    The other NaN suite puts NaNs in the data channels; this one puts them in the
+    alpha map. That is a distinct path -- alpha is not color-mapped, it is used
+    directly as a blend weight, so the NaN lands in the compositing arithmetic
+    rather than in a colormap lookup. Only ``VolumeRGB``/``VertexRGB`` take an
+    explicit ``alpha=``, so only those two are covered.
+
+    Current behavior, which these references encode, is that NaN-alpha elements
+    render fully transparent and the curvature underlay shows through -- the same
+    outcome as a NaN in the data.
+
+    Be aware that this behavior is not settled. gh-695, which unifies NaN and
+    alpha handling across quickflat, WebGL and the RGB dataviews, changes how the
+    surviving RGB is blended without changing the transparency itself. If that lands, expect these four references to need
+    regenerating; the transparency assertion should survive, the exact blend will
+    not.
+    """
+    view = _build_nan_alpha_dataview(name)
+    failures = _render_and_check_dataview(name, view, NAN_ALPHA_REFERENCE_DIR, tmp_path)
+    _assert_no_failures(failures, tmp_path)
+
+
+@pytest.mark.parametrize("surface,angle,name", NONFLAT_VIEWS)
+def test_visual_comparison_nonflat_views(tmp_path, surface, angle, name):
+    """Render a non-flatmap view through webgl and assert it matches its reference.
+
+    The other tests render flatmaps, which in webgl can have different behavior
+    from 3D views (for example, lighting).
+
+    This is webgl only (quickflat only renders flatmaps), so no cross-renderer
+    check. Test both Volume and Vertex because they take different shader
+    paths.
+    """
+    view = _build_alpha_dataview(name)
+    tag = f"{surface}_{angle}_{name}"
+    failures = _render_and_check_webgl_only(
+        tag, view, surface, angle, NONFLAT_REFERENCE_DIR, tmp_path
+    )
+    _assert_no_failures(failures, tmp_path)

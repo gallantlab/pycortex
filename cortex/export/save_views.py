@@ -18,7 +18,9 @@ ViewParams = TypedDict(
         "surface.{subject}.unfold": float,
         "surface.{subject}.pivot": float,
         "surface.{subject}.shift": float,
-        "surface.{subject}.specularity": float,
+        "surface.{subject}.lighting.specularity": float,
+        "surface.{subject}.lighting.uniform_illumination": float,
+        "surface.{subject}.lighting.topleft_lighting": float,
     },
     total=False,
 )
@@ -194,6 +196,20 @@ def save_3d_views(
                 )
             time.sleep(1)
 
+            if headless:
+                # Only check for WebGL failures in headless mode, since we don't
+                # capture console output in the interactive mode.
+                pw_thread = handle._pw_thread  # `handle` is a `JSMixer`
+                from cortex.export.headless import filter_webgl_failures
+
+                failures = filter_webgl_failures(pw_thread.browser_errors)
+                if failures:
+                    raise RuntimeError(
+                        f"WebGL failed while rendering {view_name!r}/{surface!r}; "
+                        f"{file_name!r} is likely blank.\n  "
+                        + "\n  ".join(sorted(set(failures)))
+                    )
+
             # Trim transparent edges
             if trim:
                 try:
@@ -227,7 +243,7 @@ default_view_params: ViewParams = {
     "surface.{subject}.unfold": 0,
     "surface.{subject}.pivot": 0,
     "surface.{subject}.shift": 0,
-    "surface.{subject}.specularity": 0,
+    "surface.{subject}.lighting.specularity": 0,
 }
 
 angle_view_params: dict[str, ViewParams] = {

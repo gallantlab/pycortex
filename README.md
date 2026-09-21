@@ -14,9 +14,6 @@ Pycortex is a software library that allows you to visualize fMRI or other volume
 Installation
 ------------
 
-> [!NOTE]
-> Pycortex cannot be currently installed in Windows, only Linux and macOS are supported.
-
 To install the stable release version of pycortex, do the following:
 
 ```bash
@@ -36,6 +33,8 @@ To do so, replace the second install line above with the following:
 # Install development version of pycortex from github
 pip install -U git+https://github.com/gallantlab/pycortex.git  --no-build-isolation
 ```
+
+Note you will need a C compiler installed to build from scratch because there are cython code. 
 
 Documentation
 -------------

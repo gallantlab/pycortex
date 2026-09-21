@@ -63,3 +63,16 @@ If you want to move the filestore, you need to update the config file::
 
    [basic]
    filestore=/abs/path/to/filestore
+
+Pycortex also caches some derived, subject-specific files (such as flatmap
+and MNI transform caches) that don't need to live in the filestore itself.
+By default, these caches are stored inside the filestore, at
+:file:`{filestore}/{subject}/cache`. To store them somewhere else instead
+(for example on faster local storage), set the ``cache`` option under
+``[basic]`` in the config file::
+
+   [basic]
+   cache=/abs/path/to/cache
+
+When ``cache`` is set, per-subject cache files are stored at
+:file:`{cache}/{subject}/cache`.

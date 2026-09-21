@@ -3,7 +3,7 @@ import warnings
 from copy import deepcopy
 import os
 import sys
-from typing import Generic, Optional, TypeVar, Union, cast
+from typing import Generic, Literal, Optional, TypeVar, Union, cast
 if sys.version_info < (3, 11):
     from typing_extensions import Self
 else:
@@ -14,7 +14,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ..database import db
-
+from .. import polyutils
 
 class BrainData:
     """
@@ -190,7 +190,10 @@ class VolumeData(BrainData):
         return cls(np.ones(shape)*value, subject, xfmname, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, xfmname: str, **kwargs) -> Self:
+    def random(cls, subject: str, xfmname: str,
+               random_type: Literal['low_frequency', 'uniform']='low_frequency',
+               falloff_exponent: float=-1.25,
+               **kwargs) -> Self:
         """
         Create a random-valued VolumeData for the given subject and xfmname.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -202,8 +205,17 @@ class VolumeData(BrainData):
             Subject identifier. Must exist in the pycortex database.
         xfmname : str
             Transform name. Must exist in the pycortex database.
+        random_type : str, optional
+            type of random data to use. Default: low_frequency. One of
+            ('low_frequency', 'uniform')
+            'low_frequency' yields blobby, brain-like data
+            'uniform' yields uniform random noise.
+        falloff_exponent : float, optional
+            Only used when random_type is 'low_frequency'. Factor by which
+            Fourier power falls off. Higher magnitude emphasizes low
+            frequencies more strongly.
         **kwargs
-            Other keyword arguments are passed to the init function for this 
+            Other keyword arguments are passed to the init function for this
             class.
 
         Returns
@@ -213,7 +225,13 @@ class VolumeData(BrainData):
         """
         xfm = db.get_xfm(subject, xfmname)
         shape = xfm.shape
-        return cls(np.random.randn(*shape), subject, xfmname, **kwargs)
+        if random_type == 'uniform':
+            rdata = np.random.randn(*shape)
+        elif random_type == 'low_frequency':
+            rdata = _low_freq_noise(shape, falloff_exponent=falloff_exponent)
+        else:
+            raise ValueError("random_type must be one of ('low_frequency', 'uniform')")
+        return cls(rdata, subject, xfmname, **kwargs)
 
     def _check_size(self, mask: Union[npt.NDArray, str, None]) -> None:
         if self.data.ndim not in (1, 2, 3, 4):
@@ -285,7 +303,7 @@ class VolumeData(BrainData):
     def copy(self, data: npt.NDArray) -> Self:
         return super().copy(data, self.subject, self.xfmname, mask=self._mask)
 
-    # TODO: need to include np.ma.MaskedArra in return type?
+    # TODO: need to include np.ma.MaskedArray in return type?
     @property
     def volume(self) -> npt.NDArray:
         """Returns a 3D or 4D volume for this VolumeData, automatically unmasking
@@ -372,7 +390,7 @@ class VertexData(BrainData):
         self._set_data(data)
 
     @classmethod
-    def empty(cls, subject: str, value: float = 0, **kwargs):
+    def empty(cls, subject: str, value: float = 0, **kwargs) -> Self:
         """
         Create a constant-valued VertexData for the given subject.
         Often useful for testing purposes.
@@ -400,7 +418,9 @@ class VertexData(BrainData):
         return cls(np.ones((nverts,))*value, subject, **kwargs)
 
     @classmethod
-    def random(cls, subject: str, **kwargs):
+    def random(cls, subject: str, random_type: Literal['low_frequency', 'uniform']='low_frequency',
+               smooth_factor: float=40,
+               **kwargs) -> Self:
         """
         Create a random-valued VertexData for the given subject.
         Random values are from gaussian distribution with mean 0, s.d. 1.
@@ -410,8 +430,17 @@ class VertexData(BrainData):
         ----------
         subject : str
             Subject identifier. Must exist in the pycortex database.
+        random_type : str, optional
+            type of random data to use. Default: low_frequency. One of
+            ('low_frequency', 'uniform')
+            'low_frequency' yields blobby, brain-like data
+            'uniform' yields uniform random noise.
+        smooth_factor : float, optional
+            Only used when random_type is 'low_frequency'. Amount of
+            smoothing to apply to the underlying random data; larger values
+            smooth more. Passed as `factor` to `polyutils.Surface.smooth`.
         **kwargs
-            Other keyword arguments are passed to the init function for this 
+            Other keyword arguments are passed to the init function for this
             class.
 
         Returns
@@ -419,12 +448,23 @@ class VertexData(BrainData):
         VertexData subclass
             A VertexData subclass object with random data.
         """
-        try:
-            left, right = db.get_surf(subject, "wm")
-        except IOError:
-            left, right = db.get_surf(subject, "fiducial")
-        nverts = len(left[0]) + len(right[0])
-        return cls(np.random.randn(nverts), subject, **kwargs)
+        if random_type == 'uniform':
+            try:
+                left, right = db.get_surf(subject, "wm")
+            except IOError:
+                left, right = db.get_surf(subject, "fiducial")
+            nverts = len(left[0]) + len(right[0])
+            rand_data = np.random.randn(nverts)
+        elif random_type == 'low_frequency':
+            (lpts, lpolys), (rpts, rpolys) = db.get_surf(subject, 'fiducial')
+            ldata = polyutils.Surface(lpts, lpolys).smooth(np.random.randn(len(lpts)), factor=smooth_factor)
+            rdata = polyutils.Surface(rpts, rpolys).smooth(np.random.randn(len(rpts)), factor=smooth_factor)
+            rand_data = np.hstack([ldata, rdata])
+            rand_data = (rand_data - rand_data.mean()) / rand_data.std()
+        else:
+            raise ValueError("random_type must be one of ('low_frequency', 'uniform')")
+
+        return cls(rand_data, subject, **kwargs)
 
     def _set_data(self, data: npt.NDArray):
         """
@@ -684,3 +724,36 @@ def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="d
 
     node[:] = data
     return node
+
+
+# Make low frequency 3d data
+def _low_freq_noise(size: Union[int, tuple[int, int, int]],
+                     falloff_exponent: float=-1.25) -> npt.NDArray[np.float64]:
+    """Make low-frequency noise
+    
+    Parameters
+    ----------
+    size : scalar or tuple
+        size of array to generate
+    falloff_exponent: negative scalar
+        factor by which Fourier power falls off (falls off as `x**falloff_exponent`)
+        Higher numbers emphasize low frequencies more strongly.
+    """
+    if isinstance(size, tuple):
+        xd, yd, zd = size
+    else:
+        xd = yd = zd = size
+    x, y, z = np.meshgrid(np.linspace(-1, 1, xd), np.linspace(-1, 1, yd), np.linspace(-1, 1, zd),
+                           indexing='ij')
+    C = (x**2 + y**2 + z**2)**0.5
+    C[C == 0] = np.min(C[C != 0])
+    r = np.random.randn(xd, yd, zd)
+    f = np.fft.fftshift(np.fft.fftn(r))
+    falloff = C**falloff_exponent
+    falloff = (falloff - falloff.min()) / np.ptp(falloff)
+    # Zero out the DC component so it doesn't dominate the (much smaller)
+    # amplitude of the other frequencies once weighted by `falloff`.
+    f[xd // 2, yd // 2, zd // 2] = 0
+    fr = f * falloff
+    rr = np.fft.ifftn(np.fft.ifftshift(fr)).real
+    return (rr - rr.mean()) / rr.std()
