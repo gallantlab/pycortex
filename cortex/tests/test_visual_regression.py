@@ -1,16 +1,22 @@
 """Visual regression tests: quickflat and webgl renders vs stored references.
 
-Four suites. Three of them render flatmaps of the six public dataview classes
+Five suites. Three of them render flatmaps of the six public dataview classes
 (``Volume``, ``Vertex``, ``Volume2D``, ``Vertex2D``, ``VolumeRGB``,
 ``VertexRGB``) through both matplotlib (``cortex.quickflat.make_png``) and the
 headless WebGL viewer (``save_3d_views``), varying what the data carries:
 alpha-bearing values, NaNs in the data channels, and NaNs in the alpha map. The
-last covers only the two RGB classes, the only ones taking an explicit
-``alpha=``. Every one of those renders is checked twice -- against its own
-stored reference at a tight tolerance, and directly against the other renderer's
-render of the same dataview at a loose one.
+last covers the four classes taking an explicit ``alpha=``. Every one of those
+renders is checked twice -- against its own stored reference at a tight
+tolerance, and directly against the other renderer's render of the same
+dataview at a loose one.
 
-The fourth suite renders non-flatmap views, ``Volume`` and ``Vertex`` on the
+The fourth renders the three volumetric classes with NaNs arranged to fall
+between depth samples, with both renderers averaging over the same number of
+them, at both values of the ``nanmean`` setting. The other suites leave depth
+sampling alone and NaN whole columns at a time, so nothing in them depends on
+how a column of samples is combined.
+
+The fifth renders non-flatmap views, ``Volume`` and ``Vertex`` on the
 inflated and fiducial surfaces, through ``save_3d_views``. Those are
 webgl-only and get the reference check alone: quickflat produces flatmaps and
 nothing else, so there is nothing to diff them against.
@@ -68,7 +74,18 @@ NAN_REFERENCE_DIR = REFERENCE_ROOT / "nan_dataviews"
 NAN_ALPHA_REFERENCE_DIR = REFERENCE_ROOT / "nan_alpha_dataviews"
 
 #: Dataviews that accept an explicit alpha map, and so can carry NaNs in it.
-NAN_ALPHA_DATAVIEW_NAMES = ["VolumeRGB", "VertexRGB"]
+#: This was the two RGB classes until gh-695. Volume2D/Vertex2D took an
+#: ``alpha=`` as well, but it was stashed as a raw ndarray in ``attrs`` instead
+#: of becoming an attribute, so quickflat-Volume2D painted its NaNs opaque,
+#: quickflat-Vertex2D ignored the map outright, and the webgl viewer failed to
+#: load the dataview at all. It is now a real attribute, multiplied into the
+#: colormap's own alpha on both renderers, so all four classes belong here.
+NAN_ALPHA_DATAVIEW_NAMES = ["Volume2D", "Vertex2D", "VolumeRGB", "VertexRGB"]
+
+#: As NAN_REFERENCE_DIR, but with the NaNs arranged to fall between depth
+#: samples rather than covering a whole column, so what is rendered depends on
+#: how the two renderers average across the cortical thickness.
+MULTILAYER_REFERENCE_DIR = REFERENCE_ROOT / "multilayer_nan_dataviews"
 
 #: Non-flatmap views, checked against a webgl reference only. quickflat renders
 #: nothing but flatmaps, so these have no counterpart to diff against and no
@@ -159,6 +176,29 @@ QUICKFLAT_HEIGHT = 256
 #: Browser canvas for every webgl render. After trimming, lands at roughly
 # quickflat's 490x256 (from QUICKFLAT_HEIGHT).
 WEBGL_CANVAS = (925, 695)
+
+#: Depth samples each renderer averages over, at their own defaults. They do
+#: not match: quickflat has always averaged 32 samples across the cortical
+#: thickness, the webgl viewer one. That asymmetry is pre-existing and the
+#: cross-renderer tolerance absorbs it on smooth data; the multilayer suite
+#: below is the one that sets them equal, because it is about exactly this.
+QUICKFLAT_THICK = 32
+WEBGL_LAYERS = 1
+
+#: Depth samples for the multilayer suite, applied to both renderers.
+MULTILAYER_DEPTHS = 32
+
+#: Classes the multilayer suite covers. Volumetric only: vertex dataviews hold
+#: one value per vertex, so every depth sample at a vertex is the same number
+#: and there is nothing for the across-depth averaging to do. All three are
+#: here because each takes a different branch of the sampling shader -- scalar,
+#: 2D, and RGB, the last combining premultiplied RGBA rather than values.
+MULTILAYER_DATAVIEW_NAMES = ["Volume", "Volume2D", "VolumeRGB"]
+
+#: The volumetric classes, which are the ones whose renders have any depth to
+#: sample. Mirrors the test in ``save_3d_views``, which only forwards the
+#: sampler and layer settings for these.
+VOLUMETRIC = (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)
 
 # Don't threshold curvature to reduce cross-renderer disagreement due to
 # anti-aliasing implementations.
@@ -418,11 +458,19 @@ def _dataview(
     dim2_vtx: npt.NDArray,
     rgb_vtx: tuple,
     alpha_vtx: npt.NDArray,
+    twod_alpha: bool = False,
 ) -> Dataview:
     """Construct one of the six dataview classes from prepared channels.
 
-    One dispatch shared by all three suites, so adding a dataview class is a
-    single edit rather than three kept in lockstep.
+    One dispatch shared by every suite, so adding a dataview class is a single
+    edit rather than several kept in lockstep.
+
+    ``twod_alpha`` decides whether Volume2D/Vertex2D are also handed the
+    ``alpha_*`` map as an explicit ``alpha=``, on top of the alpha their 2D
+    colormap already carries. Off by default, so that a suite covers one alpha
+    source at a time: with it off the 2D classes exercise the colormap's alpha
+    alone, with it on they exercise the product of the two, which is what
+    gh-695 made both renderers compute.
     """
     cmap_plain, cmap_2d = "viridis", "RdBu_r_alpha"
 
@@ -434,11 +482,13 @@ def _dataview(
         return cortex.Volume2D(
             data_vol, dim2_vol, subj, xfmname, cmap=cmap_2d,
             vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            **(dict(alpha=alpha_vol) if twod_alpha else {}),
         )
     elif name == "Vertex2D":
         return cortex.Vertex2D(
             data_vtx, dim2_vtx, subj, cmap=cmap_2d,
             vmin=-1, vmax=1, vmin2=0, vmax2=1,
+            **(dict(alpha=alpha_vtx) if twod_alpha else {}),
         )
     elif name == "VolumeRGB":
         red, green, blue = rgb_vol
@@ -536,16 +586,24 @@ def _build_nan_dataview(name: str) -> Dataview:
             xyz[:, 2],
         ),
         alpha_vtx=vol_nan(a["accuracy_vtx"], vtx_tertiary),
+        # The rule above names the alpha map as one of the places a NaN makes
+        # an element transparent, and it is only reachable for the 2D classes
+        # since gh-695 turned their ``alpha=`` into a real attribute.
+        twod_alpha=True,
     )
 
 
 def _build_nan_alpha_dataview(name: str) -> Dataview:
-    """Build an RGB dataview whose *alpha map* carries NaNs, color channels clean.
+    """Build a dataview whose *alpha map* carries NaNs, every data channel clean.
 
     The other NaN suite puts NaNs in the data; this puts them in the alpha map,
     which is a separate code path -- alpha is not color-mapped, it is used
     directly as a blend weight, so a NaN reaches the compositing arithmetic
     rather than a colormap lookup.
+
+    For Volume2D/Vertex2D the map is passed as an explicit ``alpha=`` and has
+    to survive being multiplied into the alpha their 2D colormap already
+    supplies, which is a second path again.
 
     Current behavior is that those elements render fully transparent, i.e. the
     curvature underlay shows through, which is what the other NaN cases do too.
@@ -568,6 +626,50 @@ def _build_nan_alpha_dataview(name: str) -> Dataview:
         dim2_vtx=a["accuracy_vtx"],
         rgb_vtx=tuple(a["xyz_norm"][:, i] for i in range(3)),
         alpha_vtx=alpha_vtx,
+        twod_alpha=True,
+    )
+
+
+def _build_multilayer_nan_dataview(name: str) -> Dataview:
+    """Build a volumetric dataview whose NaNs alternate across cortical depth.
+
+    The other NaN suites NaN out broad regions, so a surface point is either
+    NaN at every depth or at none, and how the renderers combine depth samples
+    never comes into it. This one NaNs diagonal slabs two voxels thick, which
+    is fine enough that nearly every surface point has both NaN and valid
+    samples under it, whatever the local orientation of the ribbon. Diagonal so
+    that the ribbon is nowhere parallel to the slabs for long.
+
+    That is the case gh-695 changed. The webgl viewer summed its layer samples,
+    so a single NaN anywhere in the column hid the whole fragment; it now
+    averages the valid layers and is transparent only where none is valid,
+    which is what quickflat's ``nanmean`` already did. Rendered at
+    ``nanmean=True`` the data should be broadly visible, at ``nanmean=False``
+    broadly transparent, and the two renderers should agree either way.
+    """
+    a = _synth_arrays()
+    slab = ((((a["xx"] + a["yy"] + a["zz"]) // 2) % 2) == 1)
+
+    def vol_nan(arr):
+        out = arr.copy()
+        out[slab] = np.nan
+        return out
+
+    return _dataview(
+        name,
+        data_vol=vol_nan(a["data_vol"]),
+        dim2_vol=vol_nan(a["accuracy_vol"]),
+        rgb_vol=(
+            vol_nan(a["red_vol"]),
+            a["green_vol"],
+            a["blue_vol"],
+        ),
+        alpha_vol=a["accuracy_vol"],
+        # Unused: every class in MULTILAYER_DATAVIEW_NAMES is volumetric.
+        data_vtx=a["data_vtx"],
+        dim2_vtx=a["accuracy_vtx"],
+        rgb_vtx=tuple(a["xyz_norm"][:, i] for i in range(3)),
+        alpha_vtx=a["accuracy_vtx"],
     )
 
 
@@ -585,6 +687,10 @@ def _render_and_check_dataview(
     view: Dataview,
     reference_dir: Path,
     tmp_path: Path,
+    *,
+    thick: int = QUICKFLAT_THICK,
+    layers: int = WEBGL_LAYERS,
+    nanmean: Optional[bool] = None,
 ) -> list[str]:
     """Render a single dataview through both renderers and check it.
 
@@ -592,6 +698,11 @@ def _render_and_check_dataview(
     its own reference (both tight tolerances, see ``_check_against_reference``),
     and quickflat vs webgl directly (loose tolerance, see
     ``_check_cross_renderer``).
+
+    ``thick`` and ``layers`` are the two renderers' depth-sampling counts, and
+    ``nanmean`` whether either skips NaN samples when averaging over them.
+    ``nanmean=None`` leaves both renderers at their own default rather than
+    setting it, so the suites that predate gh-695 render exactly as before.
 
     Returns a list of failure messages (empty if no failures). Skips the test
     if reference images are missing, and regenerates them if ``REGENERATE_REFERENCES``
@@ -604,6 +715,13 @@ def _render_and_check_dataview(
         {
             **angle_view_params["flatmap"],
             "surface.{subject}.curvature.smoothness": WEBGL_CURVATURE_SMOOTHNESS,
+            # save_3d_views drops these for vertex dataviews, which have no
+            # depth to sample; setting them there would hang its wait loop.
+            **(
+                {"surface.{subject}.nanmean": nanmean}
+                if nanmean is not None and isinstance(view, VOLUMETRIC)
+                else {}
+            ),
         },
     )
 
@@ -620,6 +738,8 @@ def _render_and_check_dataview(
         with_sulci=False,
         with_borders=False,
         curvature_threshold=QUICKFLAT_CURVATURE_THRESHOLD,
+        thick=thick,
+        **({} if nanmean is None else dict(nanmean=nanmean)),
     )
 
     # webgl -> trimmed flatmap screenshot.
@@ -629,6 +749,7 @@ def _render_and_check_dataview(
             base_name=str(tmp_path / f"webgl_{name}"),
             list_angles=[flatmap_angle],
             list_surfaces=["flatmap"],
+            layers=layers,
             trim=True,
             size=WEBGL_CANVAS,
             sleep=10,
@@ -765,8 +886,12 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     The other NaN suite puts NaNs in the data channels; this one puts them in the
     alpha map. That is a distinct path -- alpha is not color-mapped, it is used
     directly as a blend weight, so the NaN lands in the compositing arithmetic
-    rather than in a colormap lookup. Only ``VolumeRGB``/``VertexRGB`` take an
-    explicit ``alpha=``, so only those two are covered.
+    rather than in a colormap lookup. All four classes that take an explicit
+    ``alpha=`` are covered. That was ``VolumeRGB``/``VertexRGB`` alone until
+    gh-695: ``Volume2D``/``Vertex2D`` accepted the argument but dropped it into
+    ``attrs`` as a bare ndarray, which quickflat then mishandled and the webgl
+    viewer choked on. For those two the map also has to survive being
+    multiplied into the alpha their 2D colormap already carries.
 
     Current behavior, which these references encode, is that NaN-alpha elements
     render fully transparent and the curvature underlay shows through -- the same
@@ -780,6 +905,53 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     """
     view = _build_nan_alpha_dataview(name)
     failures = _render_and_check_dataview(name, view, NAN_ALPHA_REFERENCE_DIR, tmp_path)
+    _assert_no_failures(failures, tmp_path)
+
+
+@pytest.mark.parametrize("name", MULTILAYER_DATAVIEW_NAMES)
+@pytest.mark.parametrize("nanmean", [True, False], ids=["nanmean", "no_nanmean"])
+@pytest.mark.timeout(600)
+def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
+    """Render NaNs that fall between depth samples, with both renderers averaging.
+
+    The other suites leave depth sampling alone, and at their defaults the two
+    renderers do not even agree on how many samples to take (quickflat 32, the
+    viewer 1), so nothing there covers how a column of samples containing NaNs
+    is combined. This sets both to ``MULTILAYER_DEPTHS`` and NaNs the data
+    finely enough that most surface points have both NaN and valid samples --
+    see ``_build_multilayer_nan_dataview``.
+
+    Parametrized over the ``nanmean`` setting itself, since the point is that
+    the two renderers agree on *both* of its values: with it on the valid
+    samples are averaged and the data shows, with it off any NaN in the column
+    hides the fragment. Before gh-695 the viewer had no such setting and always
+    behaved as if it were off, while quickflat defaulted to on.
+
+    Given a longer timeout than the suite default: 32 layers under software
+    rendering is appreciably slower than the single-layer renders elsewhere.
+
+    The Volume2D case is flaky, through no fault of this suite. Setting
+    ``layers`` above 1 intermittently leaves the viewer's RPC proxy answering
+    ``{}`` to every subsequent query, so ``save_3d_views`` dies on the next
+    parameter it sets. It never recovers, waiting it out does not help, and the
+    browser reports no error at all. It reproduces on main at about the same
+    rate (roughly one run in four) with the dataview built inline rather than
+    here, so it is a pre-existing bug in the viewer or in JSProxy, not
+    something gh-695 introduced -- this is simply the first test to drive
+    ``layers`` above 1 on a 2D dataview. Left in rather than skipped, because
+    the coverage is wanted and the flake is worth fixing on its own.
+    """
+    view = _build_multilayer_nan_dataview(name)
+    tag = f"{name}_{'nanmean' if nanmean else 'no_nanmean'}"
+    failures = _render_and_check_dataview(
+        tag,
+        view,
+        MULTILAYER_REFERENCE_DIR,
+        tmp_path,
+        thick=MULTILAYER_DEPTHS,
+        layers=MULTILAYER_DEPTHS,
+        nanmean=nanmean,
+    )
     _assert_no_failures(failures, tmp_path)
 
 
