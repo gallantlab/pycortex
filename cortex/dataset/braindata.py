@@ -86,10 +86,11 @@ class BrainData:
         """
         sdict = super().to_json(simple=simple)
         if simple:
+            vmin, vmax = _nan_to_num_bounds(self.data)
             sdict.update(dict(name=self.name,
                 subject=self.subject,
-                min=float(np.nan_to_num(self.data).min()), 
-                max=float(np.nan_to_num(self.data).max()),
+                min=vmin,
+                max=vmax,
                 ))
         return sdict
 
@@ -710,10 +711,37 @@ class _masker(Generic[T_masker]):
         mask = db.get_mask(self.dv.subject, self.dv.xfmname, masktype)
         return self.dv.copy(self.dv.volume[:,mask].squeeze())
 
+def _nan_to_num_bounds(array: npt.ArrayLike) -> tuple[float, float]:
+    """(min, max) of ``np.nan_to_num(array)``, without copying it whole.
+
+    ``np.nan_to_num`` allocates a copy of its input, so taking the display
+    bounds of a 4D movie that way (once for the min, once for the max)
+    allocates several times the size of the data and dominated webgl viewer
+    startup for long runs. Reducing one slice at a time gives identical
+    values in bounded memory.
+    """
+    array = np.asarray(array)
+    if array.size == 0:
+        # let numpy raise the same error it always has for empty data
+        filled = np.nan_to_num(array)
+        return float(filled.min()), float(filled.max())
+    # 1D data has no useful slices to reduce over; anything higher is
+    # reduced along its first axis (time for movies, slices for volumes)
+    chunks = array if array.ndim > 1 else (array,)
+    vmin, vmax = np.inf, -np.inf
+    for chunk in chunks:
+        chunk = np.nan_to_num(chunk)
+        vmin = min(vmin, chunk.min())
+        vmax = max(vmax, chunk.max())
+    return float(vmin), float(vmax)
+
+
 def _hash(array: npt.ArrayLike) -> str:
     '''A simple numpy hash function'''
     array = np.asarray(array)
-    return hashlib.sha1(array.tobytes()).hexdigest()
+    if not array.flags["C_CONTIGUOUS"]:
+        array = np.ascontiguousarray(array)
+    return hashlib.sha1(memoryview(array).cast("B")).hexdigest()
 
 def _hdf_write(h5: Union[h5py.File, h5py.Group], data: npt.NDArray, name: str="data", group: str="/data") -> h5py.Dataset:
     try:

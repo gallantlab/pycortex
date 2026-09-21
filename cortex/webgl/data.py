@@ -21,13 +21,15 @@ from .. import volume
 class Package(object):
     """Package the data into a form usable by javascript"""
 
-    def __init__(self, data):
+    def __init__(self, data, lazy=False):
+        # lazy=True defers volume mosaic/PNG packing to get_image(). Only the first frame is packed up front.
         self.dataset = dataset.normalize(data)
         self.uniques = list(data.uniques(collapse=True))
         self.subjects = set()
 
         self.brains = dict()
         self.images = dict()
+        self._pending = dict()
         for brain in self.uniques:
             name = brain.name
             self.subjects.add(brain.subject)
@@ -62,12 +64,21 @@ class Package(object):
                     )
                 self.brains[name]["raw"] = True
             else:
-                encdata = encdata.astype(np.float32)
                 self.brains[name]["raw"] = False
+                if isinstance(brain, dataset.Vertex) or not lazy:
+                    encdata = encdata.astype(np.float32, copy=False)
 
             # VertexData requires reordering, only save normalized version for now
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 self.images[name] = [encdata]
+            elif lazy:
+                # The mosaic grid depends only on the volume shape, 
+                # so the first frame determines the metadata for every frame.
+                mosaic0, shape = volume.mosaic(self._pack_dtype(name, encdata[0]),
+                                               show=False)
+                self.brains[name]["mosaic"] = shape
+                self._pending[name] = encdata
+                self.images[name] = [_pack_png(mosaic0)] + [None] * (len(encdata) - 1)
             else:
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
                 if len(set([shape for m, shape in self.images[name]])) != 1:
@@ -111,6 +122,23 @@ class Package(object):
         return dict(
             views=self.views, data=self.brains, images=self.image_names(**kwargs)
         )
+
+    def _pack_dtype(self, name, framedata):
+        """One frame in the dtype _pack_png accepts: raw data stays uint8,
+        everything else becomes float32 (a per-frame no-op-sized copy)."""
+        if self.brains[name]["raw"]:
+            return framedata
+        return np.asarray(framedata, dtype=np.float32)
+
+    def get_image(self, name, frame):
+        """Return the packed PNG (or npy blob) for one frame, packing it on
+        first request when the package was built with lazy=True."""
+        img = self.images[name][frame]
+        if img is None:
+            mosaic, _ = volume.mosaic(
+                self._pack_dtype(name, self._pending[name][frame]), show=False)
+            img = self.images[name][frame] = _pack_png(mosaic)
+        return img
 
     def image_names(self, fmt="/data/{name}/{frame}/"):
         names = dict()

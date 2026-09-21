@@ -134,8 +134,9 @@ var dataset = (function(module) {
         for (var i = 0; i < this.data.length; i++) {
             (function(idx) {
                 this.data[idx].loaded
-                    .progress(function(available) {
+                    .progress(function(available, frameIdx) {
                         if (available > this.delay) markReady(idx);
+                        if (frameIdx !== undefined) this._frameArrived(frameIdx);
                     }.bind(this))
                     .done(function() { markReady(idx); });
             }.bind(this))(i);
@@ -307,6 +308,23 @@ var dataset = (function(module) {
             this._dispatch({type:"attribute", name:"nanmask", value:combined});
         }
     }
+    // A streamed movie frame just arrived. If it is the frame on screen (or
+    // its blend partner), re-apply the textures: a seek to a not-yet-loaded
+    // frame otherwise stays blank until the next setFrame (e.g. playback).
+    module.DataView.prototype._frameArrived = function(frameIdx) {
+        if (this.frames <= 1)
+            return;
+        var fframe = Math.floor(((this.frame + this.delay) * this.rate).mod(this.frames));
+        if (frameIdx === fframe || frameIdx === (fframe + 1).mod(this.frames)) {
+            this.setFrame(this.frame);
+            this.dispatchEvent({type: "frameloaded", frame: frameIdx});
+        }
+    };
+    module.DataView.prototype.loadRest = function() {
+        for (var i = 0; i < this.data.length; i++)
+            if (this.data[i].loadRest)
+                this.data[i].loadRest();
+    };
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
         for (var i = 0; i < this.data.length; i++)
@@ -330,8 +348,20 @@ var dataset = (function(module) {
         this.frames = images[json.name].length;
 
         this._interp = "nearest";
-        this.textures = [];
+        this.textures = new Array(this.frames);
+        this._nloaded = 0;
+        this._priority = 0;
+        this._inflight = false;
+        this._deferred = this.movie;
+        var nextFrame = function() {
+            for (var i = this._priority; i < this.frames; i++)
+                if (this.textures[i] === undefined) return i;
+            for (var j = 0; j < this._priority; j++)
+                if (this.textures[j] === undefined) return j;
+            return -1;
+        }.bind(this);
         var loadmosaic = function(idx) {
+            this._inflight = true;
             var img = new Image();
             img.addEventListener("load", function() {
                 this._width = img.width;
@@ -357,22 +387,57 @@ var dataset = (function(module) {
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
-                this.textures.push(tex);
+                this.textures[idx] = tex;
+                this._nloaded += 1;
+                this._inflight = false;
 
-                if (this.textures.length < this.frames) {
-                    this.loaded.notify(this.textures.length);
-                    loadmosaic(this.textures.length);
+                this.loaded.notify(this._nloaded, idx);
+                if (this._nloaded < this.frames) {
+                    if (this._deferred) {
+                        this._paused = true;
+                        setTimeout(this.loadRest.bind(this), 2000);
+                    } else {
+                        var nxt = nextFrame();
+                        if (nxt >= 0)
+                            loadmosaic(nxt);
+                    }
                 } else {
                     this.loaded.resolve();
                 }
             }.bind(this));
-            img.src = this.data[this.textures.length];
+            img.src = this.data[idx];
         }.bind(this);
+        this._loadmosaic = loadmosaic;
+        this._nextFrame = nextFrame;
 
         loadmosaic(0);
     };
+    module.VolumeData.prototype.loadRest = function() {
+        this._deferred = false;
+        if (this._paused) {
+            this._paused = false;
+            var nxt = this._nextFrame();
+            if (nxt >= 0 && !this._inflight)
+                this._loadmosaic(nxt);
+        }
+    };
+
+    module.VolumeData.prototype.setPriority = function(frame) {
+        if (!this.movie || this._nloaded >= this.frames)
+            return;
+        this._priority = Math.max(0, Math.min(this.frames - 1, Math.round(frame)));
+        this._deferred = false;
+        if (!this._inflight) {
+            this._paused = false;
+            var nxt = this._nextFrame();
+            if (nxt >= 0)
+                this._loadmosaic(nxt);
+        }
+    };
     module.VolumeData.prototype.setFilter = function(interp) {
         for (var i = 0, il = this.textures.length; i < il; i++) {
+            if (this.textures[i] === undefined)
+                continue;
             this.textures[i].minFilter = module.filtertypes[interp];
             this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
@@ -388,13 +453,20 @@ var dataset = (function(module) {
     };
 
     module.VolumeData.prototype.set = function(uniforms, dim, fframe) {
-        if (uniforms.data.value[dim*2] !== this.textures[fframe]) {
-            uniforms.data.value[dim*2] = this.textures[fframe];
-            if (this.frames > 1) {
-                uniforms.data.value[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
-            } else {
-                uniforms.data.value[dim*2+1] = null;
-            }
+        var tex = this.textures[fframe];
+        if (tex === undefined) {
+            return;
+        }
+        var next = tex;
+        if (this.frames > 1) {
+            next = this.textures[(fframe+1).mod(this.frames)];
+            if (next === undefined)
+                next = tex;
+        }
+        if (uniforms.data.value[dim*2] !== tex ||
+            uniforms.data.value[dim*2+1] !== next) {
+            uniforms.data.value[dim*2] = tex;
+            uniforms.data.value[dim*2+1] = this.frames > 1 ? next : null;
         }
     }
     module.VolumeData.prototype._setData = function(fframe, data) {
