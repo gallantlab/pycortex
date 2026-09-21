@@ -90,18 +90,33 @@ window.linkShader = function(shadername, opts) {
     var gl = renderer.context;
     var program = material.program;
     var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    var result = {
-        compiled: !!(gl.getShaderParameter(vs, gl.COMPILE_STATUS) &&
-                     gl.getShaderParameter(fs, gl.COMPILE_STATUS)),
+    return {
         linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
         log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
               gl.getProgramInfoLog(gp)].join("\\n"),
-        max_attributes: gl.getParameter(gl.MAX_VERTEX_ATTRIBS),
-        attributes: program.attributesKeys.filter(function(k) {
-            return program.attributes[k] !== null && program.attributes[k] !== -1;
-        }),
     };
-    return result;
+};
+
+// Same path as linkShader, but from raw GLSL source instead of a Shaders[]
+// lookup, so a test can hand it deliberately invalid GLSL.
+window.linkRawShader = function(vertexShader, fragmentShader) {
+    var geometry = new THREE.BufferGeometry();
+    geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    var material = new THREE.ShaderMaterial({vertexShader: vertexShader, fragmentShader: fragmentShader});
+    var mesh = new THREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    renderer.render(scene, camera);
+    scene.remove(mesh);
+
+    var gl = renderer.context;
+    var program = material.program;
+    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
+    return {
+        linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
+        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
+              gl.getProgramInfoLog(gp)].join("\\n"),
+    };
 };
 </script></body></html>
 """
@@ -143,10 +158,8 @@ def _variants() -> Iterator[Any]:
 
 
 @pytest.fixture(scope="module")
-def link_shader(
-    tmp_path_factory: pytest.TempPathFactory,
-) -> Iterator[Callable[[str, dict], Any]]:
-    """Return a function linking one shader variant in a real GL context."""
+def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
+    """Load the shader-linking page into a real GL context, shared by both hooks."""
     from playwright.sync_api import sync_playwright
 
     page_path = tmp_path_factory.mktemp("shaders") / "shaders.html"
@@ -161,10 +174,24 @@ def link_shader(
         if not page.evaluate("() => !!window.linkShader"):
             browser.close()
             pytest.skip("no WebGL context available in this browser")
-        yield lambda shader, opts: page.evaluate(
-            "args => window.linkShader(args[0], args[1])", [shader, opts]
-        )
+        yield page
         browser.close()
+
+
+@pytest.fixture(scope="module")
+def link_shader(webgl_page: Any) -> Callable[[str, dict], Any]:
+    """Return a function linking one shader variant in a real GL context."""
+    return lambda shader, opts: webgl_page.evaluate(
+        "args => window.linkShader(args[0], args[1])", [shader, opts]
+    )
+
+
+@pytest.fixture(scope="module")
+def link_raw_shader(webgl_page: Any) -> Callable[[str, str], Any]:
+    """Return a function linking raw GLSL source in the same GL context."""
+    return lambda vertex, fragment: webgl_page.evaluate(
+        "args => window.linkRawShader(args[0], args[1])", [vertex, fragment]
+    )
 
 
 @pytest.mark.parametrize("shader,opts", list(_variants()))
@@ -175,13 +202,27 @@ def test_shader_links(
 
     A variant that uses more vertex attributes than the driver has slots for
     compiles fine and fails to link, which leaves the viewer showing nothing at
-    all.
+    all. Checking ``linked`` alone covers both, since a compile failure also
+    fails to link.
     """
     result = link_shader(shader, opts)
-    assert result["compiled"], "%s did not compile:\n%s" % (shader, result["log"])
-    assert result["linked"], (
-        "%s compiled but did not link, using %d of the %d available vertex "
-        "attributes:\n%s" % (shader, len(result["attributes"]),
-                             result["max_attributes"], result["log"])
+    assert result["linked"], "%s failed to compile or link:\n%s" % (
+        shader, result["log"]
     )
-    assert len(result["attributes"]) <= result["max_attributes"]
+
+
+def test_shader_link_catches_compile_error(
+    link_raw_shader: Callable[[str, str], Any]
+) -> None:
+    """A shader that fails to *compile* must fail ``linked`` too.
+
+    No production shader is broken this way, so nothing above exercises this
+    path; this proves the assumption behind checking ``linked`` alone (a
+    compile failure always fails the subsequent link) actually holds in a
+    real GL context, not just per the GLSL/WebGL spec.
+    """
+    result = link_raw_shader(
+        "this is not valid glsl;",
+        "void main() { gl_FragColor = vec4(1.0); }",
+    )
+    assert not result["linked"], "invalid GLSL should not link:\n%s" % result["log"]
