@@ -653,6 +653,27 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     width: 190px;
 }
 
+/* The smoothing dropdown. Form controls do not inherit the panel's font, so
+   the size is restated here to keep the row the same height as the others. */
+.pycortex-row select {
+    background-color: #303030;
+    border: 1px solid #3c3c3c;
+    border-radius: 2px;
+    color: #2fa1d6;
+    font: 11px 'Lucida Grande', sans-serif;
+    padding: 1px 2px;
+    width: 196px;
+}
+
+.pycortex-row select:disabled {
+    color: #666;
+}
+
+/* "smoothing" overruns the 44px label column the paired number fields use. */
+.anim-interp-row label {
+    width: 64px;
+}
+
 .pycortex-buttons {
     text-align: center;
 }
