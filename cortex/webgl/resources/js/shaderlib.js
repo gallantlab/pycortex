@@ -391,8 +391,11 @@ var Shaderlib = (function() {
             "attribute vec4 auxdat;",
 
             "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
+                // The bump normal (.xyz) and the bump height (.w) share one
+                // attribute rather than taking two. The 2D vertex shader sits
+                // right at MAX_VERTEX_ATTRIBS, and splitting these pushed it
+                // over, so the program failed to link (gh-714).
+                "attribute vec4 flatBumpNorms;",
             "#endif",
             // "attribute float dropout;",
             
@@ -454,14 +457,14 @@ var Shaderlib = (function() {
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatBumpNorms.w * f_bumpyflat;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    "vNormal = normalMatrix * mix(norm, flatBumpNorms.xyz, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -756,12 +759,10 @@ var Shaderlib = (function() {
                 auxdat: { type: 'v4', value:null },
                 wmarea: { type: 'f', value:null },
                 pialarea: { type: 'f', value:null },
-                // flatBumpNorms: { type: 'v3', value:null },
-                // flatheight: { type: 'f', value:null },
+                // flatBumpNorms: { type: 'v4', value:null },
             };
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatBumpNorms = { type: 'v4', value:null };
             }
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
@@ -822,8 +823,11 @@ var Shaderlib = (function() {
             "attribute vec4 auxdat;",
 
             "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
+                // The bump normal (.xyz) and the bump height (.w) share one
+                // attribute rather than taking two. The 2D vertex shader sits
+                // right at MAX_VERTEX_ATTRIBS, and splitting these pushed it
+                // over, so the program failed to link (gh-714).
+                "attribute vec4 flatBumpNorms;",
             "#endif",
             // "attribute float dropout;",
             
@@ -881,14 +885,14 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatBumpNorms.w * f_bumpyflat;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    "vNormal = normalMatrix * mix(norm, flatBumpNorms.xyz, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -986,8 +990,7 @@ var Shaderlib = (function() {
             };
 
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatBumpNorms = { type: 'v4', value:null };
             }
 
             for (var i = 0; i < 4; i++)

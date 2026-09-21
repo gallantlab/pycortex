@@ -42,25 +42,18 @@ pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
 )
 
-# Vertex2D cannot be tested through the webgl path: its flatmap renders blank
-# (gh-714) and save_3d_views raises, so no reference can be generated. #679's
-# lighting refactor ported the HASFLAT bump-displacement block into the vertex
-# shader, which under headless/SwiftShader leaves that flatmap unrendered. The
-# mark is strict and on RuntimeError specifically, so a render that starts
-# succeeding does not quietly pass: it reaches the reference check, which fails
-# with a mismatched exception type and tells you to regenerate.
+# All six classes render through both paths. Vertex2D was xfailed here when this
+# suite landed: #679 had ported the HASFLAT bump-displacement block into the
+# vertex shader, and its two extra attributes put the 2D vertex program one over
+# MAX_VERTEX_ATTRIBS, so it failed to link and the flatmap came out blank
+# (gh-714). gh-695 packs the bump normal and height into a single vec4, which
+# brings the program back under the ceiling; the xfail is gone and the class
+# carries references like any other.
 DATAVIEW_NAMES = [
     "Volume",
     "Vertex",
     "Volume2D",
-    pytest.param(
-        "Vertex2D",
-        marks=pytest.mark.xfail(
-            raises=RuntimeError,
-            strict=True,
-            reason="gh-714: the Vertex2D flatmap shader fails to link",
-        ),
-    ),
+    "Vertex2D",
     "VolumeRGB",
     "VertexRGB",
 ]
@@ -653,9 +646,8 @@ def _render_and_check_dataview(
 
     # Fails rather than skips: wholesale absence -- an installed wheel, or a
     # clone that has not fetched LFS -- is caught at import, so a single gap in
-    # a populated store means either a render that cannot succeed (Vertex2D) or
-    # an incomplete regeneration. A skip here would also be swallowed by the
-    # xfail on Vertex2D, hiding the day its render starts working.
+    # a populated store means an incomplete regeneration. A skip here would hide
+    # that, and every class now renders through both paths.
     if not REGENERATE_REFERENCES:
         for prefix in ("quickflat", "webgl"):
             reason = _unusable_reference(

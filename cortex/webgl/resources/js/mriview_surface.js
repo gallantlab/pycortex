@@ -260,8 +260,22 @@ var mriview = (function(module) {
                     // this.flatoff = flatoff_geom;
 
                     // hemi.addAttribute('flatBumpNorms', flatoff_geom.attributes.normal);
-                    hemi.addAttribute('flatheight', flatheights);
-                    hemi.addAttribute('flatBumpNorms', module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets) );
+                    // Bump normal (xyz) and bump height (w) go into a single
+                    // vec4 rather than two attributes. Both are static
+                    // per-vertex geometry computed here, and the 2D vertex
+                    // shader has no attribute slot to spare -- see gh-714.
+                    var flatnorms = module.computeNormal(flat_offset_verts, hemi.attributes.index, hemi.offsets);
+                    var nverts = flatheights.array.length;
+                    var flatbump = new Float32Array(nverts * 4);
+                    for (var v = 0; v < nverts; v++) {
+                        flatbump[v*4]     = flatnorms.array[v*3];
+                        flatbump[v*4 + 1] = flatnorms.array[v*3 + 1];
+                        flatbump[v*4 + 2] = flatnorms.array[v*3 + 2];
+                        flatbump[v*4 + 3] = flatheights.array[v];
+                    }
+                    var flatbump_attr = new THREE.BufferAttribute(flatbump, 4);
+                    flatbump_attr.needsUpdate = true;
+                    hemi.addAttribute('flatBumpNorms', flatbump_attr);
                 } else {
                     // Fill these attributes so the shader doesn't choke, even though
                     // there's no flatmap
