@@ -42,13 +42,6 @@ pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
 )
 
-# All six classes render through both paths. Vertex2D was xfailed here when this
-# suite landed: #679 had ported the HASFLAT bump-displacement block into the
-# vertex shader, and its two extra attributes put the 2D vertex program one over
-# MAX_VERTEX_ATTRIBS, so it failed to link and the flatmap came out blank
-# (gh-714). gh-695 packs the bump normal and height into a single vec4, which
-# brings the program back under the ceiling; the xfail is gone and the class
-# carries references like any other.
 DATAVIEW_NAMES = [
     "Volume",
     "Vertex",
@@ -646,8 +639,7 @@ def _render_and_check_dataview(
 
     # Fails rather than skips: wholesale absence -- an installed wheel, or a
     # clone that has not fetched LFS -- is caught at import, so a single gap in
-    # a populated store means an incomplete regeneration. A skip here would hide
-    # that, and every class now renders through both paths.
+    # a populated store means an incomplete regeneration.
     if not REGENERATE_REFERENCES:
         for prefix in ("quickflat", "webgl"):
             reason = _unusable_reference(

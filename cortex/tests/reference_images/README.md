@@ -6,22 +6,13 @@ Stored renders that `cortex/tests/test_visual_regression.py` asserts against.
 
 | directory | images | contents |
 | --- | --- | --- |
-| `alpha_dataviews/` | 12 | the six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), both renderers |
+| `alpha_dataviews/` | 12 | all six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), both renderers |
 | `nan_dataviews/` | 12 | the same six, with NaNs over roughly half the primary data channel |
 | `nan_alpha_dataviews/` | 4 | `VolumeRGB`/`VertexRGB` only, with the NaNs in the `alpha=` map |
 | `nonflat_views/` | 4 | `Volume`/`Vertex` on the inflated and fiducial surfaces at `lateral_pivot`, webgl only |
 
 Filenames are `quickflat_<Class>` and `webgl_<Class>`, except `nonflat_views/`,
 which uses `webgl_<surface>_<angle>_<Class>`.
-
-`Vertex2D` had no images when this suite landed: #679 ported the HASFLAT
-bump-displacement block into the vertex shader, whose two extra attributes put
-the 2D vertex program one over `MAX_VERTEX_ATTRIBS`. It failed to link, so the
-flatmap rendered blank and `save_3d_views` raised (gh-714), and the two
-`Vertex2D` tests were strictly xfailed on that `RuntimeError`. gh-695 packs the
-bump normal and height into one `vec4`, which puts the program back under the
-ceiling; `Vertex2D` now renders through both paths and carries references like
-every other class.
 
 ## Render settings
 
@@ -55,16 +46,17 @@ and matplotlib leaves white where the browser leaves black.
 
 ## Provenance
 
-Generated from the demo subject `S1` in the filestore bundled with pycortex,
-which is pinned by `cortex/tests/conftest.py`.
+Generated on `main` (`3779f7ca`), from the demo subject `S1` in the filestore
+bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
+`Vertex2D` images were added later, once gh-714 was fixed, with the same
+pinned chromium/playwright/matplotlib versions below.
 
-> **These references need regenerating as part of gh-695.** The stored set was
-> generated on `main` (`3779f7ca`), before gh-695 unified NaN and alpha
-> handling. That change moves every flatmap render — quickflat now defaults to
-> `nanmean=True`, and both renderers average RGBA in premultiplied space — and
-> adds the four `Vertex2D` renders the suite could not produce before. Only
-> `nonflat_views/` is unaffected: it renders `Volume`/`Vertex` with neither
-> NaNs nor alpha.
+> **The flatmap references need regenerating as part of gh-695.** They were
+> generated before it unified NaN and alpha handling, and that change moves
+> every flatmap render: quickflat now defaults to `nanmean=True`, and both
+> renderers average RGBA in premultiplied space. `nonflat_views/` is the one
+> directory unaffected -- it renders `Volume`/`Vertex` with neither NaNs nor
+> alpha.
 
 | | |
 | --- | --- |
@@ -81,8 +73,7 @@ Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 ## Format
 
 Lossless WebP (`method=6`, `quality=100`, `exact=True`): bit-exact after decode,
-and roughly 59% the size of optimized PNG (1229 KiB versus 2061 KiB, measured
-over the 28 images stored before `Vertex2D` was added).
+and roughly 59% the size of optimized PNG (measured on `3779f7ca`).
 
 ## Storage
 
