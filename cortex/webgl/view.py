@@ -28,6 +28,7 @@ from ..database import db
 from . import serve
 from .data import Package
 from .FallbackLoader import FallbackLoader
+from .interpolation import Interpolation, build_channels, evaluate
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
@@ -1143,7 +1144,43 @@ def show(
             frames of an animation can be re-rendered, or for more control over the
             animation process in general.
 
+            Parameters
+            ----------
+            keyframes : list of dicts
+                Each holds a 'time' in seconds plus view properties, in the form
+                ``_capture_view`` returns. A keyframe may also carry an
+                'interpolation' key naming its own
+                :class:`~cortex.webgl.interpolation.Interpolation` mode, which
+                is how the browser's animation panel stores per-keyframe
+                smoothing.
+            fps : int, optional
+                Frame rate the times are quantized to. Default 30.
+            interpolation : str, optional
+                Either one of the three whole-animation easings, 'linear',
+                'smoothstep' or 'smootherstep', or the name of one of the eight
+                per-keyframe modes in
+                :class:`~cortex.webgl.interpolation.Interpolation` -- in which
+                case it supplies the mode for keyframes that do not name one of
+                their own. Default 'linear'.
+
+            Returns
+            -------
+            list of dicts
+                One view dict per frame of the animation.
+
+            Notes
+            -----
+            The per-keyframe modes interpolate each property across the whole
+            keyframe list rather than between neighbouring pairs, because the
+            tangent at a keyframe depends on the keyframes on both sides of it.
+            The arithmetic is shared with the browser through
+            ``cortex/webgl/interpolation.py`` and its javascript twin, so an
+            animation built in the viewer renders the same way here.
             """
+            if interpolation not in mixes or any(
+                    'interpolation' in frame for frame in keyframes):
+                return self._get_smoothed_anim_seq(keyframes, fps, interpolation)
+
             # Misc. setup
             fr = 0
             a = np.array
@@ -1185,7 +1222,74 @@ def show(
                     allframes.append(frame)
             return allframes
 
-        def make_movie_views(self, animation, filename="brainmovie%07d.png", 
+        def _get_smoothed_anim_seq(self, keyframes, fps=30,
+                                   interpolation='Bezier'):
+            """``_get_anim_seq`` for the per-keyframe interpolation modes.
+
+            Kept separate from the pairwise path above rather than replacing
+            it: 'smoothstep' and 'smootherstep' ease a whole segment and have
+            no per-keyframe equivalent, and leaving that code untouched is the
+            cheapest guarantee that existing animations still render frame for
+            frame as they did.
+
+            The frame times are generated exactly as the pairwise path
+            generates them, so the two produce the same number of frames for
+            the same keyframes; only the values differ.
+
+            One value differs in kind rather than degree: 'camera.azimuth' is
+            unwrapped before it is interpolated, so a spin takes the short way
+            around and 350 -> 10 degrees crosses zero instead of running all
+            the way back. That matches the viewer, whose own playback has always
+            done this (Viewer._animInterp in resources/js/mriview.js), and it is
+            what makes an animation laid out in the panel render the same way
+            here. The pairwise path is left alone and still runs the long way.
+            """
+            if not keyframes:
+                return []
+            if interpolation in mixes:
+                # 'linear' reaches here when a keyframe names its own mode. The
+                # two spellings mean the same curve, so map it across; the other
+                # two legacy easings have no per-keyframe form and are rejected.
+                if interpolation != 'linear':
+                    raise ValueError(
+                        "interpolation=%r eases a whole segment and cannot be "
+                        "combined with per-keyframe modes; use one of %s"
+                        % (interpolation,
+                           ", ".join(m.value for m in Interpolation)))
+                interpolation = Interpolation.Linear
+            try:
+                default_mode = Interpolation(interpolation)
+            except ValueError:
+                raise ValueError(
+                    "Unknown interpolation %r; expected one of %s, or one of "
+                    "the whole-animation easings %s"
+                    % (interpolation,
+                       ", ".join(m.value for m in Interpolation),
+                       ", ".join(sorted(mixes)))) from None
+
+            # Quantize to the frame grid on copies. The pairwise path rewrites
+            # the caller's dicts in place; there is no reason to inherit that.
+            fs = 1. / fps
+            frames = [dict(frame) for frame in keyframes]
+            for frame in frames:
+                frame['time'] = np.round(frame['time'] / fs) * fs
+            frames.sort(key=lambda frame: frame['time'])
+
+            channels = build_channels(frames, time_key='time',
+                                      default_mode=default_mode)
+
+            allframes = []
+            for start, end in zip(frames[:-1], frames[1:]):
+                t0, t1 = start['time'], end['time']
+                use_endpoint = end is frames[-1]
+                nvalues = np.round((t1 - t0) / fs).astype(int)
+                if use_endpoint:
+                    nvalues += 1
+                for t in np.linspace(0, 1, nvalues, endpoint=use_endpoint):
+                    allframes.append(evaluate(channels, t0 + t * (t1 - t0)))
+            return allframes
+
+        def make_movie_views(self, animation, filename="brainmovie%07d.png",
             offset=0, fps=30, size=(1920, 1080), alpha=1, frame_sleep=0.05,
             frame_start=0, interpolation="linear"):
             """Renders movie frames for animation of mesh movement
@@ -1218,14 +1322,29 @@ def show(
                 Frame rate of resultant movie
             size : tuple (x, y)
                 Size (in pixels) of resulting movie
-            interpolation : {"linear", "smoothstep", "smootherstep"}
-                Interpolation method for values between keyframes.
+            interpolation : str
+                How values between keyframes are found. Either one of the
+                whole-animation easings "linear", "smoothstep" or
+                "smootherstep", which blend each pair of neighbouring
+                keyframes, or one of the per-keyframe modes named by
+                :class:`~cortex.webgl.interpolation.Interpolation` -- "Bezier",
+                "CubicHermite", "Linear", "BezierInHoldOut",
+                "CubicHermiteInHoldOut", "LinearInHoldOut",
+                "LinearInBezierOut", "LinearInCubicHermiteOut" -- which fit a
+                curve through the whole keyframe list and so carry velocity
+                smoothly through the interior keyframes. Default "linear".
 
             Notes
             -----
             Make sure that all values that will be modified over the course
             of the animation are initialized (have some starting value) in the first
             frame.
+
+            An individual keyframe may override `interpolation` by carrying its
+            own "interpolation" key, which is how animations built in the
+            viewer's animation panel store per-keyframe smoothing. The two
+            implementations share their arithmetic, so such an animation renders
+            here exactly as it played in the browser.
 
             Example
             -------

@@ -313,6 +313,43 @@ Animations
 
 The **create animation** button opens a panel for building an animation out of keyframes. Set the current frame with the slider (frames that already hold a keyframe are marked with a yellow dot), pose the brain, and press **add keyframe**; the values in between are interpolated. **play animation** previews the result at the chosen frame rate, and **render animation** writes one PNG per frame.
 
+Smoothing
+^^^^^^^^^
+
+The **smoothing** dropdown sets how the curve through the keyframes is shaped. Each keyframe carries its own setting, which describes both how the animation arrives at it and how it leaves, so the motion between two keyframes depends on the pair at either end. The dropdown always shows the setting of the keyframe under the playhead; when there is no keyframe there it shows the one new keyframes will be given.
+
+Eight options are available:
+
+=========================  ====================================================
+Option                     Behaviour
+=========================  ====================================================
+bezier (smooth)            Default. A cubic Bezier with automatically placed
+                           control points. Velocity carries smoothly through
+                           the keyframe and the brain never swings past the
+                           pose you set.
+cubic hermite (smooth)     As above, using the tangents directly rather than
+                           control points. Very nearly the same curve.
+linear                     Straight lines between keyframes, which is what the
+                           panel did before smoothing was added. The motion
+                           changes direction abruptly at each keyframe.
+bezier in, hold            Arrive smoothly, then freeze on this pose until the
+                           next keyframe.
+hermite in, hold           As above, arriving along a Hermite tangent.
+linear in, hold            Arrive in a straight line, then freeze.
+linear in, bezier out      Arrive in a straight line and leave along it, easing
+                           out with a Bezier. May swing past the next pose.
+linear in, hermite out     As above with a Hermite. May swing past the next
+                           pose.
+=========================  ====================================================
+
+The two "smooth" options and the three holds stay within the poses you set. The two "linear in" options carry the incoming speed out of the keyframe and so can overshoot, which is useful for a sense of momentum and unhelpful if you need the camera to stop exactly where you put it.
+
+The same eight modes are available when rendering from python, either for a whole animation::
+
+    viewer.make_movie_views(animation, interpolation="Bezier")
+
+or per keyframe, by giving a keyframe its own ``interpolation`` key — which is what the panel does. The browser and ``cortex.webgl.interpolation`` share their arithmetic, so a movie rendered from python matches the preview played in the viewer. The older whole-animation easings ``"linear"``, ``"smoothstep"`` and ``"smootherstep"`` still work, but ease each pair of keyframes separately and cannot be combined with per-keyframe modes.
+
 Rendering needs a viewer started from python, since the frames are written by the server rather than by the browser. The folder named in the panel is interpreted relative to the ``movie_dir`` given to ``cortex.webgl.show`` (the current working directory by default), and the server refuses to write outside it::
 
     viewer = cortex.webgl.show(volume, movie_dir="/path/to/movies")

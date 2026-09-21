@@ -1351,3 +1351,197 @@ def test_static_viewer_has_views_but_no_render_target(tmp_path):
     # No python behind a static viewer, so the animation panel must not offer
     # to render frames to disk.
     assert "movie_post" not in html
+
+
+# ---------------------------------------------------------------------------
+# Group 12: Smoothed animation trajectories
+# ---------------------------------------------------------------------------
+
+# Keyframes exercising every kind of channel at once: an angle that crosses the
+# 0/360 wrap, a plain scalar, a vector, a discrete property, a boolean and a
+# string -- and a different interpolation mode on each keyframe.
+SMOOTHING_KEYFRAMES = [
+    {"frame": 0, "interpolation": "Bezier",
+     "camera.azimuth": 300.0, "camera.altitude": 10.0,
+     "camera.target": [0.0, 0.0, 0.0], "surface.S1.layers": 1,
+     "surface.S1.dither": False, "surface.S1.sampler": "nearest"},
+    {"frame": 10, "interpolation": "CubicHermite",
+     "camera.azimuth": 40.0, "camera.altitude": 90.0,
+     "camera.target": [10.0, 20.0, 30.0], "surface.S1.layers": 4,
+     "surface.S1.dither": True, "surface.S1.sampler": "trilinear"},
+    {"frame": 20, "interpolation": "BezierInHoldOut",
+     "camera.azimuth": 140.0, "camera.altitude": 30.0,
+     "camera.target": [5.0, 5.0, 5.0], "surface.S1.layers": 2,
+     "surface.S1.dither": False, "surface.S1.sampler": "nearest"},
+    {"frame": 30, "interpolation": "Linear",
+     "camera.azimuth": 200.0, "camera.altitude": 55.0,
+     "camera.target": [1.0, 2.0, 3.0], "surface.S1.layers": 3,
+     "surface.S1.dither": True, "surface.S1.sampler": "trilinear"},
+]
+
+
+def _assert_views_match(expected, actual, tol=1e-6):
+    """Compare two view dicts property by property."""
+    assert set(expected) == set(actual), set(expected) ^ set(actual)
+    for prop, want in expected.items():
+        got = actual[prop]
+        if isinstance(want, list):
+            assert got == pytest.approx(want, abs=tol), prop
+        elif isinstance(want, bool) or not isinstance(want, (int, float)):
+            assert got == want, prop
+        else:
+            assert got == pytest.approx(want, abs=tol), prop
+
+
+def test_interpolation_js_is_loaded_with_all_eight_modes():
+    """The browser knows the same modes python does."""
+    from cortex.webgl.interpolation import Interpolation
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        modes = _js_attrs(handle, "window.jsplot.interpolation.Interpolation")
+        assert set(modes) == {mode.value for mode in Interpolation}
+        assert _js_value(handle, "window.jsplot.interpolation.DEFAULT_MODE") == \
+            Interpolation.Bezier.value
+
+
+def test_browser_and_python_interpolate_identically():
+    """The whole point of keeping two implementations: they must agree.
+
+    An animation built in the panel is played back in javascript but rendered
+    to disk through _get_anim_seq in python, so any divergence would show up as
+    a movie that does not match its preview.
+    """
+    from cortex.webgl.interpolation import build_channels, evaluate
+
+    frames = [i * 0.5 for i in range(61)]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        from_js = handle.send(method="run", params=[
+            "window.jsplot.viewtools.viewsAt", [SMOOTHING_KEYFRAMES, frames]])
+        assert isinstance(from_js, list) and len(from_js) == len(frames), from_js
+
+        channels = build_channels(SMOOTHING_KEYFRAMES, time_key="frame")
+        for frame, js_view in zip(frames, from_js):
+            _assert_views_match(evaluate(channels, frame), js_view)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_animation_panel_defaults_to_bezier():
+    """Opening the panel sets up per-keyframe smoothing state."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        # What the "create animation" button calls. The key has a space in it,
+        # which the dotted-path walker in python_interface.js handles fine.
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+
+        state = _js_attrs(handle, "window.viewer._anim")
+        assert "mode" in state, state
+        assert _js_value(handle, "window.viewer._anim.mode") == "Bezier"
+
+
+def test_get_anim_seq_linear_path_is_unchanged():
+    """The pairwise easings still produce exactly what they always did."""
+    keyframes = [
+        {"time": 0.0, "camera.azimuth": 10.0, "camera.altitude": 20.0},
+        {"time": 1.0, "camera.azimuth": 90.0, "camera.altitude": 60.0},
+        {"time": 2.0, "camera.azimuth": 170.0, "camera.altitude": 40.0},
+    ]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        seq = handle._get_anim_seq([dict(k) for k in keyframes], fps=30,
+                                   interpolation="linear")
+        # 30 frames per second over two seconds, plus the closing frame.
+        assert len(seq) == 61
+        assert "time" not in seq[0]
+        assert seq[0]["camera.azimuth"] == pytest.approx(10.0)
+        assert seq[30]["camera.azimuth"] == pytest.approx(90.0)
+        assert seq[-1]["camera.azimuth"] == pytest.approx(170.0)
+        # Straight lines between the keyframes: the quarter point is halfway
+        # from the first keyframe to the second.
+        assert seq[15]["camera.azimuth"] == pytest.approx(50.0)
+        assert seq[15]["camera.altitude"] == pytest.approx(40.0)
+
+
+def test_get_anim_seq_all_linear_modes_reproduce_the_legacy_path():
+    """'linear' and a list of Linear keyframes are the same curve.
+
+    This ties the two code paths together: whatever the smoothed path does to
+    frame times and property handling, it has to land on the old answer when
+    every keyframe is linear.
+    """
+    keyframes = [
+        {"time": 0.0, "camera.altitude": 20.0, "camera.target": [0.0, 0.0, 0.0]},
+        {"time": 0.7, "camera.altitude": 60.0, "camera.target": [3.0, 6.0, 9.0]},
+        {"time": 2.0, "camera.altitude": 40.0, "camera.target": [1.0, 1.0, 1.0]},
+    ]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        legacy = handle._get_anim_seq([dict(k) for k in keyframes], fps=30,
+                                      interpolation="linear")
+        smoothed = handle._get_anim_seq([dict(k) for k in keyframes], fps=30,
+                                        interpolation="Linear")
+        assert len(legacy) == len(smoothed)
+        for want, got in zip(legacy, smoothed):
+            _assert_views_match(want, got)
+
+
+def test_get_anim_seq_honours_per_keyframe_modes():
+    """A keyframe's own mode takes over, and selects the smoothed path."""
+    keyframes = [
+        {"time": 0.0, "camera.altitude": 0.0,
+         "interpolation": "BezierInHoldOut"},
+        {"time": 1.0, "camera.altitude": 40.0, "interpolation": "Linear"},
+        {"time": 2.0, "camera.altitude": 80.0, "interpolation": "Linear"},
+    ]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        # interpolation defaults to 'linear', but the keyframes override it.
+        seq = handle._get_anim_seq([dict(k) for k in keyframes], fps=30)
+        assert len(seq) == 61
+        # Held across the first second...
+        assert seq[15]["camera.altitude"] == pytest.approx(0.0)
+        assert seq[29]["camera.altitude"] == pytest.approx(0.0)
+        # ... then linear to the end.
+        assert seq[30]["camera.altitude"] == pytest.approx(40.0)
+        assert seq[45]["camera.altitude"] == pytest.approx(60.0)
+        assert seq[-1]["camera.altitude"] == pytest.approx(80.0)
+        assert "interpolation" not in seq[0]
+
+
+def test_get_anim_seq_rejects_mixing_an_easing_with_keyframe_modes():
+    """smoothstep eases a segment and has no per-keyframe equivalent."""
+    keyframes = [
+        {"time": 0.0, "camera.altitude": 0.0, "interpolation": "Bezier"},
+        {"time": 1.0, "camera.altitude": 40.0, "interpolation": "Bezier"},
+    ]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        with pytest.raises(ValueError, match="whole segment"):
+            handle._get_anim_seq([dict(k) for k in keyframes], fps=30,
+                                 interpolation="smoothstep")
+        with pytest.raises(ValueError, match="Unknown interpolation"):
+            handle._get_anim_seq([dict(k) for k in keyframes], fps=30,
+                                 interpolation="wobble")
+
+
+def test_static_viewer_ships_the_interpolation_module(tmp_path):
+    """Smoothing is pure browser-side, so static exports get it too.
+
+    Only the script tag is checked here: make_static does not copy the
+    resources tree, it is either inlined by htmlembed or served alongside.
+    """
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    outpath = str(tmp_path / "static")
+    cortex.webgl.make_static(outpath, vol, html_embed=False, copy_ctmfiles=False)
+
+    with open(os.path.join(outpath, "index.html")) as fp:
+        html = fp.read()
+    assert "interpolation.js" in html
+    # It has to come before viewtools.js, which uses it at panel-open time.
+    assert html.index("interpolation.js") < html.index("viewtools.js")

@@ -139,8 +139,9 @@ var jsplot = (function (module) {
                 delete params[key];
             }
         }
-        delete params['frame'];   // animation bookkeeping, not a menu path
-        delete params['time'];    // written by _capture_view(frame_time=...)
+        delete params['frame'];         // animation bookkeeping, not a menu path
+        delete params['interpolation']; // ditto: the keyframe's smoothing mode
+        delete params['time'];          // written by _capture_view(frame_time=...)
 
         var subjects = vt.subjects(viewer);
         var unfold = 'surface.' + SUBJ + '.unfold';
@@ -216,6 +217,176 @@ var jsplot = (function (module) {
     };
 
     // ------------------------------------------------------------------
+    // Smoothed interpolation across a whole keyframe list
+    // ------------------------------------------------------------------
+    //
+    // vt.interpolate above blends one pair of views, which is all linear
+    // interpolation ever needs. The smooth modes need more: a tangent at a
+    // keyframe depends on the keyframes on *both* sides of it, so the curve
+    // cannot be built from a bracketing pair alone.
+    //
+    // buildInterpolators therefore takes the keyframe list apart into
+    // independent one-dimensional "channels" -- one per property, or one per
+    // component for the array-valued properties -- and hands each to an
+    // Interpolator1D from resources/js/interpolation.js. evaluate() puts a view
+    // dict back together from them.
+
+    // camera.azimuth is an angle, so a spline over it needs a sequence that
+    // does not jump by 360 at the wrap. Re-express each value as the previous
+    // one plus the shortest signed step to it; the caller wraps the result back
+    // into [0, 360).
+    //
+    // The step reproduces Viewer._animInterp exactly, tie-break included: half
+    // a turn is equally short either way, and _animInterp resolves it by going
+    // *against* the sign of the raw difference (it adds 360 to the end value
+    // when travelling backwards and subtracts it when travelling forwards). A
+    // symmetric "shortest angle" formula picks the other direction for one of
+    // the two cases, which would reverse a 180-degree spin that used to work.
+    function shortestStep(from, to) {
+        var step = (to - from) % 360;   // truncating remainder: keeps the sign
+        if (step >= 180)
+            return step - 360;
+        if (step <= -180)
+            return step + 360;
+        return step;
+    }
+
+    function unwrapAngles(values) {
+        var out = [values[0]];
+        for (var i = 1; i < values.length; i++)
+            out.push(out[i - 1] + shortestStep(values[i - 1], values[i]));
+        return out;
+    }
+
+    function wrapAngle(value) {
+        return ((value % 360) + 360) % 360;
+    }
+
+    // Properties that cannot be blended hold the value of the most recent
+    // keyframe at or before the requested frame -- the same rule vt.interpolate
+    // applies to the earlier of its pair.
+    function stepChannel(frames, prop) {
+        return {at: function(f) {
+            var value = frames[0][prop];
+            for (var i = 0; i < frames.length; i++) {
+                if (frames[i].frame > f)
+                    break;
+                if (frames[i][prop] !== undefined)
+                    value = frames[i][prop];
+            }
+            return value;
+        }};
+    }
+
+    function modesOf(frames) {
+        var modes = [];
+        for (var i = 0; i < frames.length; i++)
+            modes.push(frames[i].interpolation);
+        return modes;
+    }
+
+    // One Interpolator1D over `values`, wrapping the result if it is an angle.
+    function smoothChannel(frames, values, isAngle) {
+        var ip = jsplot.interpolation;
+        var times = [], i;
+        for (i = 0; i < frames.length; i++)
+            times.push(frames[i].frame);
+
+        var interp = ip.fromValues(times, isAngle ? unwrapAngles(values) : values,
+                                   ip.DEFAULT_MODE, modesOf(frames));
+        return {at: function(f) {
+            var value = interp.at(f);
+            return isAngle ? wrapAngle(value) : value;
+        }};
+    }
+
+    function isBlendable(value) {
+        return typeof value === 'number' && isFinite(value);
+    }
+
+    // Decide how one property should be animated, and build the channel for it.
+    function makeChannel(frames, prop) {
+        var leaf = prop.split('.').pop();
+        var first = frames[0][prop], i, j;
+
+        // Discrete or non-numeric in the first keyframe: nothing to blend.
+        if (first === null || first === undefined || STEP_PROPS[leaf] ||
+                typeof first === 'boolean' || typeof first === 'string')
+            return stepChannel(frames, prop);
+
+        if (first instanceof Array) {
+            // Every keyframe must agree on the length, and every element must
+            // be a finite number, or the whole property steps.
+            for (i = 0; i < frames.length; i++) {
+                var value = frames[i][prop];
+                if (!(value instanceof Array) || value.length !== first.length)
+                    return stepChannel(frames, prop);
+                for (j = 0; j < value.length; j++)
+                    if (!isBlendable(value[j]))
+                        return stepChannel(frames, prop);
+            }
+
+            var components = [];
+            for (j = 0; j < first.length; j++) {
+                var column = [];
+                for (i = 0; i < frames.length; i++)
+                    column.push(frames[i][prop][j]);
+                components.push(smoothChannel(frames, column, false));
+            }
+            return {at: function(f) {
+                var out = [];
+                for (var k = 0; k < components.length; k++)
+                    out.push(components[k].at(f));
+                return out;
+            }};
+        }
+
+        for (i = 0; i < frames.length; i++)
+            if (!isBlendable(frames[i][prop]))
+                return stepChannel(frames, prop);
+
+        return smoothChannel(frames, (function() {
+            var column = [];
+            for (var k = 0; k < frames.length; k++)
+                column.push(frames[k][prop]);
+            return column;
+        }()), prop === 'camera.azimuth');
+    }
+
+    // Take a keyframe list apart into per-property channels. Properties absent
+    // from the first keyframe are ignored, matching vt.interpolate's rule of
+    // iterating the earlier view.
+    vt.buildInterpolators = function(keyframes) {
+        var frames = keyframes.slice().sort(function(a, b) {
+            return a.frame - b.frame;
+        });
+        var channels = {};
+        for (var prop in frames[0]) {
+            if (prop === 'frame' || prop === 'interpolation')
+                continue;
+            channels[prop] = makeChannel(frames, prop);
+        }
+        return {frames: frames, channels: channels};
+    };
+
+    // The view dict at (possibly fractional) frame `f`.
+    vt.evaluate = function(built, f) {
+        var view = {};
+        for (var prop in built.channels)
+            view[prop] = built.channels[prop].at(f);
+        return view;
+    };
+
+    // A whole animation in one call: the counterpart of JSMixer._get_anim_seq,
+    // useful for checking that the two implementations still agree.
+    vt.viewsAt = function(keyframes, frames) {
+        var built = vt.buildInterpolators(keyframes), views = [];
+        for (var i = 0; i < frames.length; i++)
+            views.push(vt.evaluate(built, frames[i]));
+        return views;
+    };
+
+    // ------------------------------------------------------------------
     // Small floating panels
     // ------------------------------------------------------------------
 
@@ -265,6 +436,10 @@ var jsplot = (function (module) {
         "  <button class='anim-add'>add keyframe</button>",
         "  <button class='anim-clear'>clear keyframe</button>",
         "</div>",
+        "<div class='pycortex-row anim-interp-row'>",
+        "  <label>smoothing</label>",
+        "  <select id='anim-interp' class='anim-interp'></select>",
+        "</div>",
         "<div class='pycortex-row pycortex-buttons'>",
         "  <button class='anim-play'>play animation</button>",
         "  <button class='anim-render'>render animation</button>",
@@ -286,13 +461,42 @@ var jsplot = (function (module) {
         "<div class='pycortex-status anim-status'></div>",
     ].join("\n");
 
+    // resources/js/interpolation.js is loaded from template.html, but a user
+    // template dir can shadow that template (see FallbackLoader), so an older
+    // copy may not pull it in. Everywhere the smoothing needs it we fall back
+    // to the previous behaviour -- linear between the bracketing pair -- rather
+    // than throwing on every frame.
+    function hasInterpolation() {
+        return typeof jsplot !== "undefined" &&
+               jsplot.interpolation !== undefined;
+    }
+
+    function defaultMode() {
+        return hasInterpolation() ? jsplot.interpolation.DEFAULT_MODE : "Linear";
+    }
+
+    function modeLabel(mode) {
+        // A keyframe built by hand may carry no mode; the interpolator treats
+        // that as the default, so label it that way too.
+        if (!mode)
+            mode = defaultMode();
+        if (!hasInterpolation())
+            return mode;
+        return jsplot.interpolation.MODE_LABELS[mode] || mode;
+    }
+
     function AnimationPanel(viewer) {
         this.viewer = viewer;
-        viewer._anim = {frame: 0, first: 0, last: 30, fps: 30, keyframes: []};
+        // `mode` is the smoothing applied to keyframes added from here on; each
+        // keyframe carries its own copy in an "interpolation" key.
+        viewer._anim = {frame: 0, first: 0, last: 30, fps: 30, keyframes: [],
+                        mode: defaultMode()};
         this.state = viewer._anim;
         this.playing = false;
         this.rendering = false;
         this._applied = undefined;
+        // Channel interpolators, rebuilt lazily whenever the keyframes change.
+        this._interp = null;
 
         this.panel = makePanel("animpanel", "Animation", ANIM_HTML,
                                this.close.bind(this));
@@ -343,6 +547,27 @@ var jsplot = (function (module) {
         this._el("anim-clear").click(this.clearKeyframe.bind(this));
         this._el("anim-play").click(this.playPause.bind(this));
 
+        var select = this._el("anim-interp");
+        if (hasInterpolation()) {
+            var order = jsplot.interpolation.MODE_ORDER;
+            for (var i = 0; i < order.length; i++)
+                $("<option></option>").attr("value", order[i])
+                                      .text(modeLabel(order[i]))
+                                      .appendTo(select);
+            select.val(st.mode);
+            select.on("change", function() { self.setMode(this.value); });
+        } else {
+            select.prop("disabled", true)
+                  .attr("title", "resources/js/interpolation.js is not loaded");
+        }
+        // An id is enough to keep the viewer's single-letter shortcuts off an
+        // INPUT, but the guard in jsplot.Menu._add tests for INPUT only, and a
+        // focused SELECT still gets keypress events as the user types ahead.
+        // Without this, typing "b" to reach "bezier" would fold the brain.
+        select.on("keypress keydown keyup", function(event) {
+            event.stopPropagation();
+        });
+
         var cfg = (typeof viewopts !== "undefined") ? viewopts.movie_post : undefined;
         var render = this._el("anim-render");
         if (cfg === undefined) {
@@ -383,7 +608,51 @@ var jsplot = (function (module) {
         this._el("anim-fps").val(st.fps);
         this._el("anim-frame").val(Math.round(st.frame)).attr({min: st.first, max: st.last});
         this._el("anim-slider").attr({min: st.first, max: st.last}).val(st.frame);
+
+        // The dropdown shows the mode that "add keyframe" would apply here:
+        // the existing keyframe's own mode when there is one, otherwise the
+        // mode chosen for new keyframes.
+        if (hasInterpolation()) {
+            var here = this.keyframeAt(Math.round(st.frame));
+            this._el("anim-interp").val(here ? here.interpolation : st.mode);
+        }
         this.drawTicks();
+    };
+
+    // The keyframe laid down at exactly `frame`, or null.
+    AnimationPanel.prototype.keyframeAt = function(frame) {
+        var kfs = this.state.keyframes;
+        for (var i = 0; i < kfs.length; i++)
+            if (kfs[i].frame === frame)
+                return kfs[i];
+        return null;
+    };
+
+    // The keyframes changed, so the channel interpolators and the record of
+    // what is currently applied are both out of date.
+    AnimationPanel.prototype.invalidate = function() {
+        this._interp = null;
+        this._applied = undefined;
+        this.drawTicks();
+    };
+
+    // Set the smoothing mode: on the keyframe under the playhead if there is
+    // one, and always as the mode new keyframes will be created with.
+    AnimationPanel.prototype.setMode = function(mode) {
+        if (!hasInterpolation() || !jsplot.interpolation.isValidMode(mode))
+            return;
+        var st = this.state;
+        st.mode = mode;
+
+        var here = this.keyframeAt(Math.round(st.frame));
+        if (here !== null) {
+            here.interpolation = mode;
+            this.invalidate();
+            this.setFrame(st.frame);
+            this.status("Keyframe " + here.frame + ": " + modeLabel(mode));
+        } else {
+            this.status("New keyframes will use " + modeLabel(mode));
+        }
     };
 
     // One yellow dot per keyframe, positioned along the slider. Redrawn from
@@ -401,7 +670,8 @@ var jsplot = (function (module) {
             var pct = 100 * (frame - st.first) / span;
             $("<div class='keyframe-dot'></div>")
                 .css("left", pct + "%")
-                .attr("title", "keyframe at frame " + frame)
+                .attr("title", "keyframe at frame " + frame + " (" +
+                               modeLabel(st.keyframes[i].interpolation) + ")")
                 .appendTo(ticks);
         }
     };
@@ -413,10 +683,28 @@ var jsplot = (function (module) {
     };
 
     // The interpolated view at (possibly fractional) frame `f`.
+    //
+    // Every property is carried by its own interpolator spanning the whole
+    // keyframe list, because the tangent at a keyframe depends on the ones on
+    // either side of it -- a bracketing pair is not enough to smooth. The
+    // channels are rebuilt only when the keyframes change; see invalidate().
     AnimationPanel.prototype.viewAt = function(f) {
-        var kfs = this.sorted();
+        var kfs = this.state.keyframes;
         if (kfs.length === 0)
             return null;
+
+        if (!hasInterpolation())
+            return this._viewAtLinear(f);
+
+        if (this._interp === null)
+            this._interp = vt.buildInterpolators(kfs);
+        return vt.evaluate(this._interp, f);
+    };
+
+    // The pre-smoothing path, kept for templates that do not load
+    // resources/js/interpolation.js.
+    AnimationPanel.prototype._viewAtLinear = function(f) {
+        var kfs = this.sorted();
         if (f <= kfs[0].frame)
             return kfs[0];
         if (f >= kfs[kfs.length - 1].frame)
@@ -450,21 +738,28 @@ var jsplot = (function (module) {
         var frame = Math.round(st.frame);
         var view = vt.captureView(this.viewer);
         view.frame = frame;
+        // The dropdown is the source of truth: sync() has already pointed it at
+        // the mode of any keyframe sitting here, so re-adding over one keeps
+        // that keyframe's smoothing instead of silently resetting it.
+        var chosen = this._el("anim-interp").val();
+        view.interpolation = (hasInterpolation() &&
+                              jsplot.interpolation.isValidMode(chosen)) ?
+            chosen : st.mode;
 
         for (var i = 0; i < st.keyframes.length; i++) {
             if (st.keyframes[i].frame === frame) {
                 st.keyframes[i] = view;
-                this._applied = undefined;
-                this.drawTicks();
-                this.status("Replaced keyframe at frame " + frame);
+                this.invalidate();
+                this.status("Replaced keyframe at frame " + frame +
+                            " (" + modeLabel(view.interpolation) + ")");
                 return;
             }
         }
         st.keyframes.push(view);
-        this._applied = undefined;
-        this.drawTicks();
-        this.status("Added keyframe at frame " + frame +
-                    " (" + st.keyframes.length + " total)");
+        this.invalidate();
+        this.status("Added keyframe at frame " + frame + " (" +
+                    modeLabel(view.interpolation) + ", " +
+                    st.keyframes.length + " total)");
     };
 
     AnimationPanel.prototype.clearKeyframe = function() {
@@ -473,8 +768,7 @@ var jsplot = (function (module) {
         for (var i = 0; i < st.keyframes.length; i++) {
             if (st.keyframes[i].frame === frame) {
                 st.keyframes.splice(i, 1);
-                this._applied = undefined;
-                this.drawTicks();
+                this.invalidate();
                 this.status("Removed keyframe at frame " + frame);
                 return;
             }
