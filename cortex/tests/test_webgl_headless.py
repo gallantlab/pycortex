@@ -902,8 +902,6 @@ def test_addData_vertex_data(tmp_path):
 
         _assert_no_browser_failures(handle)
 
-<<<<<<< HEAD
-=======
 
 # ---------------------------------------------------------------------------
 # Group 10: Manual visual A/B comparison across all alpha-bearing dataviews
@@ -1112,7 +1110,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Group 10: Saved views and the animation GUI
+# Group 11: Saved views and the animation GUI
 # ---------------------------------------------------------------------------
 
 
