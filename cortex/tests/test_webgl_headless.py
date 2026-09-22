@@ -929,7 +929,7 @@ def test_bumpy_flatmap_changes_the_render(tmp_path):
     def capture(handle, name):
         outfile = str(tmp_path / ("%s.png" % name))
         handle.getImage(outfile, (512, 384))
-        _wait_for_file(outfile)
+        wait_for_file(outfile)
         _assert_not_blank(outfile)
         pageerrors = [e for e in handle._pw_thread.browser_errors
                       if "[pageerror]" in e]
