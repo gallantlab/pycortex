@@ -47,25 +47,11 @@ pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
 )
 
-# Vertex2D cannot be tested through the webgl path: its flatmap renders blank
-# (gh-714) and save_3d_views raises, so no reference can be generated. #679's
-# lighting refactor ported the HASFLAT bump-displacement block into the vertex
-# shader, which under headless/SwiftShader leaves that flatmap unrendered. The
-# mark is strict and on RuntimeError specifically, so a render that starts
-# succeeding does not quietly pass: it reaches the reference check, which fails
-# with a mismatched exception type and tells you to regenerate.
 DATAVIEW_NAMES = [
     "Volume",
     "Vertex",
     "Volume2D",
-    pytest.param(
-        "Vertex2D",
-        marks=pytest.mark.xfail(
-            raises=RuntimeError,
-            strict=True,
-            reason="gh-714: the Vertex2D flatmap shader fails to link",
-        ),
-    ),
+    "Vertex2D",
     "VolumeRGB",
     "VertexRGB",
 ]
@@ -692,9 +678,7 @@ def _render_and_check_dataview(
 
     # Fails rather than skips: wholesale absence -- an installed wheel, or a
     # clone that has not fetched LFS -- is caught at import, so a single gap in
-    # a populated store means either a render that cannot succeed (Vertex2D) or
-    # an incomplete regeneration. A skip here would also be swallowed by the
-    # xfail on Vertex2D, hiding the day its render starts working.
+    # a populated store means an incomplete regeneration.
     if not REGENERATE_REFERENCES:
         for prefix in ("quickflat", "webgl"):
             reason = _unusable_reference(

@@ -50,6 +50,15 @@ from .. import dataset
 
 logger = logging.getLogger(__name__)
 
+#: Chromium flags for software WebGL (SwiftShader) with no GPU or display
+#: server.
+SWIFTSHADER_CHROMIUM_ARGS = [
+    "--enable-webgl",
+    "--use-gl=swiftshader",
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+]
+
 
 def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
     """Block until ``window.viewer.loaded`` resolves in the browser.
@@ -272,13 +281,7 @@ class _PlaywrightThread:
         try:
             self._playwright = sync_playwright().start()
             self._browser = self._playwright.chromium.launch(
-                headless=True,
-                args=[
-                    "--enable-webgl",
-                    "--use-gl=swiftshader",
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                ],
+                headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
             )
             self._page = self._browser.new_page()
 
