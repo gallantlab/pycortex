@@ -1001,16 +1001,12 @@ def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
     the same way (toggling it moves quickflat by mean 10.9 and webgl by 11.2 on
     Volume).
 
-    The Volume2D case is flaky, through no fault of this suite. Setting
-    ``layers`` above 1 intermittently leaves the viewer's RPC proxy answering
-    ``{}`` to every subsequent query, so ``save_3d_views`` dies on the next
-    parameter it sets. It never recovers, waiting it out does not help, and the
-    browser reports no error at all. It reproduces on main at about the same
-    rate (roughly one run in four) with the dataview built inline rather than
-    here, so it is a pre-existing bug in the viewer or in JSProxy, not
-    something gh-695 introduced -- this is simply the first test to drive
-    ``layers`` above 1 on a 2D dataview. Left in rather than skipped, because
-    the coverage is wanted and the flake is worth fixing on its own.
+    The Volume2D case used to be flaky: the 32-layer 2D shader can keep the
+    browser busy past the RPC's 2 s timeout, and the answer that then arrived
+    late was read as the answer to the *next* request, leaving every request
+    after it answered one behind for the rest of the session. Requests are now
+    tagged so late answers are discarded -- see ``WebApp.send`` and
+    ``test_serve.py``.
     """
     view = _build_multilayer_nan_dataview(name)
     tag = f"{name}_{'nanmean' if nanmean else 'no_nanmean'}"
