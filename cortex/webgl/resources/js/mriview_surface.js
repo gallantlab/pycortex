@@ -311,13 +311,12 @@ var mriview = (function(module) {
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("nanmask", new THREE.BufferAttribute(new Float32Array(), 1));
 
-                //Queue contour overlay data attributes (pre-sized to vertex count for proper WebGL buffer allocation)
+                //Queue the contour overlay attribute (pre-sized to vertex count for proper WebGL buffer allocation).
+                //Packed as (frame 0 label, frame 1 label, valid mask) to stay under the 16 attribute slot limit.
                 var nVerts = hemi.attributes.position.array.length / hemi.attributes.position.itemSize;
-                hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
-                hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
-                var contourNanmask = new Float32Array(nVerts);
-                for (var ci = 0; ci < nVerts; ci++) contourNanmask[ci] = 1.0;
-                hemi.addAttribute("contourNanmask", new THREE.BufferAttribute(contourNanmask, 1));
+                var contourData = new Float32Array(nVerts * 3);
+                for (var ci = 0; ci < nVerts; ci++) contourData[ci * 3 + 2] = 1.0;
+                hemi.addAttribute("contourData", new THREE.BufferAttribute(contourData, 3));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};

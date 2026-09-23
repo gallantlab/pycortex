@@ -395,10 +395,10 @@ var Shaderlib = (function() {
             // "varying float vDrop;",
 
             // Contour overlay attributes and varyings
-            "attribute float contourData0;",
-            "attribute float contourData1;",
-            // 1=valid, 0=NaN in the overlay (NaN is sent to the shader as 0)
-            "attribute float contourNanmask;",
+            // Contour overlay, packed into one attribute to stay under the
+            // 16 slot limit: x = frame 0 label, y = frame 1 label,
+            // z = 1 if valid, 0 if NaN (NaN is sent to the shader as 0)
+            "attribute vec3 contourData;",
             "varying float vContourDataValue;",
             "varying float vContourValid;",
             "varying float vDataValid;",
@@ -471,8 +471,8 @@ var Shaderlib = (function() {
                 "vWorldPosition = pos;",
 
                 // Contour overlay data
-                "vContourDataValue = mix(contourData0, contourData1, framemix);",
-                "vContourValid = contourNanmask;",
+                "vContourDataValue = mix(contourData.x, contourData.y, framemix);",
+                "vContourValid = contourData.z;",
                 "vDataValid = 1.0;",
                 "float contourRange = contourVmax - contourVmin;",
                 "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
@@ -744,9 +744,7 @@ var Shaderlib = (function() {
             if (opts.hasflat) {
                 attributes.flatbump = { type: 'v4', value:null };
             }
-            attributes['contourData0'] = {type:'f', value:null};
-            attributes['contourData1'] = {type:'f', value:null};
-            attributes['contourNanmask'] = {type:'f', value:null};
+            attributes['contourData'] = {type:'v3', value:null};
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
@@ -812,10 +810,10 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "varying float vDataValue;",
-            "attribute float contourData0;",
-            "attribute float contourData1;",
-            // 1=valid, 0=NaN in the overlay (NaN is sent to the shader as 0)
-            "attribute float contourNanmask;",
+            // Contour overlay, packed into one attribute to stay under the
+            // 16 slot limit: x = frame 0 label, y = frame 1 label,
+            // z = 1 if valid, 0 if NaN (NaN is sent to the shader as 0)
+            "attribute vec3 contourData;",
             "varying float vContourDataValue;",
             "varying float vContourValid;",
             "varying float vDataValid;",
@@ -857,12 +855,21 @@ var Shaderlib = (function() {
         "#ifdef RGBCOLORS",
                 "vDataValid = 1.0;",
         "#endif",
-                "vContourDataValue = mix(contourData0, contourData1, framemix);",
-                "vContourValid = contourNanmask;",
+        // 2D data already uses all 16 attribute slots (data0-3), so the
+        // overlay attribute is left unread there and the compiler drops it.
+        // Contours from the displayed data itself (vDataValue) still work.
+        "#ifdef TWOD",
+                "vContourDataValue = 0.0;",
+                "vContourValid = 0.0;",
+                "vContourColor = vec4(0.);",
+        "#else",
+                "vContourDataValue = mix(contourData.x, contourData.y, framemix);",
+                "vContourValid = contourData.z;",
                 // Look up contour color in the overlay's own colormap
                 "float contourRange = contourVmax - contourVmin;",
                 "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
                 "vContourColor = texture2D(contourColormap, vec2(contourNorm, 0.0));",
+        "#endif",
 
         "#ifdef CORTSHEET",
                 "vec3 mpos = mix(position, wm.xyz, use_thickmix);",
@@ -1039,9 +1046,7 @@ var Shaderlib = (function() {
             for (var i = 0; i < 4; i++)
                 attributes['data'+i] = {type:opts.rgb ? 'v4':'f', value:null};
 
-            attributes['contourData0'] = {type:'f', value:null};
-            attributes['contourData1'] = {type:'f', value:null};
-            attributes['contourNanmask'] = {type:'f', value:null};
+            attributes['contourData'] = {type:'v3', value:null};
 
             if (!opts.rgb)
                 attributes['nanmask'] = {type:'f', value:null};

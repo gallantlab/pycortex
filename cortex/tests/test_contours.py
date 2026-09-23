@@ -272,7 +272,7 @@ class TestWebGLContours:
         assert "contourColormap" in shader_code
 
     def test_geometry_has_contour_attributes(self):
-        """mriview_surface.js should initialize contourData attributes."""
+        """mriview_surface.js should initialize the packed contourData attribute."""
         import os
 
         surface_path = os.path.join(
@@ -285,8 +285,7 @@ class TestWebGLContours:
         with open(surface_path, "r") as f:
             surface_code = f.read()
 
-        assert "contourData0" in surface_code
-        assert "contourData1" in surface_code
+        assert 'addAttribute("contourData"' in surface_code
 
     def test_viewer_has_contour_overlay_support(self):
         """mriview.js should have contour overlay selection support."""

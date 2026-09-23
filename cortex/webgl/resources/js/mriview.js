@@ -817,6 +817,11 @@ var mriview = (function(module) {
                          "Contour overlays require scalar label data.");
             return;
         }
+        if (this.active && this.active.vertex && this.active.data.length > 1) {
+            // The 2D vertex shader has no attribute slot left for the overlay
+            console.warn("setContourOverlay: contour overlays are not drawn on 2D vertex data; " +
+                         "they will show when a non-2D dataset is displayed.");
+        }
 
         this._contourOverlayName = name;
         this.contourOverlay = name;
@@ -831,21 +836,25 @@ var mriview = (function(module) {
             var verts = overlayData.verts[fframe];
             var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
             var masks = overlayData.nanmasks[fframe];
+            // Pack (frame 0 label, frame 1 label, valid mask) per vertex into the
+            // single contourData attribute. NaN labels arrive as 0; the mask keeps
+            // them from drawing borders.
+            var packed = [0, 1].map(function(h) {
+                var a = verts[h].array, b = verts1[h].array, m = masks[h].array;
+                var out = new Float32Array(a.length * 3);
+                for (var j = 0; j < a.length; j++) {
+                    out[j * 3] = a[j];
+                    out[j * 3 + 1] = b[j];
+                    out[j * 3 + 2] = m[j];
+                }
+                return out;
+            });
             for (var i = 0; i < viewer.surfs.length; i++) {
                 var surf = viewer.surfs[i].surf;
-                surf.hemis.left.attributes.contourData0.array = verts[0].array;
-                surf.hemis.left.attributes.contourData0.needsUpdate = true;
-                surf.hemis.right.attributes.contourData0.array = verts[1].array;
-                surf.hemis.right.attributes.contourData0.needsUpdate = true;
-                surf.hemis.left.attributes.contourData1.array = verts1[0].array;
-                surf.hemis.left.attributes.contourData1.needsUpdate = true;
-                surf.hemis.right.attributes.contourData1.array = verts1[1].array;
-                surf.hemis.right.attributes.contourData1.needsUpdate = true;
-                // NaN labels arrive as 0; the mask keeps them from drawing borders
-                surf.hemis.left.attributes.contourNanmask.array = masks[0].array;
-                surf.hemis.left.attributes.contourNanmask.needsUpdate = true;
-                surf.hemis.right.attributes.contourNanmask.array = masks[1].array;
-                surf.hemis.right.attributes.contourNanmask.needsUpdate = true;
+                surf.hemis.left.attributes.contourData.array = packed[0];
+                surf.hemis.left.attributes.contourData.needsUpdate = true;
+                surf.hemis.right.attributes.contourData.array = packed[1];
+                surf.hemis.right.attributes.contourData.needsUpdate = true;
                 surf.uniforms.contourOverlay.value = 1;
                 // Set vmin/vmax and colormap for colored contour lookup
                 surf.uniforms.contourVmin.value = overlayView.vmin[0].value[0];
