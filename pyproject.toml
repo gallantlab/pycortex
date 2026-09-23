@@ -45,6 +45,14 @@ headless = [
 tractography = [
     "trx-python"
 ]
+autoflatten = [
+    "autoflatten>=1.0.0"
+]
+all = [
+    "pycortex[headless,autoflatten]",
+    # trx-python requires Python >= 3.11; see the test group above.
+    "pycortex[tractography]; python_version >= '3.11'",
+]
 
 [tool.setuptools_scm]
 version_file = "cortex/_version.py"

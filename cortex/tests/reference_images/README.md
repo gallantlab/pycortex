@@ -6,19 +6,13 @@ Stored renders that `cortex/tests/test_visual_regression.py` asserts against.
 
 | directory | images | contents |
 | --- | --- | --- |
-| `alpha_dataviews/` | 10 | five of the six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `VolumeRGB`, `VertexRGB`), both renderers |
-| `nan_dataviews/` | 10 | the same five, with NaNs over roughly half the primary data channel |
+| `alpha_dataviews/` | 12 | all six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), both renderers |
+| `nan_dataviews/` | 12 | the same six, with NaNs over roughly half the primary data channel |
 | `nan_alpha_dataviews/` | 4 | `VolumeRGB`/`VertexRGB` only, with the NaNs in the `alpha=` map |
 | `nonflat_views/` | 4 | `Volume`/`Vertex` on the inflated and fiducial surfaces at `lateral_pivot`, webgl only |
 
 Filenames are `quickflat_<Class>` and `webgl_<Class>`, except `nonflat_views/`,
 which uses `webgl_<surface>_<angle>_<Class>`.
-
-`Vertex2D` is the sixth class and has no images: its webgl flatmap renders
-blank (gh-714) and `save_3d_views` raises, so it cannot be tested through the
-webgl path at all. The two `Vertex2D` tests are **xfailed** on that
-`RuntimeError`, strictly — if the render ever succeeds the XPASS says so rather
-than passing silently.
 
 ## Render settings
 
@@ -53,7 +47,9 @@ and matplotlib leaves white where the browser leaves black.
 ## Provenance
 
 Generated on `main` (`3779f7ca`), from the demo subject `S1` in the filestore
-bundled with pycortex, which is pinned by `cortex/tests/conftest.py`.
+bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
+`Vertex2D` images were added later, once gh-714 was fixed, with the same
+pinned chromium/playwright/matplotlib versions below.
 
 | | |
 | --- | --- |
@@ -70,7 +66,7 @@ Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 ## Format
 
 Lossless WebP (`method=6`, `quality=100`, `exact=True`): bit-exact after decode,
-and 59% the size of optimized PNG (1229 KiB versus 2061 KiB for the set of 28).
+and roughly 59% the size of optimized PNG (measured on `3779f7ca`).
 
 ## Storage
 
