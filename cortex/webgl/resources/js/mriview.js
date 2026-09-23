@@ -824,6 +824,7 @@ var mriview = (function(module) {
             var fframe = 0;
             var verts = overlayData.verts[fframe];
             var verts1 = overlayData.verts[(fframe+1) % overlayData.verts.length];
+            var masks = overlayData.nanmasks[fframe];
             for (var i = 0; i < viewer.surfs.length; i++) {
                 var surf = viewer.surfs[i].surf;
                 surf.hemis.left.attributes.contourData0.array = verts[0].array;
@@ -834,6 +835,11 @@ var mriview = (function(module) {
                 surf.hemis.left.attributes.contourData1.needsUpdate = true;
                 surf.hemis.right.attributes.contourData1.array = verts1[1].array;
                 surf.hemis.right.attributes.contourData1.needsUpdate = true;
+                // NaN labels arrive as 0; the mask keeps them from drawing borders
+                surf.hemis.left.attributes.contourNanmask.array = masks[0].array;
+                surf.hemis.left.attributes.contourNanmask.needsUpdate = true;
+                surf.hemis.right.attributes.contourNanmask.array = masks[1].array;
+                surf.hemis.right.attributes.contourNanmask.needsUpdate = true;
                 surf.uniforms.contourOverlay.value = 1;
                 // Set vmin/vmax and colormap for colored contour lookup
                 surf.uniforms.contourVmin.value = overlayView.vmin[0].value[0];

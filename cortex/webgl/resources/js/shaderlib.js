@@ -385,7 +385,11 @@ var Shaderlib = (function() {
             // Contour overlay attributes and varyings
             "attribute float contourData0;",
             "attribute float contourData1;",
+            // 1=valid, 0=NaN in the overlay (NaN is sent to the shader as 0)
+            "attribute float contourNanmask;",
             "varying float vContourDataValue;",
+            "varying float vContourValid;",
+            "varying float vDataValid;",
             "varying vec4 vContourColor;",
             "uniform float contourVmin;",
             "uniform float contourVmax;",
@@ -459,6 +463,8 @@ var Shaderlib = (function() {
 
                 // Contour overlay data
                 "vContourDataValue = mix(contourData0, contourData1, framemix);",
+                "vContourValid = contourNanmask;",
+                "vDataValid = 1.0;",
                 "float contourRange = contourVmax - contourVmin;",
                 "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
                 "vContourColor = texture2D(contourColormap, vec2(contourNorm, 0.0));",
@@ -523,6 +529,8 @@ var Shaderlib = (function() {
 
             // Contour rendering uniforms and varyings
             "varying float vContourDataValue;",
+            "varying float vContourValid;",
+            "varying float vDataValid;",
             "varying vec4 vContourColor;",
             "uniform float contourMode;",
             "uniform float contourThreshold;",
@@ -673,7 +681,8 @@ var Shaderlib = (function() {
 
                 // Contour edge detection (uses overlay vertex data even for pixel-shaded volumes)
                 "float contourEdge = contourOverlay > 0.5 ? fwidth(vContourDataValue) : 0.0;",
-                "bool isBorder = contourEdge > contourThreshold;",
+                // Triangles touching a NaN overlay vertex are never borders (matches quickflat)
+                "bool isBorder = contourEdge > contourThreshold && vContourValid > 0.999;",
 
                 "gl_FragColor = cColor;",
                 // contourMode: 0=off, 1=contours only, 2=contours+fill,
@@ -733,6 +742,7 @@ var Shaderlib = (function() {
             }
             attributes['contourData0'] = {type:'f', value:null};
             attributes['contourData1'] = {type:'f', value:null};
+            attributes['contourNanmask'] = {type:'f', value:null};
 
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
@@ -794,7 +804,11 @@ var Shaderlib = (function() {
             "varying float vDataValue;",
             "attribute float contourData0;",
             "attribute float contourData1;",
+            // 1=valid, 0=NaN in the overlay (NaN is sent to the shader as 0)
+            "attribute float contourNanmask;",
             "varying float vContourDataValue;",
+            "varying float vContourValid;",
+            "varying float vDataValid;",
             "varying vec4 vContourColor;",
             "uniform float contourVmin;",
             "uniform float contourVmax;",
@@ -828,8 +842,13 @@ var Shaderlib = (function() {
                 // For 2D vertex views the JS layer combines per-dim masks
                 // before dispatch, so a single shared attribute is enough.
                 "if (nanmask < 0.5) vColor = vec4(0.);",
+                "vDataValid = nanmask;",
+        "#endif",
+        "#ifdef RGBCOLORS",
+                "vDataValid = 1.0;",
         "#endif",
                 "vContourDataValue = mix(contourData0, contourData1, framemix);",
+                "vContourValid = contourNanmask;",
                 // Look up contour color in the overlay's own colormap
                 "float contourRange = contourVmax - contourVmin;",
                 "float contourNorm = contourRange > 0.0 ? clamp((vContourDataValue - contourVmin) / contourRange, 0.0, 1.0) : 0.0;",
@@ -889,6 +908,8 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "varying float vDataValue;",
             "varying float vContourDataValue;",
+            "varying float vContourValid;",
+            "varying float vDataValid;",
             "varying vec4 vContourColor;",
             "uniform float thickmix;",
             // utils.thickmixer,
@@ -939,7 +960,9 @@ var Shaderlib = (function() {
 
                 // Contour edge detection
                 "float contourEdge = contourOverlay > 0.5 ? fwidth(vContourDataValue) : fwidth(vDataValue);",
-                "bool isBorder = contourEdge > contourThreshold;",
+                // Triangles touching a NaN vertex are never borders (matches quickflat)
+                "float contourValid = contourOverlay > 0.5 ? vContourValid : vDataValid;",
+                "bool isBorder = contourEdge > contourThreshold && contourValid > 0.999;",
 
                 "gl_FragColor = cColor;",
                 // contourMode: 0=off, 1=contours only, 2=contours+fill,
@@ -997,6 +1020,7 @@ var Shaderlib = (function() {
 
             attributes['contourData0'] = {type:'f', value:null};
             attributes['contourData1'] = {type:'f', value:null};
+            attributes['contourNanmask'] = {type:'f', value:null};
 
             if (!opts.rgb)
                 attributes['nanmask'] = {type:'f', value:null};

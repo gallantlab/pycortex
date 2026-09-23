@@ -272,6 +272,9 @@ var mriview = (function(module) {
                 var nVerts = hemi.attributes.position.array.length / hemi.attributes.position.itemSize;
                 hemi.addAttribute("contourData0", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
                 hemi.addAttribute("contourData1", new THREE.BufferAttribute(new Float32Array(nVerts), 1));
+                var contourNanmask = new Float32Array(nVerts);
+                for (var ci = 0; ci < nVerts; ci++) contourNanmask[ci] = 1.0;
+                hemi.addAttribute("contourNanmask", new THREE.BufferAttribute(contourNanmask, 1));
 
                 hemi.dynamic = true;
                 var pivots = {back:new THREE.Group(), front:new THREE.Group()};
