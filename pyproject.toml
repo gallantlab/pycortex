@@ -35,6 +35,9 @@ headless = [
 autoflatten = [
     "autoflatten>=1.0.0"
 ]
+all = [
+    "pycortex[headless,autoflatten]"
+]
 
 [tool.setuptools_scm]
 version_file = "cortex/_version.py"
