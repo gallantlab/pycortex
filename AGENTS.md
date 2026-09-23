@@ -28,6 +28,7 @@ uv run pytest -p no:cacheprovider --no-cov -x cortex/tests/test_formats.py  # qu
 
 - `pytest.ini` sets a 240 s per-test timeout (via `pytest-timeout`) because headless browser sessions can hang; override per-test with `@pytest.mark.timeout(N)`.
 - Tests self-skip based on available tools: Inkscape (quickflat/dataset overlay tests), Playwright Chromium (`cortex/tests/testing_utils.py:has_playwright` — WebGL headless tests), and FreeSurfer's `mri_surf2surf`.
+- `pytest.ini` deselects `-m slow` by default. The one slow test, `cortex/tests/test_autoflatten.py:test_autoflatten_subject_end_to_end`, really runs autoflatten (15-30 min); it needs FreeSurfer sourced with `fsaverage` in `$SUBJECTS_DIR`, autoflatten installed, and `$PYCORTEX_TEST_FS_SUBJECT` naming a recon-all'd subject — the bundled S1 is a pycortex filestore entry, not a FreeSurfer subject directory, so it cannot be flattened. Run it with `pytest -m slow`.
 - Nearly all tests use the stub subject `S1` bundled in `filestore/db/S1` (transform `fullhead`, 304380 vertices, volume shape `(31, 100, 100)`).
 - CI (`.github/workflows/run_tests.yml`) runs `pytest --cov=./` on a matrix of Python versions, with Inkscape and Playwright Chromium installed. The only enforced lint is codespell (config in `pyproject.toml`). mypy is configured in `pyproject.toml` and installed with the dev group but not run in CI — new Python code should still carry type annotations.
 
@@ -80,7 +81,7 @@ Each subject has one `overlays.svg` whose Inkscape layers (`rois`, `sulci`, …)
 
 ### Subject import and geometry
 
-`cortex/freesurfer.py` is the main path for importing real subjects (`import_subj`, `import_flat`, plus FreeSurfer binary format parsers). `cortex/blender/` drives headless Blender for flatmap cutting (`blendlib.py` executes inside Blender). `cortex/polyutils/Surface` is the geometry workhorse (geodesics, curvature, laplace operators, subsurfaces).
+`cortex/freesurfer.py` is the main path for importing real subjects (`import_subj`, `import_flat`, plus FreeSurfer binary format parsers). By default `import_subj` finishes by calling `autoflatten_subject`, which lives in the private `cortex/_autoflatten.py` (re-exported from `cortex.freesurfer`) and shells out to the optional [autoflatten](https://gallantlab.org/autoflatten) package (`python -m autoflatten.cli run <fs subject dir>`) to cut and flatten the surfaces, then imports the resulting `?h.autoflatten.flat.patch.3d` patches with `import_flat`; pass `autoflatten=False` to skip it. `_autoflatten.py` imports `freesurfer` lazily inside its functions, since `freesurfer` imports it at module level. `cortex/blender/` drives headless Blender for manual flatmap cutting (`blendlib.py` executes inside Blender). `cortex/polyutils/Surface` is the geometry workhorse (geodesics, curvature, laplace operators, subsurfaces).
 
 ## Gotchas
 

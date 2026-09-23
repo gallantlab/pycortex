@@ -1,5 +1,7 @@
 """Smoke tests for the headless viewer (cortex.export.headless).
 
+This file does NOT contain any tests related to the WebGL renderer.
+
 These tests require ``playwright`` and Chromium to be installed::
 
     pip install playwright

@@ -174,22 +174,37 @@ var Shaderlib = (function() {
             return glsl;
         },
 
-        // thickmixer: header code that loads the uniforms and attributes needed to
-        // do equivolume sampling, for vertex shaders
+        // thickmixer: header code that loads the uniforms needed to do
+        // equivolume sampling, for vertex shaders. The white matter and pial
+        // vertex areas it needs ride along in auxdat.zw, which mriview_surface
+        // fills in when the surfaces load, rather than in attributes of their
+        // own: WebGL only guarantees 16 vertex attribute slots and these
+        // shaders are right up against that limit, so whatever fits in the
+        // spare components of an attribute that is already there goes there.
         thickmixer: [
             "uniform float thickmix;",
             "uniform int equivolume;",
-            "attribute float wmarea;",
-            "attribute float pialarea;",
         ].join("\n"),
 
         // thickmixer_main: translates a desired volume fraction into linear mixing
-        // parameter.
+        // parameter. Requires auxdat to be declared by the including shader.
         thickmixer_main: [
             "#ifdef EQUIVOLUME",
+                "float wmarea = auxdat.z;",
+                "float pialarea = auxdat.w;",
                 "float use_thickmix = 1. - (1. / (pialarea - wmarea) * (-1. * wmarea + sqrt((1. - thickmix) * pialarea * pialarea + thickmix * wmarea * wmarea)));",
             "#else",
                 "float use_thickmix = thickmix;",
+            "#endif",
+        ].join("\n"),
+
+        // flatbump_attr: the bumpy-flatmap displacement attribute, for vertex
+        // shaders that declare HASFLAT.
+        flatbump_attr: [
+            "#ifdef HASFLAT",
+                //xyz: normal of the bump-displaced flatmap, w: bump height.
+                //Packed into one attribute to stay under the 16 slot limit.
+                "attribute vec4 flatbump;",
             "#endif",
         ].join("\n"),
     }
@@ -367,10 +382,7 @@ var Shaderlib = (function() {
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
 
-            "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
-            "#endif",
+            utils.flatbump_attr,
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -425,20 +437,17 @@ var Shaderlib = (function() {
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
 
-                // "norm = mix(flatBumpNorms, normalize(onorm), thickmix);",
-                // "norm = normalize(flatBumpNorms);",
-
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatbump.w * f_bumpyflat;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    "vNormal = normalMatrix * mix(norm, flatbump.xyz, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -667,14 +676,9 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
-                wmarea: { type: 'f', value:null },
-                pialarea: { type: 'f', value:null },
-                // flatBumpNorms: { type: 'v3', value:null },
-                // flatheight: { type: 'f', value:null },
             };
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatbump = { type: 'v4', value:null };
             }
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
@@ -731,10 +735,7 @@ var Shaderlib = (function() {
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
 
-            "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
-            "#endif",
+            utils.flatbump_attr,
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -790,14 +791,14 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatbump.w * f_bumpyflat;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    "vNormal = normalMatrix * mix(norm, flatbump.xyz, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -892,13 +893,10 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
-                wmarea: { type: 'f', value:null },
-                pialarea: { type: 'f', value:null },
             };
 
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatbump = { type: 'v4', value:null };
             }
 
             for (var i = 0; i < 4; i++)

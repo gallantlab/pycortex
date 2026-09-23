@@ -127,7 +127,8 @@ already been segmented with Freesurfer_::
     import cortex
     cortex.freesurfer.import_subj(freesurfer_subject, pycortex_subject=None,
                                   freesurfer_subject_dir=None,
-                                  whitematter_surf='smoothwm')
+                                  whitematter_surf='smoothwm',
+                                  autoflatten=True)
 
 This reads from the Freesurfer subject directory,
 ``$SUBJECTS_DIR/{freesurfer_subject}/``, and writes into the pycortex filestore entry
@@ -184,15 +185,51 @@ matter and the pial surfaces, which are used for cutting and flattening. Those a
 written back into the *Freesurfer* subject directory as ``surf/?h.fiducial``, not into
 the pycortex filestore.
 
-Nothing else is imported. In particular, flat surfaces are not imported by
-``import_subj``; once a surface has been cut and flattened in Freesurfer, import it
-separately with::
+Labels and annotations are not imported; see ``cortex.freesurfer.get_label``.
+
+
+.. _database-autoflatten:
+
+Flattening the surfaces
+-----------------------
+
+Pycortex needs flat surfaces to make flatmaps, and creating them requires cutting the
+cortical surface open. By default, ``import_subj`` does this for you at the end of the
+import by calling autoflatten_, which projects a template set of cuts onto the
+subject's surfaces, flattens the resulting patches, and imports the flatmaps into the
+pycortex database. autoflatten_ is an optional dependency, installed with the
+``autoflatten`` extra::
+
+    pip install "pycortex[autoflatten]"
+
+If autoflatten_ is not installed, ``import_subj`` warns and skips this step. Note that
+flattening takes a while, typically 15-30 minutes for both hemispheres, so you may
+want to skip it and flatten the surfaces later (or by hand)::
+
+    cortex.freesurfer.import_subj(freesurfer_subject, autoflatten=False)
+
+You can then run the same step on its own at any time::
+
+    cortex.freesurfer.autoflatten_subject(freesurfer_subject, pycortex_subject=None,
+                                          freesurfer_subject_dir=None)
+
+Extra command line arguments for autoflatten_ can be passed through the
+``autoflatten_args`` argument of either function, for instance
+``autoflatten_args=['--backend', 'freesurfer']`` to flatten with Freesurfer's
+``mris_flatten`` instead of the default JAX-accelerated backend, or
+``autoflatten_args=['--overwrite']`` to redo patches that already exist.
+
+If you would rather cut the surfaces by hand, see :doc:`segmentation_guide`, and
+then import the flatmaps with::
 
     cortex.freesurfer.import_flat(fs_subject, patch, hemis=['lh', 'rh'],
                                   cx_subject=None)
 
-which writes ``surfaces/flat_lh.gii`` and ``surfaces/flat_rh.gii``. Labels and
-annotations are not imported either; see ``cortex.freesurfer.get_label``.
+which writes ``surfaces/flat_lh.gii`` and ``surfaces/flat_rh.gii``. Both
+``autoflatten_subject`` and ``import_flat`` delete the subject's ``overlays.svg``
+file and all of its cached files, since the flatmaps fundamentally change.
+
+.. _autoflatten: https://gallantlab.org/autoflatten
 
 
 Transforms
