@@ -1,19 +1,18 @@
+import binascii
 import io
 import os
 import tempfile
-import binascii
+from typing import IO, Literal, Optional, Sequence, Union
+
 import numpy as np
 import numpy.typing as npt
-from typing import Literal, Optional, Union, IO
-
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.typing import ColorType
 
-from . import composite
 from .. import dataset, utils
+from . import composite
 from .utils import make_flatmap_image
-
 
 default_colorbar_locations = {
     'left': (.0, .07, .2, .04),
@@ -41,7 +40,7 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
                 linewidth: Optional[int]=None, linecolor: Optional[ColorType]=None, roifill: Optional[ColorType]=None, shadow: Optional[int]=None,
                 labelsize: Optional[str]=None, labelcolor: Optional[ColorType]=None, cutout: Optional[str]=None, curvature_brightness: Optional[float]=None,
                 curvature_contrast: Optional[float]=None, curvature_threshold: Optional[bool]=None, fig: Optional[Union[Figure, Axes]]=None, extra_hatch: Optional[tuple[dataset.Dataview, tuple[float, float, float]]]=None,
-                colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[list[str]]=None, sulci_list: Optional[list[str]]=None,
+                colorbar_ticks: Optional[npt.ArrayLike]=None, colorbar_location: Union[tuple[float, float, float, float], str]='center', roi_list: Optional[Sequence[str]]=None, sulci_list: Optional[Sequence[str]]=None,
                 nanmean: bool=False, with_contours: Union[Literal[False], dataset.Dataview]=False,
                 contour_linewidth: Optional[int]=None, contour_linecolor: Optional[ColorType]=None) -> Figure:
     """Show a Volume or Vertex on a flatmap with matplotlib.
@@ -130,8 +129,15 @@ def make_figure(braindata: dataset.Dataview, recache: bool=False, pixelwise: boo
         with discrete labels. False (default) disables contours.
     contour_linewidth : int, optional
         Width of contour lines in pixels. None defaults to 1.
-    contour_linecolor : tuple of float, optional
-        (R, G, B, A) color for contour lines. None defaults to black.
+    contour_linecolor : matplotlib color, optional
+        Color for contour lines (any format matplotlib accepts). None
+        defaults to black.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure `braindata` was plotted into (either the newly created
+        figure, or the one passed in via `fig`).
     """
     from matplotlib import pyplot as plt
 
@@ -271,21 +277,12 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
         resolves some errors. Useful if you've made changes to the alignment
     pixelwise : bool
         Use pixel-wise mapping
-    thick : int
-        Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
-    sampler : str
-        Name of sampling function used to sample underlying volume data
-    height : int
-        Height of the image to render. Automatically scales the width for the aspect of
-        the subject's flatmap
-    depth : float
-        Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
-        boundary, 1 = pial surface)
-    with_rois, with_labels, with_colorbar, with_borders, with_dropout : bool, optional
-        Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?
     sampler : str
         Name of sampling function used to sample underlying volume data. Options include
         'trilinear', 'nearest', 'lanczos'; see functions in cortex.mapper.samplers.py for all options
+    height : int
+        Height of the image to render. Automatically scales the width for the aspect of
+        the subject's flatmap
 
     Other Parameters
     ----------------
@@ -294,18 +291,34 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
         specifically the colormap
     bgcolor : matplotlib colorspec
         Color of background of image. `None` gives transparent background.
-    linewidth : int, optional
-        Width of ROI lines. Defaults to roi options in your local `options.cfg`
-    linecolor : tuple of float, optional
-        (R, G, B, A) specification of line color
-    roifill : tuple of float, optional
-        (R, G, B, A) specification for the fill of each ROI region
-    shadow : int, optional
-        Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
-    labelsize : str, optional
-        Font size for the label, e.g. "16pt"
-    labelcolor : tuple of float, optional
-        (R, G, B, A) specification for the label color
+    **kwargs
+        Additional keyword arguments are forwarded to `make_figure`. These include:
+
+        thick : int
+            Number of layers through the cortical sheet to sample. Only applies for pixelwise = True
+        depth : float
+            Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+            boundary, 1 = pial surface)
+        with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature : bool, optional
+            Display the rois, labels, colorbar, annotated flatmap borders, cross-hatch dropout, and curvature
+        linewidth : int, optional
+            Width of ROI lines. Defaults to roi options in your local `options.cfg`
+        linecolor : tuple of float, optional
+            (R, G, B, A) specification of line color
+        roifill : tuple of float, optional
+            (R, G, B, A) specification for the fill of each ROI region
+        shadow : int, optional
+            Standard deviation of the gaussian shadow. Set to 0 if you want no shadow
+        labelsize : str, optional
+            Font size for the label, e.g. "16pt"
+        labelcolor : tuple of float, optional
+            (R, G, B, A) specification for the label color
+        cutout : str, optional
+            Name of flatmap cutout with which to clip the full flatmap
+        overlay_file : str, optional
+            Custom ROI overlays file to use
+        fig : figure or ax, optional
+            Figure into which to plot flatmap
     """
     from matplotlib import pyplot as plt
     fig = make_figure(braindata,
@@ -324,8 +337,8 @@ def make_png(fname: Union[str, os.PathLike, IO], braindata: dataset.Dataview, re
     fig.clf()
     plt.close(fig)
 
-def make_svg(fname, braindata, with_labels=False, with_curvature=True, layers=['rois'],
-             height=1024, overlay_file=None, with_dropout=False, **kwargs):
+def make_svg(fname, braindata: dataset.Dataview, with_labels: bool=False, with_curvature: bool=True, layers: Sequence[str]=['rois'],
+             height: int=1024, overlay_file: Optional[str]=None, with_dropout: bool=False, **kwargs):
     """Save an svg file of the desired flatmap.
 
     This function creates an SVG file with vector graphic ROIs overlaid on a single png image.
@@ -425,14 +438,19 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
         The destination for the created gif. If a str, saves to a file. If stream-like (file handle
         or io.BytesIO), writes to the stream
     volumes : dict of pycortex Volumes
-    duration : float
+        Mapping from frame title (used as the figure's suptitle) to the
+        pycortex Volume to plot in that frame, in iteration order.
+    frame_duration : float
         The duration of each frame in seconds
     **figure_kwargs
         Passed to `cortex.quickflat.make_figure`
 
     Returns
     -------
-    If output_destination is a file path, return the path. If stream-like, return the stream data.
+    output_destination : str or stream-like
+        The same `output_destination` that was passed in: the file path if
+        it was a str, or the stream (seeked back to position 0) if it was
+        stream-like.
     """
     import imageio
     from matplotlib import pyplot as plt
@@ -456,6 +474,8 @@ def make_gif(output_destination, volumes, frame_duration=1, **figure_kwargs):
     if hasattr(output_destination, 'seek'):
         output_destination.seek(0)
 
+    return output_destination
+
 
 def show(*args, **kwargs):
     """Wrapper for make_figure()"""
@@ -466,12 +486,12 @@ def make_movie(name, data, subject, xfmname, recache=False, height=1024,
                vcodec='libtheora', bitrate="8000k", vmin=None, vmax=None, **kwargs):
     """Create a movie of an 4D data set"""
     raise NotImplementedError
-    import sys
+    import multiprocessing as mp
     import shlex
     import shutil
-    import tempfile
     import subprocess as sp
-    import multiprocessing as mp
+    import sys
+    import tempfile
 
     from scipy.interpolate import interp1d
 

@@ -2,22 +2,27 @@
 """
 
 import copy
+import functools
 import os
 import shlex
-import shutil
 import struct
 import subprocess as sp
-import tempfile
+import sys
 import warnings
+from collections.abc import Mapping
 from tempfile import NamedTemporaryFile
+from typing import Optional, cast
 
 import nibabel
 import numpy as np
+import numpy.typing as npt
 from nibabel import gifti
 from scipy.sparse import coo_matrix
 from scipy.spatial import KDTree
 
-from . import anat, database
+from . import appdirs, database
+# autoflatten_subject is re-exported here as the public name for it
+from ._autoflatten import autoflatten_subject, check_autoflatten_available
 
 
 def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
@@ -35,6 +40,13 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
         Directory of freesurfer subjects. Defaults to the value for
         the environment variable 'SUBJECTS_DIR' (which should be set
         by freesurfer)
+
+    Returns
+    -------
+    path : str
+        Path template (with an unfilled `{name}` field) for the requested
+        file type. Raises `ValueError` if `type` does not match any of
+        'patch', 'surf', 'curv', or 'slim'.
     """
     if freesurfer_subject_dir is None:
         freesurfer_subject_dir = os.environ['SUBJECTS_DIR']
@@ -47,6 +59,8 @@ def get_paths(fs_subject, hemi, type="patch", freesurfer_subject_dir=None):
         return os.path.join(base, "surf", hemi+".curv{name}")
     elif type == "slim":
         return os.path.join(base, "surf", hemi+".{name}_slim.obj")
+    else:
+        raise ValueError("Unknown type: {}. Must be one of 'patch', 'surf', 'curv', or 'slim'.".format(type))
 
 
 def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
@@ -58,6 +72,12 @@ def autorecon(fs_subject, type="all", parallel=True, n_cores=None):
         Freesurfer subject ID (should be a folder in your freesurfer $SUBJECTS_DIR)
     type : string
         Which steps of autorecon-all to perform. {'all', '1','2','3','cp','wm', 'pia'}
+    parallel : bool
+        Whether to parallelize the recon. Only has an effect for the '2', 'wm',
+        and 'all' steps, which are the only ones freesurfer can parallelize.
+    n_cores : int
+        Number of cores to use when `parallel` is True. None (default) uses
+        all available cores.
 
     """
     types = {
@@ -111,6 +131,9 @@ def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=Non
 
     Returns
     -------
+    success : bool
+        True if the user confirmed and `mris_flatten` was run. False if the
+        user declined the confirmation prompt (in which case nothing is run).
 
     Notes
     -----
@@ -139,11 +162,41 @@ def flatten(fs_subject, hemi, patch, freesurfer_subject_dir=None, save_every=Non
         return False
 
 
+def _get_freesurfer_subject_dir(
+    freesurfer_subject_dir: Optional[str] = None,
+) -> str:
+    """Resolve the freesurfer subjects directory.
+
+    Parameters
+    ----------
+    freesurfer_subject_dir : str or None
+        Freesurfer subjects directory. If None, the value of the environment
+        variable ``$SUBJECTS_DIR`` is used.
+
+    Returns
+    -------
+    freesurfer_subject_dir : str
+        The resolved directory. Raises `ValueError` if it is None and
+        ``$SUBJECTS_DIR`` is not set.
+    """
+    if freesurfer_subject_dir is not None:
+        return freesurfer_subject_dir
+    if "SUBJECTS_DIR" in os.environ:
+        return os.environ["SUBJECTS_DIR"]
+    raise ValueError(
+        "Please source freesurfer before running this function, "
+        "or pass a path to the freesurfer subjects directory in "
+        "`freesurfer_subject_dir`"
+    )
+
+
 def import_subj(
     freesurfer_subject,
     pycortex_subject=None,
     freesurfer_subject_dir=None,
     whitematter_surf="smoothwm",
+    autoflatten=True,
+    autoflatten_args=None,
 ):
     """Imports a subject from freesurfer
 
@@ -168,6 +221,16 @@ def import_subj(
         Which whitematter surface to import as 'wm'. By default uses 'smoothwm', but 
         that surface is smoothed and may not be appropriate. 
         A good alternative is 'white'.
+    autoflatten : bool, optional
+        Whether to automatically cut and flatten the surfaces with `autoflatten`
+        after importing them (True by default), see `autoflatten_subject`. This
+        step takes a while, typically 15-30 minutes for both hemispheres; set it
+        to False to skip it and cut and flatten the surfaces yourself (or run
+        `autoflatten_subject` later). `autoflatten` is an optional dependency; if
+        it is not installed, a warning is issued and this step is skipped.
+    autoflatten_args : list of str, optional
+        Extra command line arguments passed to ``autoflatten run``, for example
+        ``["--backend", "freesurfer"]``. Ignored if `autoflatten` is False.
     
     Notes
     -----
@@ -178,17 +241,62 @@ def import_subj(
     halfway between the white matter and pial surfaces. The surfaces will be stored
     in the freesurfer subject's directory. These fiducial surfaces are used for 
     cutting and flattening.
+
+    **Imported files**
+
+    Only the files listed below are copied over. They are read from the freesurfer
+    subject directory, ``{freesurfer_subject_dir}/{freesurfer_subject}/``, and written
+    into the pycortex filestore entry for the subject,
+    ``{pycortex_filestore}/{pycortex_subject}/``. Flat surfaces are created and
+    imported by `autoflatten_subject` at the end of this function, unless
+    `autoflatten` is False; to import flat surfaces that were cut and flattened by
+    hand, use `import_flat`. Labels and annotations are not imported; use
+    `get_label` for those.
+
+    Anatomical volumes, converted with ``mri_convert``:
+
+    ======================  =============================  ==========================
+    freesurfer file         pycortex file                  contents
+    ======================  =============================  ==========================
+    ``mri/T1.mgz``          ``anatomicals/raw.nii.gz``     T1-weighted anatomical
+    ``mri/aseg.mgz``        ``anatomicals/aseg.nii.gz``    automatic segmentation
+    ``mri/wm.mgz``          ``anatomicals/raw_wm.nii.gz``  white matter segmentation
+    ======================  =============================  ==========================
+
+    Surfaces, for both hemispheres (``lh`` and ``rh``), converted with
+    ``mris_convert --to-scanner`` so that they share the coordinate system of the
+    anatomical volumes rather than freesurfer's TKR coordinate system:
+
+    ==========================  =============================  ======================
+    freesurfer file             pycortex file                  contents
+    ==========================  =============================  ======================
+    ``surf/?h.smoothwm``        ``surfaces/wm_?h.gii``         white matter surface
+    ``surf/?h.pial``            ``surfaces/pia_?h.gii``        pial surface
+    ``surf/?h.inflated``        ``surfaces/inflated_?h.gii``   inflated surface
+    ==========================  =============================  ======================
+
+    The white matter surface that is imported as ``wm`` is whichever surface is named
+    by the `whitematter_surf` parameter (``smoothwm`` by default), so the first row
+    above reads ``surf/?h.{whitematter_surf}``.
+
+    Surface info, where both hemispheres are stored together in a single ``.npz`` file
+    with the keys ``left`` and ``right``. Note that the values are stored **negated**
+    with respect to the freesurfer values:
+
+    ==========================  ================================  ==================
+    freesurfer files            pycortex file                     contents
+    ==========================  ================================  ==================
+    ``surf/?h.sulc``            ``surface-info/sulcaldepth.npz``  sulcal depth
+    ``surf/?h.thickness``       ``surface-info/thickness.npz``    cortical thickness
+    ``surf/?h.curv``            ``surface-info/curvature.npz``    curvature
+    ==========================  ================================  ==================
     """
     # Check if freesurfer is sourced or if subjects dir is passed
-    if freesurfer_subject_dir is None:
-        if "SUBJECTS_DIR" in os.environ:
-            freesurfer_subject_dir = os.environ["SUBJECTS_DIR"]
-        else:
-            raise ValueError(
-                "Please source freesurfer before running this function, "
-                "or pass a path to the freesurfer subjects directory in "
-                "`freesurfer_subject_dir`"
-            )
+    freesurfer_subject_dir = _get_freesurfer_subject_dir(freesurfer_subject_dir)
+    # Check that autoflatten is importable before doing any work, so that we do not
+    # import the subject only to fail at the very last (and slowest) step.
+    if autoflatten and not check_autoflatten_available():
+        autoflatten = False
     fs_mri_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "mri")
     fs_surf_path = os.path.join(freesurfer_subject_dir, freesurfer_subject, "surf")
     fs_anat_template = os.path.join(fs_mri_path, "{name}.mgz")
@@ -257,8 +365,18 @@ def import_subj(
             left=-lh, 
             right=-rh
         )
-    # Finally update the database by re-initializing it
+    # Update the database by re-initializing it
     database.db = database.Database()
+
+    # Automatically cut and flatten the surfaces. This is by far the slowest step,
+    # so it is done last, once everything else has been imported successfully.
+    if autoflatten:
+        autoflatten_subject(
+            freesurfer_subject,
+            pycortex_subject=pycortex_subject,
+            freesurfer_subject_dir=freesurfer_subject_dir,
+            autoflatten_args=autoflatten_args,
+        )
 
 
 def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
@@ -343,13 +461,23 @@ def import_flat(fs_subject, patch, hemis=['lh', 'rh'], cx_subject=None,
 
 def _remove_disconnected_polys(polys):
     """Remove polygons that are not in the main connected component.
-    
+
     This function creates a sparse graph based on edges in the input.
     Then it computes the connected components, and returns only the polygons
     that are in the largest component.
-    
+
     This filtering is useful to remove disconnected vertices resulting from a
     poor surface cut.
+
+    Parameters
+    ----------
+    polys : ndarray
+        Triangle faces of the mesh, as vertex indices.
+
+    Returns
+    -------
+    polys : ndarray
+        The subset of `polys` belonging to the largest connected component.
     """
     n_points = np.max(polys) + 1
     import scipy.sparse as sp
@@ -382,10 +510,24 @@ def _remove_disconnected_polys(polys):
 
 def _move_disconnect_points_to_zero(pts, polys):
     """Change coordinates of points not in polygons to zero.
-    
+
     This cleaning step is useful after _remove_disconnected_polys, to
     avoid using this points in boundaries computations (through pts.max(axis=0)
     here and there).
+
+    Parameters
+    ----------
+    pts : ndarray
+        Vertex coordinates of the mesh.
+    polys : ndarray
+        Triangle faces of the mesh, used to determine which vertices are
+        referenced.
+
+    Returns
+    -------
+    pts : ndarray
+        `pts`, with the coordinates of any point not referenced by `polys`
+        set to zero.
     """
     mask = np.zeros(len(pts), dtype=bool)
     mask[np.unique(polys)] = True
@@ -395,6 +537,14 @@ def _move_disconnect_points_to_zero(pts, polys):
 
 def make_fiducial(fs_subject, freesurfer_subject_dir=None):
     """Make fiducial surface (halfway between white matter and pial surfaces)
+
+    Parameters
+    ----------
+    fs_subject : str
+        Freesurfer subject identifier.
+    freesurfer_subject_dir : str, optional
+        Directory for Freesurfer subjects (defaults to the value of the
+        environment variable $SUBJECTS_DIR if None).
     """
     for hemi in ['lh', 'rh']:
         spts, polys, _ = get_surf(fs_subject, hemi, "smoothwm", freesurfer_subject_dir=freesurfer_subject_dir)
@@ -404,7 +554,19 @@ def make_fiducial(fs_subject, freesurfer_subject_dir=None):
 
 
 def parse_surf(filename):
-    """
+    """Parse a freesurfer binary surface file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to a freesurfer surface file (e.g. `lh.smoothwm`).
+
+    Returns
+    -------
+    pts : ndarray, shape (n_verts, 3)
+        Vertex coordinates.
+    polys : ndarray, shape (n_faces, 3)
+        Triangle faces, as vertex indices into `pts`.
     """
     with open(filename, 'rb') as fp:
         #skip magic
@@ -421,6 +583,17 @@ def parse_surf(filename):
 
 def write_surf(filename, pts, polys, comment=''):
     """Write freesurfer surface file
+
+    Parameters
+    ----------
+    filename : str
+        Path to write the freesurfer surface file to.
+    pts : ndarray
+        Vertex coordinates.
+    polys : ndarray
+        Triangle faces, as vertex indices into `pts`.
+    comment : str, optional
+        Comment string to store in the file header. Default is ''.
     """
     with open(filename, 'wb') as fp:
         fp.write(b'\xff\xff\xfe')
@@ -463,7 +636,18 @@ def write_patch(filename, pts, edges=None):
 
 
 def parse_curv(filename):
-    """
+    """Parse a freesurfer binary curvature file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to a freesurfer curvature file (e.g. `lh.curv`).
+
+    Returns
+    -------
+    curv : ndarray, shape (n_verts,)
+        Per-vertex scalar value stored in the file (e.g. curvature, sulcal
+        depth, or thickness, depending on which file was read).
     """
     with open(filename, 'rb') as fp:
         fp.seek(15)
@@ -471,7 +655,19 @@ def parse_curv(filename):
 
 
 def parse_patch(filename):
-    """
+    """Parse a freesurfer binary patch file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to a freesurfer patch file (e.g. `lh.flatten.patch.3d`).
+
+    Returns
+    -------
+    data : structured ndarray
+        One record per vertex in the patch, with fields 'vert' (1-indexed
+        vertex number; negative for boundary/edge vertices), 'x', 'y', 'z'
+        (the vertex's coordinates in the patch).
     """
     with open(filename, 'rb') as fp:
         header, = struct.unpack('>i', fp.read(4))
@@ -484,6 +680,40 @@ def parse_patch(filename):
 
 def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subject_dir=None):
     """Read freesurfer surface file
+
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject identifier.
+    hemi : str
+        'lh' or 'rh' for left or right hemisphere, respectively.
+    type : str
+        Which surface to load, e.g. 'smoothwm', 'pial', 'inflated', or
+        'fiducial'. Use 'patch' to load a flattened patch instead (in which
+        case `patch` must also be given; the surface underlying the patch is
+        always 'smoothwm').
+    patch : str, optional
+        Name of the patch file to load (e.g. 'flatten'), used only when
+        `type` is "patch".
+    flatten_step : int, optional
+        If given, selects one of the intermediate patch snapshots saved
+        during flattening (see the `save_every` argument to `flatten`),
+        appended as a zero-padded 4-digit suffix to the patch filename.
+    freesurfer_subject_dir : str, optional
+        Directory for Freesurfer subjects (defaults to the value of the
+        environment variable $SUBJECTS_DIR if None).
+
+    Returns
+    -------
+    pts : ndarray
+        Vertex coordinates for this surface (or patch, if `patch` is given).
+    polys : ndarray
+        Triangle faces for this surface (or patch).
+    idx : ndarray
+        If `type` is "patch", a per-vertex flag array (1 for interior
+        vertices, -1 for boundary/edge vertices, 0 for vertices not in the
+        patch). Otherwise, the curvature values for this surface/hemisphere,
+        as returned by `get_curv`.
     """
     if type == "patch":
         assert patch is not None
@@ -520,7 +750,23 @@ def get_surf(subject, hemi, type, patch=None, flatten_step=None, freesurfer_subj
 
 
 def _move_labels(subject, label, hemisphere=('lh','rh'), fs_dir=None, src_subject='fsaverage'):
-    """subject is a freesurfer subject"""
+    """Move a label file from another freesurfer subject to this subject's
+    label directory, via freesurfer's `mri_label2label`.
+
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject ID to move the label to.
+    label : str
+        Label name (without hemisphere prefix or `.label` suffix).
+    hemisphere : tuple or list, optional
+        Hemispheres to move the label for. Default is ('lh', 'rh').
+    fs_dir : str, optional
+        Freesurfer subjects directory. Defaults to the environment variable
+        $SUBJECTS_DIR if None.
+    src_subject : str, optional
+        Freesurfer subject ID to move the label from. Default is 'fsaverage'.
+    """
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
     for hemi in hemisphere:
@@ -560,6 +806,15 @@ def _parse_labels(label_files, cx_subject):
         full paths to label file or files to load
     cx_subject : str
         pycortex subject ID
+
+    Returns
+    -------
+    verts : ndarray
+        Vertex indices (into the pycortex fiducial surface) that have label
+        values, with right-hemisphere indices (identified by an '/rh.' path
+        component) offset by the number of left-hemisphere vertices.
+    values : ndarray
+        Label value for each vertex in `verts`.
     """
     if not isinstance(label_files, (list, tuple)):
         label_files = [label_files]
@@ -597,6 +852,14 @@ def get_label(cx_subject, label, fs_subject=None, fs_dir=None, src_subject='fsav
         Freesurfer subject directory; None defaults to OS environment variable
     hemisphere : list | tuple
 
+    Returns
+    -------
+    idx : ndarray
+        Vertex indices (into the pycortex fiducial surface) that have label
+        values, with right-hemisphere indices offset by the number of left-
+        hemisphere vertices.
+    values : ndarray
+        Label value for each vertex in `idx`.
     """
     if fs_dir is None:
         fs_dir = os.environ['SUBJECTS_DIR']
@@ -617,6 +880,26 @@ def get_label(cx_subject, label, fs_subject=None, fs_dir=None, src_subject='fsav
 
 
 def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
+    """Build the `mri_surf2surf` command-line argument list.
+
+    Parameters
+    ----------
+    src_subj : str
+        Freesurfer name of the source subject.
+    trg_subj : str
+        Freesurfer name of the target subject.
+    input_file : str
+        Path to the source `.gii` file to resample.
+    output_file : str
+        Path to write the resampled `.gii` file to.
+    hemi : str in ("lh", "rh")
+        Hemisphere.
+
+    Returns
+    -------
+    cmd : list of str
+        Argument list suitable for `subprocess`, e.g. `sp.Popen(cmd)`.
+    """
     # mri_surf2surf --srcsubject <source subject name> --srcsurfval
     # <sourcefile> --trgsubject <target suhject name> --trgsurfval <target
     # file> --hemi <hemifield>
@@ -631,6 +914,19 @@ def _mri_surf2surf_command(src_subj, trg_subj, input_file, output_file, hemi):
 
 
 def _check_datatype(data):
+    """Downcast 64-bit dtypes to their 32-bit equivalent for gifti export.
+
+    Parameters
+    ----------
+    data : ndarray
+        Array whose dtype should be checked.
+
+    Returns
+    -------
+    dtype : numpy dtype
+        `np.int32` if `data` is `int64`, `np.float32` if `data` is
+        `float64`, otherwise `data`'s own dtype unchanged.
+    """
     dtype = data.dtype
     if dtype == np.int64:
         return np.int32
@@ -657,7 +953,12 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     
     hemi: str in ("lh", "rh")
         string indicating hemisphere.
-    
+
+    Returns
+    =======
+    output_data : ndarray, shape=(n_imgs, n_target_verts)
+        `data` resampled onto the target subject's vertices.
+
     Notes
     =====
     Requires path to mri_surf2surf or freesurfer environment to be active.
@@ -666,10 +967,12 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
     data_arrays = [gifti.GiftiDataArray(d, datatype=datatype) for d in data]
     gifti_image = gifti.GiftiImage(darrays=data_arrays)
 
-    tf_in = NamedTemporaryFile(suffix=".gii")
+    tf_in = NamedTemporaryFile(suffix=".gii", delete = False)
+    tf_in.close()
     nibabel.save(gifti_image, tf_in.name)
 
-    tf_out = NamedTemporaryFile(suffix='.gii')
+    tf_out = NamedTemporaryFile(suffix='.gii', delete = False)
+    tf_out.close()
     cmd = _mri_surf2surf_command(source_subj, target_subj,
                                    tf_in.name, tf_out.name, hemi)
     if subjects_dir is not None:
@@ -695,10 +998,10 @@ def mri_surf2surf(data, source_subj, target_subj, hemi, subjects_dir=None):
         raise Exception(("Exit code {exit_code} means that "
             "mri_surf2surf failed").format(exit_code=exit_code))
 
-    tf_in.close()
+    os.unlink(tf_in.name)
     output_img = nibabel.load(tf_out.name)
     output_data = np.array([da.data for da in output_img.darrays])
-    tf_out.close()
+    os.unlink(tf_out.name)
     return output_data
 
 
@@ -707,6 +1010,21 @@ def _read_sphere_reg(subject, hemi, subjects_dir=None):
 
     These are the coordinates on which freesurfer's spherical registration
     defines the cross-subject vertex correspondence used by ``mri_surf2surf``.
+
+    Parameters
+    ----------
+    subject : str
+        Freesurfer subject name.
+    hemi : str in ("lh", "rh")
+        Hemisphere.
+    subjects_dir : str, optional
+        Freesurfer subjects directory. Defaults to the environment variable
+        $SUBJECTS_DIR if None.
+
+    Returns
+    -------
+    pts : ndarray, shape (n_verts, 3)
+        Registered sphere vertex coordinates for this subject/hemisphere.
     """
     surf_file = get_paths(subject, hemi, 'surf',
                           freesurfer_subject_dir=subjects_dir).format(
@@ -880,8 +1198,14 @@ def get_curv(fs_subject, hemi, type='wm', freesurfer_subject_dir=None):
     type : str
         'wm' or other type of surface (e.g. 'fiducial' or 'pial')
     freesurfer_subject_dir : str
-        directory for Freesurfer subjects (defaults to value for the 
+        directory for Freesurfer subjects (defaults to value for the
         environment variable $SUBJECTS_DIR if None)
+
+    Returns
+    -------
+    curv : ndarray
+        Per-vertex curvature (or other surface-info) values for this subject
+        and hemisphere.
     """
     if type == "wm":
         curv_file = get_paths(fs_subject, hemi, 'curv', freesurfer_subject_dir=freesurfer_subject_dir).format(name='')
@@ -907,6 +1231,13 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     curv : bool
 
     freesurfer_subject_dir :
+
+    Returns
+    -------
+    fig : mayavi figure
+        The mayavi figure the surface was plotted into.
+    surf : mayavi surface object
+        The rendered surface object within `fig`.
     """
     warnings.warn(('Deprecated and probably broken! Try `cortex.segment.show_surf()`\n'
                   'which uses a third-party program (meshlab, available for linux & mac\n'
@@ -950,8 +1281,24 @@ def show_surf(subject, hemi, type, patch=None, curv=True, freesurfer_subject_dir
     return fig, surf
 
 def write_dot(fname, pts, polys, name="test"):
+    """Write a mesh's edge graph out as a Graphviz .dot file.
+
+    Parameters
+    ----------
+    fname : str
+        Path to write the .dot file to.
+    pts : ndarray
+        Vertex coordinates, used to compute edge lengths.
+    polys : ndarray
+        Triangle faces defining the mesh's edges.
+    name : str, optional
+        Name to give the graph in the .dot file. Default is "test".
+
+    Returns
+    -------
+    None
     """
-    """
+    
     import networkx as nx
     def iter_surfedges(tris):
         for a,b,c in tris:
@@ -968,12 +1315,25 @@ def write_dot(fname, pts, polys, name="test"):
             l = np.sqrt(((pts[a] - pts[b])**2).sum(-1))
             lengths.append(l)
             fp.write("%s -- %s [len=%f];\n"%(a, b, l))
-        fp.write("maxiter=1000000;\n");
+        fp.write("maxiter=1000000;\n")
         fp.write("}")
 
 
 def read_dot(fname, pts):
-    """
+    """Read 2D vertex layout positions back out of a Graphviz .dot file.
+
+    Parameters
+    ----------
+    fname : str
+        Path to a .dot file previously written by `write_dot` and laid out
+        by Graphviz.
+    pts : array-like
+        Only used for its length, to preallocate the output array.
+
+    Returns
+    -------
+    data : ndarray, shape (len(pts), 2)
+        2D (x, y) layout position for each vertex.
     """
     import re
     parse = re.compile(r'\s(\d+)\s\[label="", pos="([\d\.]+),([\d\.]+)".*];')
@@ -992,7 +1352,24 @@ def read_dot(fname, pts):
 
 
 def write_decimated(path, pts, polys):
-    """
+    """Decimate a surface mesh and write it out as a freesurfer surface plus
+    a matching full-resolution patch file.
+
+    Parameters
+    ----------
+    path : str
+        Path prefix to write to; `.smoothwm` and `.full.patch.3d` suffixes
+        are appended for the surface and patch files, respectively.
+    pts : ndarray
+        Vertex coordinates of the mesh to decimate.
+    polys : ndarray
+        Triangle faces of the mesh to decimate.
+
+    Returns
+    -------
+    None
+        Writes `path + '.smoothwm'` and `path + '.full.patch.3d'` as a side
+        effect; has no return value.
     """
     from .polyutils import boundary_edges, decimate
     dpts, dpolys = decimate(pts, polys)
@@ -1011,7 +1388,29 @@ def write_decimated(path, pts, polys):
 
 
 class SpringLayout:
-    """
+    """Relaxes a mesh's vertex positions using a spring-force model, where
+    each edge acts as a spring with its rest length set by the distance
+    between the corresponding vertices in a (possibly different) reference
+    mesh `dpts`.
+
+    Parameters
+    ----------
+    pts : ndarray
+        Initial vertex coordinates to relax.
+    polys : ndarray
+        Triangle faces defining the mesh's edges/springs.
+    dpts : ndarray, optional
+        Vertex coordinates used to set each spring's rest (target) length.
+        Defaults to `pts`, i.e. the mesh starts at its own rest lengths.
+    pins : array-like, optional
+        Indices of vertices that should remain fixed (not moved) during
+        relaxation.
+    stepsize : float, optional
+        Step size used to scale vertex movement at each iteration. Default 1.
+    neighborhood : int, optional
+        Number of times to expand each vertex's neighbor set by one more hop,
+        widening the set of springs attached to it. Default 0 (immediate
+        mesh neighbors only).
     """
     def __init__(self, pts, polys, dpts=None, pins=None, stepsize=1, neighborhood=0):
         self.pts = pts
@@ -1100,7 +1499,24 @@ class SpringLayout:
         self.figure.mlab_source.set(x=self.pts[:,0], y=self.pts[:,1], z=self.pts[:,2])
 
 def stretch_mwall(pts, polys, mwall):
-    """
+    """Stretch the medial wall vertices of an inflated surface out into a
+    flat disc, as a starting point for flattening.
+
+    Parameters
+    ----------
+    pts : ndarray
+        Vertex coordinates of the (typically inflated) surface.
+    polys : ndarray
+        Triangle faces of the surface.
+    mwall : array-like
+        Indices of the medial wall vertices to stretch out.
+
+    Returns
+    -------
+    layout : SpringLayout
+        A `SpringLayout` initialized with the medial wall vertices pinned at
+        their new, stretched-out positions and the original `pts` as the
+        rest-length reference, ready to be relaxed with `.run()`.
     """
     inflated = pts.copy()
     center = pts[mwall].mean(0)
@@ -1112,9 +1528,84 @@ def stretch_mwall(pts, polys, mwall):
     return SpringLayout(pts, polys, inflated, pins=mwall)
 
 
+def _n_vertices_ico(icoorder: int) -> int:
+    return 4 ** icoorder * 10 + 2
+
+
+# Precomputed upsampling neighbor arrays bundled with pycortex (see
+# ``_get_upsample_neighbors``). ``NpzFile`` keyed by ``"{hemi}_ico{order}"``.
+_UPSAMPLE_NEIGHBORS_FILE = os.path.join(
+    os.path.dirname(__file__), "data", "upsample_fsaverage_neighbors.npz")
+
+
+@functools.lru_cache(maxsize=1)
+def _load_upsample_neighbors_bundle() -> Mapping[str, npt.NDArray]:
+    """Load (once) the neighbor arrays bundled with pycortex, or {} if absent."""
+    if os.path.exists(_UPSAMPLE_NEIGHBORS_FILE):
+        return np.load(_UPSAMPLE_NEIGHBORS_FILE)
+    return {}
+
+
+def _get_upsample_neighbors(
+        hemi: str, ico_order: int, freesurfer_subjects_dir: Optional[str] = None
+) -> npt.NDArray[np.integer]:
+    """Nearest low-res neighbor index for each extra fsaverage vertex.
+
+    Maps every full-``fsaverage`` vertex beyond the first ``n_ico`` (i.e. the
+    ones absent from ``fsaverage{ico_order}``) to its nearest ``fsaverage``
+    -sphere neighbor among those first ``n_ico`` vertices. This index array is a
+    fixed property of the standard fsaverage tessellation -- it depends only on
+    ``(hemi, ico_order)``, never on the data -- so it is precomputed.
+
+    Resolution order:
+
+    1. the arrays bundled with pycortex (covers the common fsaverage5/6 case, so
+       no FreeSurfer install or ``$SUBJECTS_DIR`` is required);
+    2. a previously cached array in the pycortex user cache dir;
+    3. otherwise it is computed from the fsaverage ``?h.sphere.reg`` (which needs
+       ``freesurfer_subjects_dir``/``$SUBJECTS_DIR``) and cached for next time.
+    """
+    key = f"{hemi}_ico{ico_order}"
+
+    # 1. Bundled with the package.
+    bundle = _load_upsample_neighbors_bundle()
+    if key in bundle:
+        return np.asarray(bundle[key])
+
+    # 2. User cache.
+    cache_dir = os.path.join(appdirs.user_cache_dir("pycortex"),
+                             "upsample_fsaverage")
+    cache_path = os.path.join(cache_dir, key + ".npy")
+    if os.path.exists(cache_path):
+        return np.load(cache_path)
+
+    # 3. Compute from the fsaverage sphere and cache.
+    if freesurfer_subjects_dir is None:
+        freesurfer_subjects_dir = os.environ.get("SUBJECTS_DIR", None)
+    if freesurfer_subjects_dir is None:
+        raise ValueError(
+            f"Upsampling neighbors for fsaverage{ico_order} are not bundled "
+            "with pycortex and have not been cached yet. Set $SUBJECTS_DIR (or "
+            "pass freesurfer_subjects_dir) so they can be computed from the "
+            "fsaverage ?h.sphere.reg.")
+    n_ico = _n_vertices_ico(ico_order)
+    pts, _ = nibabel.freesurfer.read_geometry(
+        os.path.join(freesurfer_subjects_dir, "fsaverage", "surf",
+                     f"{hemi}.sphere.reg"))
+    _, neighbors = KDTree(pts[:n_ico]).query(pts[n_ico:], k=1)
+    neighbors = cast(npt.NDArray[np.integer], neighbors)
+    dtype: type[np.integer] = np.uint16 if neighbors.max() < 65536 else np.int64
+    neighbors = neighbors.astype(dtype)
+    os.makedirs(cache_dir, exist_ok=True)
+    np.save(cache_path, neighbors)
+    return neighbors
+
+
 def upsample_to_fsaverage(
-        data, data_space="fsaverage6", freesurfer_subjects_dir=None
-):
+        data: npt.NDArray,
+        data_space: str = "fsaverage6",
+        freesurfer_subjects_dir: Optional[str] = None,
+) -> npt.NDArray:
     """Project data from fsaverage6 (or other fsaverage surface) to fsaverage to
     visualize it in pycortex.
 
@@ -1127,8 +1618,10 @@ def upsample_to_fsaverage(
     data_space : str
         One of fsaverage[1-6], corresponding to the source template space of `data`.
     freesurfer_subjects_dir : str or None
-        Path to Freesurfer subjects directory. If None, defaults to the value of the
-        environment variable $SUBJECTS_DIR.
+        Path to Freesurfer subjects directory. Only needed for source spaces
+        whose neighbor arrays are neither bundled with pycortex (fsaverage5 and
+        fsaverage6 are) nor already cached; in that case it defaults to the
+        ``$SUBJECTS_DIR`` environment variable.
 
     Returns
     -------
@@ -1138,19 +1631,19 @@ def upsample_to_fsaverage(
     Notes
     -----
     Data in the lower resolution fsaverage template is upsampled to the full resolution
-    fsaverage template by nearest-neighbor interpolation. To project the data from a 
-    lower resolution version of fsaverage, this code exploits the structure of fsaverage 
-    surfaces. (That is, each hemisphere in fsaverage6 corresponds to the first 
-    40,962 vertices of fsaverage; fsaverage5 corresponds to the first 10,242 vertices of 
+    fsaverage template by nearest-neighbor interpolation. To project the data from a
+    lower resolution version of fsaverage, this code exploits the structure of fsaverage
+    surfaces. (That is, each hemisphere in fsaverage6 corresponds to the first
+    40,962 vertices of fsaverage; fsaverage5 corresponds to the first 10,242 vertices of
     fsaverage, etc.)
+
+    The per-vertex nearest-neighbor mapping is a fixed property of the fsaverage
+    tessellation, so it is precomputed (see :func:`_get_upsample_neighbors`).
+    For the common fsaverage5/fsaverage6 sources the arrays ship with pycortex,
+    so neither FreeSurfer nor ``$SUBJECTS_DIR`` is required.
     """
-
-
-    def get_n_vertices_ico(icoorder):
-        return 4 ** icoorder * 10 + 2
-
     ico_order = int(data_space[-1])
-    n_ico_vertices = get_n_vertices_ico(ico_order)
+    n_ico_vertices = _n_vertices_ico(ico_order)
     ndim = data.ndim
     data = np.atleast_2d(data)
     _, n_vertices = data.shape
@@ -1160,28 +1653,13 @@ def upsample_to_fsaverage(
             f"are expected for both hemispheres in {data_space}"
         )
 
-    if freesurfer_subjects_dir is None:
-        freesurfer_subjects_dir = os.environ.get("SUBJECTS_DIR", None)
-    if freesurfer_subjects_dir is None:
-        raise ValueError(
-            "freesurfer_subjects_dir must be specified or $SUBJECTS_DIR must be set"
-        )
-    
     data_hemi = np.split(data, 2, axis=-1)
     hemis = ["lh", "rh"]
     projected_data = []
-    for i, (hemi, dt) in enumerate(zip(hemis, data_hemi)):
-        # Load fsaverage sphere for this hemisphere
-        pts, faces = nibabel.freesurfer.read_geometry(
-            os.path.join(
-                freesurfer_subjects_dir, "fsaverage", "surf", f"{hemi}.sphere.reg"
-            )
-        )
-        # build kdtree using only vertices in reduced fsaverage surface
-        kdtree = KDTree(pts[:n_ico_vertices])
-        # figure out neighbors in reduced version for all other vertices in fsaverage
-        _, neighbors = kdtree.query(pts[n_ico_vertices:], k=1)
-        # now simply fill remaining vertices with original values
+    for hemi, dt in zip(hemis, data_hemi):
+        neighbors = _get_upsample_neighbors(
+            hemi, ico_order, freesurfer_subjects_dir)
+        # Fill the extra fsaverage vertices from their nearest low-res neighbor.
         projected_data.append(
             np.concatenate([dt, dt[:, neighbors]], axis=-1)
         )

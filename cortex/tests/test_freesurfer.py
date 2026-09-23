@@ -4,11 +4,13 @@ import shutil
 import numpy as np
 import pytest
 
+import cortex._autoflatten as af
 import cortex.freesurfer as fs
 from cortex.freesurfer import (
     _remove_disconnected_polys,
     _surf2surf_nnfr_matrix,
     get_mri_surf2surf_matrix,
+    upsample_to_fsaverage,
 )
 
 
@@ -122,6 +124,34 @@ def test_get_mri_surf2surf_matrix_rejects_unknown_kwargs():
         get_mri_surf2surf_matrix("A", "lh", target_subj="B", bogus_kwarg=1)
 
 
+# ---------------------------------------------------------------------------
+# upsample_to_fsaverage (bundled neighbor tables, no freesurfer needed)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("data_space,n_src", [("fsaverage6", 81924),
+                                              ("fsaverage5", 20484)])
+def test_upsample_to_fsaverage_bundled_no_freesurfer(data_space, n_src,
+                                                     monkeypatch):
+    # fsaverage5/6 upsampling tables ship with pycortex, so this must work with
+    # no $SUBJECTS_DIR and no freesurfer install.
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    rng = np.random.RandomState(0)
+    data = rng.randn(3, n_src)
+    out = upsample_to_fsaverage(data, data_space)
+    assert out.shape == (3, 327684)
+    # The low-resolution vertices are carried over unchanged.
+    np.testing.assert_array_equal(out[:, :n_src // 2], data[:, :n_src // 2])
+    # A 1-D input yields a 1-D result.
+    assert upsample_to_fsaverage(data[0], data_space).ndim == 1
+
+
+def test_upsample_to_fsaverage_constant_preserved(monkeypatch):
+    # Nearest-neighbor fill of a constant map stays constant everywhere.
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    out = upsample_to_fsaverage(np.full(81924, 2.5), "fsaverage6")
+    np.testing.assert_array_equal(out, np.full(327684, 2.5))
+
+
 def _have_template(subjects_dir, name, hemi="lh"):
     return bool(subjects_dir) and os.path.exists(
         os.path.join(subjects_dir, name, "surf", hemi + ".sphere.reg"))
@@ -178,3 +208,101 @@ def test_surf2surf_matches_freesurfer_downsample():
 
     corr = np.corrcoef(reference.ravel(), got.ravel())[0, 1]
     assert corr > 0.99
+
+
+# ---------------------------------------------------------------------------
+# freesurfer subjects directory
+# ---------------------------------------------------------------------------
+
+def test_get_freesurfer_subject_dir_prefers_explicit_argument(monkeypatch):
+    monkeypatch.setenv("SUBJECTS_DIR", "/from/env")
+    assert fs._get_freesurfer_subject_dir("/explicit") == "/explicit"
+
+
+def test_get_freesurfer_subject_dir_falls_back_to_env(monkeypatch):
+    monkeypatch.setenv("SUBJECTS_DIR", "/from/env")
+    assert fs._get_freesurfer_subject_dir() == "/from/env"
+
+
+def test_get_freesurfer_subject_dir_raises_without_env(monkeypatch):
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    with pytest.raises(ValueError):
+        fs._get_freesurfer_subject_dir()
+
+
+
+# ---------------------------------------------------------------------------
+# autoflatten step of import_subj (see test_autoflatten.py for the step itself)
+# ---------------------------------------------------------------------------
+
+def _stub_import_subj(tmp_path, monkeypatch, subject="S1"):
+    """Stub out everything `import_subj` shells out to, and the filestore."""
+    filestore = tmp_path / "filestore"
+    for folder in ("anatomicals", "surfaces", "surface-info"):
+        (filestore / subject / folder).mkdir(parents=True)
+
+    class _FakeDatabase(object):
+        def make_subj(self, subject):
+            pass
+
+    monkeypatch.setattr(fs.database, "default_filestore", str(filestore))
+    monkeypatch.setattr(fs.database, "db", _FakeDatabase(), raising=False)
+    monkeypatch.setattr(fs.database, "Database", _FakeDatabase)
+    monkeypatch.setattr(fs.sp, "check_output", lambda *args, **kwargs: b"")
+    monkeypatch.setattr(fs, "make_fiducial", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fs, "parse_curv", lambda path: np.zeros(3))
+
+    calls = []
+    # import_subj calls the name re-exported into cortex.freesurfer, so that is
+    # what has to be patched
+    monkeypatch.setattr(
+        fs, "autoflatten_subject",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    return calls
+
+
+def test_import_subj_runs_autoflatten_by_default(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"))
+
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    assert args == ("S1",)
+    assert kwargs["pycortex_subject"] == "S1"
+    assert kwargs["freesurfer_subject_dir"] == str(tmp_path / "fs_subjects")
+    assert kwargs["autoflatten_args"] is None
+
+
+def test_import_subj_passes_autoflatten_args(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"),
+                   autoflatten_args=["--n-cores", "4"])
+
+    _, kwargs = calls[0]
+    assert kwargs["autoflatten_args"] == ["--n-cores", "4"]
+
+
+def test_import_subj_can_disable_autoflatten(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    # even when autoflatten is available, it must not run when disabled
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"),
+                   autoflatten=False)
+
+    assert calls == []
+
+
+def test_import_subj_warns_and_skips_when_autoflatten_missing(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: False)
+
+    with pytest.warns(UserWarning, match="not installed"):
+        fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"))
+
+    assert calls == []

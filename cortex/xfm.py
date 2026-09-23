@@ -13,6 +13,18 @@ class Transform:
     '''
     A standard affine transform. Typically holds a transform from anatomical
     magnet space to epi file space.
+
+    Parameters
+    ----------
+    xfm : ndarray
+        4x4 affine transformation matrix.
+    reference : str, tuple of int, ndarray, or nibabel.Nifti1Image
+        Reference space for the transform. If a str, treated as a path to a
+        nibabel-readable image (loaded to set `reference` and `shape`); if
+        loading fails, kept as a plain string. If a 3-tuple of ints, used
+        directly as `shape`, with no reference image loaded. Otherwise
+        (ndarray or nibabel.Nifti1Image), used directly as `reference`, with
+        `shape` derived from it.
     '''
     shape: tuple[int, int, int]
     reference: Optional[Union[str, "nibabel.Nifti1Image", npt.NDArray]]
@@ -48,6 +60,9 @@ class Transform:
 
     @property
     def inv(self) -> "Transform":
+        """The inverse of this transform, as a new `Transform` object with
+        the same reference (or shape, if no reference is set).
+        """
         ref = self.reference
         if ref is None:
             ref = self.shape
@@ -77,6 +92,18 @@ class Transform:
             return "<Reference free affine transform>"
 
     def save(self, subject, name, xfmtype="magnet"):
+        """Save this transform into the pycortex database.
+
+        Parameters
+        ----------
+        subject : str
+            Subject to save the transform under.
+        name : str
+            Name to save the transform as.
+        xfmtype : str, optional
+            Type of transform being saved, e.g. 'magnet' or 'coord'. Default
+            'magnet'.
+        """
         if self.reference is None:
             raise ValueError('Cannot save reference-free transforms into the database')
         from .database import db
@@ -174,6 +201,12 @@ class Transform:
 
         direction : str, optional {'func>anat', 'anat>func'}
             Direction of transform to return. Defaults to 'func>anat'
+
+        Returns
+        -------
+        fsl_xfm : ndarray
+            4x4 FSL-format transformation matrix, in the direction specified
+            by `direction`.
 
         Notes
         -----
@@ -319,6 +352,11 @@ class Transform:
             the environment variable 'SUBJECTS_DIR' (which should be set
             by freesurfer)
 
+        Returns
+        -------
+        fs_anat2func : ndarray
+            4x4 FreeSurfer-format (register.dat) anatomical-to-functional
+            transformation matrix -- the same one written to `fs_register`.
         """
         import tempfile
         import subprocess

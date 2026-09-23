@@ -63,6 +63,24 @@ shift + s       save current view as png
 =============   ====================================
 
 
+Mouse and Trackpad Controls
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The camera is driven directly from the 3D view.
+
+============================   ====================================
+Action                         Effect
+============================   ====================================
+left-click and drag            rotate the brain (pan, when flattened)
+shift or middle-click + drag   pan the view
+ctrl or right-click + drag     zoom in and out
+scroll wheel                   zoom in and out
+pinch                          zoom in and out
+============================   ====================================
+
+Pinch-to-zoom works both on laptop trackpads and on touchscreens, and zooms the
+brain rather than the surrounding web page.
+
 View Controls
 ^^^^^^^^^^^^^
 
@@ -87,17 +105,39 @@ flatten  flatten cortical surface
 Surface Controls
 ****************
 
-=========== ============================
-name        description
-=========== ============================
-unfold      level of unfolding
-pivot       angle between hemispheres
-shift 		distance between hemispheres
-depth 		cortical depth
-left 		toggle left hemisphere
-right       toggle right hemisphere
-specularity specular reflection level
-=========== ============================
+======== ============================
+name     description
+======== ============================
+unfold   level of unfolding
+pivot    angle between hemispheres
+shift    distance between hemispheres
+depth    cortical depth
+left     toggle left hemisphere
+right    toggle right hemisphere
+======== ============================
+
+
+Lighting Controls
+*****************
+
+These live in the ``lighting`` sub-menu of the surface controls.
+
+==================== ==========================================================
+name                 description
+==================== ==========================================================
+topleft_lighting     crossfade from the default headlight (0) to a light from
+                     the upper left (1)
+uniform_illumination how flat and shadowless the illumination is, 0 to 1
+specularity          specular reflection level
+==================== ==========================================================
+
+Unfolding towards a flatmap drives illumination to fully uniform and
+specularity to zero, since a flat sheet has no shape for directional lighting to
+reveal. Turning on ``bumpy_flatmap`` gives the flatmap real relief again:
+unfolding then drives top-left lighting to 1 instead, which is the direction
+that reads as shaded relief. Like ``pivot``, the sliders move to show the values
+in effect and can still be dragged afterwards; the next change to ``unfold`` or
+``bumpy_flatmap`` drives them back from the configured defaults.
 
 
 Overlay Controls

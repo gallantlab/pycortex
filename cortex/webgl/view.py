@@ -41,6 +41,26 @@ colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
+
+def _viewer_urls(port: int) -> tuple[str, str]:
+    """Return the (local, network) URLs of a viewer running on `port`.
+
+    The local URL is the one to open on the machine running the server. The
+    network URL is built from the machine's hostname plus the configured
+    ``webgl.domain_name``, and is the one to hand to someone else.
+
+    They have to be kept apart, because the hostname is not a dependable way
+    for this machine to reach itself. ``socket.gethostname()`` returns the mDNS
+    name on macOS (``mymac.local``), which resolves to a whole list of
+    addresses -- link-local ones among them -- and only reaches the server if
+    the local firewall lets this python process accept connections on a
+    non-loopback interface. None of that applies to localhost.
+    """
+    local = "http://localhost:%d/mixer.html" % port
+    network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
+    return local, network
+
+
 def make_static(
     outpath,
     data,
@@ -382,6 +402,14 @@ def show(
         headless viewers. Default True
     **kwargs
         All additional keyword arguments are passed to the template renderer.
+
+    Returns
+    -------
+    client : JSMixer or WebApp
+        If `open_browser` is True, a `JSMixer` client connected to the
+        opened browser tab, which can be used to control the viewer
+        programmatically (e.g. `client.getImage()`, `client.animate()`).
+        If `open_browser` is False, returns the `WebApp` server object.
     """
 
     # populate default webshow args
@@ -585,7 +613,21 @@ def show(
             _contour_props = ['surface.{subject}.contours.mode',
                               'surface.{subject}.contours.threshold',
                               'surface.{subject}.contours.overlay']
-            return _camera_props + _surface_props + _curvature_props + _contour_props
+            _lighting_props = ['surface.{subject}.lighting.topleft_lighting',
+                               'surface.{subject}.lighting.uniform_illumination',
+                               'surface.{subject}.lighting.specularity']
+            return (_camera_props + _surface_props + _curvature_props
+                    + _lighting_props + _contour_props)
+
+        # Lighting controls used to sit directly in the surface menu; they now
+        # live in its lighting sub-folder. Keep the old names working, both for
+        # user code and for views saved to the database before the move.
+        _legacy_props = {
+            'surface.{subject}.specularity':
+                'surface.{subject}.lighting.specularity',
+            'surface.{subject}.uniform_illumination':
+                'surface.{subject}.lighting.uniform_illumination',
+        }
 
         def _set_view(self, **kwargs):
             """Low-level command: sets view parameters in the current viewer
@@ -609,6 +651,9 @@ def show(
             # Better to only self.view_props once; it interacts with javascript, 
             # don't want to do that too often, it leads to glitches.
             vw_props = copy.copy(self.view_props)
+            for old_key, new_key in self._legacy_props.items():
+                if old_key in kwargs and new_key not in kwargs:
+                    kwargs[new_key] = kwargs.pop(old_key)
             for subject in subject_list:
                 if 'surface.{subject}.unfold' in kwargs:
                     unfold = kwargs.pop('surface.{subject}.unfold')
@@ -1027,17 +1072,28 @@ def show(
                     port)
 
     server.start()
+    local_url, network_url = _viewer_urls(server.port)
     print("Started server on port %d"%server.port)
-    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
+    if network_url == local_url:
+        print("Open the viewer at %s"%local_url)
+    else:
+        print("Open the viewer at %s (from another machine: %s)"
+              %(local_url, network_url))
     if open_browser:
-        webbrowser.open(url)
+        # This runs on the same machine as the server, so localhost is both
+        # correct and the most reliable thing to hand the browser.
+        webbrowser.open(local_url)
         client = server.get_client()
         client.server = server
         return client
     elif display_url:
         try:
             from IPython.display import HTML, display
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
+            if network_url != local_url:
+                link += (' (from another machine: '
+                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
+            display(HTML(link))
         except:
             pass
 

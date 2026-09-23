@@ -16,7 +16,7 @@ from lxml import etree
 from lxml.builder import E
 
 from .options import config
-from .testing_utils import INKSCAPE_VERSION
+from .testing_utils import INKSCAPE_PATH, INKSCAPE_VERSION
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -187,7 +187,7 @@ class SVGOverlay:
         print('Saved SVG to: %s'%filename)
 
     def get_texture(self, layer_name, height, name=None, background=None, labels=True,
-        shape_list=None, **kwargs):
+        shape_list=None, shadow=None, **kwargs):
         """Renders a specific layer of this svgobject as a png
 
         Parameters
@@ -206,6 +206,11 @@ class SVGOverlay:
             list of string names for path/shape elements in this layer to be rendered
             (any elements not on this list will be set to invisible, if this list is
             provided)
+        shadow : float or None
+            Standard deviation of the gaussian drop-shadow filter baked into the svg
+            file (`stdDeviation` of its `feGaussianBlur`). None (default) leaves the
+            filter's own stdDeviation untouched. 0 collapses the blurred copy behind
+            the source shape exactly, i.e. no visible shadow.
         kwargs : keyword arguments
             keywords to specify display properties of svg path objects, e.g. {'stroke':'white',
             'stroke-width':2} etc. See inkscape help for names for properties. This function
@@ -230,6 +235,10 @@ class SVGOverlay:
                 "SVGOverlay.get_texture requires inkscape."
                 "Please make sure that inkscape is installed and that is "
                 "accessible from the terminal.")
+
+        if shadow is not None:
+            for blur in self.svg.findall(".//{%s}feGaussianBlur"%svgns):
+                blur.attrib["stdDeviation"] = str(shadow)
 
         import matplotlib.pyplot as plt
         # Set the size of the texture
@@ -273,18 +282,30 @@ class SVGOverlay:
 
         pngfile = name
         if name is None:
-            png = tempfile.NamedTemporaryFile(suffix=".png")
+            png = tempfile.NamedTemporaryFile(suffix = ".png", delete = False)
+            png.close()
             pngfile = png.name
 
-        inkscape_cmd = config.get('dependency_paths', 'inkscape')
+        # The svg is written to a temporary file rather than piped through
+        # /dev/stdin, which does not exist on Windows.
+        svgtemp = tempfile.NamedTemporaryFile(suffix = ".svg", delete = False)
+        svgtemp.write(etree.tostring(self.svg))
+        svgtemp.close()
+        svgfile = svgtemp.name
+
+        inkscape_cmd = INKSCAPE_PATH
+        # The command is built as an argument list rather than as a string that
+        # is then split, so that a configured inkscape path containing spaces
+        # or backslashes is passed through unchanged.
         if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
-            cmd = "{inkscape_cmd} -z -h {height} -e {outfile} /dev/stdin"
+            cmd = [inkscape_cmd, '-z', '-h', str(height), '-e', pngfile, svgfile]
         else:
-            cmd = "{inkscape_cmd} -h {height} --export-filename {outfile} " \
-                  "/dev/stdin"
-        cmd = cmd.format(inkscape_cmd=inkscape_cmd, height=height, outfile=pngfile)
-        proc = sp.Popen(shlex.split(cmd), stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
-        stdout, stderr = proc.communicate(etree.tostring(self.svg))
+            cmd = [inkscape_cmd, '-h', str(height), '--export-filename', pngfile, svgfile]
+        try:
+            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
+            stdout, stderr = proc.communicate()
+        finally:
+            os.unlink(svgfile)
         
         suppressed_warnings = [
             'Format autodetect failed.',
@@ -300,15 +321,16 @@ class SVGOverlay:
             self.svg.getroot().remove(img)
 
         if name is None:
-            png.seek(0)
             try:
-                im = plt.imread(png)
+                im = plt.imread(pngfile)
             except SyntaxError as e:
+                os.unlink(pngfile)
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
                                    f" (inkscape version: {INKSCAPE_VERSION})"
                                    f" (inkscape command: {inkscape_cmd})"
                                    f" (stdout: {stdout})"
                                    f" (stderr: {stderr})")
+            os.unlink(pngfile)
             return im
 
 class Overlay:
@@ -752,7 +774,8 @@ def get_overlay(subject, svgfile, pts, polys, remove_medial=False,
         if not modify_svg_file:
             # To avoid modifying the svg file, we copy it in a temporary file
             import shutil
-            svg_tmp = tempfile.NamedTemporaryFile(suffix=".svg")
+            svg_tmp = tempfile.NamedTemporaryFile(suffix = ".svg", delete = False)
+            svg_tmp.close()
             svgfile_tmp = svg_tmp.name
             shutil.copy2(svgfile, svgfile_tmp)
             svgfile = svgfile_tmp

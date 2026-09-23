@@ -218,9 +218,9 @@ class Dataset:
         try:
             group: h5py.Group = self.h5['subjects'][subject]
             if type == "rois":
-                tf = tempfile.NamedTemporaryFile()
+                tf = tempfile.NamedTemporaryFile(delete = False)
                 tf.write(group['rois'][0])
-                tf.seek(0)
+                tf.close()
                 return tf
         except (KeyError, TypeError):
             raise IOError('Overlay not found in package')

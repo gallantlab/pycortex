@@ -4,11 +4,11 @@ import tempfile
 import pytest
 
 from cortex import db, dataset
-from cortex.testing_utils import has_installed
+from cortex.testing_utils import inkscapePath
 
 subj, xfmname, nverts, volshape = "S1", "fullhead", 304380, (31, 100, 100)
 
-no_inkscape = not has_installed("inkscape")
+no_inkscape = inkscapePath() is None
 
 
 def test_braindata():
@@ -30,7 +30,8 @@ def test_dataset():
 
     ds = dataset.Dataset(randvol=(vol, subj, xfmname), stack=(stack, subj, xfmname))
     ds.append(thickstack=ds.stack.masked["thick"])
-    tf = tempfile.NamedTemporaryFile(suffix=".hdf")
+    tf = tempfile.NamedTemporaryFile(suffix = ".hdf", delete = False)
+    tf.close()
     ds.save(tf.name)
 
     ds = dataset.Dataset.from_file(tf.name)
@@ -160,7 +161,8 @@ def test_braindata_hash():
 
 
 def test_dataset_save():
-    tf = tempfile.NamedTemporaryFile(suffix=".hdf")
+    tf = tempfile.NamedTemporaryFile(suffix = ".hdf", delete = False)
+    tf.close()
     mrand = np.random.randn(2, *volshape)
     rand = np.random.randn(*volshape)
     ds = cortex.Dataset(test=(mrand, subj, xfmname))
@@ -180,7 +182,8 @@ def test_dataset_save():
 
 
 def test_mask_save():
-    tf = tempfile.NamedTemporaryFile(suffix=".hdf")
+    tf = tempfile.NamedTemporaryFile(suffix = ".hdf", delete = False)
+    tf.close()
     ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.append(masked=ds.test.masked["thin"])
     data = ds.masked.data
@@ -192,7 +195,10 @@ def test_mask_save():
 
 
 def test_overwrite():
-    tf = tempfile.NamedTemporaryFile(suffix=".hdf")
+    # the handle is closed so that h5py can open the file by name, which
+    # Windows forbids while the original handle is still open
+    tf = tempfile.NamedTemporaryFile(suffix = ".hdf", delete = False)
+    tf.close()
     ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.save(tf.name)
 
@@ -201,7 +207,8 @@ def test_overwrite():
 
 
 def test_pack():
-    tf = tempfile.NamedTemporaryFile(suffix=".hdf")
+    tf = tempfile.NamedTemporaryFile(suffix = ".hdf", delete = False)
+    tf.close()
     ds = cortex.Dataset(test=(np.random.randn(*volshape), subj, xfmname))
     ds.save(tf.name, pack=True)
 
@@ -450,3 +457,19 @@ def test_nan_transparent_volume_raw_alpha_override():
     # Non-NaN positions should reflect the user's alpha
     assert not np.isnan(data[15, 50, 50])
     assert volume[0, 15, 50, 50, 3] > 0
+
+
+@pytest.mark.parametrize("random_type", ["uniform", "low_frequency"])
+def test_vertex_random(random_type):
+    data = cortex.Vertex.random(subj, random_type=random_type)
+    assert data.data.shape == (nverts,)
+    assert np.isclose(data.data.mean(), 0, atol=0.01)
+    assert np.isclose(data.data.std(), 1, atol=0.01)
+
+
+@pytest.mark.parametrize("random_type", ["uniform", "low_frequency"])
+def test_volume_random(random_type):
+    data = cortex.Volume.random(subj, xfmname, random_type=random_type)
+    assert data.data.shape == volshape
+    assert np.isclose(data.data.mean(), 0, atol=0.01)
+    assert np.isclose(data.data.std(), 1, atol=0.01)

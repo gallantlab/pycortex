@@ -198,9 +198,12 @@ class BrainCTM:
 
 class Hemi:
     def __init__(self, pts, polys, norms=None):
-        self.tf = tempfile.NamedTemporaryFile()
-        self.tf.name = bytes(self.tf.name, 'ascii')
-        self.ctm = CTMfile(self.tf.name, "w")
+        # On Windows a NamedTemporaryFile cannot be opened a second time while
+        # the Python handle is open, so close it and let the CTM library open it
+        self.tf = tempfile.NamedTemporaryFile(delete = False)
+        self.tf.close()
+        self.tfName = os.fsencode(self.tf.name)
+        self.ctm = CTMfile(self.tfName, "w")
 
         self.ctm.setMesh(pts.astype(np.float32),
                          polys.astype(np.uint32),
@@ -232,8 +235,12 @@ class Hemi:
     def save(self, **kwargs):
         self.ctm.addAttrib(self.aux, 'auxdat')
         self.ctm.save(**kwargs)
-        ctm = CTMfile(self.tf.name)
-        return ctm.getMesh(), self.tf.read()
+        ctm = CTMfile(self.tfName)
+        mesh = ctm.getMesh()
+        with open(self.tf.name, 'rb') as fp:
+            binary = fp.read()
+        os.unlink(self.tf.name)
+        return mesh, binary
 
 class DecimatedHemi(Hemi):
     def __init__(self, pts, polys, fpolys, pia=None):
@@ -306,11 +313,12 @@ def read_pack(ctmfile):
 
         for start, end in zip(offset[:-1], offset[1:]):
             ctmfp.seek(start)
-            tf = tempfile.NamedTemporaryFile()
+            tf = tempfile.NamedTemporaryFile(delete = False)
             tf.write(ctmfp.read(end-start))
-            tf.seek(0)
+            tf.close()
             ctm = CTMfile(tf.name, "r")
             pts, polys, norms = ctm.getMesh()
             meshes.append((pts, polys))
+            os.unlink(tf.name)
 
     return meshes

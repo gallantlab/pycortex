@@ -2,6 +2,7 @@
 
 import os
 from glob import glob
+import sys
 import numpy
 
 import configparser
@@ -63,7 +64,7 @@ ctm = Extension('cortex.openctm', [
             'OpenCTM-1.0.3/lib/liblzma/LzmaDec.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaEnc.c',
             'OpenCTM-1.0.3/lib/liblzma/LzmaLib.c',],
-            libraries=['m'], include_dirs=[
+            libraries= [] if sys.platform == 'win32' else ['m'], include_dirs=[
             'OpenCTM-1.0.3/lib/',
             'OpenCTM-1.0.3/lib/liblzma/', numpy.get_include()],
             define_macros=[
@@ -120,7 +121,8 @@ setup(name=DISTNAME,
             'cortex': [
                 'svgbase.xml',
                 'defaults.cfg',
-                'bbr.sch'
+                'bbr.sch',
+                'data/*.npz'
             ],
             'cortex.webgl': [
                 '*.html',
@@ -139,6 +141,10 @@ setup(name=DISTNAME,
       # Don't use `extras_require` here. Put them in pyproject.toml .
       cmdclass=dict(install=my_install),
       include_package_data=True,
+      # Exclude reference renders for the visual-regression test from the wheel.
+      # They are still included in the source tarball by MANIFEST.in.
+      exclude_package_data={'cortex.tests': ['reference_images/*',
+                                             'reference_images/*/*']},
       classifiers=[
           'Development Status :: 6 - Mature',
           'Intended Audience :: Science/Research',

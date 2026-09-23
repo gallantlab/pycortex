@@ -34,6 +34,11 @@ from tornado.web import HTTPError
 cwd = os.path.split(os.path.abspath(__file__))[0]
 hostname = socket.gethostname()
 
+# on Windows the mimetypes module reads the extension to type mapping out of the
+# registry, where .js is frequently registered as text/plain. browsers refuse to
+# execute scripts served with that type, so force the correct type here.
+mimetypes.add_type("text/javascript", ".js")
+
 
 def make_base64(imgfile: str) -> str:
     with open(imgfile, "rb") as img:
