@@ -467,7 +467,8 @@ def get_contour_vertices(data, subject, surface="fiducial"):
     """Find vertices at borders of parcellation labels.
 
     A vertex is a border vertex if any of its mesh neighbors has a different
-    label value. This is useful for drawing contour lines around parcellation
+    label value. NaN vertices are never borders, and NaN neighbors are
+    ignored (as in :func:`cortex.quickflat.composite.add_contours`). This is useful for drawing contour lines around parcellation
     regions on the cortical surface.
 
     Parameters
@@ -487,12 +488,17 @@ def get_contour_vertices(data, subject, surface="fiducial"):
     _, polys = db.get_surf(subject, surface, merge=True)
     neighbors = _get_neighbors_dict(polys)
     data = np.asarray(data)
+    if np.issubdtype(data.dtype, np.floating):
+        isnan = np.isnan(data)
+    else:
+        isnan = np.zeros(len(data), dtype=bool)
     border = np.zeros(len(data), dtype=bool)
     for v, neighs in neighbors.items():
-        if v >= len(data):
+        # NaN vertices (e.g. outside the parcellation) are never borders
+        if v >= len(data) or isnan[v]:
             continue
         for n in neighs:
-            if n < len(data) and data[v] != data[n]:
+            if n < len(data) and not isnan[n] and data[v] != data[n]:
                 border[v] = True
                 break
     return border

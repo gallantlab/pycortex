@@ -299,35 +299,53 @@ var mriview = (function(module) {
 
         this.setData(data[0].name);
 
-        // Populate the contours folder: overlay first, then mode and threshold (only once)
-        if (!this._contourUIAdded) {
-            var contourOptions = {"none": "none"};
-            for (var dname in this.dataviews) {
-                if (this.dataviews[dname].vertex) {
-                    contourOptions[dname] = dname;
-                }
+        // Populate the contours folder: overlay first, then mode and threshold.
+        // The overlay dropdown is always created, so that
+        // "surface.{subject}.contours.overlay" (listed in the python view_props)
+        // is always a valid view parameter. Vertex dataviews added by later
+        // addData calls are appended to the existing dropdown.
+        var contourOptions = {"none": "none"};
+        for (var dname in this.dataviews) {
+            var cdv = this.dataviews[dname];
+            // RGB vertex data carries 4 values per vertex and cannot be used as labels
+            if (cdv.vertex && !cdv.data[0].raw) {
+                contourOptions[dname] = dname;
             }
+        }
+        if (this._contourOverlayName === undefined)
             this._contourOverlayName = "none";
-            var viewer = this;
-            for (var i = 0; i < this.surfs.length; i++) {
-                (function(surf) {
-                    surf.surf.loaded.done(function() {
-                        var contoursFolder = surf.surf.ui.contours;
-                        // Overlay dropdown first (if multiple vertex datasets)
-                        if (Object.keys(contourOptions).length > 1) {
-                            contoursFolder.add({
-                                overlay: {action:[viewer, "setContourOverlay", contourOptions]},
-                            });
-                        }
-                        // Then mode and threshold
+        var viewer = this;
+        for (var i = 0; i < this.surfs.length; i++) {
+            (function(surf, options) {
+                surf.surf.loaded.done(function() {
+                    var contoursFolder = surf.surf.ui.contours;
+                    if (!surf.surf._contourUIAdded) {
+                        contoursFolder.add({
+                            overlay: {action:[viewer, "setContourOverlay", options]},
+                        });
                         contoursFolder.add({
                             mode: {action:[surf.surf, "setContourMode", {off:0, "contours only":1, "contours + fill":2, "colored contours":3, "colored + fill":4}]},
                             threshold: {action:[surf.surf.uniforms.contourThreshold, "value", 0.001, 0.5]},
                         });
-                    });
-                })(this.surfs[i]);
-            }
-            this._contourUIAdded = true;
+                        surf.surf._contourUIAdded = true;
+                        surf.surf._contourOptions = $.extend({}, options);
+                        return;
+                    }
+                    // Append newly added vertex dataviews to the existing dropdown
+                    var ctrl = contoursFolder._controls.overlay;
+                    for (var oname in options) {
+                        if (oname in surf.surf._contourOptions)
+                            continue;
+                        surf.surf._contourOptions[oname] = options[oname];
+                        if (ctrl !== undefined && ctrl.__select !== undefined) {
+                            var opt = document.createElement("option");
+                            opt.innerHTML = oname;
+                            opt.setAttribute("value", options[oname]);
+                            ctrl.__select.appendChild(opt);
+                        }
+                    }
+                });
+            })(this.surfs[i], contourOptions);
         }
     };
 
@@ -786,6 +804,11 @@ var mriview = (function(module) {
         if (!overlayView.vertex) {
             console.warn("setContourOverlay: dataset '" + name + "' is not vertex data. " +
                          "Contour overlays require vertex (surface) data.");
+            return;
+        }
+        if (overlayView.data[0].raw) {
+            console.warn("setContourOverlay: dataset '" + name + "' is RGB vertex data. " +
+                         "Contour overlays require scalar label data.");
             return;
         }
 

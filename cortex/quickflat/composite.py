@@ -706,8 +706,9 @@ def add_contours(
         Height of the flatmap image. None uses height of existing images.
     linewidth : int
         Width of contour lines in pixels (default: 1).
-    linecolor : tuple of float
-        (R, G, B, A) color for contour lines (default: black).
+    linecolor : matplotlib color
+        Color for contour lines, e.g. an (R, G, B, A) tuple or a color
+        name (default: black).
     sampler : str
         Sampling method (default: 'nearest' to preserve label boundaries).
     recache : bool
@@ -734,8 +735,11 @@ def add_contours(
             height = 1024
 
     # Generate flatmap image of the label data
+    # thick=1 samples volume labels at a single cortical depth: averaging
+    # labels across depth would produce fractional values and spurious borders.
+    # (thick is ignored for vertex data.)
     label_img, extents_out = make_flatmap_image(
-        dataview, height=height, recache=recache, sampler=sampler
+        dataview, height=height, recache=recache, sampler=sampler, thick=1
     )
 
     if extents is None:
@@ -753,7 +757,9 @@ def add_contours(
 
     # Create RGBA overlay image
     rgba = np.zeros(label_img.shape[:2] + (4,), dtype=np.float32)
-    rgba[border] = linecolor
+    from matplotlib.colors import to_rgba
+
+    rgba[border] = to_rgba(linecolor)
 
     _, ax = _get_fig_and_ax(fig)
     img = ax.imshow(
