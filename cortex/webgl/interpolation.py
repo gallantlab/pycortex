@@ -701,19 +701,24 @@ def build_channels(keyframes: Sequence[dict], time_key: str = "time",
     Returns
     -------
     dict
-        Property name to an object with an ``at(time)`` method. Properties
-        absent from the first keyframe are skipped, matching the way
-        ``_get_anim_seq`` iterates the earlier view of each pair.
+        Property name to an object with an ``at(time)`` method. Each channel is
+        built from the keyframes that carry its property: a property every
+        keyframe carries behaves as it always did, one carried by a single
+        keyframe is constant, and the keyframes that leave it out are simply
+        not on its curve. That is how a flat keyframe, which records no camera
+        angle, stays out of the ``camera.azimuth`` channel.
     """
     frames = sorted(keyframes, key=lambda frame: frame[time_key])
     if not frames:
         raise ValueError("Need at least one keyframe")
 
     channels: "dict[str, object]" = {}
-    for prop in frames[0]:
-        if prop in RESERVED_KEYS:
-            continue
-        channels[prop] = _make_channel(frames, prop, time_key, default_mode)
+    for frame in frames:
+        for prop in frame:
+            if prop in RESERVED_KEYS or prop in channels:
+                continue
+            carriers = [carrier for carrier in frames if prop in carrier]
+            channels[prop] = _make_channel(carriers, prop, time_key, default_mode)
     return channels
 
 

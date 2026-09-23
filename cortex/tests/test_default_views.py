@@ -14,6 +14,7 @@ import pytest
 
 from cortex.export.save_views import (
     DEFAULT_VIEW_ANGLES,
+    FLAT_INERT_PROPS,
     FLAT_VIEW_NAME,
     INFLATED_SUFFIX,
     angle_view_params,
@@ -134,6 +135,23 @@ def test_the_flat_view_is_fully_unfolded_and_pivoted():
     view = default_subject_views(has_flatmap=True)[FLAT_VIEW_NAME]
     assert view["surface.{subject}.unfold"] == 1
     assert view == {**view, **angle_view_params["flatmap"]}
+
+
+def test_the_flat_view_carries_no_camera_angle():
+    """A flattened surface pins the camera square-on and ignores the angle.
+
+    Naming one would do nothing to the view itself while giving an animation
+    something spurious to interpolate towards on the way in -- spinning the
+    brain as it flattens, and overwriting the folded angle it would return to.
+    """
+    view = default_subject_views(has_flatmap=True)[FLAT_VIEW_NAME]
+    assert not set(FLAT_INERT_PROPS) & set(view), view
+    # Not in the table it is built from either, so save_3d_views does not ask
+    # for one when it renders a flatmap.
+    assert not set(FLAT_INERT_PROPS) & set(angle_view_params["flatmap"])
+    # Every other view still names its angle.
+    for name in DEFAULT_VIEW_ANGLES:
+        assert set(FLAT_INERT_PROPS) <= set(default_subject_views(True)[name])
 
 
 def test_views_keep_the_subject_placeholder():

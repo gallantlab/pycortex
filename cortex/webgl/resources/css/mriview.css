@@ -674,6 +674,18 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     width: 64px;
 }
 
+/* "match quickflat size" is a caption, not one of the 44px labels that head a
+   field, so it takes the width it needs and clicking it toggles the box. */
+.anim-flatmatch-label {
+    width: auto;
+    cursor: pointer;
+}
+
+.anim-flatmatch {
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
 .pycortex-buttons {
     text-align: center;
 }
