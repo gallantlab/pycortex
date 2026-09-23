@@ -1127,6 +1127,17 @@ def _js_attrs(handle, path):
     return resp[0]
 
 
+def _js_run(handle, path, args):
+    """Call a javascript function and return what it gave back.
+
+    ``send`` answers with one entry per connected client, so the value of
+    interest is the first (and, in a headless viewer, only) element.
+    """
+    resp = handle.send(method="run", params=[path, args])
+    assert isinstance(resp, list) and len(resp) == 1, resp
+    return resp[0]
+
+
 def _js_value(handle, path):
     """Read one scalar javascript property, e.g. viewopts.movie_post.token."""
     parent, _, name = path.rpartition(".")
@@ -1417,8 +1428,8 @@ def test_browser_and_python_interpolate_identically():
     frames = [i * 0.5 for i in range(61)]
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        from_js = handle.send(method="run", params=[
-            "window.jsplot.viewtools.viewsAt", [SMOOTHING_KEYFRAMES, frames]])
+        from_js = _js_run(handle, "window.jsplot.viewtools.viewsAt",
+                          [SMOOTHING_KEYFRAMES, frames])
         assert isinstance(from_js, list) and len(from_js) == len(frames), from_js
 
         channels = build_channels(SMOOTHING_KEYFRAMES, time_key="frame")
@@ -1644,8 +1655,8 @@ def test_quickflat_size_reaches_the_browser():
         assert subj in _js_attrs(handle, "window.viewopts.quickflat_size")
         # .slice() hands back a plain array, which survives the JSON round trip
         # that a bare property read does not.
-        shipped = handle.send(method="run", params=[
-            "window.viewopts.quickflat_size.%s.slice" % subj, []])
+        shipped = _js_run(
+            handle, "window.viewopts.quickflat_size.%s.slice" % subj, [])
         assert shipped == expected
 
     if expected is not None:
@@ -1669,3 +1680,398 @@ def test_quickflat_size_matches_a_real_quickflat_png(tmp_path):
     cortex.quickflat.make_png(out, vol, with_rois=False, with_labels=False,
                               with_colorbar=False)
     assert list(Image.open(out).size) == expected
+
+
+def _alpha_mask(path):
+    """Boolean mask of the pixels a png actually drew on."""
+    from PIL import Image
+
+    return np.array(Image.open(path).convert("RGBA"))[..., 3] > 0
+
+
+def _mask_bbox(mask):
+    rows, cols = np.where(mask.any(axis=1))[0], np.where(mask.any(axis=0))[0]
+    assert len(rows) and len(cols), "nothing was drawn"
+    return int(cols[0]), int(rows[0]), int(cols[-1]) + 1, int(rows[-1]) + 1
+
+
+def test_fit_flat_view_frames_the_flat_surface():
+    """The flat view looks at the middle of the flatmap, from far enough back.
+
+    Far enough back being the distance at which the camera's field of view
+    spans the flatmap, which is what makes the render fill the frame the way
+    quickflat's image does.
+    """
+    from cortex.webgl.view import _has_flatmap, _quickflat_size
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        # Clicking the view in the camera > views menu, the way a person does.
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+
+        box = _js_run(handle, "window.viewer.flatBBox", [])
+        span = [box["max"][i] - box["min"][i] for i in range(3)]
+
+        # The viewer's flatmap and quickflat's are the same surface, so the
+        # frame quickflat writes has the same shape as the flatmap does here.
+        width, height = _quickflat_size(subj)
+        assert span[0] / span[1] == pytest.approx(width / height, rel=1e-3)
+
+        fov = _js_value(handle, "window.viewer.camera.fov")
+        aspect = _js_value(handle, "window.viewer.camera.aspect")
+        view = handle._capture_view()
+        assert view["camera.target"] == pytest.approx(
+            [(box["min"][0] + box["max"][0]) / 2,
+             (box["min"][1] + box["max"][1]) / 2, 0], abs=1e-3)
+        # As large as fits in the frame on screen: filling it top to bottom,
+        # unless that window is narrower than the flatmap, which would crop it.
+        assert view["camera.radius"] == pytest.approx(
+            max(span[1] / 2, span[0] / 2 / aspect) / np.tan(np.radians(fov / 2)),
+            rel=1e-3)
+        assert _js_run(handle, "window.viewer.isFlatFitted", []) is True
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_setting_the_flat_view_from_python_leaves_the_camera_alone():
+    """The framing is asked for, never applied behind a caller's back.
+
+    save_3d_views sets the flat view through _set_view and renders it at its
+    own size; re-framing it there would silently change every flatmap that
+    function has ever written.
+    """
+    from cortex.export.save_views import default_subject_views
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        before = handle._capture_view()
+        handle._set_view(**default_subject_views(True)["flat"])
+        time.sleep(2)
+
+        after = handle._capture_view()
+        assert after["surface.{subject}.unfold"] == 1
+        assert after["camera.radius"] == pytest.approx(before["camera.radius"])
+        assert _js_run(handle, "window.viewer.isFlatFitted", []) is False
+
+        # ... and asking for it does frame the flatmap.
+        framing = handle.fit_flat_view()
+        assert framing is not None
+        time.sleep(1)
+        assert handle._capture_view()["camera.radius"] == pytest.approx(
+            framing["radius"], rel=1e-3)
+
+
+def test_flat_view_renders_what_quickflat_draws(tmp_path):
+    """The point of the framing: a flat frame is the png make_png writes.
+
+    Rendered at the subject's quickflat size, a framed flat view has to put the
+    flatmap where quickflat puts it -- same position, same scale -- or an
+    animation that visits the flat surface does not line up with a flatmap.
+    """
+    from cortex.export.save_views import default_subject_views
+    from cortex.webgl.view import _has_flatmap, _quickflat_size
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    size = _quickflat_size(subj)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+
+    quickflat = str(tmp_path / "quickflat.png")
+    cortex.quickflat.make_png(quickflat, vol, with_rois=False,
+                              with_labels=False, with_colorbar=False)
+    drawn = _alpha_mask(quickflat)
+    assert list(drawn.shape[::-1]) == size
+
+    rendered = str(tmp_path / "webgl.png")
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle._set_view(**default_subject_views(True)["flat"])
+        time.sleep(2)
+        handle.fit_flat_view()
+        time.sleep(1)
+        # The window is not the shape of the image, so this only lines up
+        # because getImage re-frames for what it is about to write.
+        handle.getImage(rendered, size=tuple(size))
+        wait_for_file(rendered, timeout=60)
+        time.sleep(1)
+
+    shot = _alpha_mask(rendered)
+    assert shot.shape == drawn.shape
+
+    # Both fill the frame: quickflat's fills it exactly, and the render is
+    # within a pixel of that (the frame is a whole number of pixels, so its
+    # aspect ratio is quickflat's rounded).
+    x0, y0, x1, y1 = _mask_bbox(shot)
+    assert (x0, y0) == pytest.approx((0, 0), abs=2)
+    assert (x1, y1) == pytest.approx(shot.shape[::-1], abs=2)
+
+    # And they are the same flatmap in the same place, not merely two things
+    # that happen to fill the frame. What is left is edge pixels: the two
+    # rasterize the outline differently, and nothing else may differ.
+    overlap = (shot & drawn).sum() / (shot | drawn).sum()
+    assert overlap > 0.97, "masks overlap by only %.3f" % overlap
+
+
+# ---------------------------------------------------------------------------
+# A flat pose carries no camera angle
+# ---------------------------------------------------------------------------
+
+
+def test_a_flat_pose_records_no_camera_angle():
+    """Both capture paths agree: azimuth and altitude are not part of it."""
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        folded = handle._capture_view()
+        assert "camera.azimuth" in folded and "camera.altitude" in folded
+
+        handle._set_view(**{"surface.{subject}.unfold": 1})
+        time.sleep(2)
+
+        flat = handle._capture_view()
+        assert "camera.azimuth" not in flat, flat
+        assert "camera.altitude" not in flat, flat
+
+        # The browser's own capture (vt.captureView, behind "save view") drops
+        # them too, or a view saved in the GUI would carry what python's does
+        # not.
+        handle.send(method="run",
+                    params=["window.viewer.saveNewView", ["_pytest_flat"]])
+        saved = handle.retrieve_new_views()["_pytest_flat"]
+        assert "camera.azimuth" not in saved, saved
+        assert "camera.altitude" not in saved, saved
+
+        # Tilting the flat surface gives the angle back its meaning, so it is
+        # recorded again.
+        handle._set_view(**{"surface.{subject}.allow_tilt": True})
+        time.sleep(2)
+        tilted = handle._capture_view()
+        assert "camera.azimuth" in tilted, tilted
+        assert "camera.altitude" in tilted, tilted
+
+
+def test_flattening_leaves_the_camera_angle_alone():
+    """An animation into the flat view must not spin the brain on the way.
+
+    The controls discard the angle once flat and write the *folded* one on the
+    way there, so a keyframe carrying an angle both fights the controls' own
+    blend and leaves the folded view rotated once it unfolds again.
+    """
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle._set_view(**{"camera.azimuth": 45, "camera.altitude": 70,
+                            "surface.{subject}.unfold": 0})
+        time.sleep(2)
+        folded = handle._capture_view()
+
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.addKeyframe", []])
+
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.setFrame", [30]])
+        time.sleep(1)
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.addKeyframe", []])
+        time.sleep(1)
+
+        keyframes = _js_run(handle, "window.viewer._anim.keyframes.slice", [])
+        assert len(keyframes) == 2
+        assert "camera.azimuth" not in keyframes[1], keyframes[1]
+
+        # Nothing along the way asks for an angle either: the one channel the
+        # animation has for it is fed by the single keyframe that carries one.
+        frames = [f * 1.0 for f in range(0, 31, 5)]
+        views = _js_run(handle, "window.jsplot.viewtools.viewsAt",
+                        [keyframes, frames])
+        azimuths = [view["camera.azimuth"] for view in views]
+        assert azimuths == pytest.approx([folded["camera.azimuth"]] * len(frames))
+
+        # Step the animation through the transition, which is where the angle
+        # used to be rewritten, and then unfold by hand: the folded camera has
+        # to be the one we set, not wherever the flat keyframe dragged it.
+        for f in (10, 20, 30):
+            handle.send(method="run",
+                        params=["window.viewer._animPanel.setFrame", [f]])
+            time.sleep(0.5)
+        handle._set_view(**{"surface.{subject}.unfold": 0})
+        time.sleep(2)
+
+        back = handle._capture_view()
+        assert back["camera.azimuth"] == pytest.approx(
+            folded["camera.azimuth"], abs=1.0)
+        assert back["camera.altitude"] == pytest.approx(
+            folded["camera.altitude"], abs=1.0)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_browser_and_python_agree_with_a_flat_keyframe_in_the_middle():
+    """The two interpolators must treat a missing property the same way."""
+    from cortex.webgl.interpolation import build_channels, evaluate
+
+    keyframes = [
+        {"frame": 0, "camera.azimuth": 45.0, "camera.altitude": 70.0,
+         "surface.{subject}.unfold": 0.0, "interpolation": "Bezier"},
+        {"frame": 15, "surface.{subject}.unfold": 1.0,
+         "interpolation": "Bezier"},
+        {"frame": 30, "camera.azimuth": 270.0, "camera.altitude": 40.0,
+         "surface.{subject}.unfold": 0.0, "interpolation": "Bezier"},
+    ]
+    frames = [i * 1.5 for i in range(21)]
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        from_js = _js_run(handle, "window.jsplot.viewtools.viewsAt",
+                          [keyframes, frames])
+        assert len(from_js) == len(frames)
+
+        channels = build_channels(keyframes, time_key="frame")
+        for frame, js_view in zip(frames, from_js):
+            _assert_views_match(evaluate(channels, frame), js_view)
+
+        # The flat keyframe is not a knot on the angle's curve: it sweeps
+        # across the whole animation rather than pausing in the middle.
+        mid = from_js[len(from_js) // 2]["camera.azimuth"]
+        assert mid != pytest.approx(45.0) and mid != pytest.approx(270.0)
+
+
+# ---------------------------------------------------------------------------
+# The animation panel's "match quickflat size" option
+# ---------------------------------------------------------------------------
+
+
+def test_the_panel_leaves_the_render_size_alone_until_asked():
+    """The quickflat size is offered, not imposed."""
+    from cortex.webgl.view import _has_flatmap, _quickflat_size
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    size = _quickflat_size(subj)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+
+        # Lay down a flat keyframe, the case the option is about.
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.addKeyframe", []])
+        time.sleep(1)
+
+        assert _js_run(handle, "window.viewer._animPanel.matchesFlat", []) is False
+        default_size = _js_run(handle, "window.viewer._animPanel.renderSize", [])
+        assert default_size != size
+
+        # Ticking the box takes over the size and re-frames the keyframe that
+        # is already down, which was framed for the untouched default.
+        before = _js_run(handle, "window.viewer._anim.keyframes.slice", [])[0]
+        assert _js_run(handle, "window.viewer._animPanel.setMatchFlat",
+                       [True]) is True
+        time.sleep(2)
+
+        assert _js_run(handle, "window.viewer._animPanel.renderSize", []) == size
+        after = _js_run(handle, "window.viewer._anim.keyframes.slice", [])[0]
+        assert after["camera.radius"] != pytest.approx(before["camera.radius"])
+
+        framing = _js_run(handle, "window.viewer.flatFraming",
+                          [size[0] / size[1]])
+        assert after["camera.radius"] == pytest.approx(framing["radius"],
+                                                       rel=1e-3)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_rendering_an_animation_reproduces_the_quickflat_png(tmp_path):
+    """End to end: with the box ticked, a flat keyframe renders as the flatmap.
+
+    The panel picks the render size, the framing follows it, and the frame that
+    lands in the movie directory has to be the png make_png writes -- that is
+    what lets a flat frame of an animation be cut against a flatmap made in
+    python.
+    """
+    from cortex.webgl.view import _has_flatmap, _quickflat_size
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    size = _quickflat_size(subj)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+
+    quickflat = str(tmp_path / "quickflat.png")
+    cortex.quickflat.make_png(quickflat, vol, with_rois=False,
+                              with_labels=False, with_colorbar=False)
+    drawn = _alpha_mask(quickflat)
+
+    movie_dir = tmp_path / "movie"
+    movie_dir.mkdir()
+    with cortex.export.headless_viewer(
+            vol, viewer_params=dict(movie_dir=str(movie_dir))) as handle:
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+
+        # Tick "match quickflat size" before laying the keyframe down.
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.setMatchFlat", [True]])
+        time.sleep(1)
+
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.addKeyframe", []])
+        time.sleep(1)
+
+        assert _js_run(handle, "window.viewer._animPanel.renderSize", []) == size
+
+        # One frame is enough, and 31 of them at this size are not free.
+        handle.send(method="set", params=["window.viewer._anim.last", 0])
+        handle.send(method="run",
+                    params=["window.viewer._animPanel.render", []])
+
+        frame = str(movie_dir / "brainmovie_00000.png")
+        wait_for_file(frame, timeout=120)
+        time.sleep(2)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+    shot = _alpha_mask(frame)
+    assert list(shot.shape[::-1]) == size
+    overlap = (shot & drawn).sum() / (shot | drawn).sum()
+    assert overlap > 0.97, "masks overlap by only %.3f" % overlap

@@ -321,9 +321,13 @@ They are built from the same tables ``cortex.export.save_views`` uses for :func:
 
     viewer.save_view(subject, "dorsal", is_overwrite=True)
 
-The ``flat`` view uses the viewer's standard flatmap preset. It cannot match ``quickflat.make_figure`` exactly, since the viewer draws the flat surface through a perspective camera while quickflat rasterizes it orthographically; if the framing is not what you want for a particular subject, override it as above.
+The ``flat`` view uses the viewer's standard flatmap preset. It names no camera angle, because a flattened surface ignores one: the controls hold the camera square-on to the flatmap and discard whatever azimuth and altitude they are given (unless the surface's ``allow_tilt`` is on). Leaving them out is what keeps an animation from spinning the brain as it flattens, and from overwriting the folded angle it returns to when it unfolds again. A flat view or keyframe captured in the viewer leaves them out for the same reason.
 
-Rendering the flat view at the same pixel size quickflat uses makes the frames line up with a flatmap drawn by ``cortex.quickflat.make_png``. That size depends on the subject's flat surface, so the animation panel works it out and displays it in the render form once an animation actually reaches the flat surface.
+It carries no zoom of its own either. Clicking it in the browser frames the flatmap the way ``quickflat`` frames the image it writes — the camera looks at the middle of the flatmap from the distance at which the field of view spans it — so that rendered at the pixel size quickflat uses, the frame is the png ``cortex.quickflat.make_png`` writes, same position and same scale. (The perspective camera is no obstacle: a plane square-on to it projects as a uniform scaling, which is all quickflat's mapping of the flat surface onto the bounds of the image amounts to.)
+
+That framing is applied on request, never behind your back. Setting the flat view from python with ``_set_view`` leaves the camera where it is, so :func:`cortex.export.save_3d_views` and anything else driving the viewer render exactly as they always did; ask for it with ``handle.fit_flat_view()``, and ``getImage`` then re-frames it for the image it is about to write, whatever the shape of the window. In the animation panel, tick **match quickflat size** in the render form: the size fields are filled with the subject's quickflat size and flat keyframes are framed for it, including any already laid down. Type another size over it and flat keyframes are framed for that one instead.
+
+A view saved in the filestore under the name ``flat`` replaces all of this, framing included, since a saved view records the camera distance it was saved with.
 
 Saved views in the browser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

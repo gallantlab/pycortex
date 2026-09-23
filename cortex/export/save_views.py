@@ -161,6 +161,16 @@ def save_3d_views(
             this_view_params.update(interpolation_params)
             this_view_params.update(view_params)
             this_view_params.update(surface_params)
+
+            # A flattened surface pins the camera square-on and ignores the
+            # angle it is given, so asking for one only makes the settle loop
+            # below report a view that never arrives. Kept when the surface is
+            # tilt-enabled, where the angle does steer the camera.
+            if (this_view_params.get("surface.{subject}.unfold", 0) >= 0.999
+                    and not this_view_params.get("surface.{subject}.allow_tilt")):
+                for prop in FLAT_INERT_PROPS:
+                    this_view_params.pop(prop, None)   # type: ignore[misc]
+
             print(this_view_params)
 
             # apply params
@@ -279,9 +289,14 @@ angle_view_params: dict[str, ViewParams] = {
         "camera.azimuth": 0,
         "camera.altitude": 180,
     },
+    # No camera angle: once the surface is flat the controls hold the camera
+    # square-on to it and discard whatever azimuth and altitude they are given
+    # (see setAzimuth/setAltitude in resources/js/movement.js), unless the
+    # surface's allow_tilt is on. Naming them here would do nothing to a flat
+    # view, while making an animation interpolate towards them on the way in --
+    # which spins the brain as it flattens, and leaves the folded camera angle
+    # overwritten when it unfolds again.
     "flatmap": {
-        "camera.azimuth": 180,
-        "camera.altitude": 0,
         "surface.{subject}.pivot": 180,
         "surface.{subject}.shift": 0,
     },
@@ -365,6 +380,14 @@ INFLATED_SUFFIX = "_inflated"
 #: Name of the flattened view.
 FLAT_VIEW_NAME = "flat"
 
+#: View properties a flattened surface ignores, and which a flat view or
+#: keyframe therefore leaves out. The controls pin the camera square-on to the
+#: flatmap and discard both (resources/js/movement.js), so carrying them would
+#: only give an animation something spurious to interpolate towards. They do
+#: steer the camera when the surface's ``allow_tilt`` is on, so a tilted flat
+#: pose keeps them.
+FLAT_INERT_PROPS = ("camera.azimuth", "camera.altitude")
+
 
 def default_subject_views(has_flatmap: bool = True) -> dict[str, ViewParams]:
     """The views offered for every subject, whether or not any are saved.
@@ -407,10 +430,14 @@ def default_subject_views(has_flatmap: bool = True) -> dict[str, ViewParams]:
 
     if has_flatmap:
         # The established flatmap preset, the one save_3d_views renders
-        # flatmaps with. It is the closest the viewer comes to the layout
-        # quickflat.make_figure draws; the two cannot match exactly, since the
-        # viewer renders the flat surface through a 45-degree perspective
-        # camera while quickflat rasterizes it orthographically.
-        views[FLAT_VIEW_NAME] = build(angle_view_params["flatmap"],
-                                      unfold_view_params["flatmap"])
+        # flatmaps with. It carries neither a camera angle (see
+        # angle_view_params["flatmap"]) nor a camera.radius: a flat surface
+        # ignores the angle, and the zoom is left to whoever renders it --
+        # cortex.webgl.show's handle frames the flatmap the way make_png does
+        # on request, with fit_flat_view.
+        flat = build(angle_view_params["flatmap"],
+                     unfold_view_params["flatmap"])
+        for angle in FLAT_INERT_PROPS:
+            flat.pop(angle, None)          # type: ignore[misc]
+        views[FLAT_VIEW_NAME] = flat
     return views

@@ -332,9 +332,46 @@ def test_an_unknown_mode_falls_back_to_the_default():
     assert evaluate(channels, 0.5)["v"] == pytest.approx(5.0)
 
 
-def test_properties_missing_from_the_first_keyframe_are_skipped():
-    keyframes = [{"time": 0.0, "a": 0.0}, {"time": 1.0, "a": 1.0, "b": 2.0}]
-    assert set(build_channels(keyframes)) == {"a"}
+def test_a_property_is_animated_across_the_keyframes_that_carry_it():
+    """A keyframe that leaves a property out does not constrain it.
+
+    Which is what lets a flat keyframe sit in the middle of an animation
+    without touching the camera angle: a flat pose records none, because the
+    flattened surface ignores it.
+    """
+    keyframes = [{"time": 0.0, "a": 0.0, "v": 0.0},
+                 {"time": 1.0, "a": 1.0},
+                 {"time": 2.0, "a": 2.0, "v": 10.0}]
+    channels = build_channels(keyframes, default_mode=Interpolation.Linear)
+    assert set(channels) == {"a", "v"}
+
+    # v runs straight from its first carrier to its second, as though the
+    # keyframe between them were not there: halfway in time is halfway in
+    # value, which a knot at t=1 would not give.
+    assert evaluate(channels, 1.0)["v"] == pytest.approx(5.0)
+    assert evaluate(channels, 0.5)["v"] == pytest.approx(2.5)
+    # ... while a property every keyframe carries is unaffected.
+    assert evaluate(channels, 0.5)["a"] == pytest.approx(0.5)
+
+
+def test_a_property_only_one_keyframe_carries_is_constant():
+    keyframes = [{"time": 0.0, "a": 0.0},
+                 {"time": 1.0, "a": 1.0, "v": 7.0},
+                 {"time": 2.0, "a": 2.0}]
+    channels = build_channels(keyframes, default_mode=Interpolation.Linear)
+    assert [evaluate(channels, t)["v"] for t in (0.0, 1.0, 2.0)] == [7.0] * 3
+
+
+def test_a_property_missing_from_the_first_keyframe_still_animates():
+    """It used to be dropped, which silently ignored the later keyframes."""
+    keyframes = [{"time": 0.0, "a": 0.0},
+                 {"time": 1.0, "a": 1.0, "b": 2.0},
+                 {"time": 2.0, "a": 2.0, "b": 4.0}]
+    channels = build_channels(keyframes, default_mode=Interpolation.Linear)
+    assert set(channels) == {"a", "b"}
+    assert evaluate(channels, 1.5)["b"] == pytest.approx(3.0)
+    # Before its first carrier it holds, the way every channel holds at its ends.
+    assert evaluate(channels, 0.0)["b"] == pytest.approx(2.0)
 
 
 def test_channels_are_indexed_by_a_chosen_time_key():

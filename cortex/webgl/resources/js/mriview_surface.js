@@ -220,6 +220,7 @@ var mriview = (function(module) {
 
                 if (this.flatlims !== undefined) {
                     var flats = this._makeFlat(hemi.attributes.uv.array, json.flatlims, names[name]);
+                    hemi.flatbbox = flats.bbox;
                     hemi.addAttribute('mixSurfs'+json.names.length, new THREE.BufferAttribute(flats.pos, 4));
                     hemi.addAttribute('mixNorms'+json.names.length, new THREE.BufferAttribute(flats.norms, 3));
                     hemi.attributes['mixSurfs'+json.names.length].needsUpdate = true;
@@ -773,6 +774,11 @@ var mriview = (function(module) {
         var fmin = flatlims[0], fmax = flatlims[1];
         var flat = new Float32Array(uv.length / 2 * 4);
         var norms = new Float32Array(uv.length / 2 * 3);
+        // The extent of the flattened surface, tracked here because this is the
+        // only pass over it: the uv array is normalized in place below, and the
+        // geometry's own bounding box describes the fiducial surface, never the
+        // flat morph target. flatBBox turns this into world coordinates.
+        var min = [0, Infinity, Infinity], max = [0, -Infinity, -Infinity];
         for (var i = 0, il = uv.length / 2; i < il; i++) {
             if (right) {
                 flat[i*4+1] = flatscale*uv[i*2] + this.flatoff[1];
@@ -784,11 +790,59 @@ var mriview = (function(module) {
                 // flat[i*4+0] = flatscale*uv[i*2+1];
             }
             flat[i*4+2] = flatscale*uv[i*2+1];
+            for (var j = 1; j < 3; j++) {
+                if (flat[i*4+j] < min[j]) min[j] = flat[i*4+j];
+                if (flat[i*4+j] > max[j]) max[j] = flat[i*4+j];
+            }
             uv[i*2]   = (uv[i*2]   + fmin[0]) / fmax[0];
             uv[i*2+1] = (uv[i*2+1] + fmin[1]) / fmax[1];
         }
 
-        return {pos:flat, norms:norms};
+        return {pos:flat, norms:norms, bbox:{min:min, max:max}};
+    };
+
+    // The extent of the flattened surface in world coordinates, as
+    // ``{min:[x,y,z], max:[x,y,z]}``, or null if this surface has no flatmap
+    // (or has not finished loading).
+    //
+    // The flat vertices live in the mixSurfs1 attribute and only reach world
+    // space through the meshes' matrices, which carry the flattening rotation,
+    // the pivot and the shift. Those are rotations by multiples of 90 degrees
+    // for a flat surface, so transforming the corners of the cached extent is
+    // exact; a half-folded pivot would over-estimate it, which is harmless
+    // since the framing this feeds is only meaningful once flattened.
+    module.Surface.prototype.flatBBox = function() {
+        if (this.sheets.length == 0)
+            return null;
+
+        this.object.updateMatrixWorld(true);
+        var min = [Infinity, Infinity, Infinity];
+        var max = [-Infinity, -Infinity, -Infinity];
+        var corner = new THREE.Vector3();
+        var found = false;
+
+        for (var name in this.sheets[0]) {
+            var mesh = this.sheets[0][name];
+            var hemi = this.hemis[name];
+            if (mesh === undefined || hemi === undefined ||
+                    hemi.flatbbox === undefined)
+                continue;
+            found = true;
+            var lo = hemi.flatbbox.min, hi = hemi.flatbbox.max;
+            for (var c = 0; c < 8; c++) {
+                corner.set(c & 1 ? hi[0] : lo[0],
+                           c & 2 ? hi[1] : lo[1],
+                           c & 4 ? hi[2] : lo[2]);
+                corner.applyMatrix4(mesh.matrixWorld);
+                var xyz = corner.toArray();
+                for (var j = 0; j < 3; j++) {
+                    if (xyz[j] < min[j]) min[j] = xyz[j];
+                    if (xyz[j] > max[j]) max[j] = xyz[j];
+                }
+            }
+        }
+
+        return found ? {min:min, max:max} : null;
     };
 
     module.SurfDelegate = function(dataview) {
@@ -834,6 +888,9 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.setMix = function(mix) {
         return this.surf.setMix(mix);
+    }
+    module.SurfDelegate.prototype.flatBBox = function() {
+        return this.surf.flatBBox();
     }
     module.SurfDelegate.prototype.setPivot = function(pivot) {
         return this.surf.setPivot(pivot);

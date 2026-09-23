@@ -378,7 +378,8 @@ def make_static(
     if html_embed:
         htmlembed.embed(html, desthtml, rootdirs)
     else:
-        with open(desthtml, "w") as htmlfile:
+        # tpl.generate returns bytes, like everything tornado templates render.
+        with open(desthtml, "wb") as htmlfile:
             htmlfile.write(html)
 
 
@@ -813,6 +814,43 @@ def show(
                         # Wait for webgl. Wait for it. .... WAAAAAIIIT.
                         time.sleep(0.03)
 
+        def fit_flat_view(self) -> Optional[dict[str, Any]]:
+            """Frame the flattened surface the way ``quickflat`` frames it.
+
+            Points the camera at the middle of the flat surface and backs it off
+            until the flatmap is as large as fits, which is what
+            ``cortex.quickflat.make_png`` does with the bounds of the image it
+            writes. The framing follows the shape of the frame, so it fills one
+            exactly at the flatmap's own aspect ratio -- the subject's quickflat
+            size (``cortex.webgl.view._quickflat_size``, which the viewer's
+            animation panel fills into its render form) -- and fits inside any
+            other shape rather than being cropped to it. ``getImage`` re-frames
+            for the image it writes, so rendering a flat view at the quickflat
+            size reproduces ``make_png``'s png whatever the window's shape.
+
+            Only meaningful once the surface is flat and square-on to the
+            camera, which is the pose the ``flat`` view sets.
+
+            Returns
+            -------
+            dict or None
+                The framing that was applied, as ``{"target": [x, y, z],
+                "radius": r}``, or None if the subject has no flat surface.
+
+            See Also
+            --------
+            getImage : re-frames what this framed for the image it writes.
+
+            Notes
+            -----
+            Applied on request rather than by ``_set_view``, so that setting the
+            flat view from python -- as :func:`cortex.export.save_3d_views` does
+            -- keeps whatever framing the caller asked for.
+            """
+            resp = self.send(method="run",
+                             params=["window.viewer.fitFlatView", []])
+            return resp[0] if isinstance(resp, list) and len(resp) > 0 else None
+
         def _capture_view(self, frame_time=None):
             """Low-level command: returns a dict of current view parameters
 
@@ -842,6 +880,19 @@ def show(
                     print(err) #msg = "Cannot read property 'undefined'"
                     #if err.message[:len(msg)] != msg:
                     #    raise err
+            # A flat pose records no camera angle, since a flattened surface
+            # ignores it (see FLAT_INERT_PROPS). An animation would otherwise
+            # have something spurious to interpolate towards on the way in,
+            # spinning the brain as it flattens and leaving the folded angle
+            # overwritten on the way out. Mirrors vt.captureView in
+            # resources/js/viewtools.js, so the two still interchange.
+            from ..export.save_views import FLAT_INERT_PROPS
+
+            if (view.get('surface.{subject}.unfold', 0) >= 0.999
+                    and not view.get('surface.{subject}.allow_tilt')):
+                for prop in FLAT_INERT_PROPS:
+                    view.pop(prop, None)
+
             if frame_time is not None:
                 view['time'] = frame_time
             return view
@@ -1000,10 +1051,12 @@ def show(
             # have to be prevented from escaping the views directory.
             paths = {}
             for name in names:
-                if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]*", name) is None:
+                # A leading '.' is what makes '..' (and hidden files) possible,
+                # so only that is kept out of the first position.
+                if re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9 _.-]*", name) is None:
                     raise ValueError(
                         "Cannot save the view named %r: a view name must start "
-                        "with a letter or digit and contain only letters, "
+                        "with a letter, digit or '_' and contain only letters, "
                         "digits, spaces, '_', '-' and '.'" % name)
                 path = os.path.join(viewdir, name + ".json")
                 if os.path.exists(path) and not is_overwrite:
@@ -1106,7 +1159,20 @@ def show(
                 duh.
             size : tuple (x, y)
                 size (in pixels) of image to save.
+
+            Notes
+            -----
+            A flatmap that ``fit_flat_view`` (or the viewer's own ``flat`` view)
+            has framed is re-framed for the image being written, since the
+            framing follows the shape of the frame and `size` need not have the
+            shape of the window. That is what makes a framed flat view rendered
+            at the subject's quickflat size come out as the png
+            ``cortex.quickflat.make_png`` writes. A camera that is sitting
+            anywhere else -- which is every camera this method has not been
+            asked to frame -- is left exactly where it is.
             """
+            self.send(method="run", params=["window.viewer.refitFlatView",
+                                            [size[0] / size[1]]])
             post_name.put(filename)
             Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
@@ -1266,10 +1332,19 @@ def show(
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
-                    for prop in start.keys():
+                    # The union of the two: a property only one of them carries
+                    # is the one keyframe of the pair that constrains it, so it
+                    # holds that value across the segment. Flat keyframes carry
+                    # no camera angle (see FLAT_INERT_PROPS), which is what this
+                    # is for.
+                    for prop in list(start.keys()) + [
+                            p for p in end.keys() if p not in start]:
                         if prop=='time':
                             continue
-                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
+                        if prop not in start:
+                            frame[prop] = end[prop]
+                            continue
+                        if (start[prop] is None) or (prop not in end) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)

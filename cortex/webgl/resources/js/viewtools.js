@@ -34,6 +34,12 @@ var jsplot = (function (module) {
     // assignment, so a fractional layer count is both wrong and very slow.
     var STEP_PROPS = {'layers': true};
 
+    // Properties a flattened surface ignores: the controls pin the camera
+    // square-on to the flatmap and discard whatever angle they are given
+    // (setAzimuth/setAltitude in resources/js/movement.js). The python side
+    // names the same pair in cortex/export/save_views.py.
+    var FLAT_INERT_PROPS = ['camera.azimuth', 'camera.altitude'];
+
     var SUBJ = '{subject}';
 
     function subst(prop, subject) {
@@ -106,6 +112,16 @@ var jsplot = (function (module) {
                 console.warn("Could not capture " + path + ": " + e.message);
             }
         }
+
+        // A flat pose records no camera angle, since the flat surface ignores
+        // it: an animation would otherwise have something spurious to
+        // interpolate towards on the way in, spinning the brain as it flattens
+        // and leaving the folded angle overwritten on the way out. A tilted
+        // flat surface does use the angle, so it keeps it.
+        if (vt.isFlat(view) && !view['surface.' + SUBJ + '.allow_tilt'])
+            for (var j = 0; j < FLAT_INERT_PROPS.length; j++)
+                delete view[FLAT_INERT_PROPS[j]];
+
         return view;
     };
 
@@ -163,6 +179,29 @@ var jsplot = (function (module) {
                 vt.setProp(viewer, subst(prop, subject), params[prop]);
             }
         }
+
+        // Applying a flat view that says nothing about how far away the
+        // camera is frames the flatmap the way quickflat frames the image it
+        // writes (see Viewer.fitFlatView). That is how the built-in "flat"
+        // view is defined: it names neither an angle, which a flat surface
+        // ignores, nor a zoom. A view saved from the GUI, and every frame
+        // interpolated between keyframes, carries a camera.radius, so both are
+        // left exactly as they were captured.
+        //
+        // This is the interactive path -- the views menu. JSMixer._set_view
+        // deliberately does not do it, so that setting a flat view from python
+        // renders what it always rendered; fit_flat_view() asks for it there.
+        if (vt.isFlat(params) && !('camera.radius' in params) &&
+                viewer.fitFlatView !== undefined)
+            viewer.fitFlatView();
+    };
+
+    // Whether a view has the surface flattened. The unfold value is what
+    // decides it, rather than the name the view was saved under, because a
+    // keyframe records the pose and not where it came from.
+    vt.isFlat = function(view) {
+        var unfold = view['surface.' + SUBJ + '.unfold'];
+        return unfold !== undefined && unfold >= 0.999;
     };
 
     vt.setProp = function(viewer, path, value) {
@@ -178,18 +217,30 @@ var jsplot = (function (module) {
     //
     // Values that cannot be blended -- null, booleans, strings, discrete
     // numbers, and anything missing from `b` -- hold their starting value, the
-    // same rule JSMixer._get_anim_seq uses. Numbers go through the viewer's own
-    // _animInterp so that camera.azimuth still takes the short way around.
+    // same rule JSMixer._get_anim_seq uses. A property only `b` carries holds
+    // its value instead: it is the one view of the pair that constrains it.
+    // Numbers go through the viewer's own _animInterp so that camera.azimuth
+    // still takes the short way around.
     vt.interpolate = function(viewer, a, b, t) {
         var subjects = vt.subjects(viewer);
         var subject = subjects.length > 0 ? subjects[0] : null;
         var out = {};
+        var props = {};
+        for (var key in a) props[key] = true;
+        for (key in b) props[key] = true;
 
-        for (var prop in a) {
+        for (var prop in props) {
             if (prop === 'frame')
                 continue;
             var av = a[prop], bv = b[prop];
             var leaf = prop.split('.').pop();
+
+            // Only the later view carries it: it is the one keyframe of the
+            // pair that constrains the property, so it holds throughout.
+            if (av === undefined) {
+                out[prop] = bv;
+                continue;
+            }
 
             if (bv === undefined || av === null || STEP_PROPS[leaf] ||
                     typeof av === 'boolean' || typeof av === 'string') {
@@ -353,18 +404,34 @@ var jsplot = (function (module) {
         }()), prop === 'camera.azimuth');
     }
 
-    // Take a keyframe list apart into per-property channels. Properties absent
-    // from the first keyframe are ignored, matching vt.interpolate's rule of
-    // iterating the earlier view.
+    // The keyframes that carry `prop`. A keyframe that leaves a property out
+    // does not constrain it -- which is how a flat keyframe stays out of the
+    // camera.azimuth channel, since a flat pose records no angle.
+    function carriersOf(frames, prop) {
+        var out = [];
+        for (var i = 0; i < frames.length; i++)
+            if (frames[i][prop] !== undefined)
+                out.push(frames[i]);
+        return out;
+    }
+
+    // Take a keyframe list apart into per-property channels. Each channel is
+    // built from the keyframes that carry its property, so a property every
+    // keyframe carries behaves as it always did, one carried by a single
+    // keyframe is constant, and the keyframes in between are simply not on the
+    // curve.
     vt.buildInterpolators = function(keyframes) {
         var frames = keyframes.slice().sort(function(a, b) {
             return a.frame - b.frame;
         });
         var channels = {};
-        for (var prop in frames[0]) {
-            if (prop === 'frame' || prop === 'interpolation')
-                continue;
-            channels[prop] = makeChannel(frames, prop);
+        for (var i = 0; i < frames.length; i++) {
+            for (var prop in frames[i]) {
+                if (prop === 'frame' || prop === 'interpolation' ||
+                        channels[prop] !== undefined)
+                    continue;
+                channels[prop] = makeChannel(carriersOf(frames, prop), prop);
+            }
         }
         return {frames: frames, channels: channels};
     };
@@ -454,6 +521,10 @@ var jsplot = (function (module) {
         "    <input type='number' id='anim-width' class='anim-width' step='1'>",
         "    <span>&times;</span>",
         "    <input type='number' id='anim-height' class='anim-height' step='1'></div>",
+        "  <div class='pycortex-row anim-flatmatch-row'>",
+        "    <label class='anim-flatmatch-label'>",
+        "      <input type='checkbox' id='anim-flatmatch' class='anim-flatmatch'>",
+        "      match quickflat size</label></div>",
         "  <div class='pycortex-hint anim-flatsize'></div>",
         "  <div class='pycortex-row pycortex-buttons'>",
         "    <button class='anim-render-ok'>OK</button>",
@@ -587,6 +658,10 @@ var jsplot = (function (module) {
         this._el("anim-render-form").hide();
         this._el("anim-width").val(this.viewer.imageWidth || 2400);
         this._el("anim-height").val(this.viewer.imageHeight || 1200);
+        this._el("anim-flatmatch").prop("checked", false).on("change", function() {
+            self.matchFlatChanged();
+        });
+        this._el("anim-flatmatch-row").hide();
     };
 
     AnimationPanel.prototype.show = function() {
@@ -643,32 +718,126 @@ var jsplot = (function (module) {
     // keyframe. Tested on the unfold value rather than on a view name, because
     // a keyframe records the pose, not the view it was posed from.
     AnimationPanel.prototype.usesFlat = function() {
-        var prop = 'surface.' + SUBJ + '.unfold';
         var kfs = this.state.keyframes;
         for (var i = 0; i < kfs.length; i++)
-            if (kfs[i][prop] >= 0.999)
+            if (vt.isFlat(kfs[i]))
                 return true;
         return false;
     };
 
-    // Rendering the flat view at the size quickflat uses makes the frames line
-    // up with a flatmap drawn by quickflat.make_png, so say what that size is
-    // once an animation actually visits the flat surface. It is shipped from
-    // python in viewopts.quickflat_size, since it follows from the subject's
-    // flat surface rather than from anything the browser knows.
-    AnimationPanel.prototype.updateFlatHint = function() {
-        var hint = this._el("anim-flatsize");
+    // The size quickflat.make_png would write for the subject on show, shipped
+    // from python in viewopts.quickflat_size because it follows from the flat
+    // surface rather than from anything the browser knows. Null if the subject
+    // has no flatmap.
+    AnimationPanel.prototype.flatSize = function() {
         var sizes = (typeof viewopts !== "undefined") ?
             viewopts.quickflat_size : undefined;
         var subjects = vt.subjects(this.viewer);
-        var size = (sizes !== undefined && subjects.length > 0) ?
-            sizes[subjects[0]] : null;
+        if (sizes === undefined || subjects.length == 0)
+            return null;
+        var size = sizes[subjects[0]];
+        return (size === undefined || size === null) ? null : size;
+    };
+
+    // Whether the render form's "match quickflat size" box is ticked. Ticking
+    // it renders an animation that visits the flat surface at the size
+    // quickflat uses, so its flat frames come out as the png
+    // quickflat.make_png writes: a flat keyframe is framed to fill the frame
+    // (Viewer.flatFraming), which reproduces make_png only at make_png's own
+    // aspect ratio. It starts unticked, so nothing about an animation changes
+    // unless it is asked for.
+    AnimationPanel.prototype.matchesFlat = function() {
+        return this._el("anim-flatmatch").prop("checked") === true;
+    };
+
+    // Put quickflat's size in the size fields, if the box is ticked and the
+    // fields still hold a size the panel is free to overwrite -- the one it
+    // wrote last time, or the untouched default it starts out with. Typing a
+    // size is how a person says they want a different one, and flat keyframes
+    // are then framed for that size instead. Returns whether the fields ended
+    // up holding quickflat's size.
+    AnimationPanel.prototype.useFlatSize = function() {
+        var size = this.flatSize();
+        if (size === null || !this.matchesFlat())
+            return false;
+
+        var width = this._el("anim-width"), height = this._el("anim-height");
+        var have = [parseInt(width.val(), 10), parseInt(height.val(), 10)];
+        if (have[0] === size[0] && have[1] === size[1])
+            return true;
+
+        var mine = this._flatsized ||
+                   [this.viewer.imageWidth || 2400, this.viewer.imageHeight || 1200];
+        if (have[0] !== mine[0] || have[1] !== mine[1])
+            return false;
+
+        width.val(size[0]);
+        height.val(size[1]);
+        this._flatsized = [size[0], size[1]];
+        return true;
+    };
+
+    // Frame every flat keyframe for the size the animation renders at.
+    //
+    // A flat keyframe is framed when it is laid down, so one laid down before
+    // the box was ticked -- or before the size was changed -- carries a framing
+    // for the wrong frame. Written straight into the keyframes rather than by
+    // posing the viewer, since these are keyframes the playhead is not on.
+    AnimationPanel.prototype.reframeFlatKeyframes = function() {
+        var size = this.renderSize();
+        if (size === null || this.viewer.flatFraming === undefined)
+            return 0;
+
+        var framing = this.viewer.flatFraming(size[0] / size[1]);
+        if (framing === null)
+            return 0;
+
+        var kfs = this.state.keyframes, reframed = 0;
+        for (var i = 0; i < kfs.length; i++) {
+            if (!vt.isFlat(kfs[i]))
+                continue;
+            kfs[i]['camera.target'] = framing.target.slice();
+            kfs[i]['camera.radius'] = framing.radius;
+            reframed++;
+        }
+        if (reframed > 0) {
+            this.invalidate();
+            this.setFrame(this.state.frame);
+        }
+        return reframed;
+    };
+
+    // Tick or untick the box from code, as the menu click would.
+    AnimationPanel.prototype.setMatchFlat = function(on) {
+        this._el("anim-flatmatch").prop("checked", on === true);
+        this.matchFlatChanged();
+        return this.matchesFlat();
+    };
+
+    // The box was ticked or unticked. Ticking takes over the size and re-frames
+    // the flat keyframes for it; unticking leaves both alone, since the size in
+    // the fields is the one the keyframes are now framed for.
+    AnimationPanel.prototype.matchFlatChanged = function() {
+        if (this.matchesFlat()) {
+            this.useFlatSize();
+            this.reframeFlatKeyframes();
+        }
+        this.updateFlatHint();
+    };
+
+    AnimationPanel.prototype.updateFlatHint = function() {
+        var hint = this._el("anim-flatsize");
+        var size = this.flatSize();
 
         if (!size || !this.usesFlat()) {
+            this._el("anim-flatmatch-row").hide();
             hint.text("");
             return;
         }
-        hint.text("use " + size[0] + " × " + size[1] +
+
+        this._el("anim-flatmatch-row").show();
+        hint.text((this.useFlatSize() ? "size set to " : "use ") +
+                  size[0] + " \u00d7 " + size[1] +
                   " to match quickflat.make_png()");
     };
 
@@ -773,6 +942,22 @@ var jsplot = (function (module) {
         var st = this.state;
         var frame = Math.round(st.frame);
         var view = vt.captureView(this.viewer);
+
+        // With "match quickflat size" ticked, a flat keyframe is framed for
+        // the size this animation will render at -- quickflat's own, unless
+        // someone has typed another one. Framed here rather than when the flat
+        // view was applied because only the panel knows that size, and the
+        // framing only reproduces quickflat.make_png at the aspect ratio it is
+        // rendered at.
+        if (vt.isFlat(view) && this.matchesFlat() &&
+                this.viewer.fitFlatView !== undefined) {
+            this.useFlatSize();
+            var size = this.renderSize();
+            if (size !== null) {
+                this.viewer.fitFlatView(size[0] / size[1]);
+                view = vt.captureView(this.viewer);
+            }
+        }
         view.frame = frame;
         // The dropdown is the source of truth: sync() has already pointed it at
         // the mode of any keyframe sitting here, so re-adding over one keeps
@@ -864,6 +1049,16 @@ var jsplot = (function (module) {
         requestAnimationFrame(step);
     };
 
+    // The size frames are rendered at, as [width, height], or null if what is
+    // in the size fields is not a size.
+    AnimationPanel.prototype.renderSize = function() {
+        var width = parseInt(this._el("anim-width").val(), 10);
+        var height = parseInt(this._el("anim-height").val(), 10);
+        if (!isFinite(width) || !isFinite(height) || width < 1 || height < 1)
+            return null;
+        return [width, height];
+    };
+
     AnimationPanel.prototype.render = function() {
         var st = this.state, self = this;
         var cfg = viewopts.movie_post;
@@ -879,12 +1074,12 @@ var jsplot = (function (module) {
 
         var name = this._el("anim-name").val();
         var dir = this._el("anim-dir").val();
-        var width = parseInt(this._el("anim-width").val(), 10);
-        var height = parseInt(this._el("anim-height").val(), 10);
-        if (!isFinite(width) || !isFinite(height) || width < 1 || height < 1) {
+        var size = this.renderSize();
+        if (size === null) {
             this.status("Bad image size");
             return;
         }
+        var width = size[0], height = size[1];
 
         this.stop();
         this.rendering = true;
@@ -1091,6 +1286,9 @@ var jsplot = (function (module) {
             "create animation": {action: function() {
                 if (panel === null)
                     panel = new AnimationPanel(viewer);
+                // Reachable from python (and from the console) the way the
+                // keyframe state itself is, as viewer._anim.
+                viewer._animPanel = panel;
                 panel.show();
             }},
         });
