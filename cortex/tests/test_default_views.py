@@ -18,6 +18,7 @@ from cortex.export.save_views import (
     FLAT_VIEW_NAME,
     INFLATED_SUFFIX,
     angle_view_params,
+    camera_basis,
     default_subject_views,
 )
 
@@ -25,49 +26,6 @@ from cortex.export.save_views import (
 RIGHT = (1.0, 0.0, 0.0)
 ANTERIOR = (0.0, 1.0, 0.0)
 SUPERIOR = (0.0, 0.0, 1.0)
-
-# LandscapeControls clamps altitude into (0.0001, 179.9999) before building the
-# camera position, so a view asking for 0 or 180 is rendered a hair off the
-# pole. That matters: exactly at the pole the view direction is parallel to the
-# up vector and the image orientation is undefined.
-POLE_EPSILON = 1e-4
-
-
-def camera_basis(azimuth, altitude):
-    """The camera's axes in world space, as the viewer computes them.
-
-    Reproduces the eye position from ``LandscapeControls.update`` in
-    resources/js/LandscapeControls.js, with ``camera.up`` fixed at +z by
-    ``axes3d.js``, then three.js's ``Matrix4.lookAt``.
-
-    Returns
-    -------
-    tuple
-        ``(right, up, back)`` unit vectors: where the image's right edge, top
-        edge, and the direction from the target towards the camera point in
-        world space.
-    """
-    altitude = min(max(altitude, POLE_EPSILON), 180 - POLE_EPSILON)
-    altrad = math.radians(altitude)
-    azirad = math.radians(azimuth + 90)
-    eye = (math.sin(altrad) * math.cos(azirad),
-           math.sin(altrad) * math.sin(azirad),
-           math.cos(altrad))
-
-    def cross(a, b):
-        return (a[1] * b[2] - a[2] * b[1],
-                a[2] * b[0] - a[0] * b[2],
-                a[0] * b[1] - a[1] * b[0])
-
-    def unit(v):
-        length = math.sqrt(sum(c * c for c in v))
-        return tuple(c / length for c in v)
-
-    back = unit(eye)                       # the camera looks along -back
-    right = unit(cross(SUPERIOR, back))
-    up = cross(back, right)
-    return right, up, back
-
 
 def points_along(vector, axis, tol=1e-3):
     """Whether `vector` points the same way as the unit `axis`."""
@@ -344,3 +302,187 @@ def test_defaults_are_per_subject(monkeypatch, tmp_path):
 
     assert loaded["S1"]["ventral"] == mine
     assert loaded["S2"]["ventral"] == default_subject_views()["ventral"]
+
+
+# ---------------------------------------------------------------------------
+# Framing the default views for a subject
+# ---------------------------------------------------------------------------
+
+
+def _surface_points(kind):
+    """The surface `kind` as the viewer draws it."""
+    from cortex.export.save_views import _viewer_points
+
+    return _viewer_points("S1", kind)
+
+
+def test_framing_sees_the_surfaces_the_viewer_draws():
+    """The surfaces are fitted as the surface packs lay them out.
+
+    Checked against brainctm itself, which builds the surface packs the
+    viewer loads: framing the raw inflated file instead leaves the inflated
+    views at about half the size they should be.
+    """
+    import numpy as np
+
+    from cortex.brainctm import BrainCTM
+
+    pack = BrainCTM("S1")
+    pack.addSurf("inflated")
+    hemis = (pack.left, pack.right)
+    drawn = np.vstack([hemi.surfs["inflated"][:, :3] for hemi in hemis])
+    assert _surface_points("inflated") == pytest.approx(drawn, abs=1e-3)
+    # S1 is packed on its pial surface with the white matter alongside; the
+    # folded brain is drawn at their midpoint (the depth slider's default).
+    folded = np.vstack([(hemi.pts + hemi.surfs["wm"][:, :3]) / 2 for hemi in hemis])
+    assert _surface_points("fiducial") == pytest.approx(folded, abs=1e-3)
+
+
+def _ndc(points, view, target, radius):
+    """Where each point lands in the frame, in units of the half-frame.
+
+    Through the viewer's perspective camera, for a frame FRAMING_ASPECT wide:
+    +-1 is the frame's edge on each axis.
+    """
+    import numpy as np
+
+    from cortex.export import save_views
+
+    right, up, back = (np.array(v) for v in basis_of(view))
+    rel = points - np.asarray(target)
+    depth = radius - rel @ back
+    tan = math.tan(math.radians(save_views.VIEWER_FOV / 2))
+    return (rel @ right) / (depth * tan * save_views.FRAMING_ASPECT), \
+        (rel @ up) / (depth * tan)
+
+
+@pytest.fixture
+def framing_cache(tmp_path, monkeypatch):
+    """Keep each test's framing cache to itself, out of the S1 filestore."""
+    import cortex
+
+    monkeypatch.setattr(cortex.db, "get_cache", lambda subject: str(tmp_path))
+    return tmp_path
+
+
+def _counting_get_surf(monkeypatch):
+    """Wrap db.get_surf so a test can see whether surfaces were read."""
+    import cortex
+
+    calls = []
+    real = cortex.db.get_surf
+
+    def counted(*args, **kwargs):
+        calls.append(args)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(cortex.db, "get_surf", counted)
+    return calls
+
+
+def test_framing_covers_every_view_but_flat(framing_cache):
+    from cortex.export.save_views import RADIUS_LIMITS, default_view_framing
+
+    framing = default_view_framing("S1")
+    views = default_subject_views(has_flatmap=True)
+    assert set(framing) == set(views) - {FLAT_VIEW_NAME}
+    for frame in framing.values():
+        assert set(frame) == {"camera.target", "camera.radius"}
+        assert RADIUS_LIMITS[0] <= frame["camera.radius"] <= RADIUS_LIMITS[1]
+
+
+def test_framing_aims_at_the_middle_of_the_surface_shown(framing_cache):
+    import numpy as np
+
+    from cortex.export.save_views import default_view_framing
+
+    framing = default_view_framing("S1")
+    for kind, names in (("fiducial", DEFAULT_VIEW_ANGLES),
+                        ("inflated", [n + INFLATED_SUFFIX for n in DEFAULT_VIEW_ANGLES])):
+        points = _surface_points(kind)
+        centre = (points.min(0) + points.max(0)) / 2
+        for name in names:
+            assert framing[name]["camera.target"] == pytest.approx(centre.tolist())
+
+
+def test_framing_fills_the_frame_and_clips_nothing(framing_cache):
+    """The brain reaches exactly FRAMING_FILL of the half-frame, and no further."""
+    import numpy as np
+
+    from cortex.export.save_views import FRAMING_FILL, default_view_framing
+
+    framing = default_view_framing("S1")
+    views = default_subject_views(has_flatmap=True)
+    for name, frame in framing.items():
+        view = views[name]
+        points = _surface_points(
+            "fiducial" if view["surface.{subject}.unfold"] == 0 else "inflated")
+        x, y = _ndc(points, view, frame["camera.target"], frame["camera.radius"])
+        reach = max(np.abs(x).max(), np.abs(y).max())
+        assert reach == pytest.approx(FRAMING_FILL, abs=1e-6), name
+
+
+def test_framing_is_read_from_the_cache(framing_cache, monkeypatch):
+    from cortex.export.save_views import default_view_framing
+
+    first = default_view_framing("S1")
+    assert (framing_cache / "default_view_framing.json").exists()
+
+    calls = _counting_get_surf(monkeypatch)
+    assert default_view_framing("S1") == first
+    assert calls == []
+
+
+def test_framing_is_refitted_when_a_surface_changes(framing_cache, monkeypatch):
+    import os
+
+    from cortex.export.save_views import default_view_framing
+
+    first = default_view_framing("S1")
+    real = os.path.getmtime
+    monkeypatch.setattr(os.path, "getmtime", lambda path: real(path) + 1)
+    calls = _counting_get_surf(monkeypatch)
+    assert default_view_framing("S1") == first
+    assert calls != []
+
+
+def test_framing_is_refitted_when_the_framing_changes(framing_cache, monkeypatch):
+    from cortex.export import save_views
+
+    first = save_views.default_view_framing("S1")
+    monkeypatch.setattr(save_views, "FRAMING_FILL", save_views.FRAMING_FILL / 2)
+    second = save_views.default_view_framing("S1")
+    for name in first:
+        assert second[name]["camera.radius"] > first[name]["camera.radius"]
+
+
+def test_framing_without_a_writable_cache(tmp_path, monkeypatch):
+    """A read-only filestore just means no caching."""
+    import cortex
+
+    from cortex.export.save_views import default_view_framing
+
+    monkeypatch.setattr(cortex.db, "get_cache",
+                        lambda subject: str(tmp_path / "does" / "not" / "exist"))
+    assert len(default_view_framing("S1")) == 8
+
+    def refuse(subject):
+        raise PermissionError("read-only")
+
+    monkeypatch.setattr(cortex.db, "get_cache", refuse)
+    assert len(default_view_framing("S1")) == 8
+
+
+def test_default_views_are_framed_only_for_a_subject(framing_cache):
+    from cortex.export.save_views import default_view_framing
+
+    plain = default_subject_views(has_flatmap=True)
+    assert not any("camera.radius" in view for view in plain.values())
+
+    framed = default_subject_views(has_flatmap=True, subject="S1")
+    framing = default_view_framing("S1")
+    for name, view in framed.items():
+        if name == FLAT_VIEW_NAME:
+            assert "camera.radius" not in view and "camera.target" not in view
+        else:
+            assert view == {**plain[name], **framing[name]}
