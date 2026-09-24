@@ -216,7 +216,9 @@ class Dataview:
             Positional arguments passed to the subclass constructor (e.g.
             new `red`/`green`/`blue` data for a VolumeRGB).
         **kwargs
-            Additional keyword arguments; merged with (and overriding) this
+            Additional keyword arguments; merged with this Dataview's own
+            `attrs`. Existing `attrs` take precedence, so only new keys are
+            added.
             Dataview's own `attrs`.
 
         Returns
