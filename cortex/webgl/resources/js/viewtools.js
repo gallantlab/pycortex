@@ -512,11 +512,14 @@ var jsplot = (function (module) {
         "  <button class='anim-render'>render animation</button>",
         "</div>",
         "<div class='anim-render-form'>",
-        "  <div class='pycortex-row'><label>folder</label>",
-        "    <input type='text' id='anim-dir' class='anim-dir' placeholder='(root)'></div>",
-        "  <div class='pycortex-hint anim-root'></div>",
         "  <div class='pycortex-row'><label>name</label>",
         "    <input type='text' id='anim-name' class='anim-name' value='brainmovie'></div>",
+        "  <div class='pycortex-row'><label>format</label>",
+        "    <select id='anim-format' class='anim-format'>",
+        "      <option value='png'>PNG frames (.zip)</option>",
+        "      <option value='mp4'>MP4 video</option>",
+        "    </select></div>",
+        "  <div class='pycortex-hint anim-format-hint'></div>",
         "  <div class='pycortex-row'><label>size</label>",
         "    <input type='number' id='anim-width' class='anim-width' step='1'>",
         "    <span>&times;</span>",
@@ -640,21 +643,29 @@ var jsplot = (function (module) {
             event.stopPropagation();
         });
 
-        var cfg = (typeof viewopts !== "undefined") ? viewopts.movie_post : undefined;
-        var render = this._el("anim-render");
-        if (cfg === undefined) {
-            // No python behind this viewer (a static export), so there is
-            // nowhere to write frames.
-            render.prop("disabled", true)
-                  .attr("title", "Rendering needs a viewer started from python");
-        } else {
-            this._el("anim-root").text("under " + cfg.root);
-            render.click(function() { self._el("anim-render-form").toggle(); });
-            this._el("anim-render-cancel").click(function() {
-                self._el("anim-render-form").hide();
-            });
-            this._el("anim-render-ok").click(this.render.bind(this));
-        }
+        // Rendering builds the movie in the page and downloads it, so it needs
+        // no server: it works the same in a static export.
+        this._el("anim-render").click(function() {
+            self._el("anim-render-form").toggle();
+        });
+        this._el("anim-render-cancel").click(function() {
+            self._el("anim-render-form").hide();
+        });
+        this._el("anim-render-ok").click(this.render.bind(this));
+
+        var format = this._el("anim-format");
+        if (!vt.canEncodeVideo())
+            format.find("option[value=mp4]").prop("disabled", true).attr(
+                "title", "Needs a browser that can encode video (WebCodecs), " +
+                         "on localhost, https or a local file");
+        format.on("change", function() { self.updateFormatHint(); });
+        // Same reason as the smoothing select above: keep typing in it from
+        // reaching the viewer's keyboard shortcuts.
+        format.on("keypress keydown keyup", function(event) {
+            event.stopPropagation();
+        });
+        this.updateFormatHint();
+
         this._el("anim-render-form").hide();
         this._el("anim-width").val(this.viewer.imageWidth || 2400);
         this._el("anim-height").val(this.viewer.imageHeight || 1200);
@@ -671,6 +682,12 @@ var jsplot = (function (module) {
 
     AnimationPanel.prototype.status = function(msg) {
         this._el("anim-status").text(msg === undefined ? "" : msg);
+    };
+
+    // What the status line says -- how a script (or a test) learns why a
+    // render stopped.
+    AnimationPanel.prototype._statusText = function() {
+        return this._el("anim-status").text();
     };
 
     // Push the internal state out to every widget, and redraw the keyframe dots.
@@ -1059,9 +1076,218 @@ var jsplot = (function (module) {
         return [width, height];
     };
 
+    // ------------------------------------------------------------------
+    // Rendering to a download
+    // ------------------------------------------------------------------
+    //
+    // A render is packaged in the page and handed to the browser as one
+    // download, the way the viewer's "Save image" button works: the frames land
+    // on the machine running the browser, and the server writes nothing. One
+    // download per frame is not an option -- browsers throttle a page that
+    // starts hundreds of them, or ask whether to allow it -- so the frames go
+    // into a single file, either a .zip of PNGs or an .mp4.
+
+    // Whether this page can encode video. That takes WebCodecs, which browsers
+    // only offer in a secure context: localhost, https or a local file, but not
+    // plain http from another machine.
+    vt.canEncodeVideo = function() {
+        return typeof window.VideoEncoder !== "undefined" &&
+               window.isSecureContext === true;
+    };
+
+    // Hand `blob` to the browser as a download called `filename`.
+    vt.download = function(blob, filename) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // The click only starts the download. Releasing the blob straight away
+        // can cut it short in some browsers, so hold on to it for a while.
+        setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    };
+
+    // A movie name safe to use as a file name and as the folder inside a zip:
+    // nothing that could climb out of that folder when it is unpacked.
+    function movieName(name) {
+        var safe = String(name || "").trim().replace(/[^A-Za-z0-9 _.-]/g, "_")
+                                             .replace(/^[.\s]+/, "");
+        return safe.length > 0 ? safe : "brainmovie";
+    }
+
+    function pad5(n) {
+        var s = String(n);
+        while (s.length < 5)
+            s = "0" + s;
+        return s;
+    }
+
+    function formatBytes(n) {
+        if (n < 1024 * 1024)
+            return (n / 1024).toFixed(0) + " KB";
+        return (n / (1024 * 1024)).toFixed(1) + " MB";
+    }
+
+    function canvasToBlob(canvas, type) {
+        return new Promise(function(resolve, reject) {
+            canvas.toBlob(function(blob) {
+                if (blob)
+                    resolve(blob);
+                else
+                    reject(new Error("The browser could not encode the frame"));
+            }, type);
+        });
+    }
+
+    // One PNG per frame, in a zip. Lossless and transparent outside the brain,
+    // so these are the frames to use when they have to match a flatmap from
+    // quickflat.make_png. Entries are named after the animation's own frame
+    // numbers, inside a folder named after the movie.
+    function PngZipWriter(name) {
+        this.name = name;
+        this.zip = new jsplot.zipstore.ZipWriter();
+    }
+    PngZipWriter.prototype.extension = "zip";
+    PngZipWriter.prototype.start = function() {
+        return Promise.resolve();
+    };
+    PngZipWriter.prototype.addFrame = function(canvas, frame) {
+        var zip = this.zip;
+        var entry = this.name + "/" + this.name + "_" + pad5(frame) + ".png";
+        return canvasToBlob(canvas, "image/png").then(function(blob) {
+            return zip.add(entry, blob);
+        });
+    };
+    PngZipWriter.prototype.finish = function() {
+        return Promise.resolve(this.zip.finish());
+    };
+    PngZipWriter.prototype.abort = function() {};
+
+    // An H.264 video, encoded by the browser (WebCodecs) and packed by
+    // jsplot.mp4mux. Lossy, and opaque: H.264 has no alpha channel, so frames
+    // are laid on black, which is how the viewer shows them on screen. H.264
+    // also stores colour at half resolution and so needs even dimensions; an
+    // odd size gets one extra column or row of black rather than being
+    // rescaled.
+    function Mp4Writer(width, height, fps) {
+        this.width = width + (width % 2);
+        this.height = height + (height % 2);
+        this.padded = this.width !== width || this.height !== height;
+        this.fps = fps;
+        this.keyEvery = Math.max(1, Math.round(2 * fps));   // a keyframe every 2 s
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx = this.canvas.getContext("2d");
+        this.muxer = null;
+        this.encoder = null;
+        this.error = null;
+    }
+    Mp4Writer.prototype.extension = "mp4";
+
+    // Settle on an encoder configuration before the first frame is rendered,
+    // so a size the browser cannot encode fails straight away.
+    Mp4Writer.prototype.start = function() {
+        var self = this;
+        return jsplot.mp4mux.encoderConfig(this.width, this.height, this.fps)
+            .then(function(config) {
+                self.muxer = new jsplot.mp4mux.Mp4Muxer(self.width, self.height,
+                                                        self.fps);
+                self.encoder = new VideoEncoder({
+                    output: function(chunk, metadata) {
+                        try {
+                            self.muxer.addChunk(chunk, metadata);
+                        } catch (e) {
+                            self.error = e;
+                        }
+                    },
+                    error: function(e) { self.error = e; },
+                });
+                self.encoder.configure(config);
+            });
+    };
+
+    // `index` counts frames from the start of the render, so the video's
+    // clock starts at zero whatever the animation's first frame is.
+    Mp4Writer.prototype.addFrame = function(canvas, frame, index) {
+        if (this.error)
+            return Promise.reject(this.error);
+
+        this.ctx.fillStyle = "#000";
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        this.ctx.drawImage(canvas, 0, 0);
+
+        var video = new VideoFrame(this.canvas, {
+            timestamp: Math.round(index * 1e6 / this.fps),
+            duration: Math.round(1e6 / this.fps),
+        });
+        this.encoder.encode(video, {keyFrame: index % this.keyEvery === 0});
+        video.close();
+
+        // Rendering is faster than encoding at these sizes; wait for the
+        // encoder to catch up rather than queueing the whole movie as raw
+        // frames.
+        var encoder = this.encoder, self = this;
+        return new Promise(function(resolve, reject) {
+            (function wait() {
+                if (self.error)
+                    reject(self.error);
+                else if (encoder.encodeQueueSize <= 2)
+                    resolve();
+                else
+                    setTimeout(wait, 5);
+            }());
+        });
+    };
+    Mp4Writer.prototype.finish = function() {
+        var self = this;
+        return this.encoder.flush().then(function() {
+            self.encoder.close();
+            if (self.error)
+                throw self.error;
+            return self.muxer.finish();
+        });
+    };
+    Mp4Writer.prototype.abort = function() {
+        if (this.encoder !== null && this.encoder.state !== "closed")
+            this.encoder.close();
+    };
+
+    // Choose the render format ("png" or "mp4") from code, as the select
+    // would. Returns false for a format this browser cannot produce.
+    AnimationPanel.prototype.setRenderFormat = function(format) {
+        var select = this._el("anim-format");
+        var option = select.find("option[value='" + format + "']");
+        if (option.length === 0 || option.prop("disabled"))
+            return false;
+        select.val(format);
+        this.updateFormatHint();
+        return true;
+    };
+
+    // Set the render size from code, as typing it would.
+    AnimationPanel.prototype.setRenderSize = function(width, height) {
+        this._el("anim-width").val(width);
+        this._el("anim-height").val(height);
+        return this.renderSize();
+    };
+
+    AnimationPanel.prototype.updateFormatHint = function() {
+        var hint = this._el("anim-format-hint");
+        if (this._el("anim-format").val() === "mp4")
+            hint.text("H.264: lossy, and without transparency. Use PNG " +
+                      "frames to match quickflat.make_png() exactly.");
+        else if (!vt.canEncodeVideo())
+            hint.text("MP4 needs a browser that can encode video, on " +
+                      "localhost, https or a local file.");
+        else
+            hint.text("");
+    };
+
     AnimationPanel.prototype.render = function() {
         var st = this.state, self = this;
-        var cfg = viewopts.movie_post;
 
         if (this.rendering) {
             this.status("Already rendering");
@@ -1072,14 +1298,20 @@ var jsplot = (function (module) {
             return;
         }
 
-        var name = this._el("anim-name").val();
-        var dir = this._el("anim-dir").val();
+        var name = movieName(this._el("anim-name").val());
+        var format = this._el("anim-format").val();
         var size = this.renderSize();
         if (size === null) {
             this.status("Bad image size");
             return;
         }
+        if (format === "mp4" && !vt.canEncodeVideo()) {
+            this.status("This browser cannot encode MP4 here; render PNG frames");
+            return;
+        }
         var width = size[0], height = size[1];
+        var writer = format === "mp4" ? new Mp4Writer(width, height, st.fps) :
+                                        new PngZipWriter(name);
 
         this.stop();
         this.rendering = true;
@@ -1093,11 +1325,17 @@ var jsplot = (function (module) {
             self.status(msg);
         }
 
-        // Strictly one frame at a time: both the webgl readback and the upload
-        // are asynchronous, so a plain loop would race.
+        function fail(msg) {
+            writer.abort();
+            finish(msg);
+        }
+
+        // Strictly one frame at a time: the webgl readback, the PNG or video
+        // encoding and the packing are all asynchronous, so a plain loop would
+        // race.
         function renderFrame(frame) {
             if (!self.rendering) {
-                finish("Rendering cancelled");
+                fail("Rendering cancelled");
                 return;
             }
             self.setFrame(frame);
@@ -1111,25 +1349,40 @@ var jsplot = (function (module) {
                 try {
                     image = self.viewer.getImage(width, height);
                 } catch (e) {
-                    finish("Could not render frame " + frame + ": " + e.message);
+                    fail("Could not render frame " + frame + ": " + e.message);
                     return;
                 }
-                $.post(cfg.url, {token: cfg.token, dir: dir, name: name,
-                                 frame: frame, png: image.toDataURL()})
-                 .done(function() {
-                     if (frame < st.last)
-                         renderFrame(frame + 1);
-                     else
-                         finish("Rendered " + total + " frames");
-                 })
-                 .fail(function(xhr) {
-                     finish("Frame " + frame + " failed: " +
-                            (xhr.responseText || xhr.statusText));
-                 });
+                writer.addFrame(image, frame, frame - st.first).then(function() {
+                    if (frame < st.last)
+                        renderFrame(frame + 1);
+                    else
+                        deliver();
+                }, function(e) {
+                    fail("Frame " + frame + " failed: " + e.message);
+                });
             });
         }
 
-        renderFrame(st.first);
+        function deliver() {
+            self.status("Packing " + total + " frames");
+            writer.finish().then(function(blob) {
+                var filename = name + "." + writer.extension;
+                vt.download(blob, filename);
+                finish("Saved " + filename + " (" + total + " frames, " +
+                       formatBytes(blob.size) +
+                       (writer.padded ? ", padded to " + writer.width + " × " +
+                                        writer.height : "") + ")");
+            }, function(e) {
+                fail("Could not finish " + name + "." + writer.extension +
+                     ": " + e.message);
+            });
+        }
+
+        writer.start().then(function() {
+            renderFrame(st.first);
+        }, function(e) {
+            fail(e.message);
+        });
     };
 
     // ------------------------------------------------------------------
