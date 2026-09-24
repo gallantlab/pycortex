@@ -9,8 +9,10 @@ All tests are skipped if playwright is not installed.
 
 import json
 import os
+import struct
 import time
 import urllib.request
+import zipfile
 
 import numpy as np
 import pytest
@@ -1139,7 +1141,7 @@ def _js_run(handle, path, args):
 
 
 def _js_value(handle, path):
-    """Read one scalar javascript property, e.g. viewopts.movie_post.token."""
+    """Read one scalar javascript property, e.g. viewer.camera.fov."""
     parent, _, name = path.rpartition(".")
     entry = _js_attrs(handle, parent)[name]
     assert len(entry) > 1, f"{path} is not a scalar: {entry}"
@@ -1304,53 +1306,28 @@ def _post(url, **fields):
         return err.code
 
 
-# 1x1 transparent png, as the browser would send it
-_TINY_PNG = ("data:image/png;base64,"
-             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8"
-             "z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+def test_the_server_accepts_no_frames():
+    """Rendered movies are downloaded by the browser; the server writes nothing.
 
-
-def test_movie_handler_rejects_bad_requests():
-    """The frame-render endpoint refuses bad tokens, names, and escaping paths."""
+    The animation panel used to POST each frame to a /movie endpoint that wrote
+    it on the serving machine. That endpoint must stay gone.
+    """
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
         url = f"http://localhost:{handle.server.port}/movie"
-        token = _js_value(handle, "window.viewopts.movie_post.token")
-        assert isinstance(token, str) and len(token) > 0
-
-        assert _post(url, token="wrong", name="f", frame=0, png=_TINY_PNG) == 403
-        assert _post(url, name="f", frame=0, png=_TINY_PNG) == 403
-        assert _post(url, token=token, dir="../..", name="f", frame=0,
-                     png=_TINY_PNG) == 403
-        assert _post(url, token=token, dir="/etc", name="f", frame=0,
-                     png=_TINY_PNG) == 403
-        assert _post(url, token=token, name="../evil", frame=0,
-                     png=_TINY_PNG) == 400
-        assert _post(url, token=token, name="f", frame="nope",
-                     png=_TINY_PNG) == 400
-        assert _post(url, token=token, name="f", frame=0, png="garbage") == 400
+        # Refused either way: nothing routes /movie any more, and the server's
+        # catch-all file handler (serve.py) only answers GET, hence 405.
+        assert _post(url, name="f", frame=0, png="x") in (404, 405)
+        assert "movie_post" not in _js_attrs(handle, "window.viewopts")
 
 
-def test_movie_handler_writes_frames(tmp_path):
-    """A well-formed request lands as <movie_dir>/<dir>/<name>_<frame>.png."""
-    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
-    with cortex.export.headless_viewer(
-            vol, viewer_params=dict(movie_dir=str(tmp_path))) as handle:
-        url = f"http://localhost:{handle.server.port}/movie"
-        token = _js_value(handle, "window.viewopts.movie_post.token")
-        assert _js_value(handle, "window.viewopts.movie_post.root") == str(
-            os.path.realpath(tmp_path))
+def test_static_viewer_can_render_movies(tmp_path):
+    """A static export carries saved views, and renders without a server.
 
-        assert _post(url, token=token, dir="frames", name="brainmovie",
-                     frame=7, png=_TINY_PNG) == 200
-
-        out = tmp_path / "frames" / "brainmovie_00007.png"
-        assert out.exists()
-        assert out.stat().st_size > 0
-
-
-def test_static_viewer_has_views_but_no_render_target(tmp_path):
-    """A static export carries saved views, but nowhere to write frames."""
+    Movies are built in the page and downloaded, so the viewer only needs its
+    own scripts -- the zip and mp4 writers ship with it -- and nothing that
+    points back at a python server.
+    """
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     outpath = str(tmp_path / "static")
     cortex.webgl.make_static(outpath, vol, html_embed=False, copy_ctmfiles=False)
@@ -1359,8 +1336,12 @@ def test_static_viewer_has_views_but_no_render_target(tmp_path):
         html = fp.read()
     assert "viewtools.js" in html
     assert "saved_views" in html
-    # No python behind a static viewer, so the animation panel must not offer
-    # to render frames to disk.
+    # Only the script tags can be checked here: make_static does not copy the
+    # resources tree (see test_static_viewer_ships_the_interpolation_module).
+    # They must load before viewtools.js, which uses them when rendering.
+    for script in ("zipstore.js", "mp4mux.js"):
+        assert script in html
+        assert html.index(script) < html.index("viewtools.js")
     assert "movie_post" not in html
 
 
@@ -2018,10 +1999,9 @@ def test_the_panel_leaves_the_render_size_alone_until_asked():
 def test_rendering_an_animation_reproduces_the_quickflat_png(tmp_path):
     """End to end: with the box ticked, a flat keyframe renders as the flatmap.
 
-    The panel picks the render size, the framing follows it, and the frame that
-    lands in the movie directory has to be the png make_png writes -- that is
-    what lets a flat frame of an animation be cut against a flatmap made in
-    python.
+    The panel picks the render size, the framing follows it, and the frame the
+    browser downloads has to be the png make_png writes -- that is what lets a
+    flat frame of an animation be cut against a flatmap made in python.
     """
     from cortex.webgl.view import _has_flatmap, _quickflat_size
 
@@ -2036,10 +2016,8 @@ def test_rendering_an_animation_reproduces_the_quickflat_png(tmp_path):
                               with_labels=False, with_colorbar=False)
     drawn = _alpha_mask(quickflat)
 
-    movie_dir = tmp_path / "movie"
-    movie_dir.mkdir()
     with cortex.export.headless_viewer(
-            vol, viewer_params=dict(movie_dir=str(movie_dir))) as handle:
+            vol, viewer_params={}, download_dir=str(tmp_path)) as handle:
         handle.send(method="run", params=[
             "window.viewer.ui._desc.camera._desc.create animation.action", []])
         time.sleep(1)
@@ -2063,15 +2041,249 @@ def test_rendering_an_animation_reproduces_the_quickflat_png(tmp_path):
         handle.send(method="run",
                     params=["window.viewer._animPanel.render", []])
 
-        frame = str(movie_dir / "brainmovie_00000.png")
-        wait_for_file(frame, timeout=120)
-        time.sleep(2)
+        movie = handle._pw_thread.wait_for_download(timeout=120)
 
         pageerrors = [e for e in handle._pw_thread.browser_errors
                       if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
 
+    frame = str(tmp_path / "flat_frame.png")
+    with zipfile.ZipFile(movie) as archive:
+        with open(frame, "wb") as fp:
+            fp.write(archive.read("brainmovie/brainmovie_00000.png"))
     shot = _alpha_mask(frame)
     assert list(shot.shape[::-1]) == size
     overlap = (shot & drawn).sum() / (shot | drawn).sum()
     assert overlap > 0.97, "masks overlap by only %.3f" % overlap
+
+
+# ---------------------------------------------------------------------------
+# Rendering movies to a download
+# ---------------------------------------------------------------------------
+
+
+def _render_setup(handle, last=2, size=(320, 240)):
+    """An animation of `last` + 1 frames, turning the brain, at a small size."""
+    handle.send(method="run", params=[
+        "window.viewer.ui._desc.camera._desc.create animation.action", []])
+    time.sleep(1)
+    handle._set_view(**{"camera.azimuth": 45})
+    time.sleep(1)
+    _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+    _js_run(handle, "window.viewer._animPanel.setFrame", [last])
+    handle._set_view(**{"camera.azimuth": 135})
+    time.sleep(1)
+    _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+    handle.send(method="set", params=["window.viewer._anim.last", last])
+    assert _js_run(handle, "window.viewer._animPanel.setRenderSize",
+                   list(size)) == list(size)
+
+
+def _panel_status(handle):
+    """What the animation panel's status line says."""
+    return _js_run(handle, "window.viewer._animPanel._statusText", [])
+
+
+def _mp4_boxes(data, start=0, end=None):
+    """The box tree of an MP4, as a list of (type, payload) with containers expanded."""
+    containers = {b"moov", b"trak", b"mdia", b"minf", b"stbl", b"dinf"}
+    end = len(data) if end is None else end
+    boxes = []
+    while start < end:
+        size, kind = struct.unpack(">I4s", data[start:start + 8])
+        assert size >= 8, "bad box size %d at %d" % (size, start)
+        payload = data[start + 8:start + size]
+        if kind in containers:
+            boxes.append((kind, _mp4_boxes(data, start + 8, start + size)))
+        else:
+            boxes.append((kind, payload))
+        start += size
+    assert start == end, "boxes overrun their parent"
+    return boxes
+
+
+def _find_box(boxes, *path):
+    for kind, payload in boxes:
+        if kind == path[0]:
+            return payload if len(path) == 1 else _find_box(payload, *path[1:])
+    raise KeyError(b"/".join(path))
+
+
+_PLAYBACK_PAGE = """<html><body><video id=v muted playsinline></video><canvas id=c></canvas>
+<script>
+window.result = new Promise(function(resolve) {
+  var v = document.getElementById('v');
+  v.onerror = function() { resolve({error: v.error ? v.error.message : 'error'}); };
+  v.onloadeddata = function() {
+    var c = document.getElementById('c');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(v, 0, 0);
+    var px = ctx.getImageData(0, 0, c.width, c.height).data, lit = 0;
+    for (var i = 0; i < px.length; i += 4)
+      if (px[i] + px[i + 1] + px[i + 2] > 30) lit++;
+    resolve({width: v.videoWidth, height: v.videoHeight, duration: v.duration,
+             lit: lit / (px.length / 4)});
+  };
+  v.src = '/movie.mp4';
+});
+</script></body></html>"""
+
+
+def _play_mp4(path):
+    """Load an MP4 into a <video> in a fresh browser and report what it decodes.
+
+    Run once the viewer's own browser has shut down: sync Playwright objects
+    belong to the thread that made them, and that browser lives on the viewer's
+    worker thread. Served from a routed http://localhost page, the same kind of
+    secure context the viewer runs in.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with open(path, "rb") as fp:
+        movie = fp.read()
+
+    def serve(route):
+        if route.request.url.endswith("/movie.mp4"):
+            route.fulfill(status=200, content_type="video/mp4", body=movie)
+        else:
+            route.fulfill(status=200, content_type="text/html",
+                          body=_PLAYBACK_PAGE)
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(args=["--use-gl=swiftshader", "--no-sandbox"])
+        try:
+            page = browser.new_page()
+            page.route("http://localhost:9/**", serve)
+            page.goto("http://localhost:9/")
+            return page.evaluate("window.result")
+        finally:
+            browser.close()
+
+
+def test_rendering_downloads_a_zip_of_pngs(tmp_path):
+    """PNG frames arrive as one zip download, one lossless frame per entry."""
+    from PIL import Image
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(
+            vol, viewer_params={}, download_dir=str(tmp_path)) as handle:
+        _render_setup(handle, last=2, size=(320, 240))
+        assert _js_run(handle, "window.viewer._animPanel.setRenderFormat",
+                       ["png"]) is True
+        _js_run(handle, "window.viewer._animPanel.render", [])
+        movie = handle._pw_thread.wait_for_download(timeout=120)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+    assert os.path.basename(movie) == "brainmovie.zip"
+    with zipfile.ZipFile(movie) as archive:
+        # testzip reads every entry back and checks its CRC-32.
+        assert archive.testzip() is None
+        names = archive.namelist()
+        assert names == ["brainmovie/brainmovie_%05d.png" % f for f in range(3)]
+        for info in archive.infolist():
+            assert info.compress_type == zipfile.ZIP_STORED
+
+        frames = []
+        for name in names:
+            with archive.open(name) as fp:
+                image = Image.open(fp)
+                image.load()
+            assert image.size == (320, 240)
+            assert image.mode == "RGBA"
+            # Transparent outside the brain, as Save image is.
+            alpha = np.array(image)[..., 3]
+            assert alpha.min() == 0 and alpha.max() == 255
+            frames.append(np.array(image))
+
+    # The brain turned between frames, so they are not the same picture.
+    assert not np.array_equal(frames[0], frames[-1])
+
+
+def test_rendering_downloads_an_mp4(tmp_path):
+    """MP4 arrives as one well-formed H.264 file that a browser plays."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(
+            vol, viewer_params={}, download_dir=str(tmp_path)) as handle:
+        if not _js_run(handle, "window.jsplot.viewtools.canEncodeVideo", []):
+            pytest.skip("this browser cannot encode video")
+
+        _render_setup(handle, last=5, size=(320, 240))
+        assert _js_run(handle, "window.viewer._animPanel.setRenderFormat",
+                       ["mp4"]) is True
+        _js_run(handle, "window.viewer._animPanel.render", [])
+        movie = handle._pw_thread.wait_for_download(timeout=120)
+        fps = _js_value(handle, "window.viewer._anim.fps")
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+    assert os.path.basename(movie) == "brainmovie.mp4"
+    with open(movie, "rb") as fp:
+        data = fp.read()
+    boxes = _mp4_boxes(data)
+    assert [kind for kind, _ in boxes] == [b"ftyp", b"moov", b"mdat"]
+
+    stbl = (b"moov", b"trak", b"mdia", b"minf", b"stbl")
+    stsd = _find_box(boxes, *stbl, b"stsd")
+    assert stsd[12:16] == b"avc1"          # after version/flags and entry count
+    assert b"avcC" in stsd
+
+    stsz = _find_box(boxes, *stbl, b"stsz")
+    count = struct.unpack(">I", stsz[8:12])[0]
+    sizes = struct.unpack(">%dI" % count, stsz[12:12 + 4 * count])
+    assert count == 6
+    assert sum(sizes) == len(_find_box(boxes, b"mdat"))
+
+    stts = _find_box(boxes, *stbl, b"stts")
+    assert struct.unpack(">III", stts[4:16]) == (1, 6, 1000)
+
+    stss = _find_box(boxes, *stbl, b"stss")
+    assert struct.unpack(">II", stss[4:12]) == (1, 1)   # first sample is a keyframe
+
+    played = _play_mp4(movie)
+    assert "error" not in played, played
+    assert (played["width"], played["height"]) == (320, 240)
+    assert played["duration"] == pytest.approx(6 / fps, abs=1e-3)
+    # It decodes to a picture of the brain, on black: neither blank nor noise.
+    assert 0.02 < played["lit"] < 0.9, played
+
+
+def test_mp4_refuses_a_size_the_encoder_cannot_do(tmp_path):
+    """Too large for H.264 here: said up front, and nothing is downloaded."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(
+            vol, viewer_params={}, download_dir=str(tmp_path)) as handle:
+        if not _js_run(handle, "window.jsplot.viewtools.canEncodeVideo", []):
+            pytest.skip("this browser cannot encode video")
+
+        _render_setup(handle, last=1, size=(320, 240))
+        _js_run(handle, "window.viewer._animPanel.setRenderSize", [8192, 8192])
+        _js_run(handle, "window.viewer._animPanel.setRenderFormat", ["mp4"])
+        _js_run(handle, "window.viewer._animPanel.render", [])
+
+        deadline = time.monotonic() + 30
+        while _js_value(handle, "window.viewer._animPanel.rendering"):
+            assert time.monotonic() < deadline, "the render never gave up"
+            time.sleep(0.5)
+        assert "cannot make" in _panel_status(handle)
+        time.sleep(2)
+        assert handle._pw_thread.downloads == []
+
+
+def test_getimage_frees_its_render_target():
+    """Each getImage used to leave a render target behind on the GPU."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        def textures():
+            return _js_value(handle, "window.viewer.renderer.info.memory.textures")
+
+        before = textures()
+        for _ in range(5):
+            _js_run(handle, "window.viewer.getImage", [64, 48])
+        assert textures() == before
+

@@ -346,6 +346,10 @@ var jsplot = (function (module) {
         this.camera.updateProjectionMatrix();
 
         var img = mriview.getTexture(this.renderer.context, renderbuf)
+        // Read back into `img` now, so free the target: left alone, every call
+        // keeps its framebuffer and texture on the GPU, which over a rendered
+        // movie adds up to a few megabytes a frame.
+        renderbuf.dispose();
         if (post !== undefined)
             $.post(post, {png:img.toDataURL()});
         // Draw again -- for some reason the scene disappears after getting the texture

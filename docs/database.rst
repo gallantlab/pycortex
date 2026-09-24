@@ -386,9 +386,10 @@ The same eight modes are available when rendering from python, either for a whol
 
 or per keyframe, by giving a keyframe its own ``interpolation`` key — which is what the panel does. The browser and ``cortex.webgl.interpolation`` share their arithmetic, so a movie rendered from python matches the preview played in the viewer. The older whole-animation easings ``"linear"``, ``"smoothstep"`` and ``"smootherstep"`` still work, but ease each pair of keyframes separately and cannot be combined with per-keyframe modes.
 
-Rendering needs a viewer started from python, since the frames are written by the server rather than by the browser. The folder named in the panel is interpreted relative to the ``movie_dir`` given to ``cortex.webgl.show`` (the current working directory by default), and the server refuses to write outside it::
+**render animation** builds the movie in the browser and downloads it as one file, the way **Save image** does — so it lands on the computer running the browser, wherever that browser saves downloads, and the server writes nothing. It works in static viewers made with :func:`cortex.webgl.make_static` too. Choose the format in the render form:
 
-    viewer = cortex.webgl.show(volume, movie_dir="/path/to/movies")
+* **PNG frames (.zip)** — one lossless PNG per frame, transparent outside the brain, named after the animation's frame numbers inside a folder named after the movie (``brainmovie/brainmovie_00000.png``, …). These are the frames to use when they must match a flatmap from ``cortex.quickflat.make_png``. A zip holds at most 65,535 frames and 4 GiB; render a shorter range of frames if a movie is larger than that.
+* **MP4 video** — H.264, encoded by the browser itself (WebCodecs). It is lossy and has no transparency, so frames are laid on black, as the viewer shows them. Browsers only offer video encoding in a secure context — a viewer opened on ``localhost``, over ``https``, or from a local file — so the option is unavailable when a viewer is reached over plain http from another machine. The largest size depends on the browser's encoder, and a size it cannot encode is refused before rendering starts; an odd width or height gets one extra row or column of black, since H.264 needs even dimensions.
 
 
 ``overlays.svg``

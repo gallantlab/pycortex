@@ -41,6 +41,9 @@ Requirements
 import concurrent.futures
 import contextlib
 import logging
+import os
+import shutil
+import tempfile
 import threading
 import time
 from typing import Any, Mapping, Optional
@@ -138,16 +141,28 @@ class _PlaywrightThread:
 
     Usage::
 
-        pw_thread = _PlaywrightThread()
+        owns_download_dir = download_dir is None
+    if download_dir is None:
+        download_dir = tempfile.mkdtemp(prefix="pycortex-downloads-")
+    pw_thread = _PlaywrightThread(download_dir=download_dir)
         pw_thread.start(url, timeout=60)   # blocks until page is loaded
         # ... use the pycortex handle (which talks via Tornado, not Playwright) ...
         pw_thread.shutdown()               # tears down browser + playwright
     """
 
-    def __init__(self) -> None:
+    def __init__(self, download_dir: Optional[str] = None) -> None:
         self._ready_future: concurrent.futures.Future[None] = (
             concurrent.futures.Future()
         )
+        # Downloads the page starts -- the animation panel's rendered movies,
+        # the "Save image" button. The listener only queues them and the poll
+        # loop saves them, both on the worker thread: Download.save_as blocks
+        # until the file is complete, which the sync API cannot do from inside
+        # an event callback. Without a directory they are left unsaved.
+        self._download_dir = download_dir
+        self._pending_downloads: list[Any] = []
+        self._downloads: list[str] = []
+        self._downloads_changed = threading.Condition()
         self._shutdown_event = threading.Event()
         self._error: Optional[BaseException] = None
         self._thread: Optional[threading.Thread] = None
@@ -204,6 +219,32 @@ class _PlaywrightThread:
         with self._errors_lock:
             return list(self._browser_errors)
 
+    @property
+    def downloads(self) -> list[str]:
+        """Paths of the downloads saved so far, oldest first.  Thread-safe."""
+        with self._downloads_changed:
+            return list(self._downloads)
+
+    def wait_for_download(self, timeout: float = 60.0, count: int = 1) -> str:
+        """Wait until `count` downloads have been saved; return the last one's path.
+
+        Raises
+        ------
+        TimeoutError
+            If fewer than `count` downloads arrive within `timeout` seconds.
+        """
+        deadline = time.monotonic() + timeout
+        with self._downloads_changed:
+            while len(self._downloads) < count:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError(
+                        f"Only {len(self._downloads)} of {count} download(s) "
+                        f"arrived within {timeout:.0f} s"
+                    )
+                self._downloads_changed.wait(remaining)
+            return self._downloads[count - 1]
+
     def shutdown(self) -> None:
         """Signal the worker to tear down Playwright and wait for it to finish."""
         self._shutdown_event.set()
@@ -242,6 +283,7 @@ class _PlaywrightThread:
             # errors that fire during page load (e.g. WebGL failures).
             self._page.on("pageerror", self._on_pageerror)
             self._page.on("console", self._on_console)
+            self._page.on("download", self._on_download)
 
             self._page.goto(
                 self._url,
@@ -265,6 +307,7 @@ class _PlaywrightThread:
         # console messages undelivered until _cleanup(). Poll instead: the cheap
         # round-trip is what makes Playwright dispatch them.
         while not self._shutdown_event.wait(EVENT_POLL_INTERVAL):
+            self._save_downloads()
             try:
                 self._page.evaluate("0")
             except Exception:
@@ -288,6 +331,28 @@ class _PlaywrightThread:
         """Listener for uncaught JS exceptions in the browser page."""
         with self._errors_lock:
             self._browser_errors.append(f"[pageerror] {error}")
+
+    def _on_download(self, download: Any) -> None:
+        """Listener for downloads the page starts; the poll loop saves them."""
+        self._pending_downloads.append(download)
+
+    def _save_downloads(self) -> None:
+        """Save queued downloads into the download directory (worker thread)."""
+        while self._pending_downloads:
+            download = self._pending_downloads.pop(0)
+            if self._download_dir is None:
+                continue
+            path = os.path.join(self._download_dir,
+                                os.path.basename(download.suggested_filename))
+            try:
+                download.save_as(path)
+            except Exception:
+                logger.warning("Could not save the download %r",
+                               download.suggested_filename, exc_info=True)
+                continue
+            with self._downloads_changed:
+                self._downloads.append(path)
+                self._downloads_changed.notify_all()
 
     def _on_console(self, msg: Any) -> None:
         """Listener for console.error / console.warning messages."""
@@ -326,6 +391,7 @@ def headless_viewer(
     viewer_params: Mapping[str, Any],
     *,
     timeout: float = 60.0,
+    download_dir: Optional[str] = None,
 ):
     """Context manager that yields a connected ``JSMixer`` handle rendered in a
     headless Chromium browser.
@@ -341,6 +407,12 @@ def headless_viewer(
     timeout : float
         Seconds to wait for the browser to establish the WebSocket connection
         and for ``server.get_client()`` to return (default: 60).
+    download_dir : str or None
+        Directory that files the page downloads -- a movie rendered by the
+        animation panel, an image from "Save image" -- are saved into, as
+        ``handle._pw_thread.downloads``; ``handle._pw_thread.wait_for_download()``
+        waits for one. Default None, meaning a temporary directory removed when
+        the viewer closes.
 
     Yields
     ------
@@ -388,7 +460,10 @@ def headless_viewer(
     #    does not require a GPU or display server, making it usable in
     #    CI / Docker / notebooks.
     # ------------------------------------------------------------------
-    pw_thread = _PlaywrightThread()
+    owns_download_dir = download_dir is None
+    if download_dir is None:
+        download_dir = tempfile.mkdtemp(prefix="pycortex-downloads-")
+    pw_thread = _PlaywrightThread(download_dir=download_dir)
 
     handle = None
     # ------------------------------------------------------------------
@@ -492,3 +567,6 @@ def headless_viewer(
             server.stop()
         except Exception:
             logger.warning("Failed to stop Tornado server", exc_info=True)
+
+        if owns_download_dir:
+            shutil.rmtree(download_dir, ignore_errors=True)

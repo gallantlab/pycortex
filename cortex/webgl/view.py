@@ -2,12 +2,10 @@ import binascii
 import copy
 import functools
 import glob
-import hmac
 import json
 import mimetypes
 import os
 import re
-import secrets
 import shutil
 import sys
 import threading
@@ -403,7 +401,6 @@ def show(
     title: str="Brain",
     layout: Optional[str]=None,
     display_url: bool=True,
-    movie_dir: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -482,11 +479,6 @@ def show(
         link to access the viewer. Set to False to suppress this display message,
         which can be useful in contexts like Marimo notebooks or programmatic
         headless viewers. Default True
-    movie_dir : str or None, optional
-        Root directory that the viewer's animation panel may render frames into.
-        The folder typed into the panel is interpreted relative to this root, and
-        the server refuses to write anywhere outside it. Default None, meaning
-        the current working directory.
     **kwargs
         All additional keyword arguments are passed to the template renderer.
     """
@@ -575,14 +567,6 @@ def show(
     # quickflat.make_png writes by default, for animations using the flat view.
     my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
                                      for subj in subjects}
-
-    # Where the animation panel is allowed to write rendered frames. The browser
-    # sends a path relative to this root and MovieHandler refuses anything that
-    # resolves outside it; see MovieHandler below.
-    movie_root = os.path.realpath(os.getcwd() if movie_dir is None else movie_dir)
-    movie_token = secrets.token_urlsafe(32)
-    my_viewopts['movie_post'] = dict(url="movie", token=movie_token,
-                                     root=movie_root)
 
     if pickerfun is None:
         pickerfun = lambda *a: None
@@ -679,69 +663,6 @@ def show(
                         print("Error writing image!")
                         data = png
                 svgfile.write(data)
-
-    class MovieHandler(web.RequestHandler):
-        """Writes one animation frame rendered by the viewer's animation panel.
-
-        Kept separate from MixerHandler.post, which pairs uploads with filenames
-        by the order they were pushed onto `post_name`: a browser-driven render
-        loop has no way to keep that queue in step, so each frame carries its own
-        destination instead.
-
-        The destination is always resolved underneath `movie_root` (see the
-        `movie_dir` argument of show). The server binds all interfaces and serves
-        the page unauthenticated, so the token below only keeps unrelated local
-        processes out -- `movie_root` is what stops this from being an arbitrary
-        file-write primitive.
-        """
-        def post(self):
-            # Compare as bytes: compare_digest rejects non-ASCII str outright,
-            # which would turn a hostile token into a 500 instead of a 403.
-            sent = self.get_argument("token", "").encode("utf-8", "replace")
-            if not hmac.compare_digest(sent, movie_token.encode("utf-8")):
-                self.set_status(403)
-                self.finish("Bad or missing token")
-                return
-
-            name = self.get_argument("name", "frame")
-            if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name) is None:
-                self.set_status(400)
-                self.finish("Invalid frame name: use letters, digits, '_', '-' and '.'")
-                return
-
-            try:
-                frame = int(self.get_argument("frame"))
-            except (TypeError, ValueError):
-                self.set_status(400)
-                self.finish("Invalid or missing frame number")
-                return
-
-            dest = os.path.realpath(os.path.join(movie_root,
-                                                 self.get_argument("dir", "")))
-            if dest != movie_root and not dest.startswith(movie_root + os.sep):
-                self.set_status(403)
-                self.finish("Refusing to write outside %s" % movie_root)
-                return
-
-            png = self.get_argument("png", default="")
-            try:
-                data = binascii.a2b_base64(png[png.index(",") + 1:].strip())
-            except (ValueError, binascii.Error):
-                self.set_status(400)
-                self.finish("Could not decode png data")
-                return
-
-            try:
-                os.makedirs(dest, exist_ok=True)
-                fname = os.path.join(dest, "%s_%05d.png" % (name, frame))
-                with open(fname, "wb") as fp:
-                    fp.write(data)
-            except OSError as err:
-                self.set_status(500)
-                self.finish("Could not write frame: %s" % err)
-                return
-
-            self.write(dict(path=fname))
 
     P = ParamSpec('P')
 
@@ -1541,7 +1462,6 @@ def show(
                      (r'/data/(.*)', DataHandler),
                      (r'/stim/(.*)', StimHandler),
                      (r'/mixer.html', MixerHandler),
-                     (r'/movie', MovieHandler),
                      (r'/picker', PickerHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
