@@ -155,6 +155,16 @@ var jsplot = (function (module) {
                 delete params[key];
             }
         }
+        // A flat view saved before camera.flat_target existed stores its flat
+        // target as camera.target -- that is where setTarget put it once the
+        // surface was flat -- so read it as one. save_3d_views relies on the
+        // same reading for the target it passes along with its flatmap.
+        // JSMixer._set_view applies the same rule.
+        if (vt.isFlat(params) && ('camera.target' in params) &&
+                !('camera.flat_target' in params)) {
+            params['camera.flat_target'] = params['camera.target'];
+            delete params['camera.target'];
+        }
         delete params['frame'];         // animation bookkeeping, not a menu path
         delete params['interpolation']; // ditto: the keyframe's smoothing mode
         delete params['time'];          // written by _capture_view(frame_time=...)

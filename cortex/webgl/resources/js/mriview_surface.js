@@ -845,6 +845,37 @@ var mriview = (function(module) {
         return found ? {min:min, max:max} : null;
     };
 
+    // flatBBox for the pose the flat view puts the surface in -- flattened,
+    // pivoted 180 and not shifted -- whatever pose it is in now.
+    //
+    // flatBBox measures through the meshes' current matrices, which describe
+    // the flatmap only while the surface is flat. This poses the pivot groups
+    // the way setMix (fully flat), setPivot(180) and setShift(0) would,
+    // measures, and puts them back, all before anything is drawn: so the
+    // viewer can know where the flatmap will be before it is first flattened.
+    // Those three setters are the only things that move the pivot groups.
+    module.Surface.prototype.flatViewBBox = function() {
+        var sides = {left: 1, right: -1}, saved = {}, name;
+        for (name in this.pivots) {
+            var p = this.pivots[name];
+            saved[name] = {front: p.front.rotation.clone(),
+                           back: p.back.rotation.clone(),
+                           shift: p.front.position.clone()};
+            p.back.rotation.x = -Math.PI / 2;                  // setMix, flat
+            p.front.rotation.z = 0;                            // setPivot(180)
+            p.back.rotation.z = Math.PI * sides[name] / 2;
+            p.front.position.x = 0;                            // setShift(0)
+        }
+        var box = this.flatBBox();
+        for (name in saved) {
+            this.pivots[name].front.rotation.copy(saved[name].front);
+            this.pivots[name].back.rotation.copy(saved[name].back);
+            this.pivots[name].front.position.copy(saved[name].shift);
+        }
+        this.object.updateMatrixWorld(true);
+        return box;
+    };
+
     module.SurfDelegate = function(dataview) {
         this.object = new THREE.Group();
         this.object.name = "SurfDelegate";
@@ -891,6 +922,9 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.flatBBox = function() {
         return this.surf.flatBBox();
+    }
+    module.SurfDelegate.prototype.flatViewBBox = function() {
+        return this.surf.flatViewBBox();
     }
     module.SurfDelegate.prototype.setPivot = function(pivot) {
         return this.surf.setPivot(pivot);

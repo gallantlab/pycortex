@@ -329,6 +329,8 @@ That framing is applied on request, never behind your back. Setting the flat vie
 
 A view saved in the filestore under the name ``flat`` replaces all of this, framing included, since a saved view records the camera distance it was saved with.
 
+The camera keeps two targets — the point it orbits and looks at — one for the folded brain and one for the flatmap, and moves between them as the surface unfolds. Views store them separately, as ``camera.target`` (folded) and ``camera.flat_target``, so an animation from a folded pose into the flat view leaves the folded target where it was, and unfolding again returns the brain exactly to its starting place. The flat target starts at the middle of the flatmap, so flattening lands centred without the flat view naming one. A flat view saved before ``camera.flat_target`` existed stores its flat target as ``camera.target``, and is still read that way: a flat view that carries ``camera.target`` but no ``camera.flat_target`` sets the flat target.
+
 Saved views in the browser
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

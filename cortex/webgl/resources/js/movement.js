@@ -134,14 +134,21 @@ var jsplot = (function (module) {
 		this.setRadius(this.radius * Math.exp(this.pinchZoomSpeed * delta));
 	}
 
+	// The visible target: the folded and flat targets blended by how flat the
+	// surface is, which is how the camera travels between them as it unfolds.
+	module.LandscapeControls.prototype._blendTarget = function() {
+		var mix = this.mix;
+		this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
+		                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
+		                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+	}
+
 	module.LandscapeControls.prototype.setMix = function(mix) {
 		this.mix = mix;
 		if (mix > 0 && mix < 1 || true) { // hacky, I'm leaving this for now..
 			this.azimuth = (1 - this.mix) * this._foldedazimuth + this.mix * this._flatazimuth;
 			this.altitude = (1 - this.mix) * this._foldedaltitude + this.mix * this._flataltitude;
-			this.target.set(this._foldedtarget.x * (1-mix) + mix*this._flattarget.x,
-			                this._foldedtarget.y * (1-mix) + mix*this._flattarget.y,
-			                this._foldedtarget.z * (1-mix) + mix*this._flattarget.z);
+			this._blendTarget();
 		} else {
 			this.setAzimuth(this.azimuth);
 			this.setAltitude(this.altitude);
@@ -206,6 +213,26 @@ var jsplot = (function (module) {
 			this._flattarget.set(xyz[0], xyz[1], 0);
 			this.target.set(xyz[0], xyz[1], 0);
 		}
+	}
+
+	// The two targets setTarget chooses between, each on its own. Views and
+	// keyframes store these (as camera.target and camera.flat_target) rather
+	// than going through setTarget, which writes whichever one matches the
+	// surface at that moment: an animation stepping through partly unfolded
+	// poses would otherwise write values meant for the flat target into the
+	// folded one, and leave the folded brain displaced once it unfolds.
+	module.LandscapeControls.prototype.setFoldedTarget = function(xyz) {
+		if (!(xyz instanceof Array))
+			return this._foldedtarget.toArray();
+		this._foldedtarget.set(xyz[0], xyz[1], xyz[2]);
+		this._blendTarget();
+	}
+
+	module.LandscapeControls.prototype.setFlatTarget = function(xyz) {
+		if (!(xyz instanceof Array))
+			return this._flattarget.toArray();
+		this._flattarget.set(xyz[0], xyz[1], 0);   // the flatmap lies in z = 0
+		this._blendTarget();
 	}
 
 	module.LandscapeControls.prototype.update2Dbutton = function() {

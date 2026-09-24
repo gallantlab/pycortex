@@ -722,6 +722,16 @@ def show(
             for old_key, new_key in self._legacy_props.items():
                 if old_key in kwargs and new_key not in kwargs:
                     kwargs[new_key] = kwargs.pop(old_key)
+            # A flat view saved before camera.flat_target existed stores its
+            # flat target as camera.target -- that is where it went once the
+            # surface was flat -- so read it as one. Mirrors vt.applyView in
+            # resources/js/viewtools.js; save_3d_views relies on it for the
+            # target it passes along with its flatmap, which is what keeps
+            # that function's flatmaps exactly as they were.
+            if (kwargs.get('surface.{subject}.unfold', 0) >= 0.999
+                    and 'camera.target' in kwargs
+                    and 'camera.flat_target' not in kwargs):
+                kwargs['camera.flat_target'] = kwargs.pop('camera.target')
             for subject in subject_list:
                 if 'surface.{subject}.unfold' in kwargs:
                     unfold = kwargs.pop('surface.{subject}.unfold')

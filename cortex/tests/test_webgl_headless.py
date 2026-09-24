@@ -1706,7 +1706,7 @@ def test_fit_flat_view_frames_the_flat_surface():
         fov = _js_value(handle, "window.viewer.camera.fov")
         aspect = _js_value(handle, "window.viewer.camera.aspect")
         view = handle._capture_view()
-        assert view["camera.target"] == pytest.approx(
+        assert view["camera.flat_target"] == pytest.approx(
             [(box["min"][0] + box["max"][0]) / 2,
              (box["min"][1] + box["max"][1]) / 2, 0], abs=1e-3)
         # As large as fits in the frame on screen: filling it top to bottom,
@@ -1912,6 +1912,150 @@ def test_flattening_leaves_the_camera_angle_alone():
         pageerrors = [e for e in handle._pw_thread.browser_errors
                       if "[pageerror]" in e]
         assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+# ---------------------------------------------------------------------------
+# The folded and the flat camera target
+# ---------------------------------------------------------------------------
+
+
+def _flatmap_centre(handle):
+    """The middle of the flatmap, measured while the surface is flat."""
+    box = _js_run(handle, "window.viewer.flatBBox", [])
+    return [(box["min"][0] + box["max"][0]) / 2,
+            (box["min"][1] + box["max"][1]) / 2, 0]
+
+
+def test_flat_target_starts_at_the_flatmap_centre():
+    """Flattening lands centred on the flatmap without anything asking for it.
+
+    The controls used to start the flat target at y = -60, a guess close to
+    S1's flatmap and wrong for other subjects; setting the flat view from
+    python then replaced even that with the origin, putting the flatmap
+    sixty units low.
+    """
+    from cortex.export.save_views import default_subject_views
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        before = handle._capture_view()
+        assert "camera.flat_target" in before
+
+        handle._set_view(**default_subject_views(True)["flat"])
+        time.sleep(2)
+        centre = _flatmap_centre(handle)
+
+        # Worked out at load, before the surface was ever flat, and right.
+        assert before["camera.flat_target"] == pytest.approx(centre, abs=1e-3)
+        after = handle._capture_view()
+        assert after["camera.flat_target"] == pytest.approx(centre, abs=1e-3)
+        assert _js_run(handle, "window.viewer.controls.setTarget", []) == \
+            pytest.approx(centre, abs=1e-3)
+        # ... and the folded target is where it was.
+        assert after["camera.target"] == pytest.approx(before["camera.target"])
+
+
+def test_flattening_leaves_the_folded_target_alone():
+    """An animation into the flat view must not drag the folded brain with it.
+
+    One camera.target used to stand for two targets, written to whichever
+    matched the unfold state at the moment: every partly unfolded frame of a
+    transition wrote the flat target's values into the folded one, sliding the
+    brain down ahead of the flattening and leaving it displaced afterwards.
+    """
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.lateral_left.action",
+            []])
+        time.sleep(2)
+        folded = handle._capture_view()["camera.target"]
+        _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+
+        _js_run(handle, "window.viewer._animPanel.setFrame", [30])
+        time.sleep(1)
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+        _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+        centre = _flatmap_centre(handle)
+
+        for frame in (5, 10, 15, 20, 25, 30):
+            _js_run(handle, "window.viewer._animPanel.setFrame", [frame])
+            time.sleep(0.5)
+            view = handle._capture_view()
+            assert view["camera.target"] == pytest.approx(folded, abs=1e-6), frame
+            assert view["camera.flat_target"] == pytest.approx(centre, abs=1e-3), frame
+
+        # Unfolding by hand returns the brain to exactly where it started.
+        handle._set_view(**{"surface.{subject}.unfold": 0})
+        time.sleep(2)
+        assert _js_run(handle, "window.viewer.controls.setTarget", []) == \
+            pytest.approx(folded, abs=1e-6)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_a_flat_view_saved_before_flat_target_still_loads():
+    """A flat view that stores only camera.target means a flat target.
+
+    That is where camera.target went once the surface was flat, so every flat
+    view saved before camera.flat_target existed stores it that way -- and it
+    is what save_3d_views passes with its flatmap, which keeps that function's
+    output exactly as it was.
+    """
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    legacy = {"surface.{subject}.unfold": 1, "camera.target": [5.0, -40.0, 0.0],
+              "camera.radius": 300.0}
+    viewdir = os.path.join(cortex.db.filestore, subj, "views")
+    os.makedirs(viewdir, exist_ok=True)
+    name = "_pytest_legacy_flat"
+    viewfile = os.path.join(viewdir, name + ".json")
+    with open(viewfile, "w") as fp:
+        json.dump(legacy, fp)
+
+    try:
+        vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+        with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+            folded = handle._capture_view()["camera.target"]
+
+            # From python ...
+            handle._set_view(**legacy)
+            time.sleep(2)
+            view = handle._capture_view()
+            assert view["camera.flat_target"] == pytest.approx([5, -40, 0])
+            assert view["camera.target"] == pytest.approx(folded)
+
+            # ... and clicked in the views menu, after moving it elsewhere.
+            handle._set_view(**{"camera.flat_target": [0.0, 0.0, 0.0]})
+            time.sleep(1)
+            handle.send(method="run", params=[
+                "window.viewer.ui._desc.camera._desc.views._desc"
+                ".%s.action" % name, []])
+            time.sleep(2)
+            view = handle._capture_view()
+            assert view["camera.flat_target"] == pytest.approx([5, -40, 0])
+            assert view["camera.target"] == pytest.approx(folded)
+    finally:
+        os.remove(viewfile)
 
 
 def test_browser_and_python_agree_with_a_flat_keyframe_in_the_middle():

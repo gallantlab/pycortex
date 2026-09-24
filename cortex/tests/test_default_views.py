@@ -154,6 +154,18 @@ def test_the_flat_view_carries_no_camera_angle():
         assert set(FLAT_INERT_PROPS) <= set(default_subject_views(True)[name])
 
 
+def test_the_flat_view_names_no_target():
+    """It says nothing about the folded pose, and the viewer centres the flatmap.
+
+    default_view_params' origin is a folded target; carried by a flat view with
+    no camera.flat_target it would be read as the flat target, and put the
+    flatmap back where it used to sit, sixty units low.
+    """
+    view = default_subject_views(has_flatmap=True)[FLAT_VIEW_NAME]
+    assert "camera.target" not in view
+    assert "camera.flat_target" not in view
+
+
 def test_views_keep_the_subject_placeholder():
     """So one view still applies in a viewer showing several subjects."""
     for view in default_subject_views(has_flatmap=True).values():
