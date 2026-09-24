@@ -317,6 +317,10 @@ They are built from the same tables ``cortex.export.save_views`` uses for :func:
     from cortex.export.save_views import default_subject_views
     default_subject_views()["dorsal"]
 
+Each view but ``flat`` also fixes the camera's aim and distance, so clicking it returns exactly the same scene every time, ready to render the same images again. The camera aims at the middle of the surface the view shows, from the distance at which that brain fills 85% of a 4:3 frame (``FRAMING_FILL`` and ``FRAMING_ASPECT`` in ``cortex.export.save_views``); in a wider window there is simply more room either side. Brains differ in size, and an inflated surface in shape, so this is fitted to each subject's own surfaces — as the viewer lays them out — the first time a viewer opens that subject, and cached as ``default_view_framing.json`` in its cache directory; the cache is refitted when a surface file changes. Pass the subject to see the framed views::
+
+    default_subject_views(subject="S1")["dorsal"]
+
 **A view saved in the filestore under one of these names replaces the default.** So if a subject's anatomy wants a different angle, or you prefer a different framing, save your own view under that name and it is used instead — for that subject only, leaving every other default in place::
 
     viewer.save_view(subject, "dorsal", is_overwrite=True)

@@ -91,7 +91,10 @@ def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]
     Every subject gets the standard anatomical views from
     ``cortex.export.save_views.default_subject_views`` -- dorsal, ventral, the
     two lateral views, their inflated counterparts, and flat -- so that a
-    subject with an empty (or missing) views/ directory still has them. A view
+    subject with an empty (or missing) views/ directory still has them. All but
+    flat are framed for that subject's brain: aimed at its middle, from a
+    distance that fills most of the frame (``default_view_framing``), so a view
+    always returns the same scene. A view
     stored in the filestore under one of those names replaces the default,
     which is how a subject whose anatomy needs a different angle, or who wants
     a different framing, overrides one.
@@ -112,7 +115,7 @@ def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]
 
     saved: dict[str, dict[str, dict[str, Any]]] = {}
     for subj in subjects:
-        saved[subj] = dict(default_subject_views(_has_flatmap(subj)))
+        saved[subj] = dict(default_subject_views(_has_flatmap(subj), subj))
         viewdir = os.path.join(db.filestore, subj, "views")
         # Glob *.json rather than using db.get_paths()['views'], which strips any
         # extension off any file in the directory (so notes.tar.gz would show up

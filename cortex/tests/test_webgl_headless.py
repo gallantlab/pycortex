@@ -2431,3 +2431,60 @@ def test_getimage_frees_its_render_target():
             _js_run(handle, "window.viewer.getImage", [64, 48])
         assert textures() == before
 
+
+
+# ---------------------------------------------------------------------------
+# Default views carry the whole camera
+# ---------------------------------------------------------------------------
+
+
+def test_default_views_set_the_fitted_target_and_radius():
+    """Clicking a default view returns the same scene, zoom included."""
+    from cortex.export.save_views import default_view_framing
+
+    framing = default_view_framing(subj)
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        for name in ("dorsal", "lateral_left_inflated"):
+            # Zoomed and aimed somewhere else first.
+            handle._set_view(**{"camera.radius": 520, "camera.target": [30, -20, 5]})
+            time.sleep(1)
+            handle.send(method="run", params=[
+                "window.viewer.ui._desc.camera._desc.views._desc.%s.action" % name,
+                []])
+            time.sleep(2)
+            view = handle._capture_view()
+            assert view["camera.radius"] == pytest.approx(
+                framing[name]["camera.radius"], rel=1e-6), name
+            assert view["camera.target"] == pytest.approx(
+                framing[name]["camera.target"], abs=1e-6), name
+
+
+@pytest.mark.parametrize("name", ["dorsal", "lateral_left_inflated"])
+def test_a_default_view_fills_a_4_by_3_frame(tmp_path, name):
+    """The framing holds in the real viewer, not just in python's model of it.
+
+    Fitted so the brain's farthest point from the middle reaches
+    FRAMING_FILL of the half-frame: rendered 4:3, the tightest margin is
+    (1 - FRAMING_FILL) / 2 of the frame, and nothing is clipped. Dorsal is
+    limited by its height, the lateral view by its width, and the inflated
+    view checks that the fit sees the inflated surface the way the viewer's
+    surface packs lay it out.
+    """
+    from cortex.export.save_views import FRAMING_FILL
+
+    width, height = 800, 600
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    shot = str(tmp_path / (name + ".png"))
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.%s.action" % name, []])
+        time.sleep(3)
+        handle.getImage(shot, size=(width, height))
+        wait_for_file(shot, timeout=60)
+        time.sleep(1)
+
+    x0, y0, x1, y1 = _mask_bbox(_alpha_mask(shot))
+    margins = [x0 / width, (width - x1) / width, y0 / height, (height - y1) / height]
+    assert min(margins) > 0, margins                     # nothing clipped
+    assert min(margins) == pytest.approx((1 - FRAMING_FILL) / 2, abs=0.015), margins
