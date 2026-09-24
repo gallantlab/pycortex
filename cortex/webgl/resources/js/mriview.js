@@ -109,6 +109,15 @@ var mriview = (function(module) {
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
             this.resize();
+            // Start the flat target at the middle of the flatmap, where
+            // quickflat centres it, rather than at the controls' built-in
+            // guess (y = -60: close for S1, wrong for other subjects). Kept as
+            // the fallback when there is no flatmap to measure.
+            // Measured in the flat view's pose, since the surface is not flat
+            // yet.
+            var framing = this.flatFraming(undefined, this.flatViewBBox());
+            if (framing !== null)
+                this.controls.setFlatTarget(framing.target);
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
             this.object.appendChild(this.controls.twodbutton[0]);
@@ -979,6 +988,19 @@ var mriview = (function(module) {
         return null;
     };
 
+    // flatBBox as it will be in the flat view's pose, whatever the pose now
+    // (see Surface.flatViewBBox).
+    module.Viewer.prototype.flatViewBBox = function() {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].flatViewBBox === undefined)
+                continue;
+            var box = this.surfs[i].flatViewBBox();
+            if (box !== null)
+                return box;
+        }
+        return null;
+    };
+
     // The framing cortex.quickflat.make_png would use for a frame of the given
     // shape, as {target, radius, aspect}, or null if there is no flatmap.
     // Works the framing out without moving anything, which is what the
@@ -995,8 +1017,11 @@ var mriview = (function(module) {
     // is then make_png's png -- when that is the flatmap's own aspect ratio,
     // which is what viewopts.quickflat_size has. At any other shape of frame
     // the flatmap is fitted inside it rather than cropped to it.
-    module.Viewer.prototype.flatFraming = function(aspect) {
-        var box = this.flatBBox();
+    //
+    // `box` is the extent to frame, defaulting to the flatmap as it is now.
+    module.Viewer.prototype.flatFraming = function(aspect, box) {
+        if (box === undefined)
+            box = this.flatBBox();
         if (box === null)
             return null;
 
@@ -1026,7 +1051,7 @@ var mriview = (function(module) {
         if (framing === null)
             return null;
 
-        this.controls.setTarget(framing.target);
+        this.controls.setFlatTarget(framing.target);
         this.controls.setRadius(framing.radius);
         this._flatFitAspect = framing.aspect;   // so isFlatFitted knows this framing
         // Move the camera now rather than on the next animation frame: this is
@@ -1037,7 +1062,7 @@ var mriview = (function(module) {
         // What setTarget and setRadius actually took, which is not what was
         // asked for if a subject's flatmap is small enough to hit the zoom
         // clamp (radius is held at 10 or more, and at 101 or more while flat).
-        return {target: this.controls.setTarget(),
+        return {target: this.controls.setFlatTarget(),
                 radius: this.controls.setRadius()};
     };
 
@@ -1295,7 +1320,11 @@ var mriview = (function(module) {
             azimuth: {action:[this.controls, 'setAzimuth', 0, 360]},
             altitude: {action:[this.controls, 'setAltitude', 0, 180]},
             radius: {action:[this.controls, 'setRadius', 10, 1000]},
-            target: {action:[this.controls, 'setTarget'], hidden:true},
+            // The folded and the flat target, stored apart so that neither
+            // absorbs values meant for the other (see setFoldedTarget in
+            // movement.js).
+            target: {action:[this.controls, 'setFoldedTarget'], hidden:true},
+            flat_target: {action:[this.controls, 'setFlatTarget'], hidden:true},
         });
 
         var fold_brain = function() {

@@ -439,5 +439,12 @@ def default_subject_views(has_flatmap: bool = True) -> dict[str, ViewParams]:
                      unfold_view_params["flatmap"])
         for angle in FLAT_INERT_PROPS:
             flat.pop(angle, None)          # type: ignore[misc]
+        # Nor a target: default_view_params' origin is a folded target, which
+        # a flat view has no business setting -- and, applied flat without a
+        # camera.flat_target, it would be read as the flat target (see
+        # JSMixer._set_view) and put the flatmap back where it used to sit,
+        # sixty units low. The viewer starts the flat target at the middle of
+        # the flatmap on its own.
+        flat.pop("camera.target", None)    # type: ignore[misc]
         views[FLAT_VIEW_NAME] = flat
     return views
