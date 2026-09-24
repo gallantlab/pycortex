@@ -61,7 +61,22 @@ class BrainData:
         return self.copy(np.exp(self.data))
 
     def uniques(self, collapse=False):
-        """TODO: WHAT IS THIS
+        """Yield the underlying BrainData object(s) this view is built from.
+
+        For a plain Volume/Vertex, that's just itself; composite views
+        (VolumeRGB, VertexRGB, Volume2D, Vertex2D) override this to yield
+        their individual channels instead.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            Unused here; accepted for interface compatibility with the
+            composite-view overrides of this method.
+
+        Returns
+        -------
+        generator
+            Yields `BrainData`
         """
         yield self
 
@@ -549,9 +564,23 @@ class VertexData(BrainData):
         
         #return VertexData(self.data[idx], self.subject, **self.attrs)
         return self.copy(self.data[idx])
-    
-    # TODO: simple
+
     def to_json(self, simple: bool = False) -> dict[str, list[str]]:
+        """Serialize this vertex data to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary (hemisphere split point
+            and frame count) rather than the full webgl payload. Default
+            False.
+
+        Returns
+        -------
+        dict
+            Serialized data.
+        """
         if simple:
             sdict = dict(split=self.llen, frames=self.vertices.shape[0])
             sdict.update(super().to_json(simple=simple))

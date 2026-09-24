@@ -34,6 +34,20 @@ class Dataview2D(Dataview):
         self.description = description
 
     def uniques(self, collapse=False):
+        """Yield the two underlying Dataview objects (dim1, dim2) that make
+        up this composite 2D view.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            Unused here; accepted for interface compatibility with
+            `Dataview.uniques`.
+
+        Returns
+        -------
+        generator
+            Yields `self.dim1`, then `self.dim2`.
+        """
         yield self.dim1
         yield self.dim2
 
@@ -48,6 +62,22 @@ class Dataview2D(Dataview):
         return viewnode
 
     def to_json(self, simple=False):
+        """Serialize this 2D dataview to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            Unused here; accepted for interface compatibility with
+            `Dataview.to_json`.
+
+        Returns
+        -------
+        dict
+            Serialized view data, including both dims' names, cmap,
+            vmin/vmax pairs, state, attrs, description, and (if the
+            underlying dims are Volumes) the shared xfm.
+        """
         sdict = dict(data=[[self.dim1.name, self.dim2.name]],
             state=self.state, 
             attrs=self.attrs, 
@@ -143,7 +173,20 @@ class Volume2D(Dataview2D):
         Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
-
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str (default  = "nearest")
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+            alpha : ndarray or Volume
+                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D
     """
     _cls = VolumeData
     dim1: Volume
@@ -238,7 +281,20 @@ class Vertex2D(Dataview2D):
         Maximum value in colormap for dim2. If not given defaults to TODO:WHAT
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
-
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str (default  = "nearest")
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+            alpha : ndarray or Volume
+                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D
     """
     _cls = VertexData
     blend_curvature = _cls.blend_curvature  # hacky inheritance
