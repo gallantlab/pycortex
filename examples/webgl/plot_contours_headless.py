@@ -1,0 +1,107 @@
+"""
+===============================================
+Plot parcellation contours on 3D brain (headless)
+===============================================
+
+The WebGL viewer supports contour rendering of parcellation borders on
+the 3D cortical surface. ``cortex.export.save_3d_views`` accepts a
+``contour_overlay`` parameter — pass a ``cortex.Vertex`` with parcellation
+labels and the function automatically bundles it with the primary data,
+enabling contour borders in the rendered views.
+
+Available contour modes (``contour_mode``):
+
+- ``"contours"``: borders only on curvature
+- ``"contours+fill"``: data with solid-colour borders (default)
+- ``"colored"``: borders coloured by the overlay's colormap
+- ``"colored+fill"``: data with colormap-coloured borders
+
+Prerequisites
+-------------
+Install Playwright and download the bundled Chromium binary once::
+
+    pip install playwright
+    playwright install chromium
+
+"""
+
+import os
+import tempfile
+from collections import deque
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import cortex
+import cortex.export
+
+np.random.seed(1234)
+
+subject = "S1"
+n_verts = cortex.db.get_surf(subject, "fiducial", merge=True)[0].shape[0]
+
+###############################################################################
+# Create a random parcellation
+# ----------------------------
+# Grow 30 random seed vertices across the mesh using breadth-first search.
+
+n_parcels = 30
+_, polys = cortex.db.get_surf(subject, "fiducial", merge=True)
+neighbors = cortex.utils._get_neighbors_dict(polys)
+
+parcellation = np.zeros(n_verts, dtype=float)
+seeds = np.random.choice(n_verts, n_parcels, replace=False)
+for i, s in enumerate(seeds, 1):
+    parcellation[s] = float(i)
+
+queue = deque(seeds.tolist())
+while queue:
+    v = queue.popleft()
+    for nb in neighbors.get(v, []):
+        if nb < n_verts and parcellation[nb] == 0:
+            parcellation[nb] = parcellation[v]
+            queue.append(nb)
+
+###############################################################################
+# Create data and parcellation Vertex objects
+# --------------------------------------------
+
+activation = cortex.Vertex(
+    np.random.randn(n_verts), subject, cmap="RdBu_r", vmin=-2, vmax=2
+)
+parc_vertex = cortex.Vertex(parcellation, subject, cmap="Set1", vmin=0, vmax=n_parcels)
+
+###############################################################################
+# Render with parcellation contour overlay
+# ------------------------------------------
+# Pass the parcellation ``Vertex`` directly as ``contour_overlay``.
+# The function wraps both into a Dataset automatically.
+# The default ``contour_mode="contours+fill"`` draws black borders.
+
+base_name = os.path.join(tempfile.mkdtemp(), "contour")
+
+fnames = cortex.export.save_3d_views(
+    activation,
+    base_name=base_name,
+    list_angles=["left"],
+    list_surfaces=["inflated"],
+    viewer_params=dict(labels_visible=[], overlays_visible=[]),
+    size=(1920 * 2, 1080 * 2),
+    trim=True,
+    headless=True,
+    contour_overlay=parc_vertex,
+)
+
+for fname in fnames:
+    img = plt.imread(fname)
+    aspect = img.shape[0] / img.shape[1]
+    fig, ax = plt.subplots(figsize=(10, 10 * aspect))
+    ax.imshow(img)
+    ax.axis("off")
+    ax.set_title(
+        "Activation + parcellation contours (inflated, left)",
+        fontsize=14,
+        fontweight="bold",
+    )
+    fig.subplots_adjust(left=0, right=1, top=0.92, bottom=0)
+    plt.show()

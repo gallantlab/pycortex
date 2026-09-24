@@ -610,10 +610,14 @@ def show(
             _curvature_props = ['surface.{subject}.curvature.brightness',
                                 'surface.{subject}.curvature.contrast',
                                 'surface.{subject}.curvature.smoothness']
+            _contour_props = ['surface.{subject}.contours.mode',
+                              'surface.{subject}.contours.threshold',
+                              'surface.{subject}.contours.overlay']
             _lighting_props = ['surface.{subject}.lighting.topleft_lighting',
                                'surface.{subject}.lighting.uniform_illumination',
                                'surface.{subject}.lighting.specularity']
-            return _camera_props + _surface_props + _curvature_props + _lighting_props
+            return (_camera_props + _surface_props + _curvature_props
+                    + _lighting_props + _contour_props)
 
         # Lighting controls used to sit directly in the surface menu; they now
         # live in its lighting sub-folder. Keep the old names working, both for
@@ -630,6 +634,14 @@ def show(
 
             Sets each the state of each keyword argument provided. View parameters
             that can be set include all parameters in the data.gui in the html view.
+
+            Contour-related parameters:
+                surface.{subject}.contours.mode : int
+                    0=off, 1=contours only, 2=contours+fill
+                surface.{subject}.contours.threshold : float
+                    Edge detection threshold (0.001-0.5)
+                surface.{subject}.contours.overlay : str
+                    Dataset name to use as contour overlay, or "none"
 
             """
             # Set unfolding level first, as it interacts with other arguments
