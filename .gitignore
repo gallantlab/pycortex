@@ -81,3 +81,4 @@ examples/quickstart/S1_retinotopy.hdf
 # Claude Code working directory (per-worktree scratch: launchers, verify
 # scripts, plans). Not part of the project.
 .claude
+uv.lock
