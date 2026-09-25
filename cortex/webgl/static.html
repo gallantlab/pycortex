@@ -1,7 +1,7 @@
 {% autoescape None %}
 {% extends template.html %}
 {% block jsinit %}
-    var viewer, subjects, datasets, figure, sock, viewopts;
+    var viewer, subjects, datasets, figure, sock, viewopts, metadata;
 {% end %}
 {% block onload %}
         viewopts = {{viewopts}};
@@ -13,6 +13,8 @@
         figure = new jsplot.W2Figure();
         viewer = figure.add(mriview.Viewer, "main", true);
 
-        dataviews = dataset.fromJSON({{data}});
+        metadata = {{data}};
+        dataviews = dataset.fromJSON(metadata);
         viewer.addData(dataviews);
+        viewer.addTracts(metadata.tracts);
 {% end %}

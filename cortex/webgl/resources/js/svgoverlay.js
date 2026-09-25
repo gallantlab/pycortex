@@ -157,9 +157,22 @@ var svgoverlay = (function(module) {
             var clearAlpha = renderer.getClearAlpha();
             var clearColor = renderer.getClearColor().clone();
             renderer.setClearColor(0xffffff, 1);
+            //The depth shader only knows the surface's vertex attributes, so
+            //objects that opt out (e.g. tractography lines, see tractogram.js)
+            //are hidden for this pass -- rendering them with the override
+            //material would crash on the missing attributes.
+            var hidden = [];
+            scene.traverse(function(obj) {
+                if (obj.visible && obj.userData && obj.userData.skipOverrideMaterial) {
+                    obj.visible = false;
+                    hidden.push(obj);
+                }
+            });
             scene.overrideMaterial = this.depthshade;
             renderer.render(scene, camera, this.depth);
             scene.overrideMaterial = null;
+            for (var i = 0; i < hidden.length; i++)
+                hidden[i].visible = true;
             renderer.setClearColor(clearColor, clearAlpha);
             this.labels.left.visible = true;
             this.labels.right.visible = true;
