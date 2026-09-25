@@ -43,7 +43,7 @@ import contextlib
 import logging
 import threading
 import time
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Union
 
 import cortex
 from .. import dataset
@@ -369,7 +369,7 @@ class _PlaywrightThread:
 
 @contextlib.contextmanager
 def headless_viewer(
-    volume: dataset.Dataview,
+    volume: Union[dataset.Dataview, dataset.Dataset],
     viewer_params: Mapping[str, Any],
     *,
     timeout: float = 60.0,
@@ -379,8 +379,9 @@ def headless_viewer(
 
     Parameters
     ----------
-    volume : cortex.Volume or cortex.Vertex
-        Data to display.
+    volume : cortex.Volume, cortex.Vertex or cortex.Dataset
+        Data to display. A `Dataset` covers the cases that need more than one
+        view at once, such as a `Tractogram`, which cannot be shown alone.
     viewer_params : Mapping[str, Any]
         Keyword arguments forwarded to ``cortex.webshow`` with two enforced
         overrides: ``port`` is ignored (a random free port is always used),

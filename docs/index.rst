@@ -26,6 +26,7 @@ User Guide
    userguide/webgl
    roidraw
    transforms
+   tractography
    colormaps
 
 Example Gallery

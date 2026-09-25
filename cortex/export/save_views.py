@@ -5,9 +5,42 @@ from typing import Any, Mapping, Sequence, TypedDict, Union
 
 import cortex
 
-from ..dataset import Dataview
+from ..dataset import Dataset, Dataview
 
 file_pattern = "{base}_{view}_{surface}.png"
+
+
+def _view_subject(volume: Union[Dataview, Dataset]) -> str:
+    """The subject the displayed data belongs to.
+
+    A plain dataview carries it directly; a `Dataset` (needed whenever a
+    `Tractogram` is displayed, since it cannot be shown on its own) carries
+    one per view, and all of them must agree -- the viewer's per-surface
+    controls are addressed by subject name.
+    """
+    # Dataset first, and by type: `Dataset.__getattr__` falls through to the
+    # views it holds, so `getattr(ds, "subject")` on a dataset with a view
+    # *named* "subject" hands back that dataview rather than raising.
+    if isinstance(volume, Dataset):
+        # getattr, not view.subject: Dataview itself does not declare one,
+        # only the braindata-backed subclasses do.
+        subjects = set()
+        for view in volume.views.values():
+            name = getattr(view, "subject", None)
+            if name:
+                subjects.add(name)
+        if len(subjects) != 1:
+            raise ValueError(
+                "save_3d_views needs exactly one subject, found %s"
+                % (sorted(subjects) or "none",)
+            )
+        return subjects.pop()
+
+    subject = getattr(volume, "subject", None)
+    if not isinstance(subject, str):
+        raise ValueError("Cannot determine the subject of %r" % (volume,))
+    return subject
+
 
 ViewParams = TypedDict(
     "ViewParams",
@@ -28,7 +61,7 @@ ViewParams = TypedDict(
 
 
 def save_3d_views(
-    volume: Dataview,
+    volume: Union[Dataview, Dataset],
     base_name: str = "fig",
     list_angles: Sequence[Union[str, tuple[str, ViewParams]]] = ["lateral_pivot"],
     list_surfaces: Sequence[Union[str, ViewParams]] = ["inflated"],
@@ -50,8 +83,10 @@ def save_3d_views(
 
     Parameters
     ----------
-    volume: pycortex.Volume or pycortex.Vertex object
-        Data to be displayed.
+    volume: pycortex.Volume, pycortex.Vertex or pycortex.Dataset object
+        Data to be displayed. A `Dataset` may be passed to show several
+        views at once (for instance a `Vertex` together with a
+        `Tractogram`), as long as they all belong to the same subject.
 
     base_name: str
         Base name for images.
@@ -125,7 +160,13 @@ def save_3d_views(
             time.sleep(sleep)
 
         # Add interpolation and layers params only if we have a volume
-        if isinstance(volume, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB)):
+        shown = (
+            list(volume.views.values()) if isinstance(volume, Dataset) else [volume]
+        )
+        if any(
+            isinstance(view, (cortex.Volume, cortex.Volume2D, cortex.VolumeRGB))
+            for view in shown
+        ):
             interpolation_params = {
                 "surface.{subject}.sampler": interpolation,
                 "surface.{subject}.layers": layers,
@@ -133,9 +174,10 @@ def save_3d_views(
         else:
             interpolation_params = dict()
 
-        has_flatmap = hasattr(getattr(cortex.db, volume.subject).surfaces, "flat")
+        subject = _view_subject(volume)
+        has_flatmap = hasattr(getattr(cortex.db, subject).surfaces, "flat")
         file_names: list[str] = []
-        for view, surface in zip(list_angles, list_surfaces):
+        for index, (view, surface) in enumerate(zip(list_angles, list_surfaces)):
             if isinstance(view, str):
                 if view == "flatmap" or surface == "flatmap":
                     # force flatmap correspondence
@@ -157,6 +199,11 @@ def save_3d_views(
             else:
                 surface_params = surface
 
+            # A named preset names the file; an explicit parameter dict cannot,
+            # since stringifying it would put braces, quotes and spaces in the
+            # filename (illegal on Windows, awkward everywhere).
+            surface_name = surface if isinstance(surface, str) else "custom%d" % index
+
             # Combine view parameters
             this_view_params = default_view_params.copy()
             this_view_params.update(interpolation_params)
@@ -170,7 +217,7 @@ def save_3d_views(
             # wait for the view to have changed
             for _ in range(100):
                 for k, v in this_view_params.items():
-                    k = k.format(subject=volume.subject) if "{subject}" in k else k
+                    k = k.format(subject=subject) if "{subject}" in k else k
                     if handle.ui.get(k)[0] != v:
                         print("waiting for", k, handle.ui.get(k)[0], "->", v)
                         time.sleep(0.1)
@@ -180,7 +227,7 @@ def save_3d_views(
 
             # Save image, store file_name
             file_name = file_pattern.format(
-                base=base_name, view=view_name, surface=surface
+                base=base_name, view=view_name, surface=surface_name
             )
             file_names.append(file_name)
             handle.getImage(file_name, size)
