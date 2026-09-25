@@ -15,6 +15,11 @@ dev = [
 ]
 test = [
     "pycortex[headless]",
+    # trx-python requires Python >= 3.11. The marker keeps the rest of the
+    # test group installable on 3.10 -- which the wheel-install workflow
+    # still covers and which the package does not exclude -- where the TRX
+    # tests skip themselves via `pytest.importorskip`.
+    "pycortex[tractography]; python_version >= '3.11'",
     # The visual-regression tests compare against renders from
     # these builds. Both are unpinned for users.
     # See cortex/tests/reference_images/README.md
@@ -37,11 +42,16 @@ types = [
 headless = [
     "playwright>=1.58.0"
 ]
+tractography = [
+    "trx-python"
+]
 autoflatten = [
     "autoflatten>=1.0.0"
 ]
 all = [
-    "pycortex[headless,autoflatten]"
+    "pycortex[headless,autoflatten]",
+    # trx-python requires Python >= 3.11; see the test group above.
+    "pycortex[tractography]; python_version >= '3.11'",
 ]
 
 [tool.setuptools_scm]
@@ -66,5 +76,11 @@ module = [
     "progressbar",
     "scikits.sparse.cholmod",
     "tvtk.api",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "trx.*",
 ]
 ignore_missing_imports = true
