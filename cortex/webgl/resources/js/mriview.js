@@ -56,6 +56,20 @@ var mriview = (function(module) {
         return true;
     };
 
+    // Values at the frame the viewer is showing, one per dim, read from each
+    // data object by `read(data, frame)`. Returns null while that frame's
+    // buffer is still loading: movie mosaics arrive one frame at a time.
+    module.frameValues = function (dataview, read) {
+        var frame = dataview.frameIndex();
+        var values = [];
+        for (var i = 0; i < dataview.data.length; i++) {
+            var v = read(dataview.data[i], frame);
+            if (v === undefined) return null;
+            values.push(v);
+        }
+        return values;
+    };
+
     module.Viewer = function(figure) {
         jsplot.Axes.call(this, figure);
 
@@ -796,9 +810,9 @@ var mriview = (function(module) {
                         let subject = this.active.data[0].subject
                         let indexMap = subjects[subject].hemis[coords.hemi].indexMap
                         let vertex = indexMap[coords.vertex]
-                        // Now access the data for each channel (1 for 1D, 2 for 2D)
-                        values = this.active.data.map(function (d) {
-                            return d.verts[0][hemiIdx].array[vertex]
+                        // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
+                        values = module.frameValues(this.active, function (d, frame) {
+                            return d.verts[frame] && d.verts[frame][hemiIdx].array[vertex]
                         })
                     }
                 } else {
@@ -815,8 +829,8 @@ var mriview = (function(module) {
                     }
                     let mouse_index = this.getMouseIndex(event)
                     if (mouse_index !== -1) {
-                        values = this.active.data.map(function (d) {
-                            return d.textures[0].image.data[mouse_index]
+                        values = module.frameValues(this.active, function (d, frame) {
+                            return d.textures[frame] && d.textures[frame].image.data[mouse_index]
                         })
                     }
                 }
@@ -995,9 +1009,9 @@ var mriview = (function(module) {
                 let subject = this.active.data[0].subject
                 let indexMap = subjects[subject].hemis[coords.hemi].indexMap
                 let vertex = indexMap[coords.vertex]
-                // Now access the data for each channel (1 for 1D, 2 for 2D)
-                values = this.active.data.map(function (d) {
-                    return d.verts[0][hemiIdx].array[vertex]
+                // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
+                values = module.frameValues(this.active, function (d, frame) {
+                    return d.verts[frame] && d.verts[frame][hemiIdx].array[vertex]
                 })
             }
         } else {
@@ -1010,8 +1024,8 @@ var mriview = (function(module) {
                 }
                 let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
                 if (mouse_index !== -1) {
-                    values = this.active.data.map(function (d) {
-                        return d.textures[0].image.data[mouse_index]
+                    values = module.frameValues(this.active, function (d, frame) {
+                        return d.textures[frame] && d.textures[frame].image.data[mouse_index]
                     })
                 }
             }
