@@ -44,12 +44,20 @@ def face_area(pts):
     return 0.5 * np.sqrt((np.cross(pts[:,1]-pts[:,0], pts[:,2]-pts[:,0])**2).sum(1))
 
 def face_volume(pts1, pts2, polys):
-    '''Volume of each face in a polyhedron sheet'''
-    vols = np.zeros((len(polys),))
-    for i, face in enumerate(polys):
-        vols[i] = brick_vol(np.append(pts1[face], pts2[face], axis=0))
-        if i % 1000 == 0:
-            print(i)
+    '''Volume of each face in a polyhedron sheet
+
+    The same three-tetrahedron decomposition as `brick_vol`, over every face at
+    once. Nodes 0-2 are the `pts1` triangle and 3-5 the `pts2` one.
+    '''
+    polys = np.asarray(polys)
+    corners = np.concatenate([np.asarray(pts1)[polys],
+                              np.asarray(pts2)[polys]], axis=1)
+    vols = np.zeros(len(polys))
+    for a, b, c, d in ((0, 1, 2, 4), (0, 2, 3, 4), (2, 3, 4, 5)):
+        edges = np.stack([corners[:, b] - corners[:, a],
+                          corners[:, c] - corners[:, a],
+                          corners[:, d] - corners[:, a]], axis=1)
+        vols += np.abs(np.linalg.det(edges)) / 6
     return vols
 
 def decimate(pts, polys):

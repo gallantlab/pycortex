@@ -176,6 +176,15 @@ polyutils
 
     Surface
     Distortion
+    FlatSlab
+
+.. autosummary::
+    :toctree:generated/
+
+    coarsen_flat_mesh
+    lame_parameters
+    naive_prism_height
+    prolongation_matrix
 
 
 segment
@@ -205,6 +214,8 @@ surfinfo
     thickness
     tissots_indicatrix
     flat_border
+    bumpy_flatmap
+    equivolume_areas
 
 
 utils

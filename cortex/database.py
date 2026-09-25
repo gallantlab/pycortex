@@ -326,7 +326,8 @@ class Database:
         from . import volume
         return volume.anat2epispace(anatnib.get_fdata().T.astype(float), subject, xfmname, order=order)
 
-    def get_surfinfo(self, subject: str, type: str="curvature", recache: bool=False, **kwargs) -> Vertex:
+    def get_surfinfo(self, subject: str, type: str="curvature",
+                     recache: bool=False, **kwargs) -> Optional[Vertex]:
         """Return auxiliary surface information from the filestore. Surface info is defined as 
         anatomical information specific to a subject in surface space. A Vertex class will be returned
         as necessary. Info not found in the filestore will be automatically generated.
