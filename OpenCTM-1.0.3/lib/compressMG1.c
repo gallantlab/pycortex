@@ -145,13 +145,15 @@ int _ctmCompressMesh_MG1(_CTMcontext * self)
   CTMuint * indices;
   _CTMfloatmap * map;
   CTMuint i;
+  size_t indexElemCount;
 
 #ifdef __DEBUG_
   printf("COMPRESSION METHOD: MG1\n");
 #endif
 
   // Perpare (sort) indices
-  indices = (CTMuint *) malloc(sizeof(CTMuint) * self->mTriangleCount * 3);
+  indexElemCount = (size_t) self->mTriangleCount * 3;
+  indices = (CTMuint *) calloc(indexElemCount, sizeof(CTMuint));
   if(!indices)
   {
     self->mError = CTM_OUT_OF_MEMORY;
@@ -185,7 +187,6 @@ int _ctmCompressMesh_MG1(_CTMcontext * self)
   _ctmStreamWrite(self, (void *) "VERT", 4);
   if(!_ctmStreamWritePackedFloats(self, self->mVertices, self->mVertexCount * 3, 1))
   {
-    free((void *) indices);
     return CTM_FALSE;
   }
 
@@ -241,9 +242,11 @@ int _ctmUncompressMesh_MG1(_CTMcontext * self)
   CTMuint * indices;
   _CTMfloatmap * map;
   CTMuint i;
+  size_t indexElemCount;
 
   // Allocate memory for the indices
-  indices = (CTMuint *) malloc(sizeof(CTMuint) * self->mTriangleCount * 3);
+  indexElemCount = (size_t) self->mTriangleCount * 3;
+  indices = (CTMuint *) calloc(indexElemCount, sizeof(CTMuint));
   if(!indices)
   {
     self->mError = CTM_OUT_OF_MEMORY;
