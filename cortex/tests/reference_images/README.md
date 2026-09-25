@@ -8,20 +8,41 @@ Stored renders that `cortex/tests/test_visual_regression.py` asserts against.
 | --- | --- | --- |
 | `alpha_dataviews/` | 12 | all six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), both renderers |
 | `nan_dataviews/` | 12 | the same six, with NaNs over roughly half the primary data channel |
-| `nan_alpha_dataviews/` | 4 | `VolumeRGB`/`VertexRGB` only, with the NaNs in the `alpha=` map |
+| `nan_alpha_dataviews/` | 8 | the four classes taking an explicit `alpha=` (`Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), with the NaNs in that map |
+| `multilayer_nan_dataviews/` | 12 | the three volumetric classes with NaNs falling between depth samples, at both values of `nanmean` |
 | `nonflat_views/` | 4 | `Volume`/`Vertex` on the inflated and fiducial surfaces at `lateral_pivot`, webgl only |
 
-Filenames are `quickflat_<Class>` and `webgl_<Class>`, except `nonflat_views/`,
-which uses `webgl_<surface>_<angle>_<Class>`.
+Filenames are `quickflat_<Class>` and `webgl_<Class>`, except
+`multilayer_nan_dataviews/`, which appends `_nanmean` or `_no_nanmean`, and
+`nonflat_views/`, which uses `webgl_<surface>_<angle>_<Class>`.
+
+`nan_alpha_dataviews/` covered only the two RGB classes until gh-695.
+`Volume2D`/`Vertex2D` accepted an `alpha=` too, but it was kept as a bare
+ndarray in `attrs` rather than becoming an attribute, so quickflat mishandled
+it and the webgl viewer failed to load the dataview; it is now a real attribute
+multiplied into the alpha the 2D colormap already carries.
+
+`multilayer_nan_dataviews/` is the only group that changes the depth sampling.
+Everywhere else quickflat averages 32 samples across the cortical thickness and
+the viewer takes 1, and the NaN regions are broad enough that a surface point
+is either NaN at every depth or at none — so nothing else depends on how a
+column of samples is combined. This group sets both renderers to 32 and NaNs
+diagonal slabs two voxels thick, so most surface points have both NaN and valid
+samples beneath them.
 
 ## Render settings
 
-The three flatmap directories render `quickflat_*` with
+The four flatmap directories render `quickflat_*` with
 `cortex.quickflat.make_png` and `webgl_*` with `save_3d_views`, both with
 curvature **un-thresholded** (`curvature_threshold=False` and
 `surface.{subject}.curvature.smoothness=1.0`). (This is to avoid failures from
 differences in the renderers' anti-aliasing implementations.)
 Everything else is at its default.
+
+`multilayer_nan_dataviews/` additionally passes `thick=32` to quickflat and
+`layers=32` to the viewer, and sets `nanmean` explicitly on both — that is what
+it is for. The other three flatmap groups leave all of that at each renderer's
+default.
 
 `nonflat_views/` keeps pycortex's default thresholded curvature, unlike the
 flatmap groups.
@@ -32,7 +53,7 @@ regenerated.
 
 ## Checks
 
-The three flatmap tests check each render twice: against its own stored
+The four flatmap tests check each render twice: against its own stored
 reference at a tight tolerance (`MAX_MEAN_ABS_DIFF`, `MAX_FRACTION_DIFFERING`,
 `MAX_FRACTION_GROSSLY_DIFFERING`, `MAX_SSIM_LOSS`, all four of which must pass),
 and against the other renderer's render of the same dataview at a loose one
@@ -51,6 +72,13 @@ bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
 `Vertex2D` images were added later, once gh-714 was fixed, with the same
 pinned chromium/playwright/matplotlib versions below.
 
+> **The flatmap references need regenerating as part of gh-695.** They were
+> generated before it unified NaN and alpha handling, and that change moves
+> every flatmap render: quickflat now defaults to `nanmean=True`, and both
+> renderers average RGBA in premultiplied space. `nonflat_views/` is the one
+> directory unaffected -- it renders `Volume`/`Vertex` with neither NaNs nor
+> alpha.
+
 | | |
 | --- | --- |
 | chromium | 151.0.7922.34 (headless shell, SwiftShader software rendering) |
@@ -58,8 +86,8 @@ pinned chromium/playwright/matplotlib versions below.
 | matplotlib | 3.10.9 |
 
 Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build, which determines the 16 webgl
-references; matplotlib rasterizes the 12 quickflat ones.
+regenerating. playwright fixes the chromium build, which determines the 28
+webgl references; matplotlib rasterizes the 24 quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 

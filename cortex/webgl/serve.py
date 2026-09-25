@@ -336,6 +336,8 @@ class WebApp(threading.Thread):
         # callers can build a correct URL.
         self.port = self._sockets[0].getsockname()[1]
         self.response: Queue[Union[str, bytes]] = Queue()
+        self._request_id = 0
+        self._request_lock = threading.Lock()
         self.connect = threading.Event()
         # Set by run() once self.server and self.ioloop exist and the server is
         # about to serve. stop() waits on this so an early stop() (called before
@@ -392,7 +394,15 @@ class WebApp(threading.Thread):
                     pass
 
     def send(self, **kwargs: Any) -> Union[list[JSON], list[None]]:
-        msg = json.dumps(kwargs, cls=NPEncode, ensure_ascii=False)
+        # Tag each request so its responses can be told apart from late ones.
+        # A response that arrives after the timeout below stays in the queue;
+        # without the tag the *next* request would read it as its own answer,
+        # and every request after that would be answered one behind for the
+        # rest of the session.
+        with self._request_lock:
+            self._request_id += 1
+            request_id = self._request_id
+        msg = json.dumps(dict(kwargs, id=request_id), cls=NPEncode, ensure_ascii=False)
 
         async def _send(sockets: list[websocket.WebSocketHandler], msg: str):
             for sock in sockets:
@@ -401,11 +411,19 @@ class WebApp(threading.Thread):
         self.ioloop.add_callback(_send, self.sockets, cast(str, msg))
 
         try:
-            return [
-                json.loads(self.response.get(timeout=2)) for _ in range(self.n_clients)
-            ]
+            return [self._get_response(request_id) for _ in range(self.n_clients)]
         except Exception:
             return [None for _ in range(self.n_clients)]
+
+    def _get_response(self, request_id: int, timeout: float = 2) -> JSON:
+        """Return the result of request ``request_id``, discarding stale ones."""
+        deadline = time.monotonic() + timeout
+        while True:
+            response = json.loads(
+                self.response.get(timeout=max(deadline - time.monotonic(), 0))
+            )
+            if isinstance(response, dict) and response.get("id") == request_id:
+                return response.get("result")
 
     def get_client(self):
         self.connect.wait()
@@ -460,10 +478,14 @@ class JSProxy(Generic[P]):
         tstart = time.time()
         # To avoid querying too many times, assign self.attrs to attrs
         attrs = self.attrs
-        while attr not in attrs and time.time() - tstart < self.max_time_retry:
+        # attrs is None when the browser was too busy to answer in time (e.g.
+        # recompiling shaders), which is as retryable as a missing attribute.
+        while (
+            not isinstance(attrs, dict) or attr not in attrs
+        ) and time.time() - tstart < self.max_time_retry:
             time.sleep(0.1)
             attrs = self.attrs
-        if attr not in attrs:
+        if not isinstance(attrs, dict) or attr not in attrs:
             raise KeyError(f"Attribute '{attr}' not found in {self}")
 
         if attrs[attr][0] in ["object", "function"]:

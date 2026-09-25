@@ -149,8 +149,45 @@ def _surface_variants() -> Iterator[Any]:
         yield pytest.param(shader, opts, id=name)
 
 
+def _nan_alpha_variants() -> Iterator[Any]:
+    """surface_pixel with gh-695's alpha-map sampling and across-depth averaging.
+
+    ``dataalpha`` adds a second pair of samplers and the alpha-map arithmetic,
+    ``nanmean`` changes how layer samples are combined, and ``layers`` decides
+    how many of those sampling blocks are emitted -- so the three together
+    decide how much GLSL the volume-sampling shader ends up carrying.
+
+    None of them reach ``surface_vertex``: vertex data folds its alpha map into
+    the ``nanmask`` attribute precisely because it has no attribute slot to
+    spare, and it has no cortical depth to average over. ``hasflat`` and
+    ``equivolume`` are pinned on, the heaviest variant.
+    """
+    for rgb, twod in ((False, False), (False, True), (True, False)):
+        for dataalpha in (False, True):
+            if rgb and dataalpha:
+                # RGB dataviews carry their alpha in the texture's own fourth
+                # channel; the viewer never asks for a separate alpha map.
+                continue
+            for nanmean in (False, True):
+                for layers in (1, 32):
+                    opts = dict(
+                        SURFACE_OPTS, rgb=rgb, twod=twod, hasflat=True,
+                        equivolume=True, dataalpha=dataalpha, nanmean=nanmean,
+                        layers=layers,
+                    )
+                    name = "surface_pixel-%s%s%s%s-%dlayer" % (
+                        "rgb" if rgb else "cmap",
+                        "-2d" if twod else "",
+                        "-dataalpha" if dataalpha else "",
+                        "-nanmean" if nanmean else "",
+                        layers,
+                    )
+                    yield pytest.param("surface_pixel", opts, id=name)
+
+
 def _variants() -> Iterator[Any]:
     yield from _surface_variants()
+    yield from _nan_alpha_variants()
     # The shaders the picker renders with; they morph the same geometry but
     # carry no data.
     yield pytest.param("pick", dict(morphs=3, volume=1), id="pick")

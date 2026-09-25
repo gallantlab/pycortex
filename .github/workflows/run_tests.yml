@@ -62,7 +62,10 @@ jobs:
       run: playwright install --with-deps --only-shell chromium
 
     - name: Test with pytest
-      timeout-minutes: 25  # in case webviewer tests hang
+      # A backstop only: pytest-timeout (pytest.ini) already fails a single
+      # hung test after 240 s. The suite itself takes 20-25 min on a hosted
+      # runner, mostly headless webgl renders.
+      timeout-minutes: 40
       run: pytest --cov=./
 
     - name: Upload coverage to Codecov

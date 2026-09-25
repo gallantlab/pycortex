@@ -23,7 +23,30 @@ class Package(object):
 
     def __init__(self, data):
         self.dataset = dataset.normalize(data)
-        self.uniques = list(data.uniques(collapse=True))
+        # Dataset.uniques() is a set of BrainData objects, but equality is
+        # identity: two distinct objects with byte-identical data (e.g.
+        # Vertex2D(x, x) or VertexRGB(r, r, r)) share the same content-hash
+        # name and would be packaged -- and reordered -- twice. Keep one per
+        # name.
+        # The name only hashes the data bytes, so also check that same-name
+        # brains are interchangeable for the viewer; otherwise fail loudly
+        # instead of serving one brain's data with another's metadata.
+        seen = {}
+        self.uniques = []
+        for brain in data.uniques(collapse=True):
+            sig = _brain_signature(brain)
+            if brain.name in seen:
+                if seen[brain.name] != sig:
+                    raise ValueError(
+                        "Two dataviews contain data with identical bytes but "
+                        "different metadata (%s vs %s); pycortex identifies "
+                        "data by its content hash and cannot serve both in one "
+                        "viewer. Make the data differ (e.g. add a tiny offset)."
+                        % (seen[brain.name], sig)
+                    )
+                continue
+            seen[brain.name] = sig
+            self.uniques.append(brain)
         self.subjects = set()
 
         self.brains = dict()
@@ -117,6 +140,24 @@ class Package(object):
         for name, imgs in self.images.items():
             names[name] = [fmt.format(name=name, frame=i) for i in range(len(imgs))]
         return names
+
+
+def _brain_signature(brain):
+    """Metadata that must match for two same-name brains to be interchangeable."""
+    import hashlib
+
+    mask = getattr(brain, "_mask", None)
+    if mask is not None and not isinstance(mask, str):
+        mask = hashlib.sha1(np.ascontiguousarray(mask).tobytes()).hexdigest()
+    data = getattr(brain, "data", None)  # RGB dataviews have channels instead
+    return (
+        type(brain).__name__,
+        brain.subject,
+        getattr(brain, "xfmname", None),
+        None if data is None else tuple(np.shape(data)),
+        None if data is None else str(np.asarray(data).dtype),
+        mask,
+    )
 
 
 def _pack_png(mosaic):
