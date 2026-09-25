@@ -1,12 +1,34 @@
 Alignments
 ==========
-The ``cortex.align`` module.
 
-Aligning functional data, or finding where the brain is.
+A functional (EPI) scan and the anatomical scan used to build a subject's
+surfaces (see :doc:`segmentation_guide`) are almost never acquired with the
+subject in exactly the same position, and EPI sequences (optimized for
+T2* contrast) suffer larger and different geometric distortions than the
+T1 anatomical sequence surfaces are built from. So even though both scans
+are of the same physical brain, their voxel grids don't start out
+pointing at the same anatomical locations — the functional data and the
+surface are, literally, misregistered. Before any functional value can be
+assigned to a point on the cortical surface, pycortex needs an explicit
+correction for this: a :term:`transform <xfm / transform>` (see
+:doc:`transforms`) that maps one coordinate space onto the other. That
+correction is deliberately limited to a **rigid-body** transform (6
+degrees of freedom: translation and rotation, no scaling/skewing/warping)
+— the two scans are of the same physical object, so allowing more degrees
+of freedom would let the alignment step silently absorb what should be
+segmentation or acquisition problems instead of just correcting for pose.
 
-To correctly visualise cortical activity, we need to know where cortical surface is in the functional data.
-The brain surface in the functional images need to be lined up with the surface mesh made from the high-resolution anatomical scans.
-This alignment is a rigid body transform, i.e. 6 degrees of freedom in translation and rotation, but no scaling, skewing, or non-linear warping.
+Two ways to compute that transform are available: **automatic** alignment
+(FreeSurfer's boundary-based registration by default, or FSL) and
+**manual** alignment (an interactive GUI, currently built on FreeSurfer's
+FreeView). Automatic alignment is fast and should be your first attempt
+for any new transform, but purely intensity/boundary-based registration
+algorithms optimize a global metric that isn't aware of which regions
+matter most for your analysis, and can fail outright on partial-volume
+acquisitions or unusual contrast — the tips below put this at "gets you
+like 95% of the way." Manual alignment exists as a fallback for the
+remaining cases: a person, looking at the actual images, correcting
+whatever the automatic step got wrong.
 
 Pycortex can automatically try to align the brain, and there is also a manual mode.
 To get started, you need a reference image from the functional run in a nibabel-readable format.
@@ -16,140 +38,113 @@ Let's say the subject is ``S1``, you are making a transform named ``example-tran
 Automatic Alignment
 -------------------
 
-Pycortex can automatically align the brain using FSL.
 This step creates a new transform folder in your pycortex store, and should be the first step for any alignment.
 
-To have pycortex automagically align the brain, simply call
-::
+Call ``cortex.align.automatic`` to align the brain automatically::
+
 	cortex.align.automatic('S1', 'example-transform', './ref-image.nii.gz')
 
-And the alignment should be done! This is done using FSL.
+As of pycortex 1.2.8, this uses FreeSurfer's ``mri_coreg`` (for an initial
+coarse alignment) followed by ``bbregister`` (boundary-based registration)
+by default — you'll see a ``UserWarning`` reminding you of this every time
+you call it. If you specifically want the older FSL-based BBR alignment
+instead, call ``cortex.align.automatic_fsl`` with the same arguments.
 
-You can also use FreeSurfer's boundary-based registration by setting the ``use_fs_bbr`` argument to ``True``.
-::
-	cortex.align.automatic('S1', 'example-transform', './ref-image.nii.gz',
-                           use_fs_bbr=True)
+``cortex.align.automatic`` accepts a few more arguments worth knowing about:
+
+* ``init``: how to get the initial, coarse alignment that ``bbregister``
+  then refines. Defaults to ``"coreg"`` (FreeSurfer's ``mri_coreg``, best
+  in most cases); ``"fsl"`` uses FSL's FLIRT instead, ``"header"`` assumes
+  the reference and anatomical are already close (e.g. acquired in the
+  same session), and a path to an existing DAT/LTA transform can also be
+  passed directly.
+* ``epi_mask``: pass ``True`` if the reference wasn't distortion-corrected,
+  to mask out areas with spatial distortion during registration.
+* ``reference_contrast``: ``"t2"`` (default, for BOLD — gray matter
+  brighter than white matter) or ``"t1"`` (white matter brighter than gray
+  matter).
+* ``intermediate``: a path to a whole-brain image acquired in the same
+  session, useful when ``reference`` itself has a small field of view.
+
+When it finishes, ``cortex.align.automatic`` prints a "mincost" quality
+score (0 to 1, lower is better; values under ~0.5 indicate a good
+registration) — but treat that as a sanity check, not a substitute for
+looking at the result yourself in the :ref:`manual aligner <manual-alignment>`.
 
 If you look in the pycortex store in ``S1/transforms/example-transform``, you will find the following files:
 
 * ``matrices.xfm``, which stores the transformation parameters
 * ``reference.nii.gz``, the reference image you used
 
-There is another argument to ``align.automatic``, ``noclean``, a ``bool`` that defaults to ``true``.
-The automatic alignment generates a bunch of intermediate files in ``/tmp``, which are deleted upon completion of the alignment process.
-Setting ``noclean`` to ``false`` will keep those files there, which is useful for debugging.
+Both ``cortex.align.automatic`` and ``cortex.align.automatic_fsl`` accept a
+``noclean`` argument (``bool``, default ``False``). Intermediate files
+generated during alignment are written to ``/tmp`` and deleted once
+alignment finishes; pass ``noclean=True`` to keep them there instead
+(useful for debugging), in which case the function returns the temp
+directory's path.
 
-Automatically Tweaking Alignments
----------------------------------
-In theory, a pre-existing alignment can be tweaked automatically.
-Like the automatic alignment, this is done via FSL.
-However, in practice, the search range is too big to be practically useful, and tweaking should be done using manual alignment instead.
-::
-	cortex.align.autotweak('S1', 'example-transform')
+
+.. _manual-alignment:
 
 Manual Alignment
-----------------
+-----------------
 
-.. note::
-    Currently the manual aligner only works on Ubuntu 14.04. The manual
-    aligner uses Mayavi, which doesn't seem to be working in later versions of
-    Ubuntu. As an alternative to ``cortex.align.manual``, you can use
-    ``cortex.align.fs_manual``, which uses FreeSurfer's Freeview instead of Mayavi.
+Automatic alignment typically gets you most of the way to a good
+alignment, but rarely all the way — the remainder needs a person looking
+at the actual images. The current, recommended manual aligner is
+``cortex.align.manual``, which opens FreeSurfer's **FreeView** with the
+reference image and the subject's white-matter and pial surface contours
+overlaid on top of it::
 
-Unfortunately, the automatic alignment only gets you like 95% of the way to a good alignment.
-To do the final 5%, you need to manually fix it up.
-Pycortex offers a GUI aligner, built using Mayavi.
-
-To start the manual aligner, call
-::
 	cortex.align.manual('S1', 'example-transform')
-Note: if you are fixing a transform you had previous used for things, you will need to delete the mask files in the transform's folder.
 
-You will see a window like this pop up:
+This requires FreeSurfer to be installed with ``freeview`` and
+``lta_convert`` on your ``PATH``, and ``$SUBJECTS_DIR`` set correctly in
+your environment (pycortex shells out to ``freeview`` directly, using
+``$SUBJECTS_DIR`` to find the subject's ``orig.mgz`` and surface files).
 
-.. image:: ./aligner/snapshot1.png
-	:width: 600 px
+Use FreeView's own tools to nudge the registration until the surface
+contours hug the reference image's gray/white matter boundary. When
+you're done, **save the registration** — FreeView will want to write it
+somewhere in a temporary ``fsalign_...`` directory pycortex just created;
+save it there under the name pycortex tells you to use (``register.lta``
+by default, the ``output_name`` argument) and then close FreeView.
+Pycortex then converts that file and saves the result into the database
+as a new transform.
 
-There's weird gray blobs - click anywhere to get rid of them.
+A few other arguments:
 
-.. image:: ./aligner/snapshot2.png
-	:width: 600 px
+* ``inspect_only=True`` opens the current alignment for viewing only —
+  closing FreeView won't overwrite anything, useful for just checking an
+  existing transform.
+* ``noclean=True`` keeps pycortex's temporary working directory instead of
+  deleting it when FreeView closes (and returns its path) — useful for
+  debugging if the save doesn't go as expected.
+* ``reference`` only needs to be supplied when creating a transform from
+  scratch; to re-open and adjust an existing transform, leave it out and
+  the transform's stored reference image will be reused.
 
-Here you see 4 different views, showing the sagittal, coronal, and transverse slices, and also the three slices in 3D.
-The background image is the reference image, and the mesh that you see is the surface that you will be aligning.
-You'll be moving the mesh until it's aligned as much as possible with the reference.
-
-To make things easier to see, the aligner offers different color options.
-
-Changing the views
-~~~~~~~~~~~~~~~~~~
-
-You can change the color scale for the images with the color map option:
-
-.. image:: ./aligner/colormap.png
-	:width: 600 px
-
-Here, we've set it to the red-blue color map.
-
-.. image:: ./aligner/snapshot4.png
-	:width: 600 px
-
-``Fliplut`` can be used to reverse the color map.
-
-.. image:: ./aligner/flipcolor.png
-	:width: 600 px
-
-You can also use the ``contrast`` and ``brightness`` sliders to adjust the colors.
-
-.. image:: ./aligner/contrast.png
-	:width: 600 px
-
-The ``Outline color`` and ``Outline rep`` can be used to change the surface color, and the surface from a mesh (the default), to points only, to a solid surface.
-Also, the sliders can be used to change line and point weights.
-Here, we changed it to a green points only representation, with smaller points.
-
-.. image:: ./aligner/surface.png
-	:width: 600 px
-
-You will notice two black lines in each view. You can click anywhere in a view to select a different voxel.
-Selecting another voxel will update all the other views to show the slices that particular voxel belongs to.
-
-.. image:: ./aligner/lines1.png
-	:width: 600 px
-
-.. image:: ./aligner/snapshot13.png
-	:width: 600 px
-
-Use these views to change the slices of the brain that you're looking at, to line things up.
-
-Manually aligning the brain
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-On each view, there is a ball surrounded by a ring. These can be used to adjust the brain using the mouse.
-Click and drag the center ball to translate in each view, and use the ball on the ring to rotate and scale.
-It will take a few seconds for the aligner to update the mesh position.
-
-.. image:: ./aligner/adjring.png
-	:width: 600 px
-	
-**Note**: you should not use the ring to make adjustments. There is no way to fix the scaling, and the ring will screw the scaling up.
-
-You can also use the keyboard to make adjustments.
-Holding down the shift key allows you to make fine adjustments.
-The aligner will apply the transformation in whatever view currently under your mouse cursor.
-
-.. image:: ./aligner/key-controls.png
-	:scale: 50 %
-**Note**: you shouldn't touch the keys outlined in red. There is no reason to stretch the brain.
-
-To save the alignment, just click the ``Save Transform`` button and close the window.
-
-.. image:: ./aligner/save.png
-	:width: 600 px
 
 Tips for aligning the brain
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-* Holding down the shift key while using the keyboard controls will let you move the brain in fine-tuned, smaller increments.
 * The really deep sulci work great as landmarks to align stuff up.
-* Changing the color map, brightness, and contrast really helps highlight the sulci.
-* To check how well the brain is aligned, make a flatmap out of the reference image using the transformation. A good alignment results in a smooth color gradient across the brain; bad ones will have a lot of voxels that are starkly different from their neighbours.
+* To check how well the brain is aligned, make a flatmap out of the
+  reference image itself using the new transform. Since the reference
+  image is a real EPI volume, adjacent voxels should have similar
+  intensities — a good alignment carries that smoothness onto the
+  flatmap as a smooth gradient across the cortical surface. A bad
+  alignment instead samples the reference at the wrong locations, so
+  neighbouring surface vertices end up pulling from unrelated voxels and
+  the flatmap looks patchy/speckled instead::
+
+    vol = cortex.Volume('./ref-image.nii.gz', 'S1', 'example-transform')
+    cortex.quickshow(vol)
+
+  Smooth gradient across the brain → good alignment. A lot of voxels
+  starkly different from their neighbours → revisit the alignment (see
+  :ref:`manual alignment <manual-alignment>` below).
+
+  See :ref:`sphx_glr_auto_examples_utils_plot_check_alignment.py` for a
+  runnable version of this check (against the bundled ``S1`` subject's
+  already-good ``fullhead`` transform, so you can see what "smooth
+  gradient" actually looks like before judging one of your own).
