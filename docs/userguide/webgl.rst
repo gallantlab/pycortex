@@ -105,16 +105,32 @@ flatten  flatten cortical surface
 Surface Controls
 ****************
 
-======== ============================
-name     description
-======== ============================
-unfold   level of unfolding
-pivot    angle between hemispheres
-shift    distance between hemispheres
-depth    cortical depth
-left     toggle left hemisphere
-right    toggle right hemisphere
-======== ============================
+================ ============================
+name             description
+================ ============================
+unfold           level of unfolding
+pivot            angle between hemispheres
+shift            distance between hemispheres
+depth            cortical depth
+left             toggle left hemisphere
+right            toggle right hemisphere
+surface_opacity  opacity of the cortical surface itself, 0 (fully
+                 translucent) to 1 (opaque, the default)
+================ ============================
+
+The ``surface_opacity`` slider is independent of the ``opacity`` slider in the
+data controls above, which fades the data layer over the curvature but leaves
+the surface itself opaque. Turning the surface translucent lets whatever is
+behind it -- the medial wall of the other hemisphere, or content added inside
+the brain by other plugins -- show through. From Python, the same control is
+reachable via ``handle._set_view(**{"surface.{subject}.surface_opacity": 0.3})``
+(see ``cortex.export.save_3d_views``), and its default (``1.0``, fully
+opaque) is set by ``surface_opacity`` under ``[webgl_viewopts]`` in
+``cortex/defaults.cfg`` / the user's ``options.cfg``.
+
+Images saved from a translucent viewer carry that opacity in their alpha
+channel rather than baked into their colors, so they composite correctly over
+whatever background you place them on.
 
 
 Lighting Controls

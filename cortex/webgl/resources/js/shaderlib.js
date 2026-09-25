@@ -477,6 +477,7 @@ var Shaderlib = (function() {
             "uniform float brightness;",
             "uniform float smoothness;",
             "uniform float contrast;",
+            "uniform float surfaceAlpha;",
             "uniform vec3 voxlineColor;",
             "uniform float voxlineWidth;",
 
@@ -665,6 +666,7 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
+                "gl_FragColor.a *= surfaceAlpha;",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
     "#endif",
             "}"
@@ -823,6 +825,7 @@ var Shaderlib = (function() {
             "uniform float brightness;",
             "uniform float smoothness;",
             "uniform float contrast;",
+            "uniform float surfaceAlpha;",
 
             // "uniform float hatchAlpha;",
             // "uniform vec3 hatchColor;",
@@ -881,6 +884,7 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
+                "gl_FragColor.a *= surfaceAlpha;",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
             "}"
             ].join("\n");
