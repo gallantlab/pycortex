@@ -1,0 +1,35 @@
+/* tour.css — styles for the optional guided-tour box (see resources/js/tour.js).
+   Adapted from the gallantlab semantic viewers (after the NYT visualizer). */
+div#tourbox {
+    font-family: Helvetica, Arial, sans-serif;
+    color: white;
+    width: 25%;
+    left: 0;
+    min-width: 600px;
+    z-index: 100;
+    visibility: visible;
+    position: absolute;
+    top: 0;
+    opacity: 0.95;
+    background-color: rgba(0,0,0,0.7);
+    padding: 0 10px 10px 10px;
+}
+div.tour-stepper { margin-bottom: 10px; }
+div.tour-steps { margin-bottom: 5px; display: inline-block; }
+div.tour-step {
+    display: inline-block; width: 6px; height: 6px; margin-right: 10px;
+    border-radius: 4px; border: 1px solid white; cursor: pointer;
+    background: none; transition: background 0.5s;
+}
+div.tour-steps .active { background: white; }
+div.tour-hideshow { display: inline-block; font-size: 8pt; cursor: pointer; }
+div.tour-button {
+    border: 1px solid white; color: #cccccc; width: 100px; padding: 10px 0;
+    display: inline-block; background: none; text-align: center; opacity: 0.6;
+    transition: background 0.5s;
+}
+div.tour-button.active { opacity: 1.0; cursor: pointer; }
+div.tour-back { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+div.tour-next { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+div.tour-title { font-size: 18pt; margin-bottom: 10px; }
+div.tour-content { font-size: 12pt; font-family: Helvetica, Arial, sans-serif; }
