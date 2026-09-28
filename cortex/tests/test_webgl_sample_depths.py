@@ -5,9 +5,10 @@ surfaces (``thick=n`` in quickflat, ``layers=n`` in the viewer). They must put
 those samples at the same depths, or data that varies on the scale of the
 sample spacing renders differently in the two.
 
-These tests need no subject database and no rendering: they evaluate the
-viewer's shader-generating JavaScript under node and compare the depths it
-emits to the grid quickflat uses.
+These tests need no rendering. They evaluate the viewer's shader-generating
+JavaScript under node and compare the depths it emits to the depths at which
+quickflat's own pixel mapper (``quickflat.utils._make_pixel_cache``) samples
+the volume, measured by running that function rather than restating its grid.
 """
 
 import json
@@ -15,12 +16,14 @@ import os
 import re
 import shutil
 import subprocess
-from typing import List
+from typing import Any, Callable, List
 
 import numpy as np
 import pytest
 
 import cortex.webgl
+from cortex.mapper import samplers
+from cortex.quickflat import utils as qf_utils
 
 SHADERLIB = os.path.join(
     os.path.dirname(cortex.webgl.__file__), "resources", "js", "shaderlib.js"
@@ -62,9 +65,44 @@ def _run_shaderlib(layers: List[int], rgb: bool = False, twod: bool = False) -> 
     return {int(k): v for k, v in json.loads(result.stdout).items()}
 
 
-def _quickflat_depths(thick: int) -> np.ndarray:
-    """Fractions toward pial that ``quickflat._make_pixel_cache`` samples at."""
-    return np.linspace(0, 1, thick + 2)[1:-1]
+_NEAREST = samplers.nearest
+
+
+def _sample_coords(monkeypatch: pytest.MonkeyPatch, **kwargs: Any) -> List[np.ndarray]:
+    """Volume coordinates quickflat's pixel mapper hands its sampler, per call."""
+    calls: List[np.ndarray] = []
+
+    def recording_sampler(coords: np.ndarray, shape: Any) -> Any:
+        calls.append(np.array(coords))
+        return _NEAREST(coords, shape)
+
+    monkeypatch.setattr(samplers, "nearest", recording_sampler)
+    qf_utils._make_pixel_cache("S1", "fullhead", height=64, sampler="nearest", **kwargs)
+    return calls
+
+
+@pytest.fixture(scope="module")
+def quickflat_depths() -> Callable[[int], np.ndarray]:
+    """Fractions toward pial at which quickflat samples with ``thick`` samples.
+
+    The pixel mapper only exposes sample positions in voxel coordinates, so
+    they are converted to depths using the two ends of the ribbon, which the
+    same function yields as the single sample of ``thick=1`` at depth 0 (white
+    matter) and depth 1 (pial). Results are cached: each call runs the mapper.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        (wm,) = _sample_coords(mp, thick=1, depth=0.0)
+        (pial,) = _sample_coords(mp, thick=1, depth=1.0)
+        ribbon = pial - wm
+        assert np.abs(ribbon).max() > 0, "S1 has no cortical thickness to sample"
+        depths = {}
+        for thick in LAYERS:
+            coords = _sample_coords(mp, thick=thick)
+            assert len(coords) == thick
+            depths[thick] = np.sort([
+                np.sum((c - wm) * ribbon) / np.sum(ribbon * ribbon) for c in coords
+            ])
+    return depths.__getitem__
 
 
 def _shader_depths(fragment: str) -> np.ndarray:
@@ -82,7 +120,9 @@ def shaderlib() -> dict:
 
 
 @pytest.mark.parametrize("layers", LAYERS)
-def test_sample_depths_match_quickflat(layers: int, shaderlib: dict) -> None:
+def test_sample_depths_match_quickflat(
+    layers: int, shaderlib: dict, quickflat_depths: Callable[[int], np.ndarray]
+) -> None:
     """The shader's depth grid equals quickflat's, as a set of positions.
 
     The shader mixes pial (0) to white matter (1) while quickflat weights pial
@@ -91,7 +131,7 @@ def test_sample_depths_match_quickflat(layers: int, shaderlib: dict) -> None:
     depths = _shader_depths(shaderlib[layers]["fragment"])
     assert len(depths) == layers
     np.testing.assert_allclose(
-        np.sort(1 - depths), _quickflat_depths(layers), atol=1e-6
+        np.sort(1 - depths), quickflat_depths(layers), atol=1e-5
     )
 
 
@@ -125,13 +165,15 @@ def test_sample_depths_helper_matches_shader(layers: int, shaderlib: dict) -> No
 
 
 @pytest.mark.parametrize("rgb,twod", [(True, False), (False, True)])
-def test_sample_depths_same_for_all_data_types(rgb: bool, twod: bool) -> None:
+def test_sample_depths_same_for_all_data_types(
+    rgb: bool, twod: bool, quickflat_depths: Callable[[int], np.ndarray]
+) -> None:
     """RGB and 2D shaders sample the same depths as the plain one."""
     out = _run_shaderlib([32], rgb=rgb, twod=twod)
     np.testing.assert_allclose(
         np.sort(1 - _shader_depths(out[32]["fragment"])),
-        _quickflat_depths(32),
-        atol=1e-6,
+        quickflat_depths(32),
+        atol=1e-5,
     )
 
 
