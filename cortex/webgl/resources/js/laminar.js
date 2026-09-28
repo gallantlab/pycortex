@@ -1408,11 +1408,11 @@ var laminar = (function(module) {
                 start: this._captureRelease,
             });
         if ($.fn.resizable !== undefined) {
-            // Dragging the corner anchor resizes the view, and since the view
+            // Dragging any edge or corner resizes the view, and since the view
             // *is* the sampling grid (see _syncResolution) that is also how
             // the profile's resolution is set.
             this.panel.resizable({
-                handles: "se",
+                handles: "n,e,s,w,ne,se,sw,nw",
                 minWidth: 200,
                 minHeight: 120,
                 containment: "parent",
