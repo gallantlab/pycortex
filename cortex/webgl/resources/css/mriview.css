@@ -707,27 +707,18 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
     font-size:8pt;
     color:#bbb;
 }
-/* The corner anchor. Dragging it resizes the panel, and because the profile
-   is sampled pixelwise that is also what sets its resolution. */
-#laminar_panel .ui-resizable-se {
-    position:absolute;
-    right:3px;
-    bottom:3px;
-    width:12px;
-    height:12px;
-    background:none;
-    border-right:2px solid rgba(255,255,255,.35);
-    border-bottom:2px solid rgba(255,255,255,.35);
-    border-bottom-right-radius:3px;
-    cursor:se-resize;
-}
-#laminar_panel .ui-resizable-se:hover {
-    border-right-color:rgba(255,255,255,.9);
-    border-bottom-color:rgba(255,255,255,.9);
-}
+/* Edges and corners all resize; grow jQuery UI's default hit areas a little
+   so they are easy to grab (they straddle the panel's border). */
+#laminar_panel .ui-resizable-n { top:-6px; height:12px; }
+#laminar_panel .ui-resizable-s { bottom:-6px; height:12px; }
+#laminar_panel .ui-resizable-e { right:-6px; width:12px; }
+#laminar_panel .ui-resizable-w { left:-6px; width:12px; }
+#laminar_panel .ui-resizable-ne { top:-6px; right:-6px; width:14px; height:14px; }
+#laminar_panel .ui-resizable-nw { top:-6px; left:-6px; width:14px; height:14px; }
+#laminar_panel .ui-resizable-sw { bottom:-6px; left:-6px; width:14px; height:14px; }
+#laminar_panel .ui-resizable-se { right:-6px; bottom:-6px; width:14px; height:14px; }
 #laminar_readout {
-    /* room for the resize anchor */
-    padding:2px 18px 0px 28px;
+    padding:2px 0px 0px 28px;
     font-size:8pt;
     color:#999;
     font-family:monospace;
