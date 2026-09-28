@@ -12,8 +12,6 @@ data" is simply the number of red-dominant pixels.
 
 All tests are skipped if playwright is not installed.
 """
-import time
-
 import numpy as np
 import pytest
 
@@ -24,7 +22,13 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import has_playwright
+from cortex.tests.testing_utils import (
+    has_playwright,
+    page_errors,
+    render,
+    set_view,
+    wait_active,
+)
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -47,22 +51,9 @@ def _count_red(path):
     return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
 
 
-def _render(handle, path, size=(512, 384)):
-    import os
-
-    handle.getImage(path, size)
-    for _ in range(300):
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            break
-        time.sleep(0.1)
-    else:
-        raise RuntimeError("image not written: %s" % path)
-    time.sleep(0.3)
+def _render(handle, path):
+    render(handle, path)
     return _count_red(path)
-
-
-def _pageerrors(handle):
-    return [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
 
 
 def make_views():
@@ -142,49 +133,60 @@ SEQUENCES = {
 }
 
 
+@pytest.fixture(scope="module")
+def views():
+    return make_views()
+
+
+@pytest.fixture(scope="module")
+def baseline(views, tmp_path_factory):
+    """Red-pixel count of each dataview shown alone in a fresh viewer.
+
+    A fresh viewer per dataview is the expensive part of this module, so the
+    counts are cached and shared by every test in it.
+    """
+    tmp = tmp_path_factory.mktemp("baselines")
+    counts = {}
+
+    def get(name):
+        if name not in counts:
+            with cortex.export.headless_viewer(
+                views[name], viewer_params=VIEWER_PARAMS
+            ) as handle:
+                set_view(handle, VIEW)
+                counts[name] = _render(handle, str(tmp / ("baseline_%s.png" % name)))
+        return counts[name]
+
+    return get
+
+
 class TestSwitching:
     """One multi-dataset viewer; per-dataset baselines from single viewers."""
 
     @pytest.fixture(autouse=True, scope="class")
-    def _viewer(self, tmp_path_factory):
+    def _viewer(self, views, tmp_path_factory):
         cls = type(self)
-        cls.views = make_views()
         cls.tmp = tmp_path_factory.mktemp("switching")
-        cls.baseline = {}
         with cortex.export.headless_viewer(
-            cortex.Dataset(**cls.views), viewer_params=VIEWER_PARAMS
+            cortex.Dataset(**views), viewer_params=VIEWER_PARAMS
         ) as handle:
             cls.handle = handle
-            handle._set_view(**VIEW)
-            time.sleep(2)
+            set_view(handle, VIEW)
             yield
-
-    @classmethod
-    def _baseline(cls, name):
-        if name not in cls.baseline:
-            with cortex.export.headless_viewer(
-                cls.views[name], viewer_params=VIEWER_PARAMS
-            ) as handle:
-                handle._set_view(**VIEW)
-                time.sleep(2)
-                cls.baseline[name] = _render(
-                    handle, str(cls.tmp / ("baseline_%s.png" % name))
-                )
-        return cls.baseline[name]
 
     def _switch_and_count(self, name, tag):
         handle = type(self).handle
         handle.setData(name)
-        time.sleep(2.5)
+        wait_active(handle, name)
         return _render(handle, str(type(self).tmp / ("%s_%s.png" % (tag, name))))
 
     @pytest.mark.parametrize("sequence", sorted(SEQUENCES))
-    def test_sequence(self, sequence):
+    def test_sequence(self, sequence, baseline):
         handle = type(self).handle
-        errors_before = len(_pageerrors(handle))
+        errors_before = len(page_errors(handle))
         for step, name in enumerate(SEQUENCES[sequence]):
             count = self._switch_and_count(name, "%s_%d" % (sequence, step))
-            expected = self._baseline(name)
+            expected = baseline(name)
             assert expected > 500, "baseline for %s renders nothing" % name
             assert abs(count - expected) <= RTOL * expected, (
                 "%s step %d: %s rendered %d red pixels after %s, expected %d "
@@ -194,9 +196,9 @@ class TestSwitching:
                     SEQUENCES[sequence][step - 1] if step else "load", expected,
                 )
             )
-        assert len(_pageerrors(handle)) == errors_before, _pageerrors(handle)
+        assert len(page_errors(handle)) == errors_before, page_errors(handle)
 
-    def test_hidden_half_is_really_hidden(self):
+    def test_hidden_half_is_really_hidden(self, baseline):
         """Sanity check of the metric: the half-NaN / half-transparent
         dataviews show clearly fewer red pixels than their full versions."""
         for hidden, full in [
@@ -204,38 +206,33 @@ class TestSwitching:
             ("vol_nan", "vol_full"), ("volrgb_a0", "volrgb_full"),
             ("vtx2d_alpha", "vtx2d_full"), ("vtx2d_nan_dim2", "vtx2d_full"),
         ]:
-            assert self._baseline(hidden) < 0.8 * self._baseline(full), (hidden, full)
+            assert baseline(hidden) < 0.8 * baseline(full), (hidden, full)
 
 
-def test_addData_does_not_leak_nan_or_alpha(tmp_path):
+def test_addData_does_not_leak_nan_or_alpha(tmp_path, views, baseline):
     """Data pushed into a running viewer must not inherit the previous
     dataset's NaN mask or alpha."""
-    views = make_views()
     # Reference for the RGB view shown on its own (shading differs between a
     # colormapped and an RGB view, so RGB is only compared with RGB).
-    with cortex.export.headless_viewer(views["vtxrgb_full"], viewer_params=VIEWER_PARAMS) as handle:
-        handle._set_view(**VIEW)
-        time.sleep(2)
-        n_rgb_full_alone = _render(handle, str(tmp_path / "rgb_full_alone.png"))
+    n_rgb_full_alone = baseline("vtxrgb_full")
 
     with cortex.export.headless_viewer(views["vtx_nan"], viewer_params=VIEWER_PARAMS) as handle:
-        handle._set_view(**VIEW)
-        time.sleep(2)
+        set_view(handle, VIEW)
         n_nan = _render(handle, str(tmp_path / "nan.png"))
 
         handle.addData(full=views["vtx_full"])
-        time.sleep(3)
+        wait_active(handle, "full")
         n_full = _render(handle, str(tmp_path / "full.png"))
 
         handle.addData(rgb_a0=views["vtxrgb_a0"])
-        time.sleep(3)
+        wait_active(handle, "rgb_a0")
         n_a0 = _render(handle, str(tmp_path / "rgb_a0.png"))
 
         handle.addData(rgb_full=views["vtxrgb_full"])
-        time.sleep(3)
+        wait_active(handle, "rgb_full")
         n_rgb_full = _render(handle, str(tmp_path / "rgb_full.png"))
 
-        assert not _pageerrors(handle), _pageerrors(handle)
+        assert not page_errors(handle), page_errors(handle)
 
     assert n_full > 1.5 * n_nan, "NaN mask leaked into data added with addData"
     assert abs(n_rgb_full - n_rgb_full_alone) <= RTOL * n_rgb_full_alone, (

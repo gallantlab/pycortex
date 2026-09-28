@@ -9,9 +9,6 @@ within a tolerance.
 
 Skipped if playwright is not installed.
 """
-import os
-import time
-
 import numpy as np
 import pytest
 
@@ -22,7 +19,13 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import has_playwright
+from cortex.tests.testing_utils import (
+    has_playwright,
+    page_errors,
+    render,
+    set_view,
+    settle,
+)
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -69,15 +72,9 @@ def _webgl(view, path):
     with cortex.export.headless_viewer(
         view, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
-        handle._set_view(**FLAT)
-        time.sleep(3)
-        handle.getImage(path, (1024, 768))
-        for _ in range(300):
-            if os.path.exists(path) and os.path.getsize(path) > 0:
-                break
-            time.sleep(0.1)
-        time.sleep(0.3)
-        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        set_view(handle, FLAT)
+        render(handle, path, (1024, 768))
+        errors = page_errors(handle)
     assert not errors, errors
     return _fractions(path)
 
@@ -194,21 +191,15 @@ def test_multilayer_nanmean_toggle(tmp_path):
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
-        handle._set_view(**view)
-        time.sleep(2)
+        set_view(handle, view)
         for layers, nanmean in [(1, True), (8, True), (8, False)]:
             handle.ui.set("surface.%s.layers" % subj, layers)
             handle.ui.set("surface.%s.nanmean" % subj, nanmean)
-            time.sleep(2.5)
+            settle(handle)
             path = str(tmp_path / ("layers%d_nanmean%s.png" % (layers, nanmean)))
-            handle.getImage(path, (512, 384))
-            for _ in range(300):
-                if os.path.exists(path) and os.path.getsize(path) > 0:
-                    break
-                time.sleep(0.1)
-            time.sleep(0.3)
+            render(handle, path)
             counts[(layers, nanmean)] = _red(path)
-        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        errors = page_errors(handle)
     assert not errors, errors
     assert counts[(1, True)] > 5000
     # nanmean: averaging over the valid layers shows at least as much cortex
@@ -249,21 +240,15 @@ def test_multilayer_nanmean_toggle_rgb(tmp_path):
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
-        handle._set_view(**view)
-        time.sleep(2)
+        set_view(handle, view)
         for layers, nanmean in [(1, True), (8, True), (8, False)]:
             handle.ui.set("surface.%s.layers" % subj, layers)
             handle.ui.set("surface.%s.nanmean" % subj, nanmean)
-            time.sleep(2.5)
+            settle(handle)
             path = str(tmp_path / ("rgb_layers%d_nanmean%s.png" % (layers, nanmean)))
-            handle.getImage(path, (512, 384))
-            for _ in range(300):
-                if os.path.exists(path) and os.path.getsize(path) > 0:
-                    break
-                time.sleep(0.1)
-            time.sleep(0.3)
+            render(handle, path)
             counts[(layers, nanmean)] = _red(path)
-        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        errors = page_errors(handle)
     assert not errors, errors
     assert counts[(1, True)] > 5000 * 50
     assert counts[(8, True)] >= 0.9 * counts[(1, True)], counts
@@ -296,20 +281,14 @@ def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path):
     with cortex.export.headless_viewer(
         vtx, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
-        handle._set_view(**view)
-        time.sleep(2)
+        set_view(handle, view)
         for frame in (0.0, 0.5, 1.0):
             handle.setFrame(frame)
-            time.sleep(2)
+            settle(handle)
             path = str(tmp_path / ("frame_%.1f.png" % frame))
-            handle.getImage(path, (512, 384))
-            for _ in range(300):
-                if os.path.exists(path) and os.path.getsize(path) > 0:
-                    break
-                time.sleep(0.1)
-            time.sleep(0.3)
+            render(handle, path)
             counts[frame] = _red(path)
-        errors = [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+        errors = page_errors(handle)
     assert not errors, errors
     assert counts[1.0] < 0.8 * counts[0.0], counts  # left hemisphere hidden in frame 1
     # while blending towards frame 1 the NaN vertices are already masked
