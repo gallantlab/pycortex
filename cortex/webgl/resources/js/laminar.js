@@ -1402,7 +1402,11 @@ var laminar = (function(module) {
         var pos = this.panel.position();
         this.panel.css({left:pos.left, top:pos.top, right:"auto", bottom:"auto"});
         if ($.fn.draggable !== undefined)
-            this.panel.draggable({handle:"#laminar_header", containment:"parent"});
+            this.panel.draggable({
+                handle:"#laminar_header",
+                containment:"parent",
+                start: this._captureRelease,
+            });
         if ($.fn.resizable !== undefined) {
             // Dragging the corner anchor resizes the view, and since the view
             // *is* the sampling grid (see _syncResolution) that is also how
@@ -1412,6 +1416,7 @@ var laminar = (function(module) {
                 minWidth: 200,
                 minHeight: 120,
                 containment: "parent",
+                start: this._captureRelease,
                 resize: function() {
                     this._layoutPlot();
                     this._dirty = true;
@@ -1419,6 +1424,25 @@ var laminar = (function(module) {
                 }.bind(this),
             });
         }
+    };
+
+    /* jQuery UI waits for the button to come up with a bubbling mouseup on
+     * `document`, but the canvas's controls swallow every mouseup that lands on
+     * them. If the pointer outruns the panel while it is being resized or moved
+     * (Firefox does this readily), the release never arrives and the panel stays
+     * glued to the cursor. Catch the release on the way down instead and hand it
+     * to jQuery UI ourselves. */
+    module.Profile.prototype._captureRelease = function() {
+        var release = function(evt) {
+            window.removeEventListener("mouseup", release, true);
+            $(document).trigger($.Event("mouseup", {
+                which: evt.which, button: evt.button,
+                pageX: evt.pageX, pageY: evt.pageY,
+                clientX: evt.clientX, clientY: evt.clientY,
+                target: evt.target,
+            }));
+        };
+        window.addEventListener("mouseup", release, true);
     };
 
     /* The panel's height is divided up by hand: everything but the plot keeps
