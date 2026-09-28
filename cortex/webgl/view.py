@@ -18,7 +18,7 @@ from configparser import NoOptionError
 from queue import Queue
 
 import numpy as np
-from tornado import web
+from tornado import ioloop, web
 
 from .. import dataset, options, utils, volume
 from ..database import db
@@ -40,6 +40,26 @@ domain_name = options.config.get("webgl", "domain_name")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
+
+
+def _viewer_urls(port: int) -> tuple[str, str]:
+    """Return the (local, network) URLs of a viewer running on `port`.
+
+    The local URL is the one to open on the machine running the server. The
+    network URL is built from the machine's hostname plus the configured
+    ``webgl.domain_name``, and is the one to hand to someone else.
+
+    They have to be kept apart, because the hostname is not a dependable way
+    for this machine to reach itself. ``socket.gethostname()`` returns the mDNS
+    name on macOS (``mymac.local``), which resolves to a whole list of
+    addresses -- link-local ones among them -- and only reaches the server if
+    the local firewall lets this python process accept connections on a
+    non-loopback interface. None of that applies to localhost.
+    """
+    local = "http://localhost:%d/mixer.html" % port
+    network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
+    return local, network
+
 
 def make_static(
     outpath,
@@ -382,6 +402,14 @@ def show(
         headless viewers. Default True
     **kwargs
         All additional keyword arguments are passed to the template renderer.
+
+    Returns
+    -------
+    client : JSMixer or WebApp
+        If `open_browser` is True, a `JSMixer` client connected to the
+        opened browser tab, which can be used to control the viewer
+        programmatically (e.g. `client.getImage()`, `client.animate()`).
+        If `open_browser` is False, returns the `WebApp` server object.
     """
 
     # populate default webshow args
@@ -416,6 +444,21 @@ def show(
     ctms: dict[str, str] = dict()
     subjectjs = ""
     _ready = threading.Event()
+    _prepare_failure: list[BaseException] = []
+
+    class _WaitUntilPrepared:
+        """Mixin for request handlers that need the packaged data.
+
+        show() starts the server and prints the URL before it packages the
+        data, so a request can arrive early; it waits here until packaging
+        is done. The wait runs on a worker thread, because blocking the
+        server's event-loop thread would stall every other request too.
+        """
+        async def prepare(self):
+            if not _ready.is_set():
+                await ioloop.IOLoop.current().run_in_executor(None, _ready.wait)
+            if _prepare_failure:
+                raise web.HTTPError(503, reason="The viewer failed to start")
 
     def _prepare():
         nonlocal package, metadata, subjects, subjectjs
@@ -483,9 +526,8 @@ def show(
     if pickerfun is None:
         pickerfun = lambda *a: None
 
-    class CTMHandler(web.RequestHandler):
+    class CTMHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
-            _ready.wait()
             self.set_header("Cache-Control", "public, max-age=86400")
             subj, path = path.split('/')
             if path == '':
@@ -499,9 +541,8 @@ def show(
                 self.set_header("Content-Type", mtype)
                 self.write(open(os.path.join(fpath, path), 'rb').read())
 
-    class DataHandler(web.RequestHandler):
+    class DataHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
-            _ready.wait()
             path = path.strip("/")
             frame: Union[int, str]
             try:
@@ -535,12 +576,11 @@ def show(
                 self.set_status(404)
                 self.write_error(404)
 
-    class StimHandler(web.StaticFileHandler):
+    class StimHandler(_WaitUntilPrepared, web.StaticFileHandler):
         def initialize(self):
             pass
 
         def get(self, path: str):
-            _ready.wait()
             if path not in stims:
                 self.set_status(404)
                 self.write_error(404)
@@ -552,9 +592,8 @@ def show(
         def initialize(self):
             self.root = ''
 
-    class MixerHandler(web.RequestHandler):
+    class MixerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
-            _ready.wait()
             self.set_header("Content-Type", "text/html")
             generated = html.generate(data=json.dumps(metadata),
                                       colormaps=colormaps,
@@ -1012,9 +1051,8 @@ def show(
                 self.getImage(filename%(fr+offset+1), size=size)
                 time.sleep(frame_sleep)
 
-    class PickerHandler(web.RequestHandler):
+    class PickerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
-            _ready.wait()
             voxel_arg = self.get_argument("voxel", None)
             if voxel_arg is None:
                 self.set_status(400)
@@ -1045,11 +1083,10 @@ def show(
             ctm_vertex_index[subj] = npz["index"]
         return ctm_vertex_index[subj]
 
-    class TimeseriesHandler(web.RequestHandler):
+    class TimeseriesHandler(_WaitUntilPrepared, web.RequestHandler):
         """Return one voxel's (or vertex's) timecourse as JSON, on demand.
         """
         def get(self):
-            _ready.wait()
             views = dict(data)
             name = self.get_argument("name", None)
             if name is None:
@@ -1138,24 +1175,41 @@ def show(
                     port)
 
     server.start()
+    local_url, network_url = _viewer_urls(server.port)
     print("Started server on port %d"%server.port)
-    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
-
+    if network_url == local_url:
+        print("Open the viewer at %s"%local_url)
+    else:
+        print("Open the viewer at %s (from another machine: %s)"
+              %(local_url, network_url))
     if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
-        except Exception:
-            print("Open viewer: %s" % url)
+            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
+            if network_url != local_url:
+                link += (' (from another machine: '
+                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
+            display(HTML(link))
+        except:
+            pass
+
+    # The server is up and the URL is shown; now package the data. Requests
+    # that arrive meanwhile wait for it without blocking the server (see
+    # _WaitUntilPrepared). If packaging fails, release them with an error and
+    # stop the server, so the port is free for another attempt.
     try:
         _prepare()
-    except Exception:
+    except BaseException as exc:
+        _prepare_failure.append(exc)
+        _ready.set()
         server.stop()
         raise
     _ready.set()
 
     if open_browser:
-        webbrowser.open(url)
+        # This runs on the same machine as the server, so localhost is both
+        # correct and the most reliable thing to hand the browser.
+        webbrowser.open(local_url)
         client = server.get_client()
         client.server = server
         return client

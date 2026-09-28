@@ -122,15 +122,7 @@ def _assert_not_blank(path):
         "VolumeRGB",
         "VertexRGB",
         "Volume2D",
-        # gh-714: the Vertex2D flatmap shader fails to link, so the render comes
-        # back blank and three.js reports it on console.error. Strict, so a
-        # render that starts succeeding reports an XPASS.
-        pytest.param(
-            "Vertex2D",
-            marks=pytest.mark.xfail(
-                strict=True, reason="gh-714: Vertex2D shader fails to link"
-            ),
-        ),
+        "Vertex2D",
     ],
 )
 def test_datatype_renders(dtype_name, tmp_path):
