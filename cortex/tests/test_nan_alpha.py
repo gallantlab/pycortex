@@ -10,6 +10,7 @@ import json
 import os
 import tempfile
 import warnings
+from io import BytesIO
 from typing import Any, Optional, Union
 
 import numpy as np
@@ -19,6 +20,7 @@ import pytest
 import cortex
 from cortex import dataset
 from cortex.testing_utils import has_installed
+import cortex.utils
 from cortex.webgl.data import Package
 from cortex.webgl.serve import NPEncode
 
@@ -222,8 +224,9 @@ def test_volumergb_masked_alpha_nan_channel_is_transparent() -> None:
 
 @pytest.mark.parametrize("cls", ["VertexRGB", "VolumeRGB"])
 def test_rgb_multiframe_nan_masks_per_frame(cls: str) -> None:
-    """Regression for #629: multi-frame data + NaN raised IndexError because the
-    auto alpha was single-frame while the NaN mask was (T, ...)."""
+    """Regression test for gh-629, at the data level: multi-frame data + NaN
+    raised IndexError because the auto alpha was single-frame while the NaN
+    mask was (T, ...)."""
     rng = np.random.default_rng(9)
     T = 3
     shape = (T, _nverts()) if cls == "VertexRGB" else (T,) + volshape
@@ -249,6 +252,64 @@ def test_rgb_multiframe_nan_masks_per_frame(cls: str) -> None:
         arr = rgb.volume
     assert arr[..., 3][nan_here].max() == 0
     assert arr[..., 3][~nan_here].min() == 127  # int(0.5 * 255)
+
+
+@pytest.mark.parametrize("cls", ["VertexRGB", "VolumeRGB"])
+def test_rgb_multiframe_nan_reaches_webgl(cls: str) -> None:
+    """Regression test for gh-629 through the viewer. A multi-frame RGB view
+    with NaN in one frame must load in ``cortex.webgl.show``, and the viewer
+    must be served alpha 0 exactly where that frame is NaN. Only ``VertexRGB``
+    raised in gh-629 (its auto alpha was single-frame); ``VolumeRGB`` covers
+    the per-frame mosaic path."""
+    from urllib.request import urlopen
+
+    from PIL import Image
+
+    rng = np.random.default_rng(11)
+    T = 3
+    shape = (T, _nverts()) if cls == "VertexRGB" else (T,) + volshape
+    r, g, b = (rng.uniform(0, 1, shape) for _ in range(3))
+    nan = np.zeros(shape, dtype=bool)
+    nan[1, ..., :50] = True  # frame 1 only
+    r[nan] = np.nan
+    if cls == "VertexRGB":
+        rgb = cortex.VertexRGB(r, g, b, subj)
+    else:
+        rgb = cortex.VolumeRGB(r, g, b, subj, xfmname)
+
+    server = cortex.webgl.show(rgb, open_browser=False, display_url=False)
+    try:
+
+        def fetch(path: str) -> bytes:
+            url = "http://localhost:%d/%s" % (server.port, path)
+            with urlopen(url, timeout=30) as response:
+                return response.read()
+
+        fetch("mixer.html")  # check that the page can be generated
+        if isinstance(rgb, cortex.VertexRGB):
+            # One (T, V, RGBA) array in the CTM pack's vertex order, colour
+            # premultiplied by alpha. show() loads the same pack.
+            served = np.load(BytesIO(fetch("data/%s/0" % rgb.name)))
+            ctm = cortex.utils.get_ctmpack(
+                subj, ("inflated",), method="mg2", level=9, recache=False,
+                external_svg=None, overlays_available=None,
+            )
+            with np.load(os.path.splitext(ctm)[0] + ".npz") as npz:
+                nan = nan[..., npz["index"]]
+            assert served.shape == nan.shape + (4,)
+            assert np.array_equal(served[..., 3] == 0, nan)
+            assert served[..., :3][nan].max() == 0  # no colour under alpha 0
+        else:
+            # Each frame is one PNG mosaic of the volume's slices. The padding
+            # around the slices is alpha 0 in every frame, so frame 1 should
+            # have exactly as many extra alpha-0 pixels as it has NaN voxels.
+            pngs = [fetch("data/%s/%d" % (rgb.name, t)) for t in range(T)]
+            alphas = [np.asarray(Image.open(BytesIO(png)))[..., 3] for png in pngs]
+            zeros = [int((a == 0).sum()) for a in alphas]
+            assert zeros[0] == zeros[2]
+            assert zeros[1] - zeros[0] == int(nan[1].sum())
+    finally:
+        server.stop()
 
 
 @pytest.mark.parametrize("cls", ["VertexRGB", "VolumeRGB"])
