@@ -1000,13 +1000,6 @@ def test_visual_comparison_multilayer_nan_dataviews(
     have to match their own references exactly, and both respond to ``nanmean``
     the same way (toggling it moves quickflat by mean 10.9 and webgl by 11.2 on
     Volume).
-
-    The Volume2D case used to be flaky: the 32-layer 2D shader can keep the
-    browser busy past the RPC's 2 s timeout, and the answer that then arrived
-    late was read as the answer to the *next* request, leaving every request
-    after it answered one behind for the rest of the session. Requests are now
-    tagged so late answers are discarded -- see ``WebApp.send`` and
-    ``test_serve.py``.
     """
     view = _build_multilayer_nan_dataview(name)
     tag = f"{name}_{'nanmean' if nanmean else 'no_nanmean'}"
