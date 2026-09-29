@@ -724,35 +724,98 @@ button#twodbutton:disabled, button#twodbutton[disabled] {
 }
 
 /* Frame slider, with a dot marking every frame that has a keyframe. */
+/* The frame slider and its keyframe dots.
+
+   The dots only line up with the slider if they are inset by exactly half the
+   thumb: the thumb's centre travels from half a thumb in at the first frame to
+   half a thumb short of the end at the last. A browser's own thumb differs in
+   size (and inner padding) from one browser and platform to the next, so the
+   slider draws its own, and --anim-thumb sizes both it and the inset. */
 .keyframe-track {
+    --anim-thumb: 12px;
     position: relative;
     margin: 4px 0 10px 0;
     padding-bottom: 8px;
 }
 
 .keyframe-track input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
+    height: var(--anim-thumb);
     margin: 0;
+    /* Undo w2ui's rule for every input (a border and padding), which the
+       browser's own slider ignored and a restyled one does not. A border would
+       also move the thumb in from the ends the dots are measured from. */
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.keyframe-track input[type=range]:focus {
+    outline: none;
+}
+
+.keyframe-track input[type=range]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: #3c3c3c;
+}
+
+.keyframe-track input[type=range]::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: #3c3c3c;
+}
+
+.keyframe-track input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--anim-thumb);
+    height: var(--anim-thumb);
+    margin-top: calc((4px - var(--anim-thumb)) / 2);   /* centred on the track */
+    border: none;
+    border-radius: 50%;
+    background: #2fa1d6;
+}
+
+.keyframe-track input[type=range]::-moz-range-thumb {
+    width: var(--anim-thumb);
+    height: var(--anim-thumb);
+    border: none;
+    border-radius: 50%;
+    background: #2fa1d6;
 }
 
 .keyframe-ticks {
     position: absolute;
-    /* Inset by half a slider thumb, since the thumb centre does not reach the
-       ends of the track -- otherwise the first and last dots sit off the mark. */
-    left: 7px;
-    right: 7px;
+    left: calc(var(--anim-thumb) / 2);
+    right: calc(var(--anim-thumb) / 2);
     bottom: 0;
     height: 8px;
-    pointer-events: none;  /* dots must not swallow drags on the slider */
+    pointer-events: none;  /* only the dots take clicks, never the slider's area */
 }
 
+/* 6 px across, inside a 12 px area that takes the click. That area starts at
+   the top of the band below the slider, so it never covers the slider itself. */
 .keyframe-dot {
     position: absolute;
+    top: 0;
     width: 6px;
     height: 6px;
-    margin-left: -3px;
+    padding: 3px;
+    margin-left: -6px;
     border-radius: 50%;
     background-color: #ffd700;
+    background-clip: content-box;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.keyframe-dot:hover {
+    background-color: #fff066;
 }
 
 /* Saved-view buttons (the "views" folder, tagged by viewtools.js) carry only a

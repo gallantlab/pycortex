@@ -2480,3 +2480,123 @@ def test_a_default_view_fills_a_4_by_3_frame(tmp_path, name):
     margins = [x0 / width, (width - x1) / width, y0 / height, (height - y1) / height]
     assert min(margins) > 0, margins                     # nothing clipped
     assert min(margins) == pytest.approx((1 - FRAMING_FILL) / 2, abs=0.015), margins
+
+
+# ---------------------------------------------------------------------------
+# The keyframe dots under the animation panel's slider
+# ---------------------------------------------------------------------------
+
+_THUMB_RGB = (0x2f, 0xa1, 0xd6)      # .keyframe-track's slider thumb (mriview.css)
+_DOT_RGB = (0xff, 0xd7, 0x00)        # .keyframe-dot
+
+
+def _colour_centres(png, rgb, rows=None, tol=60):
+    """The x centres of each run of columns where `rgb` appears in a png."""
+    import io
+
+    from PIL import Image
+
+    pixels = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(int)
+    if rows is not None:
+        pixels = pixels[rows]
+    columns = np.where((np.abs(pixels - np.array(rgb)).sum(-1) < tol).any(0))[0]
+    runs, run = [], []
+    for x in columns:
+        if run and x - run[-1] > 1:
+            runs.append(run)
+            run = []
+        run.append(x)
+    if run:
+        runs.append(run)
+    return [(r[0] + r[-1]) / 2 for r in runs]
+
+
+def _panel_with_keyframes(handle, frames, azimuths=None):
+    """Open the animation panel and lay down a keyframe at each of `frames`."""
+    handle.send(method="run", params=[
+        "window.viewer.ui._desc.camera._desc.create animation.action", []])
+    time.sleep(1)
+    for i, frame in enumerate(frames):
+        _js_run(handle, "window.viewer._animPanel.goToFrame", [frame])
+        if azimuths is not None:
+            handle._set_view(**{"camera.azimuth": azimuths[i]})
+            time.sleep(0.5)
+        _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+    time.sleep(0.5)
+
+
+def test_keyframe_dots_line_up_with_the_slider():
+    """A keyframe's dot sits under the slider's thumb when the playhead is on it.
+
+    It used to drift by several pixels towards either end: the dots were inset
+    by a guess at half the browser's own thumb, whose size varies by browser.
+    """
+    frames = [0, 7, 15, 23, 30]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        _panel_with_keyframes(handle, frames)
+
+        def track(page):
+            return page.locator(".keyframe-track").screenshot()
+
+        dots = _colour_centres(handle._pw_thread.run_on_page(track), _DOT_RGB)
+        assert len(dots) == len(frames), dots
+
+        for frame, dot in zip(frames, dots):
+            _js_run(handle, "window.viewer._animPanel.goToFrame", [frame])
+            time.sleep(0.3)
+            png = handle._pw_thread.run_on_page(track)
+            thumbs = _colour_centres(png, _THUMB_RGB)
+            assert len(thumbs) == 1, thumbs
+            assert abs(thumbs[0] - dot) <= 1, (frame, thumbs[0], dot)
+
+
+def test_clicking_a_keyframe_dot_goes_to_its_frame():
+    """Clicking a dot puts the playhead, the slider and the view on that keyframe."""
+    frames, azimuths = [0, 12, 30], [45, 120, 200]
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        _panel_with_keyframes(handle, frames, azimuths)
+        _js_run(handle, "window.viewer._animPanel.goToFrame", [5])
+        time.sleep(0.5)
+
+        for frame, azimuth in zip(frames, azimuths):
+            def click(page, frame=frame):
+                page.locator('.keyframe-dot[data-frame="%d"]' % frame).click()
+                return (page.locator(".anim-slider").input_value(),
+                        page.locator(".anim-frame").input_value())
+
+            slider, field = handle._pw_thread.run_on_page(click)
+            time.sleep(0.5)
+            assert _js_value(handle, "window.viewer._anim.frame") == frame
+            assert (int(float(slider)), int(float(field))) == (frame, frame)
+            assert handle._capture_view()["camera.azimuth"] == pytest.approx(
+                azimuth, abs=0.5)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_the_slider_still_drags_over_the_dots():
+    """The dots take clicks without covering any part of the slider."""
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        _panel_with_keyframes(handle, [0, 10, 20, 30])
+        _js_run(handle, "window.viewer._animPanel.goToFrame", [0])
+        time.sleep(0.5)
+
+        def drag(page):
+            slider = page.locator(".anim-slider")
+            slider.scroll_into_view_if_needed()
+            box = slider.bounding_box()
+            y = box["y"] + box["height"] / 2
+            page.mouse.move(box["x"] + 6, y)
+            page.mouse.down()
+            page.mouse.move(box["x"] + box["width"] / 2, y, steps=10)
+            page.mouse.up()
+
+        handle._pw_thread.run_on_page(drag)
+        time.sleep(0.5)
+        assert _js_value(handle, "window.viewer._anim.frame") == pytest.approx(15, abs=1)
+

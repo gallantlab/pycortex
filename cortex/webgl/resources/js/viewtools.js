@@ -597,8 +597,7 @@ var jsplot = (function (module) {
         var self = this, st = this.state;
 
         this._el("anim-frame").on("change", function() {
-            self.setFrame(parseFloat(this.value));
-            self.sync();
+            self.goToFrame(parseFloat(this.value));
         });
         this._el("anim-slider").on("input change", function() {
             self.setFrame(parseFloat(this.value));
@@ -887,10 +886,19 @@ var jsplot = (function (module) {
         }
     };
 
+    // Put the playhead on `frame`, the way typing it into the frame field does:
+    // playback stops, and the slider, the frame field and the smoothing
+    // dropdown all follow. What clicking a keyframe's dot does.
+    AnimationPanel.prototype.goToFrame = function(frame) {
+        this.stop();
+        this.setFrame(frame);
+        this.sync();
+    };
+
     // One yellow dot per keyframe, positioned along the slider. Redrawn from
     // scratch so that changing first/last simply repositions everything.
     AnimationPanel.prototype.drawTicks = function() {
-        var st = this.state;
+        var st = this.state, self = this;
         var ticks = this._el("keyframe-ticks").empty();
         var span = st.last - st.first;
         if (span <= 0)
@@ -902,8 +910,14 @@ var jsplot = (function (module) {
             var pct = 100 * (frame - st.first) / span;
             $("<div class='keyframe-dot'></div>")
                 .css("left", pct + "%")
+                .attr("data-frame", frame)
                 .attr("title", "keyframe at frame " + frame + " (" +
-                               modeLabel(st.keyframes[i].interpolation) + ")")
+                               modeLabel(st.keyframes[i].interpolation) +
+                               ") \u2014 click to go there")
+                .on("click", function(event) {
+                    event.stopPropagation();
+                    self.goToFrame(parseInt($(this).attr("data-frame"), 10));
+                })
                 .appendTo(ticks);
         }
     };

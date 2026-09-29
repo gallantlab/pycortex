@@ -42,11 +42,14 @@ import concurrent.futures
 import contextlib
 import logging
 import os
+import queue
 import shutil
 import tempfile
 import threading
 import time
-from typing import Any, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, TypeVar
+
+T = TypeVar("T")
 
 import cortex
 from .. import dataset
@@ -172,6 +175,8 @@ class _PlaywrightThread:
         self._pending_downloads: list[Any] = []
         self._downloads: list[str] = []
         self._downloads_changed = threading.Condition()
+        # Functions queued by run_on_page, run by the poll loop on the worker.
+        self._page_calls: "queue.Queue[tuple[Callable[[Any], Any], concurrent.futures.Future[Any]]]" = queue.Queue()
         self._shutdown_event = threading.Event()
         self._error: Optional[BaseException] = None
         self._thread: Optional[threading.Thread] = None
@@ -254,6 +259,28 @@ class _PlaywrightThread:
                 self._downloads_changed.wait(remaining)
             return self._downloads[count - 1]
 
+    def run_on_page(self, fn: Callable[[Any], T], timeout: float = 60.0) -> T:
+        """Run ``fn(page)`` on the worker thread and return what it returns.
+
+        Playwright's sync objects belong to the thread that made them, so the
+        page can only be touched from the worker: this hands it `fn` and waits.
+        It is for what the websocket interface cannot do -- clicking an element,
+        dragging with the mouse, taking a screenshot of part of the page.
+
+        Raises
+        ------
+        TimeoutError
+            If `fn` has not finished within `timeout` seconds.
+        """
+        future: "concurrent.futures.Future[T]" = concurrent.futures.Future()
+        self._page_calls.put((fn, future))
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(
+                f"The page did not finish the call within {timeout:.0f} s"
+            ) from None
+
     def shutdown(self) -> None:
         """Signal the worker to tear down Playwright and wait for it to finish."""
         self._shutdown_event.set()
@@ -311,6 +338,7 @@ class _PlaywrightThread:
         # round-trip is what makes Playwright dispatch them.
         while not self._shutdown_event.wait(EVENT_POLL_INTERVAL):
             self._save_downloads()
+            self._run_page_calls()
             try:
                 self._page.evaluate("0")
             except Exception:
@@ -356,6 +384,20 @@ class _PlaywrightThread:
             with self._downloads_changed:
                 self._downloads.append(path)
                 self._downloads_changed.notify_all()
+
+    def _run_page_calls(self) -> None:
+        """Run the functions queued by run_on_page (worker thread)."""
+        while True:
+            try:
+                fn, future = self._page_calls.get_nowait()
+            except queue.Empty:
+                return
+            if not future.set_running_or_notify_cancel():
+                continue
+            try:
+                future.set_result(fn(self._page))
+            except BaseException as exc:  # noqa: BLE001 - handed to the caller
+                future.set_exception(exc)
 
     def _on_console(self, msg: Any) -> None:
         """Listener for console.error / console.warning messages."""
