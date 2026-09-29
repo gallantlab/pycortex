@@ -280,12 +280,18 @@ def make_static(
     db.auxfile = None
 
     ## Rename files to anonymize
+    # One anonymized name per subject, used for the surface files, the dataset
+    # metadata and the viewer options alike. Numbered in sorted order: the
+    # subjects come from a set, whose order changes from one process to the
+    # next, and numbering the files by that order while renaming `ctms` by the
+    # sorted one could give a subject two different names in the same export.
+    anonymized = {subj: "S%d" % i for i, subj in enumerate(sorted(ctms))}
     submap = dict()
-    for i, (subj, ctmfile) in enumerate(ctms.items()):
+    for subj, ctmfile in ctms.items():
         oldpath, fname = os.path.split(ctmfile)
         fname, ext = os.path.splitext(fname)
         if anonymize:
-            newfname = "S%d" % i
+            newfname = anonymized[subj]
             submap[subj] = newfname
         else:
             newfname = fname
@@ -310,8 +316,7 @@ def make_static(
                 ofh.write(jsoncontents.replace(fname, newfname))
                 ofh.close()
     if anonymize:
-        old_subjects = sorted(list(ctms.keys()))
-        ctms = dict(("S%d" % i, ctms[k]) for i, k in enumerate(old_subjects))
+        ctms = dict((anonymized[subj], ctms[subj]) for subj in sorted(ctms))
     if len(submap) == 0:
         submap = None
 
@@ -378,8 +383,14 @@ def make_static(
 
     # Views saved in the filestore, for the "camera > views" menu. Only the
     # subjects this viewer displays are read.
-    my_viewopts["saved_views"] = _load_saved_views(subjects)
-    my_viewopts["quickflat_size"] = {subj: _quickflat_size(subj)
+    # Keyed by the names the browser knows the subjects by, which in an
+    # anonymized export are not their real ones -- anything else would put the
+    # real IDs back into the page, and leave the viewer unable to find them.
+    subject_names = submap or {subj: subj for subj in subjects}
+    my_viewopts["saved_views"] = {
+        subject_names[subj]: views
+        for subj, views in _load_saved_views(subjects).items()}
+    my_viewopts["quickflat_size"] = {subject_names[subj]: _quickflat_size(subj)
                                      for subj in subjects}
 
     html = tpl.generate(

@@ -681,6 +681,9 @@ var jsplot = (function (module) {
         this._el("anim-flatmatch").prop("checked", false).on("change", function() {
             self.matchFlatChanged();
         });
+        this._el("anim-width").add(this._el("anim-height")).on("change", function() {
+            self.renderSizeChanged();
+        });
         this._el("anim-flatmatch-row").hide();
     };
 
@@ -1116,8 +1119,16 @@ var jsplot = (function (module) {
     // plain http from another machine.
     vt.canEncodeVideo = function() {
         return typeof window.VideoEncoder !== "undefined" &&
-               window.isSecureContext === true;
+               window.isSecureContext === true &&
+               jsplot.mp4mux !== undefined;
     };
+
+    // Whether the page loaded the zip writer. A template that shadows
+    // template.html may predate zipstore.js (and mp4mux.js); the panel then
+    // says so rather than failing partway through a render.
+    function canWriteZip() {
+        return jsplot.zipstore !== undefined;
+    }
 
     // Hand `blob` to the browser as a download called `filename`.
     vt.download = function(blob, filename) {
@@ -1295,7 +1306,18 @@ var jsplot = (function (module) {
     AnimationPanel.prototype.setRenderSize = function(width, height) {
         this._el("anim-width").val(width);
         this._el("anim-height").val(height);
+        this.renderSizeChanged();
         return this.renderSize();
+    };
+
+    // The render size changed, typed or set from code. With "match quickflat
+    // size" ticked, flat keyframes are framed for whatever size is in the
+    // fields, so they follow it -- otherwise a render at a size typed after
+    // ticking the box would use framing for the previous shape of frame.
+    AnimationPanel.prototype.renderSizeChanged = function() {
+        if (this.matchesFlat())
+            this.reframeFlatKeyframes();
+        this.updateFlatHint();
     };
 
     AnimationPanel.prototype.updateFormatHint = function() {
@@ -1333,7 +1355,16 @@ var jsplot = (function (module) {
             this.status("This browser cannot encode MP4 here; render PNG frames");
             return;
         }
+        if (format === "png" && !canWriteZip()) {
+            this.status("Rendering needs resources/js/zipstore.js, which this " +
+                        "page's template does not load");
+            return;
+        }
         var width = size[0], height = size[1];
+        // However the size got into the fields, flat keyframes are framed for
+        // it by the time anything is rendered.
+        if (this.matchesFlat())
+            this.reframeFlatKeyframes();
         var writer = format === "mp4" ? new Mp4Writer(width, height, st.fps) :
                                         new PngZipWriter(name);
 

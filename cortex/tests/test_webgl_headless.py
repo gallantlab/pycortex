@@ -2600,3 +2600,134 @@ def test_the_slider_still_drags_over_the_dots():
         time.sleep(0.5)
         assert _js_value(handle, "window.viewer._anim.frame") == pytest.approx(15, abs=1)
 
+
+# ---------------------------------------------------------------------------
+# Review fixes: anonymized exports, legacy templates, render-size changes
+# ---------------------------------------------------------------------------
+
+
+def _static_page_json(html, name):
+    """The JSON static.html assigns to `name` (``name = {...};`` on one line)."""
+    import re
+
+    match = re.search(r"^\s*%s = (\{.*\});\s*$" % name, html, re.M)
+    assert match, "no %s in the page" % name
+    return json.loads(match.group(1))
+
+
+@pytest.mark.parametrize("anonymize", [False, True])
+def test_static_export_names_subjects_consistently(tmp_path, anonymize):
+    """Views and the quickflat hint are keyed by the name the page knows.
+
+    In an anonymized export that is the anonymized name: keyed by the real one,
+    the page would carry the real subject ID the export exists to hide, and the
+    viewer could not find either entry.
+    """
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    outpath = str(tmp_path / "static")
+    # An anonymized export ships its own renamed surface files (make_static
+    # rewrites the names inside them), so it needs them copied.
+    cortex.webgl.make_static(outpath, vol, html_embed=False,
+                             copy_ctmfiles=anonymize, anonymize=anonymize)
+    with open(os.path.join(outpath, "index.html")) as fp:
+        html = fp.read()
+
+    surfaces = set(_static_page_json(html, "subjects"))
+    viewopts = _static_page_json(html, "viewopts")
+    assert set(viewopts["saved_views"]) == surfaces
+    assert set(viewopts["quickflat_size"]) == surfaces
+    if anonymize:
+        assert surfaces == {"S0"}
+        assert subj not in viewopts["saved_views"]
+        assert subj not in viewopts["quickflat_size"]
+    else:
+        assert surfaces == {subj}
+
+
+def test_a_template_without_the_new_scripts_still_opens(tmp_path):
+    """A custom template.html from before viewtools.js leaves the viewer usable.
+
+    Template directories can shadow template.html, and one written before this
+    viewer gained its views menu loads none of viewtools.js, interpolation.js,
+    zipstore.js or mp4mux.js. The viewer must open without them -- just without
+    the views menu and the animation panel.
+    """
+    webgl = os.path.dirname(cortex.webgl.view.__file__)
+    with open(os.path.join(webgl, "template.html")) as fp:
+        legacy = [line for line in fp if not any(
+            script in line for script in ("viewtools.js", "interpolation.js",
+                                          "zipstore.js", "mp4mux.js"))]
+    (tmp_path / "template.html").write_text("".join(legacy))
+    with open(os.path.join(webgl, "mixer.html")) as fp:
+        (tmp_path / "mixer.html").write_text(fp.read())
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(
+            vol, viewer_params=dict(template=str(tmp_path / "mixer.html"))) as handle:
+        assert _js_attrs(handle, "window.jsplot").get("viewtools") is None
+        camera = _js_attrs(handle, "window.viewer.ui._desc.camera._desc")
+        assert "views" not in camera and "create animation" not in camera
+
+        handle._set_view(**{"camera.azimuth": 123})
+        time.sleep(1)
+        assert handle._capture_view()["camera.azimuth"] == pytest.approx(123, abs=1)
+
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+
+
+def test_changing_the_render_size_reframes_flat_keyframes():
+    """With "match quickflat size" ticked, flat keyframes follow the size fields.
+
+    Typed into the fields, set from code, or changed without either -- a flat
+    keyframe is framed for the size the animation renders at.
+    """
+    from cortex.webgl.view import _has_flatmap
+
+    if not _has_flatmap(subj):
+        pytest.skip("%s has no flat surface" % subj)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.create animation.action", []])
+        time.sleep(1)
+        _js_run(handle, "window.viewer._animPanel.setMatchFlat", [True])
+        handle.send(method="run", params=[
+            "window.viewer.ui._desc.camera._desc.views._desc.flat.action", []])
+        time.sleep(3)
+        _js_run(handle, "window.viewer._animPanel.addKeyframe", [])
+        time.sleep(0.5)
+
+        def flat_radius():
+            return _js_run(handle, "window.viewer._anim.keyframes.slice",
+                           [])[0]["camera.radius"]
+
+        def fitted(width, height):
+            return _js_run(handle, "window.viewer.flatFraming",
+                           [width / height])["radius"]
+
+        # Set from code.
+        _js_run(handle, "window.viewer._animPanel.setRenderSize", [600, 1000])
+        assert flat_radius() == pytest.approx(fitted(600, 1000), rel=1e-6)
+
+        # Typed into the fields.
+        def type_size(page):
+            page.locator(".anim-render").click()      # show the render form
+            for field, value in ((".anim-width", "1600"), (".anim-height", "400")):
+                page.locator(field).fill(value)
+                page.locator(field).press("Tab")      # a change event, as typing gives
+
+        handle._pw_thread.run_on_page(type_size)
+        time.sleep(0.5)
+        assert flat_radius() == pytest.approx(fitted(1600, 400), rel=1e-6)
+
+        # Changed with no event at all: the render itself re-frames first.
+        handle._pw_thread.run_on_page(lambda page: page.evaluate(
+            "() => { document.querySelector('.anim-width').value = 700;"
+            "        document.querySelector('.anim-height').value = 700; }"))
+        handle.send(method="set", params=["window.viewer._anim.last", 0])
+        _js_run(handle, "window.viewer._animPanel.render", [])
+        assert flat_radius() == pytest.approx(fitted(700, 700), rel=1e-6)
+        handle._pw_thread.wait_for_download(timeout=120)
