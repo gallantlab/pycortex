@@ -66,6 +66,19 @@ bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
 `Vertex2D` images were added later, once gh-714 was fixed, with the same
 pinned chromium/playwright/matplotlib versions below.
 
+gh-695 added and regenerated references, with the pins below unchanged:
+
+- It added `multilayer_nan_dataviews/` (12 images) and the `Volume2D`/`Vertex2D`
+  images in `nan_alpha_dataviews/` (4).
+- It regenerated every `quickflat_*` image in `alpha_dataviews/`,
+  `nan_dataviews/` and `nan_alpha_dataviews/` (14): quickflat now defaults to
+  `nanmean=True` and averages RGBA in premultiplied space.
+- It regenerated `webgl_{Vertex,Vertex2D,VertexRGB,Volume2D}` in
+  `nan_dataviews/` and `webgl_fiducial_lateral_pivot_{Vertex,Volume}` in
+  `nonflat_views/`.
+
+The other 12 images, all `webgl_*`, are unchanged by gh-695.
+
 **TODO: update the reference above with the squashed commit from gh-695**
 
 | | |
@@ -74,8 +87,9 @@ pinned chromium/playwright/matplotlib versions below.
 | playwright | 1.62.0 (fixes the chromium build above) |
 | matplotlib | 3.10.9 |
 
-Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build, which determines the webgl references; matplotlib rasterizes the quickflat ones.
+playwright and matplotlib are pinned in the `test` dependency group, and
+re-pinning is part of regenerating. playwright fixes the chromium build, which
+determines the webgl references; matplotlib rasterizes the quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 
@@ -115,5 +129,5 @@ change is cosmetic, then:
 REGENERATE_REFERENCE_IMAGES=1 pytest cortex/tests/test_visual_regression.py
 ```
 
-That rewrites all four directories in one run. Review the resulting diff before
+That rewrites all five directories in one run. Review the resulting diff before
 committing.
