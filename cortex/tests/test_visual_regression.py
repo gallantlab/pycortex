@@ -953,12 +953,6 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
     Current behavior, which these references encode, is that NaN-alpha elements
     render fully transparent and the curvature underlay shows through -- the same
     outcome as a NaN in the data.
-
-    Be aware that this behavior is not settled. gh-695, which unifies NaN and
-    alpha handling across quickflat, WebGL and the RGB dataviews, changes how the
-    surviving RGB is blended without changing the transparency itself. If that lands, expect these four references to need
-    regenerating; the transparency assertion should survive, the exact blend will
-    not.
     """
     view = _build_nan_alpha_dataview(name)
     failures = _render_and_check_dataview(name, view, NAN_ALPHA_REFERENCE_DIR, tmp_path)
