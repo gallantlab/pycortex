@@ -38,6 +38,26 @@ var mriview = (function(module) {
         return true;
     };
 
+    // Values of every channel of a vertex dataview (1 for 1D, 2 for 2D) at the
+    // picked vertex `coords`, as returned by Viewer.getCoords. Shared by the
+    // hover and click readouts.
+    module.vertexValues = function (dataview, coords) {
+        var hemiIdx = (coords.hemi == 'left') ? 0 : 1;
+        // Map the picked vertex through the subject's indexMap.
+        // dim1 and dim2 share subject for 2D views (server-side).
+        var subject = dataview.data[0].subject;
+        var indexMap = subjects[subject].hemis[coords.hemi].indexMap;
+        var vertex = indexMap[coords.vertex];
+        return dataview.data.map(function (d) {
+            // NaN was replaced by 0 in the GPU buffer (dataset.js); report
+            // NaN from the mask instead of a fake 0.
+            if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
+                d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
+                return NaN;
+            return d.verts[0][hemiIdx].array[vertex];
+        });
+    };
+
     // Returns true iff every entry in `data` has the per-frame buffers the
     // hover/click handlers need (verts for vertex data, textures for
     // volume data). Loading is async — the dataview's `loaded` deferred
@@ -790,21 +810,7 @@ var mriview = (function(module) {
                 if (this.active.vertex) {
                     let coords = this.getCoords(event)
                     if (coords !== -1) {
-                        let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                        // Map the picked vertex through the subject's indexMap.
-                        // dim1 and dim2 share subject for 2D views (server-side).
-                        let subject = this.active.data[0].subject
-                        let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                        let vertex = indexMap[coords.vertex]
-                        // Now access the data for each channel (1 for 1D, 2 for 2D)
-                        values = this.active.data.map(function (d) {
-                            // NaN was replaced by 0 in the GPU buffer (dataset.js); report
-                            // NaN from the mask instead of a fake 0.
-                            if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
-                                d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
-                                return NaN
-                            return d.verts[0][hemiIdx].array[vertex]
-                        })
+                        values = module.vertexValues(this.active, coords)
                     }
                 } else {
                     // Volume branch. For 2D views we reuse data[0]'s mouse_index
@@ -994,21 +1000,7 @@ var mriview = (function(module) {
         let values = null;
         if (this.active.vertex) {
             if (coords !== -1) {
-                let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                // Map the picked vertex through the subject's indexMap.
-                // dim1 and dim2 share subject for 2D views (server-side).
-                let subject = this.active.data[0].subject
-                let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                let vertex = indexMap[coords.vertex]
-                // Now access the data for each channel (1 for 1D, 2 for 2D)
-                values = this.active.data.map(function (d) {
-                    // NaN was replaced by 0 in the GPU buffer (dataset.js); report
-                    // NaN from the mask instead of a fake 0.
-                    if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
-                        d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
-                        return NaN
-                    return d.verts[0][hemiIdx].array[vertex]
-                })
+                values = module.vertexValues(this.active, coords)
             }
         } else {
             if (coords !== -1) {

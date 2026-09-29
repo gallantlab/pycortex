@@ -16,6 +16,20 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         colormap: [
+            // NaN compares false against everything, so a component is NaN
+            // exactly when it is neither <= 0 nor > 0.
+            "bvec2 notnan(vec2 x) {",
+                "return notEqual(lessThanEqual(x, vec2(0.)), lessThan(vec2(0.), x));",
+            "}",
+            "bvec4 notnan(vec4 x) {",
+                "return notEqual(lessThanEqual(x, vec4(0.)), lessThan(vec4(0.), x));",
+            "}",
+            // Alpha map (DATAALPHA), this frame and the next: NaN -> transparent,
+            // else scale all four (premultiplied) channels by the alpha value.
+            "vec4 apply_dataalpha(vec4 color, vec2 avals) {",
+                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
+                "return all(notnan(avals)) ? color * aval : vec4(0.);",
+            "}",
             "vec2 vnorm(vec4 values) {",
                 "float range = vmax[0] - vmin[0];",
                 "float norm0 = (values.x - vmin[0]) / range;",
@@ -35,8 +49,7 @@ var Shaderlib = (function() {
             "vec4 colorlut(vec4 values) {",
                 "vec2 cuv = vnorm(values);",
                 "vec4 vColor = texture2D(colormap, cuv);",
-                "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
-                "return all(valid) ? vColor : vec4(0.);",
+                "return all(notnan(values)) ? vColor : vec4(0.);",
             "}",
         ].join("\n"),
 
@@ -334,11 +347,7 @@ var Shaderlib = (function() {
                 "vec4 vColor = colorlut(values);",
             "#endif",
             "#ifdef DATAALPHA",
-                // alpha map: NaN (neither <=0 nor >0) -> transparent, else
-                // scale all four (premultiplied) channels by the alpha value.
-                "bvec2 avalid = notEqual(lessThanEqual(avals, vec2(0.)), lessThan(vec2(0.), avals));",
-                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
-                "vColor = all(avalid) ? vColor * aval : vec4(0.);",
+                "vColor = apply_dataalpha(vColor, avals);",
             "#endif",
                 "vColor *= dataAlpha;",
 
@@ -620,9 +629,9 @@ var Shaderlib = (function() {
                 "vec2 sa = vec2("+sampler+"_x(dataalpha[0], coord_x).r, "+sampler+"_x(dataalpha[1], coord_x).r);",
             "#endif",
             "#ifdef NANMEAN",
-                "bool ok = all(notEqual(lessThanEqual(s, vec4(0.)), lessThan(vec4(0.), s)));",
+                "bool ok = all(notnan(s));",
                 "#ifdef DATAALPHA",
-                "ok = ok && all(notEqual(lessThanEqual(sa, vec2(0.)), lessThan(vec2(0.), sa)));",
+                "ok = ok && all(notnan(sa));",
                 "#endif",
             "#else",
                 "bool ok = true;",
@@ -714,11 +723,7 @@ var Shaderlib = (function() {
                 "vec4 vColor = nvalid > 0. ? colorlut(values) : vec4(0.);",
             "#endif",
             "#ifdef DATAALPHA",
-                // alpha map: NaN (neither <=0 nor >0) -> transparent, else
-                // scale all four (premultiplied) channels by the alpha value.
-                "bvec2 avalid = notEqual(lessThanEqual(avals, vec2(0.)), lessThan(vec2(0.), avals));",
-                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
-                "vColor = all(avalid) ? vColor * aval : vec4(0.);",
+                "vColor = apply_dataalpha(vColor, avals);",
             "#endif",
                 "vColor *= dataAlpha;",
                 //"vColor.a = (values.x - vmin[0]) / (vmax[0] - vmin[0]);",
