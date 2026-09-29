@@ -17,10 +17,6 @@ Filenames are `quickflat_<Class>` and `webgl_<Class>`, except
 `nonflat_views/`, which uses `webgl_<surface>_<angle>_<Class>`.
 
 `nan_alpha_dataviews/` covered only the two RGB classes until gh-695.
-`Volume2D`/`Vertex2D` accepted an `alpha=` too, but it was kept as a bare
-ndarray in `attrs` rather than becoming an attribute, so quickflat mishandled
-it and the webgl viewer failed to load the dataview; it is now a real attribute
-multiplied into the alpha the 2D colormap already carries.
 
 `multilayer_nan_dataviews/` is the only group that changes the depth sampling.
 Everywhere else quickflat averages 32 samples across the cortical thickness and
@@ -70,12 +66,7 @@ bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
 `Vertex2D` images were added later, once gh-714 was fixed, with the same
 pinned chromium/playwright/matplotlib versions below.
 
-> **The flatmap references need regenerating as part of gh-695.** They were
-> generated before it unified NaN and alpha handling, and that change moves
-> every flatmap render: quickflat now defaults to `nanmean=True`, and both
-> renderers average RGBA in premultiplied space. `nonflat_views/` is the one
-> directory unaffected -- it renders `Volume`/`Vertex` with neither NaNs nor
-> alpha.
+**TODO: update the reference above with the squashed commit from gh-695**
 
 | | |
 | --- | --- |

@@ -5,6 +5,7 @@ import pytest
 
 import cortex
 from cortex import dataset
+import cortex.utils
 from cortex.webgl.data import Package
 
 
@@ -198,11 +199,6 @@ def test_package_deduplicates_identical_brains() -> None:
     """Two dims/channels with byte-identical data share one content-hash name;
     the package must contain that brain once, and ``reorder`` must not choke
     on it (it used to re-index the already-serialized bytes)."""
-    import numpy as np
-    import cortex
-    from cortex import utils
-    from cortex.webgl.data import Package
-
     subj = "S1"
     nverts = cortex.db.get_surf(subj, "fiducial", merge=True)[0].shape[0]
     x = np.random.default_rng(0).standard_normal(nverts)
@@ -213,7 +209,7 @@ def test_package_deduplicates_identical_brains() -> None:
     assert len(names) == len(set(names)) == 2
 
     # reorder with the same ctm pack the viewer uses (cortex.webgl.make_static)
-    ctm = utils.get_ctmpack(
+    ctm = cortex.utils.get_ctmpack(
         subj, ("inflated",), method="mg2", level=9, recache=False,
         external_svg=None, overlays_available=None,
     )
@@ -225,11 +221,6 @@ def test_package_deduplicates_identical_brains() -> None:
 def test_package_rejects_same_bytes_different_metadata() -> None:
     """Same data bytes give the same content-hash name; if the metadata
     differs the package cannot represent both and must say so."""
-    import numpy as np
-    import pytest
-    import cortex
-    from cortex.webgl.data import Package
-
     nverts = cortex.db.get_surf("S1", "fiducial", merge=True)[0].shape[0]
     x = np.zeros(nverts)
     a = cortex.Vertex(x, "S1")
