@@ -88,6 +88,26 @@ def _warn_alpha_range(alpha: npt.ArrayLike) -> None:
         )
 
 
+ScalarType = TypeVar("ScalarType", bound=np.generic)
+def _broadcast_fill(
+    arr: npt.NDArray[ScalarType], mask: npt.NDArray[np.bool_], fill: float, ntrail: int
+) -> Optional[npt.NDArray[ScalarType]]:
+    """Copy of ``arr`` broadcast against ``mask``, with ``fill`` written wherever
+    ``mask`` is True, keeping ``arr``'s dtype. Leading axes may be added or grown
+    (frames), but ``arr``'s last ``ntrail`` axes must come through unchanged;
+    otherwise ``mask`` doesn't fit ``arr`` and None is returned.
+    """
+    try:
+        shape = np.broadcast_shapes(mask.shape, arr.shape)
+    except ValueError:
+        return None
+    if shape[-ntrail:] != arr.shape[-ntrail:]:
+        return None
+    new = np.array(np.broadcast_to(arr, shape))  # copy, keep dtype
+    new[np.broadcast_to(mask, shape)] = fill
+    return new
+
+
 DataviewType = TypeVar("DataviewType", bound=Dataview)
 def _mask_alpha(alpha: DataviewType, mask: npt.ArrayLike) -> DataviewType:
     """Return a copy of ``alpha`` (Volume or Vertex) with ``alpha.vmin`` written
@@ -113,24 +133,14 @@ def _mask_alpha(alpha: DataviewType, mask: npt.ArrayLike) -> DataviewType:
         fill = 0
     else:
         fill = 0.0 if alpha.vmin is None else alpha.vmin
-    try:
-        shape = np.broadcast_shapes(mask.shape, data.shape)
-    except ValueError:
-        shape = None
-    if shape is not None and shape[-data.ndim:] == data.shape:
-        new = np.array(np.broadcast_to(data, shape))  # copy, keep dtype
-        new[np.broadcast_to(mask, shape)] = fill
+    new = _broadcast_fill(data, mask, fill, data.ndim)
+    if new is not None:
         return alpha.copy(new)
 
     if isinstance(alpha, VolumeData):
         vol = np.asarray(alpha.volume)  # (t, z, y, x), fresh copy if linear
-        try:
-            shape = np.broadcast_shapes(mask.shape, vol.shape)
-        except ValueError:
-            shape = None
-        if shape is not None and shape[-3:] == vol.shape[-3:]:
-            new = np.array(np.broadcast_to(vol, shape))  # copy, keep dtype
-            new[np.broadcast_to(mask, shape)] = fill
+        new = _broadcast_fill(vol, mask, fill, 3)
+        if new is not None:
             if new.shape[0] == 1 and not alpha.movie:
                 new = new[0]
             return Volume(
