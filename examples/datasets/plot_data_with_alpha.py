@@ -5,14 +5,14 @@ Plot Data with Alpha Values
 
 It is often useful to plot a primary map (the "data" you are interested in)
 masked or attenuated by a secondary map (a "confidence" or "weight"
-map). For example, an encoding model's tuning maps are 
+map). For example, an encoding model's tuning maps are
 interpretable where the model fits well, so one could plot
 tuning maps with opacity proportional to the per-voxel/per-vertex prediction
 accuracy. Voxels/vertices where the model fits poorly fade into the
 gray curvature underlay; voxels/vertices where the model fits well are
 fully opaque.
 
-pycortex supports two patterns for this:
+pycortex supports three patterns for this:
 
 1. **Scalar data with an alpha map** -- use :class:`Volume2D` /
    :class:`Vertex2D` with a 2D colormap whose second axis encodes alpha
@@ -23,8 +23,9 @@ pycortex supports two patterns for this:
 
 2. **RGB data with an alpha map** -- pass ``alpha=`` directly to
    :class:`VolumeRGB` / :class:`VertexRGB`. The alpha can be any
-   per-voxel/per-vertex array (or a :class:`Volume`/:class:`Vertex`)
-   in ``[0, 1]``.
+   per-voxel/per-vertex array in ``[0, 1]``, or a
+   :class:`Volume`/:class:`Vertex` whose own ``vmin``/``vmax`` set the
+   range.
 
 3. **2D data with an alpha map** -- :class:`Volume2D` / :class:`Vertex2D`
    also accept ``alpha=``, which is multiplied into the colormap alpha. This
@@ -35,10 +36,11 @@ In every case, NaN anywhere at a voxel/vertex (in the data, in either
 dimension of a 2D view, in any RGB channel, or in the alpha map itself)
 renders fully transparent, so the curvature shows through.
 
-Below, we illustrate both patterns with a synthetic "model accuracy"
+Below, we illustrate all three patterns with a synthetic "model accuracy"
 mask -- a 3D Gaussian bump for the volume case and a vertex-distance
 falloff for the surface case -- so cortex near the bump centre stays
-opaque while the periphery fades into the curvature.
+opaque while the periphery fades into the curvature. Pattern 3 adds a
+separate opacity map and a slab of NaN data.
 """
 
 import cortex
@@ -53,7 +55,7 @@ xfm = "fullhead"
 # Synthesize the data and alpha maps
 # ----------------------------------
 #
-# All four patterns below reuse the same synthetic inputs, so we set
+# All the patterns below reuse the same synthetic inputs, so we set
 # everything up once here and only show the *plotting* call in each
 # pattern's cell. In a real analysis these would come from your model
 # fits (e.g. ``data`` = regression coefficients, ``accuracy`` =
