@@ -44,10 +44,8 @@ import cortex.polyutils
 from cortex.dataset import Dataview
 from cortex.tests.testing_utils import has_playwright
 
-#: The render tests need a browser. The builder checks at the bottom of this
-#: file do not, and they are the ones that catch a suite masking away the very
-#: thing it meant to render, so this is applied per test rather than as a
-#: module-level ``pytestmark`` -- a checkout without playwright still runs them.
+#: The render tests need a browser, but the builder checks at the bottom of this
+#: file do not, so don't ignore at the module level.
 requires_playwright = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
 )

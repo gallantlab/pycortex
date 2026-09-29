@@ -39,11 +39,9 @@ curvature **un-thresholded** (`curvature_threshold=False` and
 differences in the renderers' anti-aliasing implementations.)
 Everything else is at its default.
 
-`multilayer_nan_dataviews/` additionally passes `thick=32` to quickflat and
-`layers=32` to the viewer, and sets `nanmean` explicitly on both — that is what
-it is for. The other three flatmap groups leave all of that at each renderer's
-default.
-
+`multilayer_nan_dataviews/` intentionally also passes `thick=32` to quickflat and
+`layers=32` to the viewer, and sets `nanmean` explicitly on both. The other three
+flatmap groups leave all of that at each renderer's default.
 `nonflat_views/` keeps pycortex's default thresholded curvature, unlike the
 flatmap groups.
 
@@ -86,8 +84,7 @@ pinned chromium/playwright/matplotlib versions below.
 | matplotlib | 3.10.9 |
 
 Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build, which determines the 28
-webgl references; matplotlib rasterizes the 24 quickflat ones.
+regenerating. playwright fixes the chromium build, which determines the webgl references; matplotlib rasterizes the quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 

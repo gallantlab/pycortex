@@ -119,8 +119,7 @@ class Dataview2D(Dataview):
 
         d1js = self.dim1.to_json()
         d2js = self.dim2.to_json()
-        # ``is None`` checks: a legitimate vmin/vmax of 0 must not fall back
-        # to the auto range (same class of bug as 5482c8bf for Volume).
+        # Use ``is None`` rather than `or` because vmin/vmax can be 0.
         sdict.update(dict(
             vmin = [[d1js['vmin'][0] if self.vmin is None else self.vmin,
                      d2js['vmin'][0] if self.vmin2 is None else self.vmin2]],

@@ -63,9 +63,9 @@ jobs:
 
     - name: Test with pytest
       # A backstop only: pytest-timeout (pytest.ini) already fails a single
-      # hung test after 240 s. The suite itself takes 20-25 min on a hosted
+      # hung test after 240 s. The suite itself takes 25-30 min on a hosted
       # runner, mostly headless webgl renders.
-      timeout-minutes: 40
+      timeout-minutes: 35
       run: pytest --cov=./
 
     - name: Upload coverage to Codecov
