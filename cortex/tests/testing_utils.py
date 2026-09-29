@@ -1,3 +1,7 @@
+from typing import Any
+
+from cortex.export.save_views import ViewParams
+
 # Skip any test that relies on playwright if it's not available.
 try:
     from playwright.sync_api import sync_playwright
@@ -43,13 +47,13 @@ def wait_for_file(path, timeout=30):
 # --------------------------------------------------------------------------- #
 
 
-def js_eval(handle, expr):
+def js_eval(handle: Any, expr: str) -> Any:
     """Evaluate a javascript expression in the viewer page; one roundtrip."""
     result = handle.send(method="run", params=["window.eval", [expr]])
     return result[0] if isinstance(result, list) and result else result
 
 
-def wait_js(handle, expr, what, timeout=60.0):
+def wait_js(handle: Any, expr: str, what: str, timeout: float = 60.0) -> None:
     """Poll until the javascript expression `expr` evaluates to ``true``."""
     import time
 
@@ -61,7 +65,7 @@ def wait_js(handle, expr, what, timeout=60.0):
     raise RuntimeError("timed out after %.0fs waiting for %s" % (timeout, what))
 
 
-def settle(handle):
+def settle(handle: Any) -> None:
     """Wait until the viewer has drawn at least one frame since this call.
 
     ``getImage`` renders synchronously, but some state only takes effect in
@@ -73,7 +77,7 @@ def settle(handle):
     wait_js(handle, "window._settled === true", "a redraw")
 
 
-def wait_active(handle, name):
+def wait_active(handle: Any, name: str) -> None:
     """Wait until dataview `name` is shown with all of its data loaded.
 
     Call after ``setData``/``addData``: the dataview's ``loaded`` deferred
@@ -91,7 +95,8 @@ def wait_active(handle, name):
     settle(handle)
 
 
-def set_view(handle, view, subject="S1"):
+
+def set_view(handle: Any, view: ViewParams, subject: str = "S1") -> None:
     """``handle._set_view(**view)`` in a single javascript task.
 
     Every ``ui.set`` redraws the viewer and under software WebGL a redraw
@@ -110,7 +115,9 @@ def set_view(handle, view, subject="S1"):
     settle(handle)
 
 
-def render(handle, path, size=(512, 384), timeout=30):
+def render(
+    handle: Any, path: str, size: tuple[int, int] = (512, 384), timeout: float = 30
+) -> None:
     """``handle.getImage(path, size)`` and wait until the PNG is complete.
 
     The server writes the posted image in place, so a file that merely exists
@@ -133,7 +140,7 @@ def render(handle, path, size=(512, 384), timeout=30):
             time.sleep(0.05)
 
 
-def page_errors(handle):
+def page_errors(handle: Any) -> list[str]:
     """Uncaught javascript exceptions the viewer page raised so far.
 
     Browser events reach Python only on the headless worker's next poll, so
@@ -144,4 +151,5 @@ def page_errors(handle):
     from cortex.export.headless import EVENT_POLL_INTERVAL
 
     time.sleep(2 * EVENT_POLL_INTERVAL)
+    # TODO: use cortex.export.headless_viewer.filter_browser_errors() ?
     return [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]

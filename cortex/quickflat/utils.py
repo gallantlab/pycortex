@@ -15,7 +15,7 @@ from ..database import db
 from ..options import config
 
 
-def _rgba_nan_mask(raw, shape):
+def _rgba_nan_mask(raw: dataset.Dataview, shape: tuple[int, ...]) -> Optional[npt.NDArray[np.bool_]]:
     """Boolean NaN mask (or None) stored by a raw conversion (``Volume.raw``,
     ``Volume2D.raw``, ...), in the layout of the uint8 RGBA representation
     ``shape`` (time axis included). None for native RGB dataviews: there NaN

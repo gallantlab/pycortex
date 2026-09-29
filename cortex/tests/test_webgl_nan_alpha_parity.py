@@ -9,15 +9,21 @@ within a tolerance.
 
 Skipped if playwright is not installed.
 """
+from pathlib import Path
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 import cortex
 import cortex.export
+from cortex.dataset import Dataview
 from cortex.export.save_views import (
     angle_view_params,
     default_view_params,
     unfold_view_params,
+    ViewParams,
 )
 from cortex.tests.testing_utils import (
     has_playwright,
@@ -32,7 +38,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
-FLAT = {
+FLAT: ViewParams = {
     **default_view_params,
     **angle_view_params["flatmap"],
     **unfold_view_params["flatmap"],
@@ -40,7 +46,7 @@ FLAT = {
 TOL = 0.12  # absolute tolerance on the visible-data fraction
 
 
-def _fractions(path):
+def _fractions(path: str) -> tuple[float, int]:
     """(fraction of brain pixels showing data, number of brain pixels)."""
     from PIL import Image
 
@@ -53,10 +59,10 @@ def _fractions(path):
     return (int((red & brain).sum()) / max(n_brain, 1)), n_brain
 
 
-def _quickshow(view, path):
+def _quickshow(view: Dataview, path: str) -> tuple[float, int]:
     import matplotlib
 
-    matplotlib.use("Agg")
+    matplotlib.use("Agg") # TODO: remove this once quickshow is refactored to not require a display
     import matplotlib.pyplot as plt
 
     fig = cortex.quickshow(
@@ -68,7 +74,7 @@ def _quickshow(view, path):
     return _fractions(path)
 
 
-def _webgl(view, path):
+def _webgl(view: Dataview, path: str) -> tuple[float, int]:
     with cortex.export.headless_viewer(
         view, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
@@ -79,7 +85,7 @@ def _webgl(view, path):
     return _fractions(path)
 
 
-def _cases():
+def _cases() -> dict[str, Dataview]:
     zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
     post = yy < 35  # posterior slab
     pts = cortex.db.get_surf(subj, "fiducial", merge=True)[0]
@@ -87,10 +93,10 @@ def _cases():
     vpost = pts[:, 1] < np.percentile(pts[:, 1], 35)
     mask = cortex.db.get_mask(subj, xfmname, "thick")
 
-    def V(d, **kw):
+    def V(d: npt.NDArray, **kw: Any) -> cortex.Volume:
         return cortex.Volume(d, subj, xfmname, **kw)
 
-    def X(d, **kw):
+    def X(d: npt.NDArray, **kw: Any) -> cortex.Vertex:
         return cortex.Vertex(d, subj, **kw)
 
     ones_v, ones_x = np.ones(volshape), np.ones(nv)
@@ -98,7 +104,7 @@ def _cases():
     nan_x = ones_x.copy(); nan_x[vpost] = np.nan
     a0_v = (~post).astype(float)
     a0_x = (~vpost).astype(float)
-    kw2d = dict(cmap="RdBu_r_alpha", vmin=-1, vmax=1, vmin2=0, vmax2=1)
+    kw2d: dict[str, Any] = dict(cmap="RdBu_r_alpha", vmin=-1, vmax=1, vmin2=0, vmax2=1)
     zeros_v, zeros_x = np.zeros(volshape), np.zeros(nv)
 
     return {
@@ -142,7 +148,8 @@ def _cases():
 
 
 @pytest.fixture(scope="module")
-def cases():
+# TODO: combine with `_cases`
+def cases() -> dict[str, Dataview]:
     return _cases()
 
 
@@ -153,7 +160,7 @@ def cases():
     "volumergb_nan_channel", "volumergb_masked_alpha", "volumergb_nan_in_alpha",
     "volumergb_color_voxels_nan", "vertexrgb_alpha0", "vertexrgb_nan_in_alpha",
 ])
-def test_visible_fraction_matches(name, cases, tmp_path):
+def test_visible_fraction_matches(name: str, cases: dict[str, Dataview], tmp_path: Path) -> None:
     view = cases[name]
     f_qs, n_qs = _quickshow(view, str(tmp_path / ("qs_%s.png" % name)))
     f_wg, n_wg = _webgl(view, str(tmp_path / ("wg_%s.png" % name)))
@@ -167,7 +174,7 @@ def test_visible_fraction_matches(name, cases, tmp_path):
     )
 
 
-def test_multilayer_nanmean_toggle(tmp_path):
+def test_multilayer_nanmean_toggle(tmp_path: Path) -> None:
     """With several layers, NaN voxels are left out of the average (like
     quickflat's ``nanmean=True``) unless the surface's ``nanmean`` toggle is
     off, in which case one NaN at any depth makes the fragment transparent."""
@@ -175,19 +182,19 @@ def test_multilayer_nanmean_toggle(tmp_path):
     d = np.full(volshape, 5.0)
     d[(xx + yy + zz) % 3 == 0] = np.nan  # a third of the voxels, scattered
     vol = cortex.Volume(d, subj, xfmname, cmap="Reds", vmin=0, vmax=1)
-    view = {
+    view: ViewParams = {
         **default_view_params,
         **angle_view_params["lateral_pivot"],
         **unfold_view_params["inflated"],
     }
 
-    def _red(path):
+    def _red(path: str) -> int:
         from PIL import Image
 
         rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
         return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
 
-    counts = {}
+    counts: dict[tuple[int, bool], int] = {}
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
@@ -208,7 +215,7 @@ def test_multilayer_nanmean_toggle(tmp_path):
     assert counts[(8, False)] < 0.6 * counts[(8, True)], counts
 
 
-def test_multilayer_nanmean_toggle_rgb(tmp_path):
+def test_multilayer_nanmean_toggle_rgb(tmp_path: Path) -> None:
     """Same as above for RGB data: NaN became alpha 0 in the texture, so with
     ``nanmean`` fully transparent layer samples are left out of the average."""
     zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
@@ -220,13 +227,13 @@ def test_multilayer_nanmean_toggle_rgb(tmp_path):
         cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1),
         cortex.Volume(zeros, subj, xfmname, vmin=0, vmax=1), subj, xfmname,
     )
-    view = {
+    view: ViewParams = {
         **default_view_params,
         **angle_view_params["lateral_pivot"],
         **unfold_view_params["inflated"],
     }
 
-    def _red(path):
+    def _red(path: str) -> int:
         """Total redness: sum of R - max(G, B) over red-dominant pixels, so
         that a partially transparent red (alpha-weighted average) scores
         lower than an opaque one covering the same pixels."""
@@ -236,7 +243,7 @@ def test_multilayer_nanmean_toggle_rgb(tmp_path):
         redness = rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2])
         return int(redness[redness > 50].sum())
 
-    counts = {}
+    counts: dict[tuple[int, bool], int] = {}
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:
@@ -256,7 +263,7 @@ def test_multilayer_nanmean_toggle_rgb(tmp_path):
     assert counts[(8, False)] < 0.85 * counts[(8, True)], counts
 
 
-def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path):
+def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path: Path) -> None:
     """Between two frames the vertex shader mixes frame f and f+1. A vertex
     that is NaN in f+1 (replaced by 0 in the GPU buffer) must be masked while
     interpolating, not fade towards a fake 0."""
@@ -265,19 +272,19 @@ def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path):
     movie = np.full((2, nverts), 5.0)
     movie[1, :nl] = np.nan  # left hemisphere undefined in frame 1 only
     vtx = cortex.Vertex(movie, subj, cmap="Reds", vmin=0, vmax=1)
-    view = {
+    view: ViewParams = {
         **default_view_params,
         **angle_view_params["lateral_pivot"],
         **unfold_view_params["inflated"],
     }
 
-    def _red(path):
+    def _red(path: str) -> int:
         from PIL import Image
 
         rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
         return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
 
-    counts = {}
+    counts: dict[float, int] = {}
     with cortex.export.headless_viewer(
         vtx, viewer_params=dict(labels_visible=[], overlays_visible=[])
     ) as handle:

@@ -73,7 +73,7 @@ def HSV2RGB(color: Color[float] | npt.NDArray) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-def _warn_alpha_range(alpha):
+def _warn_alpha_range(alpha: npt.ArrayLike) -> None:
     """Warn when a raw (non-uint8) alpha array lies outside [0, 1]."""
     alpha = np.asarray(alpha)
     if alpha.dtype == np.uint8 or alpha.size == 0:
@@ -88,7 +88,8 @@ def _warn_alpha_range(alpha):
         )
 
 
-def _mask_alpha(alpha, mask):
+DataviewType = TypeVar("DataviewType", bound=Dataview)
+def _mask_alpha(alpha: DataviewType, mask: npt.ArrayLike) -> DataviewType:
     """Return a copy of ``alpha`` (Volume or Vertex) with ``alpha.vmin`` written
     wherever ``mask`` is True.
 
@@ -181,7 +182,7 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
-    def _apply_nan_mask(self, alpha: BrainData):
+    def _apply_nan_mask(self, alpha: Dataview) -> Dataview:
         """Apply stored NaN mask to alpha, enforcing transparency for NaN
         positions even when the user overrides the alpha channel. uint8 RGB
         channels cannot hold NaN, so the mask is captured before conversion

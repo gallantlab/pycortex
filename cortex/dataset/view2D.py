@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Optional, Union
+from typing import Optional, Union, cast
 import warnings
 
 import numpy as np
@@ -18,6 +18,8 @@ class Dataview2D(Dataview):
     """
     dim1: Dataview
     dim2: Dataview
+    _cls: type[BrainData]
+    _alpha_brain_cache: Optional[Dataview]
 
     def __init__(self, description: str="", cmap: Optional[str]=None,
                  vmin: Optional[float]=None, vmax: Optional[float]=None,
@@ -40,14 +42,14 @@ class Dataview2D(Dataview):
         self.alpha = alpha
 
     @property
-    def alpha(self):
+    def alpha(self) -> Optional[Dataview]:
         """Optional alpha map (Volume/Vertex in [vmin, vmax]) multiplied into
         the colormap alpha. NaN anywhere (dim1, dim2 or alpha) renders as
         alpha 0 regardless of this map."""
         return self._alpha
 
     @alpha.setter
-    def alpha(self, alpha):
+    def alpha(self, alpha: Optional[Union[npt.ArrayLike, Dataview]]) -> None:
         if alpha is not None and not isinstance(alpha, self._cls):
             alpha = np.asarray(alpha)
             _warn_alpha_range(alpha)
@@ -60,19 +62,20 @@ class Dataview2D(Dataview):
         self._alpha_brain_cache = None
 
     @property
-    def _alpha_brain(self):
+    def _alpha_brain(self) -> Optional[Dataview]:
         """The alpha map normalized to [0, 1] (vmin=0, vmax=1), as shipped to
         the WebGL viewer and stored in HDF files. NaN is preserved."""
         if self.alpha is None:
             return None
         if self._alpha_brain_cache is None:
-            self._alpha_brain_cache = self._wrap_alpha(self._normalized_alpha())
+            self._alpha_brain_cache = self._wrap_alpha(
+                cast(npt.NDArray, self._normalized_alpha()))
         return self._alpha_brain_cache
 
-    def _wrap_alpha(self, alpha):
+    def _wrap_alpha(self, alpha: npt.NDArray) -> Dataview:
         raise NotImplementedError
 
-    def _normalized_alpha(self, full_volume=False):
+    def _normalized_alpha(self, full_volume: bool=False) -> Optional[npt.NDArray[np.floating]]:
         """User alpha as float array in [0, 1] (NaN preserved), in the space of
         ``.data`` or, for volumes with ``full_volume=True``, of ``.volume``."""
         alpha = self.alpha
@@ -135,7 +138,10 @@ class Dataview2D(Dataview):
 
         return sdict
 
-    def _to_raw(self, data1, data2, alpha=None):
+    def _to_raw(self, data1: npt.NDArray, data2: npt.NDArray,
+                alpha: Optional[npt.NDArray]=None) -> tuple[
+                    npt.NDArray[np.uint8], npt.NDArray[np.uint8], npt.NDArray[np.uint8],
+                    npt.NDArray[np.uint8], npt.NDArray[np.bool_]]:
         """Colormap (data1, data2) through the 2D colormap.
 
         Returns ``(r, g, b, a, nan_mask)`` as uint8 channels. ``a`` is the
@@ -275,13 +281,13 @@ class Volume2D(Dataview2D):
         if self.dim1.xfmname != self.dim2.xfmname:
             raise ValueError("Both Volumes must have same xfmname to generate single raw volume")
 
-        def _same_mask(a, b):
-            return (a.linear and b.linear and a.mask.shape == b.mask.shape
-                    and np.all(a.mask == b.mask))
+        def _same_mask(a: Volume, b: Volume) -> bool:
+            return bool(a.linear and b.linear and a.mask.shape == b.mask.shape
+                        and np.all(a.mask == b.mask))
 
         linear = _same_mask(self.dim1, self.dim2)
         if linear and self.alpha is not None:
-            linear = _same_mask(self.dim1, self.alpha)
+            linear = _same_mask(self.dim1, cast(Volume, self.alpha))
         if linear:
             r, g, b, a, nan_mask = self._to_raw(
                 self.dim1.data, self.dim2.data, self._normalized_alpha())
@@ -296,7 +302,7 @@ class Volume2D(Dataview2D):
         result._nan_mask = nan_mask
         return result
 
-    def _wrap_alpha(self, alpha):
+    def _wrap_alpha(self, alpha: npt.NDArray) -> Volume:
         return Volume(alpha, self.dim1.subject, self.dim1.xfmname, vmin=0, vmax=1)
 
 
@@ -395,7 +401,7 @@ class Vertex2D(Dataview2D):
         result._nan_mask = nan_mask
         return result
 
-    def _wrap_alpha(self, alpha):
+    def _wrap_alpha(self, alpha: npt.NDArray) -> Vertex:
         return Vertex(alpha, self.dim1.subject, vmin=0, vmax=1)
 
     @property

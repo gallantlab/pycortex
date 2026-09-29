@@ -10,8 +10,10 @@ import json
 import os
 import tempfile
 import warnings
+from typing import Any, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 import cortex
@@ -24,16 +26,22 @@ subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
 no_inkscape = not has_installed("inkscape")
 
 
-def _nverts():
+def _nverts() -> int:
     return cortex.db.get_surf(subj, "fiducial", merge=True)[0].shape[0]
 
 
-def _vol_grid():
+def _vol_grid() -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp], npt.NDArray[np.intp]]:
     zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
     return zz, yy, xx
 
 
-def _make_2d(kind, d1, d2, alpha=None, **kw):
+def _make_2d(
+    kind: str,
+    d1: npt.NDArray,
+    d2: npt.NDArray,
+    alpha: Optional[Union[npt.NDArray, cortex.Volume, cortex.Vertex]] = None,
+    **kw: Any,
+) -> Union[cortex.Volume2D, cortex.Vertex2D]:
     kw.setdefault("cmap", "RdBu_r_alpha")
     kw.update(vmin=-1, vmax=1, vmin2=0, vmax2=1)
     if kind == "Volume2D":
@@ -41,7 +49,9 @@ def _make_2d(kind, d1, d2, alpha=None, **kw):
     return cortex.Vertex2D(d1, d2, subj, alpha=alpha, **kw)
 
 
-def _rgba(view):
+def _rgba(
+    view: Union[cortex.Volume2D, cortex.Vertex2D, cortex.VolumeRGB, cortex.VertexRGB],
+) -> npt.NDArray[np.uint8]:
     """uint8 RGBA array of the quickflat/raw representation, time axis dropped."""
     if isinstance(view, (cortex.Volume2D, cortex.VolumeRGB)):
         arr = view.volume if isinstance(view, cortex.VolumeRGB) else view.raw.volume
@@ -57,7 +67,7 @@ def _rgba(view):
 
 @pytest.mark.parametrize("kind", ["Volume2D", "Vertex2D"])
 @pytest.mark.parametrize("nan_in", ["dim1", "dim2", "alpha"])
-def test_2d_nan_anywhere_is_transparent(kind, nan_in):
+def test_2d_nan_anywhere_is_transparent(kind: str, nan_in: str) -> None:
     rng = np.random.default_rng(0)
     if kind == "Volume2D":
         shape = volshape
@@ -76,7 +86,7 @@ def test_2d_nan_anywhere_is_transparent(kind, nan_in):
 
 
 @pytest.mark.parametrize("kind", ["Volume2D", "Vertex2D"])
-def test_2d_alpha_kwarg_multiplies_colormap_alpha(kind):
+def test_2d_alpha_kwarg_multiplies_colormap_alpha(kind: str) -> None:
     rng = np.random.default_rng(1)
     shape = volshape if kind == "Volume2D" else (_nverts(),)
     d1 = rng.uniform(-1, 1, shape)
@@ -93,7 +103,7 @@ def test_2d_alpha_kwarg_multiplies_colormap_alpha(kind):
     np.testing.assert_array_equal(a_one, a_cmap.astype(np.uint8))
 
 
-def test_2d_alpha_accepts_volume_with_own_range():
+def test_2d_alpha_accepts_volume_with_own_range() -> None:
     rng = np.random.default_rng(2)
     d1 = rng.uniform(-1, 1, volshape)
     d2 = np.ones(volshape)
@@ -106,7 +116,7 @@ def test_2d_alpha_accepts_volume_with_own_range():
     np.testing.assert_array_equal(a, np.round(a_cmap * acc / 10.0))
 
 
-def test_2d_alpha_not_in_attrs_and_json_serializable():
+def test_2d_alpha_not_in_attrs_and_json_serializable() -> None:
     """The alpha map used to be stuffed into ``attrs`` as an ndarray, which
     crashed the WebGL viewer (500: ndarray is not JSON serializable)."""
     rng = np.random.default_rng(3)
@@ -127,7 +137,7 @@ def test_2d_alpha_not_in_attrs_and_json_serializable():
     assert "alpha" not in v_noalpha.to_json()
 
 
-def test_2d_alpha_rejects_other_subject_or_xfm():
+def test_2d_alpha_rejects_other_subject_or_xfm() -> None:
     rng = np.random.default_rng(4)
     d1 = rng.uniform(-1, 1, volshape)
     bad = cortex.Volume(rng.uniform(0, 1, volshape), subj, xfmname)
@@ -136,7 +146,7 @@ def test_2d_alpha_rejects_other_subject_or_xfm():
         _make_2d("Volume2D", d1, np.ones(volshape), alpha=bad)
 
 
-def test_package_ships_2d_alpha_as_float_brain():
+def test_package_ships_2d_alpha_as_float_brain() -> None:
     rng = np.random.default_rng(5)
     alpha = rng.uniform(0, 1, volshape)
     alpha[0] = np.nan
@@ -145,11 +155,12 @@ def test_package_ships_2d_alpha_as_float_brain():
     assert len(pkg.brains) == 3
     assert all(b["raw"] is False for b in pkg.brains.values())
     meta = pkg.metadata()
+    assert v.alpha is not None
     assert meta["views"][0]["alpha"] == [v.alpha.name]
     assert v.alpha.name in meta["images"]
 
 
-def test_2d_to_json_keeps_zero_bounds():
+def test_2d_to_json_keeps_zero_bounds() -> None:
     """``vmin=0``/``vmax=0`` must not fall back to the auto range
     (truthiness bug; same class as 5482c8bf)."""
     rng = np.random.default_rng(6)
@@ -161,7 +172,7 @@ def test_2d_to_json_keeps_zero_bounds():
     assert js["vmax"][0] == [1, 0]
 
 
-def test_2d_alpha_hdf_roundtrip():
+def test_2d_alpha_hdf_roundtrip() -> None:
     rng = np.random.default_rng(7)
     alpha = rng.uniform(0, 1, volshape)
     v = _make_2d("Volume2D", rng.uniform(-1, 1, volshape), np.ones(volshape), alpha=alpha)
@@ -171,6 +182,7 @@ def test_2d_alpha_hdf_roundtrip():
     try:
         dataset.Dataset(twod=v).save(tf.name)
         loaded = cortex.load(tf.name)
+        assert isinstance(loaded.twod, cortex.Volume2D)
         assert isinstance(loaded.twod.alpha, cortex.Volume)
         np.testing.assert_allclose(loaded.twod.alpha.data, alpha, atol=1e-6)
         np.testing.assert_array_equal(_rgba(loaded.twod), _rgba(v))
@@ -184,7 +196,7 @@ def test_2d_alpha_hdf_roundtrip():
 # ---------------------------------------------------------------------------
 
 
-def test_volumergb_masked_alpha_nan_channel_is_transparent():
+def test_volumergb_masked_alpha_nan_channel_is_transparent() -> None:
     """A masked (linear) alpha Volume used to be written through a temporary
     (``alpha.volume[mask] = vmin``), so NaN voxels stayed opaque."""
     rng = np.random.default_rng(8)
@@ -209,7 +221,7 @@ def test_volumergb_masked_alpha_nan_channel_is_transparent():
 
 
 @pytest.mark.parametrize("cls", ["VertexRGB", "VolumeRGB"])
-def test_rgb_multiframe_nan_masks_per_frame(cls):
+def test_rgb_multiframe_nan_masks_per_frame(cls: str) -> None:
     """Regression for #629: multi-frame data + NaN raised IndexError because the
     auto alpha was single-frame while the NaN mask was (T, ...)."""
     rng = np.random.default_rng(9)
@@ -229,7 +241,7 @@ def test_rgb_multiframe_nan_masks_per_frame(cls):
     assert arr[..., 3][nan_here].max() == 0
     assert arr[..., 3][~nan_here].min() > 0
     # a user-supplied single-frame alpha is broadcast, not rejected
-    if cls == "VertexRGB":
+    if isinstance(rgb, cortex.VertexRGB):
         rgb.alpha = np.full(shape[1:], 0.5)
         arr = rgb.vertices
     else:
@@ -240,7 +252,7 @@ def test_rgb_multiframe_nan_masks_per_frame(cls):
 
 
 @pytest.mark.parametrize("cls", ["VertexRGB", "VolumeRGB"])
-def test_rgb_nan_in_alpha_is_transparent(cls):
+def test_rgb_nan_in_alpha_is_transparent(cls: str) -> None:
     rng = np.random.default_rng(10)
     shape = (_nverts(),) if cls == "VertexRGB" else volshape
     alpha = rng.uniform(0.5, 1, shape)
@@ -257,7 +269,7 @@ def test_rgb_nan_in_alpha_is_transparent(cls):
     assert arr[~region][..., 3].min() > 0
 
 
-def test_color_voxels_does_not_mutate_caller_alpha():
+def test_color_voxels_does_not_mutate_caller_alpha() -> None:
     rng = np.random.default_rng(11)
     r = rng.uniform(0, 1, volshape)
     r[0] = np.nan
@@ -277,7 +289,7 @@ def test_color_voxels_does_not_mutate_caller_alpha():
 # ---------------------------------------------------------------------------
 
 
-def test_make_flatmap_image_rgb_averages_premultiplied():
+def test_make_flatmap_image_rgb_averages_premultiplied() -> None:
     """Transparent (alpha 0 / NaN) voxels must not darken neighbouring pixels.
 
     In alpha-weighted mode (``nanmean=False`` for RGB data) quickflat averages
@@ -309,7 +321,7 @@ def test_make_flatmap_image_rgb_averages_premultiplied():
         assert img[a == 255][:, 0].min() == 255
 
 
-def test_make_flatmap_image_volume_nan_transparent_when_masked():
+def test_make_flatmap_image_volume_nan_transparent_when_masked() -> None:
     mask = cortex.db.get_mask(subj, xfmname, "thick")
     data = np.ones(mask.sum())
     data[: data.size // 2] = np.nan
@@ -320,7 +332,7 @@ def test_make_flatmap_image_volume_nan_transparent_when_masked():
 
 
 @pytest.mark.skipif(no_inkscape, reason="Inkscape required")
-def test_make_svg_scalar_with_nan():
+def test_make_svg_scalar_with_nan() -> None:
     """``make_svg`` indexed ``arr[..., 3]`` on a 2-D scalar image."""
     data = np.random.default_rng(12).uniform(0, 1, volshape)
     data[:, :35] = np.nan
@@ -334,7 +346,7 @@ def test_make_svg_scalar_with_nan():
         os.unlink(tf.name)
 
 
-def test_quickflat_nanmean_is_default():
+def test_quickflat_nanmean_is_default() -> None:
     """quickflat ignores NaN voxels when averaging across thickness by
     default, like the WebGL viewer's ``nanmean`` surface toggle."""
     import inspect
@@ -347,7 +359,7 @@ def test_quickflat_nanmean_is_default():
         assert inspect.signature(func).parameters["nanmean"].default is True, func
 
 
-def test_rgb_uint8_alpha_nan_channel_is_transparent():
+def test_rgb_uint8_alpha_nan_channel_is_transparent() -> None:
     """A uint8 alpha map bypasses normalization and its inferred vmin is a
     percentile of the bytes (255 for a constant map); NaN must still give 0."""
     rng = np.random.default_rng(13)
@@ -365,14 +377,14 @@ def test_rgb_uint8_alpha_nan_channel_is_transparent():
     assert a[~np.isnan(r)].min() == 255
 
 
-def _alpha_stats(view, nanmean):
+def _alpha_stats(view: dataset.Dataview, nanmean: bool) -> npt.NDArray:
     img, _ = cortex.quickflat.utils.make_flatmap_image(view, nanmean=nanmean)
     a = img[..., 3]
     return a
 
 
 @pytest.mark.parametrize("kind", ["Volume2D", "VolumeRGB"])
-def test_quickflat_nanmean_applies_to_rgba_dataviews(kind):
+def test_quickflat_nanmean_applies_to_rgba_dataviews(kind: str) -> None:
     """quickflat's nanmean must also act on dataviews that reach the RGBA
     (uint8) branch. 2D views carry an exact NaN mask (nanmean=False hides
     any pixel touched by a NaN voxel); for RGB views NaN has become alpha 0,
@@ -383,7 +395,7 @@ def test_quickflat_nanmean_applies_to_rgba_dataviews(kind):
     ones = np.ones(volshape)
     d = ones.copy()
     d[scattered] = np.nan
-    kw2d = dict(cmap="RdBu_covar", vmin=-1, vmax=1, vmin2=0, vmax2=1)
+    kw2d: dict[str, Any] = dict(cmap="RdBu_covar", vmin=-1, vmax=1, vmin2=0, vmax2=1)
     if kind == "Volume2D":
         clean = cortex.Volume2D(ones, ones, subj, xfmname, **kw2d)
         view = cortex.Volume2D(d, ones, subj, xfmname, **kw2d)
@@ -416,7 +428,7 @@ def test_quickflat_nanmean_applies_to_rgba_dataviews(kind):
         assert ((a_strict[brain] > 0) & (a_strict[brain] < 255)).mean() > 0.5
 
 
-def test_quickflat_nanmean_native_rgb_without_nan_is_unchanged():
+def test_quickflat_nanmean_native_rgb_without_nan_is_unchanged() -> None:
     """For RGB data with intentional alpha (no NaN), nanmean=False keeps the
     alpha-weighted average; nanmean=True skips fully transparent voxels."""
     zz, yy, xx = _vol_grid()

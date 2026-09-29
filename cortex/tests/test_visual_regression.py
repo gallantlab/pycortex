@@ -689,7 +689,7 @@ def _build_multilayer_nan_dataview(name: str) -> Dataview:
     a = _synth_arrays()
     slab = ((((a["xx"] + a["yy"] + a["zz"]) // 2) % 2) == 1)
 
-    def vol_nan(arr):
+    def vol_nan(arr: npt.NDArray) -> npt.NDArray:
         out = arr.copy()
         out[slab] = np.nan
         return out
@@ -969,7 +969,9 @@ def test_visual_comparison_nan_alpha_dataviews(tmp_path, name):
 @pytest.mark.parametrize("name", MULTILAYER_DATAVIEW_NAMES)
 @pytest.mark.parametrize("nanmean", [True, False], ids=["nanmean", "no_nanmean"])
 @pytest.mark.timeout(600)
-def test_visual_comparison_multilayer_nan_dataviews(tmp_path, name, nanmean):
+def test_visual_comparison_multilayer_nan_dataviews(
+    tmp_path: Path, name: str, nanmean: bool
+) -> None:
     """Render NaNs that fall between depth samples, with both renderers averaging.
 
     The other suites leave depth sampling alone, and at their defaults the two
@@ -1083,7 +1085,7 @@ def _clean_fraction(view: Dataview) -> float:
 
 
 @pytest.mark.parametrize("suite,name", NAN_BUILDER_CASES)
-def test_nan_builders_leave_clean_elements(suite, name):
+def test_nan_builders_leave_clean_elements(suite: str, name: str) -> None:
     """Assert each NaN suite leaves elements no mask touched.
 
     A suite whose masks between them cover everything renders nothing, and

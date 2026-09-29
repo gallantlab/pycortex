@@ -1,7 +1,7 @@
 """Browser-free tests of the Python end of the viewer's websocket RPC."""
 
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterator, Optional
 
 import pytest
 
@@ -11,7 +11,7 @@ from cortex.webgl import serve
 class _FakeIOLoop:
     """Stands in for the tornado IOLoop; ``answer`` plays the browser."""
 
-    def __init__(self, answer: Callable[[dict], None]):
+    def __init__(self, answer: Callable[[dict], None]) -> None:
         self.answer = answer
 
     def add_callback(self, _send: Any, _sockets: Any, msg: str) -> None:
@@ -19,7 +19,7 @@ class _FakeIOLoop:
 
 
 @pytest.fixture
-def app():
+def app() -> Iterator[serve.WebApp]:
     app = serve.WebApp([], 0)
     # One connected client; send() only reads len(sockets).
     app.sockets = [object()]  # type: ignore[list-item]
@@ -28,7 +28,7 @@ def app():
         sock.close()
 
 
-def test_late_response_is_not_read_as_the_next_one(app):
+def test_late_response_is_not_read_as_the_next_one(app: serve.WebApp) -> None:
     """An answer that arrives after send() gave up must not answer the next call.
 
     Before requests were tagged, it did -- and every call after it was then
@@ -51,7 +51,7 @@ def test_late_response_is_not_read_as_the_next_one(app):
     assert app.response.empty()
 
 
-def test_getattr_retries_after_a_timed_out_query():
+def test_getattr_retries_after_a_timed_out_query() -> None:
     """A query that timed out (None) is retried, not iterated over."""
     attrs = {"layers": ["number", 32]}
     answers: list[Optional[dict]] = []

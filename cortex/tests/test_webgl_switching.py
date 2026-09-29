@@ -12,15 +12,21 @@ data" is simply the number of red-dominant pixels.
 
 All tests are skipped if playwright is not installed.
 """
+from pathlib import Path
+from typing import Any, Callable, Iterator
+
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 import cortex
 import cortex.export
+from cortex.dataset import Dataview
 from cortex.export.save_views import (
     angle_view_params,
     default_view_params,
     unfold_view_params,
+    ViewParams,
 )
 from cortex.tests.testing_utils import (
     has_playwright,
@@ -35,7 +41,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
-VIEW = {
+VIEW: ViewParams = {
     **default_view_params,
     **angle_view_params["lateral_pivot"],
     **unfold_view_params["inflated"],
@@ -44,19 +50,19 @@ VIEWER_PARAMS = dict(labels_visible=[], overlays_visible=[])
 RTOL = 0.05  # relative tolerance on red-pixel counts
 
 
-def _count_red(path):
+def _count_red(path: str) -> int:
     from PIL import Image
 
     rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
     return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
 
 
-def _render(handle, path):
+def _render(handle: Any, path: str) -> int:
     render(handle, path)
     return _count_red(path)
 
 
-def make_views():
+def make_views() -> dict[str, Dataview]:
     """Dataviews that are red where visible; half of them hide one half.
 
     Every dataview uses distinct data: two views sharing byte-identical data
@@ -69,13 +75,13 @@ def make_views():
     zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
     half_vox = xx < volshape[2] // 2
 
-    def V(data, **kw):
+    def V(data: npt.NDArray, **kw: Any) -> cortex.Volume:
         return cortex.Volume(data, subj, xfmname, **kw)
 
-    def X(data, **kw):
+    def X(data: npt.NDArray, **kw: Any) -> cortex.Vertex:
         return cortex.Vertex(data, subj, **kw)
 
-    views = {}
+    views: dict[str, Dataview] = {}
     # scalar vertex / volume (Reds, constant high value -> pure red)
     d = np.full(nv, 5.0); d[left] = np.nan
     views["vtx_nan"] = X(d, cmap="Reds", vmin=0, vmax=1)
@@ -103,7 +109,7 @@ def make_views():
         V(np.zeros(volshape), vmin=0, vmax=1), subj, xfmname,
     )
     # 2D views: dim1 = 1 (red corner of RdBu_r_alpha), dim2 = 1 (opaque)
-    kw2d = dict(cmap="RdBu_r_alpha", vmin=-1, vmax=1, vmin2=0, vmax2=1)
+    kw2d: dict[str, Any] = dict(cmap="RdBu_r_alpha", vmin=-1, vmax=1, vmin2=0, vmax2=1)
     views["vtx2d_alpha"] = cortex.Vertex2D(
         np.ones(nv), np.ones(nv), subj, alpha=(~left).astype(float), **kw2d
     )
@@ -134,21 +140,23 @@ SEQUENCES = {
 
 
 @pytest.fixture(scope="module")
-def views():
+def views() -> dict[str, Dataview]:
     return make_views()
 
 
 @pytest.fixture(scope="module")
-def baseline(views, tmp_path_factory):
+def baseline(
+    views: dict[str, Dataview], tmp_path_factory: pytest.TempPathFactory
+) -> Callable[[str], int]:
     """Red-pixel count of each dataview shown alone in a fresh viewer.
 
     A fresh viewer per dataview is the expensive part of this module, so the
     counts are cached and shared by every test in it.
     """
     tmp = tmp_path_factory.mktemp("baselines")
-    counts = {}
+    counts: dict[str, int] = {}
 
-    def get(name):
+    def get(name: str) -> int:
         if name not in counts:
             with cortex.export.headless_viewer(
                 views[name], viewer_params=VIEWER_PARAMS
@@ -163,8 +171,13 @@ def baseline(views, tmp_path_factory):
 class TestSwitching:
     """One multi-dataset viewer; per-dataset baselines from single viewers."""
 
+    tmp: Path
+    handle: Any
+
     @pytest.fixture(autouse=True, scope="class")
-    def _viewer(self, views, tmp_path_factory):
+    def _viewer(
+        self, views: dict[str, Dataview], tmp_path_factory: pytest.TempPathFactory
+    ) -> Iterator[None]:
         cls = type(self)
         cls.tmp = tmp_path_factory.mktemp("switching")
         with cortex.export.headless_viewer(
@@ -174,14 +187,14 @@ class TestSwitching:
             set_view(handle, VIEW)
             yield
 
-    def _switch_and_count(self, name, tag):
+    def _switch_and_count(self, name: str, tag: str) -> int:
         handle = type(self).handle
         handle.setData(name)
         wait_active(handle, name)
         return _render(handle, str(type(self).tmp / ("%s_%s.png" % (tag, name))))
 
     @pytest.mark.parametrize("sequence", sorted(SEQUENCES))
-    def test_sequence(self, sequence, baseline):
+    def test_sequence(self, sequence: str, baseline: Callable[[str], int]) -> None:
         handle = type(self).handle
         errors_before = len(page_errors(handle))
         for step, name in enumerate(SEQUENCES[sequence]):
@@ -198,7 +211,7 @@ class TestSwitching:
             )
         assert len(page_errors(handle)) == errors_before, page_errors(handle)
 
-    def test_hidden_half_is_really_hidden(self, baseline):
+    def test_hidden_half_is_really_hidden(self, baseline: Callable[[str], int]) -> None:
         """Sanity check of the metric: the half-NaN / half-transparent
         dataviews show clearly fewer red pixels than their full versions."""
         for hidden, full in [
@@ -209,7 +222,9 @@ class TestSwitching:
             assert baseline(hidden) < 0.8 * baseline(full), (hidden, full)
 
 
-def test_addData_does_not_leak_nan_or_alpha(tmp_path, views, baseline):
+def test_addData_does_not_leak_nan_or_alpha(
+    tmp_path: Path, views: dict[str, Dataview], baseline: Callable[[str], int]
+) -> None:
     """Data pushed into a running viewer must not inherit the previous
     dataset's NaN mask or alpha."""
     # Reference for the RGB view shown on its own (shading differs between a

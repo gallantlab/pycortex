@@ -194,7 +194,7 @@ def test_volumergb_alpha_is_NOT_premultiplied_in_package():
     ), "VolumeRGB Package output looks premultiplied; Three.js will then double-attenuate"
 
 
-def test_package_deduplicates_identical_brains():
+def test_package_deduplicates_identical_brains() -> None:
     """Two dims/channels with byte-identical data share one content-hash name;
     the package must contain that brain once, and ``reorder`` must not choke
     on it (it used to re-index the already-serialized bytes)."""
@@ -222,7 +222,7 @@ def test_package_deduplicates_identical_brains():
         assert pkg.images[name][0][1:6] == b"NUMPY"
 
 
-def test_package_rejects_same_bytes_different_metadata():
+def test_package_rejects_same_bytes_different_metadata() -> None:
     """Same data bytes give the same content-hash name; if the metadata
     differs the package cannot represent both and must say so."""
     import numpy as np

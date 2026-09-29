@@ -11,6 +11,8 @@ dict(
 import os
 import json
 from io import BytesIO
+from typing import Optional, Union
+
 import numpy as np
 
 from .. import dataset
@@ -142,7 +144,8 @@ class Package(object):
         return names
 
 
-def _brain_signature(brain):
+def _brain_signature(brain: Union[dataset.braindata.BrainData, dataset.viewRGB.DataviewRGB]) -> tuple[
+        str, str, Optional[str], Optional[tuple[int, ...]], Optional[str], Optional[str]]:
     """Metadata that must match for two same-name brains to be interchangeable."""
     import hashlib
 
