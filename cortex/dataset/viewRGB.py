@@ -122,7 +122,7 @@ def _mask_alpha(alpha: DataviewType, mask: npt.ArrayLike) -> DataviewType:
         new[np.broadcast_to(mask, shape)] = fill
         return alpha.copy(new)
 
-    if hasattr(alpha, "volume"):
+    if isinstance(alpha, VolumeData):
         vol = np.asarray(alpha.volume)  # (t, z, y, x), fresh copy if linear
         try:
             shape = np.broadcast_shapes(mask.shape, vol.shape)
