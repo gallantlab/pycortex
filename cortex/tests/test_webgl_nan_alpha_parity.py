@@ -85,7 +85,8 @@ def _webgl(view: Dataview, path: str) -> tuple[float, int]:
     return _fractions(path)
 
 
-def _cases() -> dict[str, Dataview]:
+@pytest.fixture(scope="module")
+def cases() -> dict[str, Dataview]:
     zz, yy, xx = np.mgrid[0 : volshape[0], 0 : volshape[1], 0 : volshape[2]]
     post = yy < 35  # posterior slab
     pts = cortex.db.get_surf(subj, "fiducial", merge=True)[0]
@@ -145,12 +146,6 @@ def _cases() -> dict[str, Dataview]:
             X(zeros_x, vmin=0, vmax=1), subj, alpha=np.where(vpost, np.nan, 1.0),
         ),
     }
-
-
-@pytest.fixture(scope="module")
-# TODO: combine with `_cases`
-def cases() -> dict[str, Dataview]:
-    return _cases()
 
 
 @pytest.mark.parametrize("name", [

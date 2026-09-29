@@ -62,7 +62,8 @@ def _render(handle: Any, path: str) -> int:
     return _count_red(path)
 
 
-def make_views() -> dict[str, Dataview]:
+@pytest.fixture(scope="module")
+def views() -> dict[str, Dataview]:
     """Dataviews that are red where visible; half of them hide one half.
 
     Every dataview uses distinct data: two views sharing byte-identical data
@@ -137,11 +138,6 @@ SEQUENCES = {
         "vol2d_alpha", "vol_full", "vol2d_nan_dim2", "vol2d_alpha",
     ],
 }
-
-
-@pytest.fixture(scope="module")
-def views() -> dict[str, Dataview]:
-    return make_views()
 
 
 @pytest.fixture(scope="module")
