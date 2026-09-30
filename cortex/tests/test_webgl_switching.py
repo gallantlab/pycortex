@@ -29,6 +29,7 @@ from cortex.export.save_views import (
     ViewParams,
 )
 from cortex.tests.testing_utils import (
+    count_red_pixels,
     has_playwright,
     page_errors,
     render,
@@ -50,16 +51,9 @@ VIEWER_PARAMS = dict(labels_visible=[], overlays_visible=[])
 RTOL = 0.05  # relative tolerance on red-pixel counts
 
 
-def _count_red(path: str) -> int:
-    from PIL import Image
-
-    rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
-    return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
-
-
 def _render(handle: Any, path: str) -> int:
     render(handle, path)
-    return _count_red(path)
+    return count_red_pixels(path)
 
 
 @pytest.fixture(scope="module")

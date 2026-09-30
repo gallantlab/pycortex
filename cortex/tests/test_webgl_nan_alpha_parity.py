@@ -26,8 +26,10 @@ from cortex.export.save_views import (
     ViewParams,
 )
 from cortex.tests.testing_utils import (
+    count_red_pixels,
     has_playwright,
     page_errors,
+    redness,
     render,
     set_view,
     settle,
@@ -183,12 +185,6 @@ def test_multilayer_nanmean_toggle(tmp_path: Path) -> None:
         **unfold_view_params["inflated"],
     }
 
-    def _red(path: str) -> int:
-        from PIL import Image
-
-        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
-        return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
-
     counts: dict[tuple[int, bool], int] = {}
     with cortex.export.headless_viewer(
         vol, viewer_params=dict(labels_visible=[], overlays_visible=[])
@@ -200,7 +196,7 @@ def test_multilayer_nanmean_toggle(tmp_path: Path) -> None:
             settle(handle)
             path = str(tmp_path / ("layers%d_nanmean%s.png" % (layers, nanmean)))
             render(handle, path)
-            counts[(layers, nanmean)] = _red(path)
+            counts[(layers, nanmean)] = count_red_pixels(path)
         errors = page_errors(handle)
     assert not errors, errors
     assert counts[(1, True)] > 5000
@@ -232,11 +228,8 @@ def test_multilayer_nanmean_toggle_rgb(tmp_path: Path) -> None:
         """Total redness: sum of R - max(G, B) over red-dominant pixels, so
         that a partially transparent red (alpha-weighted average) scores
         lower than an opaque one covering the same pixels."""
-        from PIL import Image
-
-        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
-        redness = rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2])
-        return int(redness[redness > 50].sum())
+        r = redness(path)
+        return int(r[r > 50].sum())
 
     counts: dict[tuple[int, bool], int] = {}
     with cortex.export.headless_viewer(
@@ -273,12 +266,6 @@ def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path: Path) -> None:
         **unfold_view_params["inflated"],
     }
 
-    def _red(path: str) -> int:
-        from PIL import Image
-
-        rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
-        return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
-
     counts: dict[float, int] = {}
     with cortex.export.headless_viewer(
         vtx, viewer_params=dict(labels_visible=[], overlays_visible=[])
@@ -289,7 +276,7 @@ def test_vertex_movie_nan_in_next_frame_is_transparent(tmp_path: Path) -> None:
             settle(handle)
             path = str(tmp_path / ("frame_%.1f.png" % frame))
             render(handle, path)
-            counts[frame] = _red(path)
+            counts[frame] = count_red_pixels(path)
         errors = page_errors(handle)
     assert not errors, errors
     assert counts[1.0] < 0.8 * counts[0.0], counts  # left hemisphere hidden in frame 1

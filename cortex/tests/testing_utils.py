@@ -1,5 +1,8 @@
 from typing import Any
 
+import numpy as np
+import numpy.typing as npt
+
 from cortex.export.save_views import ViewParams
 
 # Skip any test that relies on playwright if it's not available.
@@ -138,6 +141,24 @@ def render(
             if time.monotonic() > deadline:
                 raise RuntimeError("image not written: %s" % path)
             time.sleep(0.05)
+
+
+
+def redness(path: str) -> npt.NDArray[np.int_]:
+    """R - max(G, B) for each pixel of the image at `path`, alpha ignored.
+
+    Positive where a pixel is red-dominant. Viewer tests render their data in
+    red and measure it with this, so curvature gray (R = G = B) counts as 0.
+    """
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
+    return rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2])
+
+
+def count_red_pixels(path: str, threshold: int = 50) -> int:
+    """Number of strongly red-dominant pixels, R - max(G, B) > `threshold`."""
+    return int((redness(path) > threshold).sum())
 
 
 def page_errors(handle: Any) -> list[str]:
