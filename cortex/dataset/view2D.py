@@ -8,7 +8,7 @@ import numpy.typing as npt
 
 from .. import options
 from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB
-from .viewRGB import _warn_alpha_range
+from .viewRGB import warn_alpha_range
 from .braindata import BrainData, VolumeData, VertexData
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
@@ -52,7 +52,7 @@ class Dataview2D(Dataview):
     def alpha(self, alpha: Optional[Union[npt.ArrayLike, Dataview]]) -> None:
         if alpha is not None and not isinstance(alpha, self._cls):
             alpha = np.asarray(alpha)
-            _warn_alpha_range(alpha)
+            warn_alpha_range(alpha)
             alpha = self._wrap_alpha(alpha)
         if alpha is not None and alpha.subject != self.dim1.subject:
             raise ValueError("alpha must belong to the same subject as dim1")

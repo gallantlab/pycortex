@@ -73,7 +73,7 @@ def HSV2RGB(color: Color[float] | npt.NDArray) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
-def _warn_alpha_range(alpha: npt.ArrayLike) -> None:
+def warn_alpha_range(alpha: npt.ArrayLike) -> None:
     """Warn when a raw (non-uint8) alpha array lies outside [0, 1]."""
     alpha = np.asarray(alpha)
     if alpha.dtype == np.uint8 or alpha.size == 0:
@@ -653,7 +653,7 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
         if not isinstance(alpha, Volume):
-            _warn_alpha_range(alpha)
+            warn_alpha_range(alpha)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
 
         # NaN in any color channel -> alpha at its minimum (transparent)
@@ -925,7 +925,7 @@ class VertexRGB(DataviewRGB):
             alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
-            _warn_alpha_range(alpha)
+            warn_alpha_range(alpha)
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
 
         # NaN in any color channel -> alpha at its minimum (transparent)
