@@ -22,7 +22,7 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import has_playwright, wait_for_file
+from cortex.tests.testing_utils import count_red_pixels, has_playwright, wait_for_file
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -311,14 +311,6 @@ def test_overlay_visibility_changes_image(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _count_red_pixels(png_path):
-    """Count strongly red-dominant pixels (R - max(G, B) > 50)."""
-    from PIL import Image
-
-    rgb = np.array(Image.open(png_path))[..., :3].astype(int)
-    return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
-
-
 def test_vertex_no_nan_renders_data(tmp_path):
     """A NaN-free Vertex must render visibly, not fall through to transparent.
 
@@ -346,7 +338,7 @@ def test_vertex_no_nan_renders_data(tmp_path):
         handle.getImage(outfile, (512, 384))
         wait_for_file(outfile)
 
-        n_red = _count_red_pixels(outfile)
+        n_red = count_red_pixels(outfile)
         assert n_red > 1000, (
             f"Vertex data does not appear to be rendering "
             f"(only {n_red} red-dominant pixels). "
@@ -381,7 +373,7 @@ def test_vertex_with_nan_renders_partial(tmp_path):
             outfile = str(tmp_path / f"{name}.png")
             handle.getImage(outfile, (512, 384))
             wait_for_file(outfile)
-            return _count_red_pixels(outfile)
+            return count_red_pixels(outfile)
 
     n_full = render(full, "full")
     n_half = render(half_nan, "half_nan")
@@ -414,8 +406,6 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
     (cortex/webgl/data.py), so packaged vColor.rgb=0 when α=0, and the
     shader produces pure curvature gray.
     """
-    from PIL import Image
-
     rng = np.random.default_rng(631)
     # Bright, saturated colors -- if the bug returns these will leak through
     # as red/green/blue pixels. With the fix and α=0, only neutral (curvature)
@@ -445,12 +435,11 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
         handle.getImage(outfile, (512, 384))
         wait_for_file(outfile)
 
-        rgb = np.array(Image.open(outfile))[..., :3].astype(int)
         # Count strongly red-dominant pixels: with the bug, α=0 lets the
         # bright reds through and we'd see thousands of them. With the fix,
         # the brain renders curvature gray (R≈G≈B) and red-dominant pixels
         # fall to near zero (a handful from anti-aliased ROI overlays).
-        n_red = int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+        n_red = count_red_pixels(outfile)
         assert n_red < 500, (
             f"VertexRGB with α=0 produced {n_red} red-dominant pixels; "
             "expected near-zero. The shader composite is consuming "
@@ -687,7 +676,7 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
         time.sleep(1)
         handle.getImage(outfile, image_size)
         wait_for_file(outfile)
-        return _count_red_pixels(outfile)
+        return count_red_pixels(outfile)
 
     # No ROI/sulci overlays or labels: their anti-aliased colored edges would
     # otherwise add stray red-dominant pixels.

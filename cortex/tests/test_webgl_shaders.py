@@ -130,21 +130,42 @@ SURFACE_OPTS = dict(morphs=3, volume=1, layers=1, rois=True, extratex=False,
 
 
 def _surface_variants() -> Iterator[Any]:
-    """Every (shader, opts) pair the viewer can ask for a surface shader."""
+    """Every (shader, opts) pair the viewer can ask for a surface shader.
+
+    On top of the dataview and surface options, gh-695 added three that
+    together decide how much GLSL the volume-sampling shader carries:
+    ``dataalpha`` adds a second pair of samplers and the alpha-map arithmetic,
+    ``nanmean`` changes how layer samples are combined, and ``layers`` decides
+    how many of those sampling blocks are emitted.
+    """
     bools = (False, True)
-    for shader, rgb, twod, hasflat, equivolume in itertools.product(
-        ("surface_vertex", "surface_pixel"), bools, bools, bools, bools
+    for shader, rgb, twod, hasflat, equivolume, dataalpha, nanmean, layers in itertools.product(
+        ("surface_vertex", "surface_pixel"), bools, bools, bools, bools,
+        bools, bools, (1, 32),
     ):
         if rgb and twod:
             continue  # RGB data has no second dimension
-        opts = dict(SURFACE_OPTS, rgb=rgb, twod=twod,
-                    hasflat=hasflat, equivolume=equivolume)
-        name = "%s-%s%s%s%s" % (
+        if shader == "surface_vertex" and (dataalpha or not nanmean or layers > 1):
+            # Vertex data folds its alpha map into the ``nanmask`` attribute
+            # precisely because it has no attribute slot to spare, and it has
+            # no cortical depth to average over: none of these reach it.
+            continue
+        if rgb and dataalpha:
+            # RGB dataviews carry their alpha in the texture's own fourth
+            # channel; the viewer never asks for a separate alpha map.
+            continue
+        opts = dict(SURFACE_OPTS, rgb=rgb, twod=twod, hasflat=hasflat,
+                    equivolume=equivolume, dataalpha=dataalpha,
+                    nanmean=nanmean, layers=layers)
+        name = "%s-%s%s%s%s%s%s%s" % (
             shader,
             "rgb" if rgb else "cmap",
             "-2d" if twod else "",
             "-flat" if hasflat else "",
             "-equivolume" if equivolume else "",
+            "-dataalpha" if dataalpha else "",
+            "" if nanmean else "-no_nanmean",
+            "-%dlayer" % layers if layers > 1 else "",
         )
         yield pytest.param(shader, opts, id=name)
 

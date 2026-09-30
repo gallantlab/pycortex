@@ -39,6 +39,7 @@ var mriview = (function(module) {
         this.volume = 0;
         this._layers = 1;
         this._dither = false;
+        this._nanmean = true;  // average only non-NaN layers (matches quickflat nanmean=True)
         this._pivot = 0;
         this._shift = 0;
         //The lighting controls hold the values that are actually in effect, and
@@ -122,6 +123,7 @@ var mriview = (function(module) {
             layers: {action:[this, "setLayers", {1:1, 4:4, 8:8, 16:16, 32:32}]},
             toggleMultipleLayers: {action: this.toggleMultipleLayers.bind(this), key: 'm', hidden: true, help: "Toggle multiple layers"},
             dither: {action:[this, "setDither"]},
+            nanmean: {action:[this, "setNanmean"]},
             sampler: {action:[this, "setSampler", ["nearest", "trilinear"]]},
         });
 
@@ -299,6 +301,8 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+                // Colormapped vertex data only: a soft 0-1 opacity (0 = NaN,
+                // else the alpha map), filled by DataView.setFrame (dataset.js).
                 hemi.addAttribute("nanmask", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 hemi.dynamic = true;
@@ -423,6 +427,7 @@ var mriview = (function(module) {
                 extratex: this.uniforms.extratex.value !== null,
                 halo: false,
                 dither: this._dither,
+                nanmean: this._nanmean,
                 equivolume: this._equivolume,
                 sampler: this._sampler,
             });
@@ -755,6 +760,12 @@ var mriview = (function(module) {
         if (val === undefined)
             return this._dither;
         this._dither = val;
+        this.resetShaders();
+    }
+    module.Surface.prototype.setNanmean = function(val) {
+        if (val === undefined)
+            return this._nanmean;
+        this._nanmean = val;
         this.resetShaders();
     }
     module.Surface.prototype.setSampler = function(val) {
