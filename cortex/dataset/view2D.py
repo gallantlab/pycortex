@@ -134,6 +134,8 @@ class Dataview2D(Dataview):
             sdict['xfm'] = [[d1js['xfm'][0], d2js['xfm'][0]]]
 
         if self.alpha is not None:
+            # The alpha map, normalized to [0, 1], ships as its own brain; this
+            # names it. Read by DataView in dataset.js (json.alpha -> alphaData).
             sdict['alpha'] = [self._alpha_brain.name]
 
         return sdict

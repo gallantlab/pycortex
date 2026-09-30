@@ -474,6 +474,10 @@ var dataset = (function(module) {
         this.frames = json.frames;
 
         this.verts = [];
+        // Per frame, [left, right] hard NaN masks for this data: 1 = valid,
+        // 0 = NaN (the NaN itself is replaced by 0 in this.verts). Not the
+        // "nanmask" shader attribute, which DataView.setFrame builds by
+        // combining these (and the alpha map) into a soft 0-1 opacity.
         this.nanmasks = [];
         NParray.fromURL(this.data[0], function(array) {
             array.loaded.progress(function(available){

@@ -188,6 +188,7 @@ class DataviewJSON(TypedDict):
     raw: NotRequired[bool]
     mosaic: NotRequired[tuple[int, int]]
     subject: NotRequired[str] # is this actually from BrainData?
+    alpha: NotRequired[list[str]] # Volume2D/Vertex2D with alpha=: [name of the alpha brain]
 
 
 class Dataview:

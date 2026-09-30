@@ -823,6 +823,9 @@ var Shaderlib = (function() {
             "attribute float data1;",
             "attribute float data2;",
             "attribute float data3;",
+            // Soft 0-1 opacity for colormapped vertex data, built by
+            // DataView.setFrame (dataset.js) from each dim's nanmasks and the
+            // Vertex2D alpha map: 0 = NaN, else alpha (1 without an alpha map).
             "attribute float nanmask;",
     "#endif",
 

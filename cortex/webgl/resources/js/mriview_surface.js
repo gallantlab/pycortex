@@ -301,6 +301,8 @@ var mriview = (function(module) {
                 hemi.addAttribute("data1", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data2", new THREE.BufferAttribute(new Float32Array(), 1));
                 hemi.addAttribute("data3", new THREE.BufferAttribute(new Float32Array(), 1));
+                // Colormapped vertex data only: a soft 0-1 opacity (0 = NaN,
+                // else the alpha map), filled by DataView.setFrame (dataset.js).
                 hemi.addAttribute("nanmask", new THREE.BufferAttribute(new Float32Array(), 1));
 
                 hemi.dynamic = true;
