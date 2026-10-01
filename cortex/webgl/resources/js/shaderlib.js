@@ -187,6 +187,19 @@ var Shaderlib = (function() {
             return glsl;
         },
 
+        // sampleDepths: the fractional depths (0 = pial, 1 = white matter) at
+        // which the fragment shader samples the cortical sheet when
+        // averaging `layers` samples. These are the interior points of an
+        // evenly spaced grid, i/(layers+1) for i = 1..layers, so that no sample
+        // lands exactly on either surface. This is the same grid as
+        // quickflat's np.linspace(0, 1, thick+2)[1:-1] (gh-749).
+        sampleDepths: function(layers) {
+            var depths = [];
+            for (var i = 1; i <= layers; i++)
+                depths.push(i / (layers + 1));
+            return depths;
+        },
+
         // thickmixer: header code that loads the uniforms needed to do
         // equivolume sampling, for vertex shaders. The white matter and pial
         // vertex areas it needs ride along in auxdat.zw, which mriview_surface
@@ -225,6 +238,7 @@ var Shaderlib = (function() {
     var module = function() {
 
     };
+    module.sampleDepths = utils.sampleDepths;
     module.prototype = {
         constructor: module,
         main: function(opts) {
@@ -682,7 +696,7 @@ var Shaderlib = (function() {
                 }
                 else {
                     var sample_depth;
-                    var step = 1 / (layers - 1);
+                    var depths = utils.sampleDepths(layers);
                     fragMid += "vec2 rseed;\nfloat randval;\n";
                     for (var i = 0; i < layers; i++) {
                         if (dither) {
@@ -691,7 +705,7 @@ var Shaderlib = (function() {
                                 "randval = rand(rseed);"].join("\n");
                             sample_depth = "randval";
                         } else {
-                            sample_depth = (step * i).toFixed(3);
+                            sample_depth = depths[i].toFixed(6);
                         }
                         fragMid += [
                             "coord_x = mix(vPos_x[0], vPos_x[1], "+sample_depth+");",
