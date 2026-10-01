@@ -1270,6 +1270,13 @@ var mriview = (function(module) {
         this.active.setFrame(t);
         if (this.movie)
             this.movie.setFrame(t);
+        // The movie folder keeps its frame slider in sync by wrapping
+        // setFrame (menu.js), and this bypasses setFrame, so update the
+        // slider the same way the wrapper would.
+        if (movie_ui && movie_ui._controls && movie_ui._controls.frame) {
+            movie_ui.frame = t;
+            movie_ui._controls.frame.updateDisplay();
+        }
         this.schedule();
     }
 

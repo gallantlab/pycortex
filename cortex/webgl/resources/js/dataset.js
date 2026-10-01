@@ -294,6 +294,16 @@ var dataset = (function(module) {
         this.frame = time;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
+        // Vertex movies stream in as one array, frame by frame in order, so a
+        // seek can ask for a frame that has not arrived yet. Keep showing the
+        // current frame (data and nanmask together) until it lands;
+        // _frameArrived then re-applies it. this.frame already holds the
+        // requested time, so that check knows what to wait for.
+        if (this.vertex) {
+            for (var i = 0; i < this.data.length; i++)
+                if (this.data[i].verts && this.data[i].verts[fframe] === undefined)
+                    return;
+        }
         this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
@@ -623,7 +633,9 @@ var dataset = (function(module) {
                     lattr.needsUpdate = true;
                     rattr.needsUpdate = true;
                     this.verts.push([lattr, rattr]);
-                    this.loaded.notify(available);
+                    // (count, index of the frame that just arrived), as for
+                    // volumes, so a frame held by a seek refreshes on arrival
+                    this.loaded.notify(available, available - 1);
                 }.bind(this));
             }.bind(this)).done(function(){
                 this.loaded.resolve();
@@ -638,8 +650,13 @@ var dataset = (function(module) {
     }
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
         var name = dim == 0 ? "data0":"data2";
+        // The next frame may not have streamed in yet: blend with the current
+        // one rather than wrapping (by the loaded count) round to frame 0.
+        var next = this.verts[(fframe+1).mod(this.frames)];
+        if (next === undefined)
+            next = this.verts[fframe];
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
-        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
+        dispatch({type:"attribute", name:"data"+(2*dim+1), value:next});
         // The combined nanmask is dispatched by DataView.setFrame after
         // every dim's data has been set, so we don't dispatch it here.
     }

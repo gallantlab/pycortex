@@ -375,16 +375,50 @@ var jsplot = (function (module) {
         this.frame = null;  // playhead position, in data frames
         this._xmap = null;  // plot x-geometry of the last draw, for seeking
 
-        // click a timepoint -> seek the brain to that volume
-        this.canvas.addEventListener("click", function(evt) {
+        // click or drag along the plot -> seek the brain to that volume,
+        // continuously while dragging, like the movie folder's frame slider.
+        // Pointer capture keeps the drag going if the mouse leaves the
+        // panel; past either end it clamps to the first or last volume.
+        this._dragging = false;
+        this._dragFrame = null;
+        var seekAt = function(evt, clamp) {
             if (!this._xmap || !this.viewer)
-                return;
+                return false;
             var rect = this.canvas.getBoundingClientRect();
             var fx = (evt.clientX - rect.left - this._xmap.x0) / this._xmap.w;
-            if (fx < 0 || fx > 1)
+            if (!clamp && (fx < 0 || fx > 1))
+                return false;
+            fx = Math.min(1, Math.max(0, fx));
+            var frame = Math.round(fx * (this._xmap.n - 1));
+            if (frame !== this._dragFrame) {   // only seek when the frame changes
+                this._dragFrame = frame;
+                this.viewer.seekFrame(frame);
+            }
+            return true;
+        }.bind(this);
+        this.canvas.addEventListener("pointerdown", function(evt) {
+            if (evt.button !== 0)
                 return;
-            this.viewer.seekFrame(Math.round(fx * (this._xmap.n - 1)));
+            this._dragFrame = null;
+            if (seekAt(evt, false)) {
+                this._dragging = true;
+                this.canvas.setPointerCapture(evt.pointerId);
+                evt.preventDefault();   // no text selection while dragging
+            }
         }.bind(this));
+        this.canvas.addEventListener("pointermove", function(evt) {
+            if (this._dragging)
+                seekAt(evt, true);
+        }.bind(this));
+        var endDrag = function(evt) {
+            if (!this._dragging)
+                return;
+            this._dragging = false;
+            if (this.canvas.hasPointerCapture(evt.pointerId))
+                this.canvas.releasePointerCapture(evt.pointerId);
+        }.bind(this);
+        this.canvas.addEventListener("pointerup", endDrag);
+        this.canvas.addEventListener("pointercancel", endDrag);
 
         // one control group per movie dataset (3D views have no
         // timecourse); the active one starts checked, or the first movie
@@ -406,7 +440,7 @@ var jsplot = (function (module) {
     module.TimeseriesAxes.prototype = Object.create(module.Axes.prototype);
     module.TimeseriesAxes.prototype.constructor = module.TimeseriesAxes;
     module.TimeseriesAxes.prototype.style = {
-        bg: "#0D1117", text: "#E8ECF5", muted: "#9AA3B5",
+        bg: "#000000", text: "#E8ECF5", muted: "#9AA3B5",
         spine: "#3A4250", play: "#FFB454",
         font: "11px sans-serif",
         dataColors: ["#6FA8FF", "#FF6B6B", "#5DD97C", "#FFB454", "#B48EAD", "#66D9E8"],
