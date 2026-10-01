@@ -8,11 +8,11 @@ function Websock() {
         var func = this[jsdat.method];
         var resp = func.apply(this, jsdat.params);
         //Don't return jquery objects, 
-        if (resp instanceof $) {
-            this.ws.send(JSON.stringify(null));
-        } else {
-            this.ws.send(JSON.stringify(resp))
-        }
+        if (resp instanceof $)
+            resp = null;
+        //Echo the request id, so Python can discard answers that arrive after
+        //it has stopped waiting for them (serve.py:WebApp.send)
+        this.ws.send(JSON.stringify({id:jsdat.id, result:resp}));
     }.bind(this);
 }
 Websock.prototype.get = function(name) {

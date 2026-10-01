@@ -38,6 +38,26 @@ var mriview = (function(module) {
         return true;
     };
 
+    // Values of every channel of a vertex dataview (1 for 1D, 2 for 2D) at the
+    // picked vertex `coords`, as returned by Viewer.getCoords. Shared by the
+    // hover and click readouts.
+    module.vertexValues = function (dataview, coords) {
+        var hemiIdx = (coords.hemi == 'left') ? 0 : 1;
+        // Map the picked vertex through the subject's indexMap.
+        // dim1 and dim2 share subject for 2D views (server-side).
+        var subject = dataview.data[0].subject;
+        var indexMap = subjects[subject].hemis[coords.hemi].indexMap;
+        var vertex = indexMap[coords.vertex];
+        return dataview.data.map(function (d) {
+            // NaN was replaced by 0 in the GPU buffer (dataset.js); report
+            // NaN from the mask instead of a fake 0.
+            if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
+                d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
+                return NaN;
+            return d.verts[0][hemiIdx].array[vertex];
+        });
+    };
+
     // Returns true iff every entry in `data` has the per-frame buffers the
     // hover/click handlers need (verts for vertex data, textures for
     // volume data). Loading is async — the dataview's `loaded` deferred
@@ -111,6 +131,15 @@ var mriview = (function(module) {
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
             this.resize();
+            // Start the flat target at the middle of the flatmap, where
+            // quickflat centres it, rather than at the controls' built-in
+            // guess (y = -60: close for S1, wrong for other subjects). Kept as
+            // the fallback when there is no flatmap to measure.
+            // Measured in the flat view's pose, since the surface is not flat
+            // yet.
+            var framing = this.flatFraming(undefined, this.flatViewBBox());
+            if (framing !== null)
+                this.controls.setFlatTarget(framing.target);
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
             this.object.appendChild(this.controls.twodbutton[0]);
@@ -796,16 +825,7 @@ var mriview = (function(module) {
                 if (this.active.vertex) {
                     let coords = this.getCoords(event)
                     if (coords !== -1) {
-                        let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                        // Map the picked vertex through the subject's indexMap.
-                        // dim1 and dim2 share subject for 2D views (server-side).
-                        let subject = this.active.data[0].subject
-                        let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                        let vertex = indexMap[coords.vertex]
-                        // Now access the data for each channel (1 for 1D, 2 for 2D)
-                        values = this.active.data.map(function (d) {
-                            return d.verts[0][hemiIdx].array[vertex]
-                        })
+                        values = module.vertexValues(this.active, coords)
                     }
                 } else {
                     // Volume branch. For 2D views we reuse data[0]'s mouse_index
@@ -972,6 +992,140 @@ var mriview = (function(module) {
                 this.surfs[i].setMix(mix);
     }
 
+    // The world-space extent of the flattened surface, from the first surface
+    // that has a flatmap, or null if none does.
+    module.Viewer.prototype.flatBBox = function() {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].flatBBox === undefined)
+                continue;
+            var box = this.surfs[i].flatBBox();
+            if (box !== null)
+                return box;
+        }
+        return null;
+    };
+
+    // flatBBox as it will be in the flat view's pose, whatever the pose now
+    // (see Surface.flatViewBBox).
+    module.Viewer.prototype.flatViewBBox = function() {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].flatViewBBox === undefined)
+                continue;
+            var box = this.surfs[i].flatViewBBox();
+            if (box !== null)
+                return box;
+        }
+        return null;
+    };
+
+    // The framing cortex.quickflat.make_png would use for a frame of the given
+    // shape, as {target, radius, aspect}, or null if there is no flatmap.
+    // Works the framing out without moving anything, which is what the
+    // animation panel needs to re-frame a keyframe it is not looking at.
+    //
+    // quickflat has no camera at all -- it maps the flat surface's bounding box
+    // onto the bounds of the image -- and the viewer can reproduce that because
+    // a plane square-on to a perspective camera projects as a uniform scaling.
+    // So the camera only has to look at the middle of that bounding box from
+    // the distance at which the field of view spans it.
+    //
+    // `aspect` is the width/height of the frame being framed for, defaulting to
+    // the one on screen. The flatmap fills the frame exactly -- and the render
+    // is then make_png's png -- when that is the flatmap's own aspect ratio,
+    // which is what viewopts.quickflat_size has. At any other shape of frame
+    // the flatmap is fitted inside it rather than cropped to it.
+    //
+    // `box` is the extent to frame, defaulting to the flatmap as it is now.
+    module.Viewer.prototype.flatFraming = function(aspect, box) {
+        if (box === undefined)
+            box = this.flatBBox();
+        if (box === null)
+            return null;
+
+        if (!(typeof aspect === "number" && isFinite(aspect) && aspect > 0))
+            aspect = this.camera.aspect;
+
+        var halfheight = (box.max[1] - box.min[1]) / 2;
+        var halfwidth = (box.max[0] - box.min[0]) / 2;
+
+        return {
+            target: [(box.min[0] + box.max[0]) / 2,
+                     (box.min[1] + box.max[1]) / 2,
+                     0],
+            radius: Math.max(halfheight, halfwidth / aspect) /
+                    Math.tan(this.camera.fov * Math.PI / 360),
+            aspect: aspect,
+        };
+    };
+
+    // Point the camera at that framing.
+    //
+    // Assumes the square-on camera of the flat view -- azimuth 180, altitude 0,
+    // which is where the controls clamp to once flattened. Returns the framing
+    // it applied, or null if there is no flatmap to frame.
+    module.Viewer.prototype.fitFlatView = function(aspect) {
+        var framing = this.flatFraming(aspect);
+        if (framing === null)
+            return null;
+
+        this.controls.setFlatTarget(framing.target);
+        this.controls.setRadius(framing.radius);
+        this._flatFitAspect = framing.aspect;   // so isFlatFitted knows this framing
+        // Move the camera now rather than on the next animation frame: this is
+        // called from getImage, which renders straight away.
+        this.controls.update(this.camera);
+        this.controls.dispatchEvent({type:"change"});   // schedules a redraw
+
+        // What setTarget and setRadius actually took, which is not what was
+        // asked for if a subject's flatmap is small enough to hit the zoom
+        // clamp (radius is held at 10 or more, and at 101 or more while flat).
+        return {target: this.controls.setFlatTarget(),
+                radius: this.controls.setRadius()};
+    };
+
+    // Whether the camera is currently framing the flatmap, i.e. sitting where
+    // fitFlatView put it -- for the frame on screen, or for the frame it was
+    // last framed for, which is not the same thing once something has rendered
+    // an image of another shape.
+    module.Viewer.prototype.isFlatFitted = function() {
+        if (this.setMix() < 0.999)
+            return false;
+
+        var framing = this.flatFraming();
+        if (framing === null)
+            return false;
+
+        var close = function(a, b) {
+            return Math.abs(a - b) <= 1e-3 * Math.max(1, Math.abs(b));
+        };
+        var target = this.controls.setTarget();
+        if (!close(target[0], framing.target[0]) ||
+                !close(target[1], framing.target[1]))
+            return false;
+
+        var radii = [framing.radius];
+        if (this._flatFitAspect !== undefined)
+            radii.push(this.flatFraming(this._flatFitAspect).radius);
+
+        for (var i = 0; i < radii.length; i++)
+            if (close(this.controls.setRadius(), radii[i]))
+                return true;
+        return false;
+    };
+
+    // Re-frame the flatmap for a frame of a different shape, but only if it is
+    // framed right now -- a camera someone has moved is left where they put it.
+    //
+    // What keeps the framing right when the image being rendered is not the
+    // shape of the window it was set up in: JSMixer.getImage calls this with
+    // the aspect ratio of the image it is about to write. Returns the framing
+    // in effect afterwards, or null if there was nothing to re-frame.
+    module.Viewer.prototype.refitFlatView = function(aspect) {
+        if (!this.isFlatFitted())
+            return null;
+        return this.fitFlatView(aspect);
+    };
+
     module.Viewer.prototype.pick = function(evt) {
         // Cache last pick position so setData() can refresh the picked
         // indicator for the newly-active dataset at the same screen point.
@@ -1001,16 +1155,7 @@ var mriview = (function(module) {
         let values = null;
         if (this.active.vertex) {
             if (coords !== -1) {
-                let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                // Map the picked vertex through the subject's indexMap.
-                // dim1 and dim2 share subject for 2D views (server-side).
-                let subject = this.active.data[0].subject
-                let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                let vertex = indexMap[coords.vertex]
-                // Now access the data for each channel (1 for 1D, 2 for 2D)
-                values = this.active.data.map(function (d) {
-                    return d.verts[0][hemiIdx].array[vertex]
-                })
+                values = module.vertexValues(this.active, coords)
             }
         } else {
             if (coords !== -1) {
@@ -1111,6 +1256,9 @@ var mriview = (function(module) {
         for (var i = 0; i < this.active.data.length; i++)
             if (this.active.data[i].setPriority)
                 this.active.data[i].setPriority(dataIdx);
+        var alpha = this.active.alphaData;
+        if (alpha && alpha.setPriority)
+            alpha.setPriority(dataIdx);
         if (this.tsplot && this.tsplot_visible)
             this.tsplot.setFrame(dataIdx);
         if (!this.active.data[0].movie)
@@ -1290,7 +1438,11 @@ var mriview = (function(module) {
             azimuth: {action:[this.controls, 'setAzimuth', 0, 360]},
             altitude: {action:[this.controls, 'setAltitude', 0, 180]},
             radius: {action:[this.controls, 'setRadius', 10, 1000]},
-            target: {action:[this.controls, 'setTarget'], hidden:true},
+            // The folded and the flat target, stored apart so that neither
+            // absorbs values meant for the other (see setFoldedTarget in
+            // movement.js).
+            target: {action:[this.controls, 'setFoldedTarget'], hidden:true},
+            flat_target: {action:[this.controls, 'setFlatTarget'], hidden:true},
         });
 
         var fold_brain = function() {
@@ -1343,6 +1495,14 @@ var mriview = (function(module) {
             "Width": {action:[this, 'imageWidth', 500, 4000]},
             "Height": {action:[this, 'imageHeight', 500, 4000]}
         });
+
+        // Saved views and the keyframe animation panel (resources/js/viewtools.js).
+        // These go in sub-folders/buttons rather than into cam_ui.add directly, so
+        // they do not show up in JSMixer.view_props as capturable properties.
+        // A template that shadows template.html from before viewtools.js existed
+        // does not load it; the viewer has to open without it.
+        if (jsplot.viewtools !== undefined)
+            jsplot.viewtools.installCameraUI(this, cam_ui);
 
         // keyboard shortcut menu
         var _show_help = false;

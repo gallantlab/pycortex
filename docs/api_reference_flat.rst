@@ -176,6 +176,13 @@ polyutils
 
     Surface
     Distortion
+    FlatSlab
+
+.. autosummary::
+    :toctree:generated/
+
+    folding_height
+    naive_prism_height
 
 
 segment
@@ -205,6 +212,8 @@ surfinfo
     thickness
     tissots_indicatrix
     flat_border
+    bumpy_flatmap
+    equivolume_areas
 
 
 utils
