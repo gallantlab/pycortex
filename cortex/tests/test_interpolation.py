@@ -78,7 +78,7 @@ def test_hold_out_modes_are_constant_until_the_next_keyframe(mode):
 
 @pytest.mark.parametrize("mode", [Interpolation.CubicHermite, Interpolation.Bezier])
 @pytest.mark.parametrize("values", [
-    [0.0, 10.0, 4.0, 7.0],      # a peak and a trough
+    [0.0, 10.0, 4.0, 7.0],      # a peak and a dip
     [0.0, 1.0, 2.0, 3.0],       # monotonically increasing
     [3.0, 2.0, 1.0, 0.0],       # monotonically decreasing
     [5.0, 5.0, 1.0, 1.0],       # flat stretches
