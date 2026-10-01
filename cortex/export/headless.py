@@ -41,6 +41,7 @@ Requirements
 import concurrent.futures
 import contextlib
 import logging
+import os
 import threading
 import time
 from typing import Any, Mapping, Optional
@@ -236,8 +237,15 @@ class _PlaywrightThread:
 
         try:
             self._playwright = sync_playwright().start()
+            # Hide DISPLAY/WAYLAND_DISPLAY: a stale or unreachable one makes
+            # Chromium fail WebGL init instead of falling back to SwiftShader.
+            browser_env = {
+                k: v
+                for k, v in os.environ.items()
+                if k not in ("DISPLAY", "WAYLAND_DISPLAY")
+            }
             self._browser = self._playwright.chromium.launch(
-                headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
+                headless=True, args=SWIFTSHADER_CHROMIUM_ARGS, env=browser_env
             )
             self._page = self._browser.new_page()
 
