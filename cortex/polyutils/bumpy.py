@@ -8,25 +8,16 @@ flatmap is covered in data.
 The height is ``V_frustum / A_wm``, the folded volume of each column over the
 *folded* white matter area beneath it, which with ``r = sqrt(A_pia / A_wm)`` is
 ``thickness * (1 + r + r**2) / 3``. `r` is what carries the folding: the pia has
-more area than the white matter under a gyral crown and less in a fundus.
+more area than the white matter under a gyral crown and less in a fundus. 
+'folding_height' computes this version.
 
 Dividing by the *flattened* area instead is the more obvious model of a slab
-laid flat, and it does not work. A flatmap's area distortion measures
-essentially uncorrelated with both mean and Gaussian curvature, so as a
-denominator it contributes no folding and injects the flattening algorithm's
-artifacts in its place; what is left is close to a map of cortical thickness,
-which is blobby and reads as round knobs. `naive_prism_height` computes that
-version, for comparison.
+laid flat, and it gives a noisier, lower contrast and weaker cue.
+`naive_prism_height` computes that version, for comparison.
 """
 
 
 import numpy as np
-from scipy import sparse
-
-try:
-    from scipy.sparse.linalg import factorized as _factorized
-except ImportError:
-    from scipy.sparse.linalg.dsolve import factorized as _factorized
 
 from .misc import _memo, face_area, face_volume
 from .surface import Surface

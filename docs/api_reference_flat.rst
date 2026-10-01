@@ -180,10 +180,8 @@ polyutils
 .. autosummary::
     :toctree:generated/
 
-    coarsen_flat_mesh
-    lame_parameters
+    folding_height
     naive_prism_height
-    prolongation_matrix
 
 
 segment
