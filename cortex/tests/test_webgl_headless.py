@@ -24,7 +24,7 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import has_playwright, wait_for_file
+from cortex.tests.testing_utils import count_red_pixels, has_playwright, wait_for_file
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -313,14 +313,6 @@ def test_overlay_visibility_changes_image(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _count_red_pixels(png_path):
-    """Count strongly red-dominant pixels (R - max(G, B) > 50)."""
-    from PIL import Image
-
-    rgb = np.array(Image.open(png_path))[..., :3].astype(int)
-    return int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
-
-
 def test_vertex_no_nan_renders_data(tmp_path):
     """A NaN-free Vertex must render visibly, not fall through to transparent.
 
@@ -348,7 +340,7 @@ def test_vertex_no_nan_renders_data(tmp_path):
         handle.getImage(outfile, (512, 384))
         wait_for_file(outfile)
 
-        n_red = _count_red_pixels(outfile)
+        n_red = count_red_pixels(outfile)
         assert n_red > 1000, (
             f"Vertex data does not appear to be rendering "
             f"(only {n_red} red-dominant pixels). "
@@ -383,7 +375,7 @@ def test_vertex_with_nan_renders_partial(tmp_path):
             outfile = str(tmp_path / f"{name}.png")
             handle.getImage(outfile, (512, 384))
             wait_for_file(outfile)
-            return _count_red_pixels(outfile)
+            return count_red_pixels(outfile)
 
     n_full = render(full, "full")
     n_half = render(half_nan, "half_nan")
@@ -416,8 +408,6 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
     (cortex/webgl/data.py), so packaged vColor.rgb=0 when α=0, and the
     shader produces pure curvature gray.
     """
-    from PIL import Image
-
     rng = np.random.default_rng(631)
     # Bright, saturated colors -- if the bug returns these will leak through
     # as red/green/blue pixels. With the fix and α=0, only neutral (curvature)
@@ -447,12 +437,11 @@ def test_vertexrgb_alpha_zero_renders_curvature_only(tmp_path):
         handle.getImage(outfile, (512, 384))
         wait_for_file(outfile)
 
-        rgb = np.array(Image.open(outfile))[..., :3].astype(int)
         # Count strongly red-dominant pixels: with the bug, α=0 lets the
         # bright reds through and we'd see thousands of them. With the fix,
         # the brain renders curvature gray (R≈G≈B) and red-dominant pixels
         # fall to near zero (a handful from anti-aliased ROI overlays).
-        n_red = int((rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2]) > 50).sum())
+        n_red = count_red_pixels(outfile)
         assert n_red < 500, (
             f"VertexRGB with α=0 produced {n_red} red-dominant pixels; "
             "expected near-zero. The shader composite is consuming "
@@ -689,7 +678,7 @@ def test_vertex_opacity_slider_fades_data(tmp_path):
         time.sleep(1)
         handle.getImage(outfile, image_size)
         wait_for_file(outfile)
-        return _count_red_pixels(outfile)
+        return count_red_pixels(outfile)
 
     # No ROI/sulci overlays or labels: their anti-aliased colored edges would
     # otherwise add stray red-dominant pixels.
@@ -895,6 +884,91 @@ def test_addData_vertex_data(tmp_path):
         assert _fetch(handle, metadata["images"][vertex_name][0])[1:6] == b"NUMPY"
 
         _assert_no_browser_failures(handle)
+
+
+# ---------------------------------------------------------------------------
+# Group 6: Bumpy flatmap
+# ---------------------------------------------------------------------------
+
+
+def _ensure_bumpy_flatmap():
+    """Put a bumpy flatmap in the database for the test subject if there is
+    none. It is a few seconds per hemisphere, so just ask for it."""
+    cortex.db.get_surfinfo(subj, type='bumpy_flatmap').close()
+
+
+@pytest.mark.timeout(900)
+def test_bumpy_flatmap_changes_the_render(tmp_path):
+    """The relief reaches the shader and visibly changes the flatmap.
+
+    This is the end-to-end check on the whole path: the height computed in
+    `cortex.polyutils.FlatSlab`, the cached surface info, the ``flatoffset``
+    attribute in the ctm, the height javascript packs into ``flatbump.w``, and
+    the displacement the vertex shader applies. Any break in that chain shows
+    up here as two identical images.
+    """
+    from PIL import Image
+
+    _ensure_bumpy_flatmap()
+    # The pack may predate the offsets, in which case it has no flatoffset map.
+    cortex.utils.get_ctmpack(subj, recache=True)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    original = cortex.options.config.get("webgl_viewopts", "bumpy_flatmap")
+    images = {}
+
+    def capture(handle, name):
+        outfile = str(tmp_path / ("%s.png" % name))
+        handle.getImage(outfile, (512, 384))
+        wait_for_file(outfile)
+        _assert_not_blank(outfile)
+        pageerrors = [e for e in handle._pw_thread.browser_errors
+                      if "[pageerror]" in e]
+        assert len(pageerrors) == 0, f"JS errors: {pageerrors}"
+        images[name] = np.asarray(Image.open(outfile).convert("RGB"))
+
+    try:
+        for bumpy in (False, True):
+            cortex.options.config.set("webgl_viewopts", "bumpy_flatmap",
+                                      "true" if bumpy else "false")
+            with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+                handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["inflated"]})
+                capture(handle, "inflated_%s" % bumpy)
+                handle._set_view(**{**default_view_params,
+                                    **unfold_view_params["flatmap"]})
+                capture(handle, "bumpy_%s" % bumpy)
+                if bumpy:
+                    # And the same viewer with the relief exaggerated, which is
+                    # what the bumpy_flatmap_scale slider drives.
+                    # Only the rendered image is checked, not a read-back of
+                    # the value: reading any surface menu property through the
+                    # javascript proxy returns an empty dict, for unfold and
+                    # depth just as much as for this one.
+                    handle.ui.set("surface.%s.bumpy_flatmap_scale" % subj, 4.0)
+                    time.sleep(0.3)
+                    capture(handle, "bumpy_scaled")
+    finally:
+        cortex.options.config.set("webgl_viewopts", "bumpy_flatmap", original)
+
+    assert not np.array_equal(images["bumpy_True"], images["bumpy_False"]), (
+        "the bumpy flatmap rendered identically to the flat one; the relief "
+        "never reached the shader"
+    )
+    assert not np.array_equal(images["bumpy_scaled"], images["bumpy_True"]), (
+        "exaggerating the relief changed nothing; the bumpy_flatmap_scale "
+        "slider is not reaching the shader"
+    )
+    # The offsets are in flatmap coordinates, so they mean nothing until the
+    # surface is flat: the displacement ramps in over inflated-to-flat, and at
+    # the inflated state it must not have started. This once regressed the
+    # other way -- the displacement ramped over anatomical-to-inflated while
+    # the shading normal ramped over inflated-to-flat, so geometry and
+    # lighting disagreed across the whole first half of the unfold.
+    assert np.array_equal(images["inflated_True"], images["inflated_False"]), (
+        "the bumpy flatmap changed the inflated surface; a flatmap-space "
+        "offset is leaking into the folded surfaces"
+    )
 
 
 # ---------------------------------------------------------------------------
