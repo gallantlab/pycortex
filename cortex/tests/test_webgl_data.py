@@ -1,5 +1,7 @@
 """Tests for the WebGL serialization layer in cortex.webgl.data."""
 
+import json
+
 import numpy as np
 import pytest
 
@@ -228,3 +230,43 @@ def test_package_rejects_same_bytes_different_metadata() -> None:
     b.subject = "S2"  # never reaches the database: the check comes first
     with pytest.raises(ValueError, match="identical bytes"):
         Package(cortex.Dataset(a=a, b=b))
+
+
+@pytest.mark.parametrize("name", ["volume", "volume2D", "vertex"])
+def test_a_view_with_an_array_attr_still_packages(name):
+    """A view carrying an array in its attrs has to reach the browser.
+
+    ``alpha`` is the array that gets there: a view takes one to override the
+    alpha of its colormap, and it ends up among the attrs, which the page is
+    handed as JSON. json has no way to write an array, so the page the viewer
+    serves came back as a 500 and nothing was drawn.
+    """
+    rng = np.random.default_rng(0)
+    alpha = (rng.uniform(0, 1, volshape) * 255).astype(np.uint8)
+    attr = "alpha"
+    if name == "volume":
+        view = cortex.Volume(rng.normal(size=volshape), subj, xfmname, alpha=alpha)
+    elif name == "volume2D":
+        # a 2D view draws the alpha it is given into the colors of its raw
+        # view, so the array left among its attrs is any other one
+        attr = "mask"
+        view = cortex.Volume2D(rng.normal(size=volshape), rng.normal(size=volshape),
+                               subj, xfmname, mask=alpha)
+    else:
+        view = cortex.Vertex(rng.normal(size=nverts), subj,
+                             alpha=rng.uniform(0, 1, nverts))
+
+    with pytest.warns(UserWarning, match=attr):
+        metadata = Package(dataset.Dataset(view=view)).metadata()
+    json.dumps(metadata)
+    assert attr not in metadata["views"][0]["attrs"]
+
+
+def test_the_attrs_a_page_reads_survive_packaging():
+    """Leaving the arrays out keeps everything the page does read, including
+    the numbers numpy hands back, which json cannot write either."""
+    view = cortex.Volume(np.random.randn(*volshape), subj, xfmname,
+                         priority=np.int64(3), rate=2.5, filter="trilinear")
+    attrs = json.loads(json.dumps(Package(dataset.Dataset(view=view)).metadata()))
+    attrs = attrs["views"][0]["attrs"]
+    assert attrs == {"priority": 3, "rate": 2.5, "filter": "trilinear"}
