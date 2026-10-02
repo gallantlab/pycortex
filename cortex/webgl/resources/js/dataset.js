@@ -146,8 +146,9 @@ var dataset = (function(module) {
         for (var i = 0; i < children.length; i++) {
             (function(idx) {
                 children[idx].loaded
-                    .progress(function(available) {
+                    .progress(function(available, frameIdx) {
                         if (available > this.delay) markReady(idx);
+                        if (frameIdx !== undefined) this._frameArrived(frameIdx);
                     }.bind(this))
                     .done(function() { markReady(idx); });
             }.bind(this))(i);
@@ -293,6 +294,16 @@ var dataset = (function(module) {
         this.frame = time;
         var frame = ((time + this.delay) * this.rate).mod(this.frames);
         var fframe = Math.floor(frame);
+        // Vertex movies stream in as one array, frame by frame in order, so a
+        // seek can ask for a frame that has not arrived yet. Keep showing the
+        // current frame (data and nanmask together) until it lands;
+        // _frameArrived then re-applies it. this.frame already holds the
+        // requested time, so that check knows what to wait for.
+        if (this.vertex) {
+            for (var i = 0; i < this.data.length; i++)
+                if (this.data[i].verts && this.data[i].verts[fframe] === undefined)
+                    return;
+        }
         this.uniforms.framemix.value = frame - fframe;
         for (var i = 0; i < this.data.length; i++) {
             this.data[i].set(this.uniforms, i, fframe, this._dispatch);
@@ -302,9 +313,18 @@ var dataset = (function(module) {
         // of a movie (both slots point at the same texture).
         var alpha = this.alphaData;
         if (alpha !== null && !this.vertex && alpha.textures.length > 0) {
+            // textures is a sparse Array(frames): a movie's frames stream in
+            // after the first one, so an alpha frame may not have arrived yet.
+            // Binding an undefined texture renders garbage, so keep the current
+            // alpha until it lands (_frameArrived re-applies it), and never
+            // blend into a frame that is not loaded.
             var at = alpha.textures;
-            this.uniforms.dataalpha.value[0] = at[fframe.mod(at.length)];
-            this.uniforms.dataalpha.value[1] = at[(fframe+1).mod(at.length)];
+            var a0 = at[fframe.mod(at.length)];
+            var a1 = at[(fframe+1).mod(at.length)];
+            if (a0 !== undefined) {
+                this.uniforms.dataalpha.value[0] = a0;
+                this.uniforms.dataalpha.value[1] = (a1 !== undefined) ? a1 : a0;
+            }
         }
         // Vertex data: build the single shared "nanmask" attribute, which the
         // shader multiplies into the color. It is 0 wherever any dim (or the
@@ -359,6 +379,25 @@ var dataset = (function(module) {
             this._dispatch({type:"attribute", name:"nanmask", value:combined});
         }
     }
+    // A streamed movie frame just arrived. If it is the frame on screen (or
+    // its blend partner), re-apply the textures: a seek to a not-yet-loaded
+    // frame otherwise stays blank until the next setFrame (e.g. playback).
+    module.DataView.prototype._frameArrived = function(frameIdx) {
+        if (this.frames <= 1)
+            return;
+        var fframe = Math.floor(((this.frame + this.delay) * this.rate).mod(this.frames));
+        if (frameIdx === fframe || frameIdx === (fframe + 1).mod(this.frames)) {
+            this.setFrame(this.frame);
+            this.dispatchEvent({type: "frameloaded", frame: frameIdx});
+        }
+    };
+    module.DataView.prototype.loadRest = function() {
+        for (var i = 0; i < this.data.length; i++)
+            if (this.data[i].loadRest)
+                this.data[i].loadRest();
+        if (this.alphaData !== null && this.alphaData.loadRest)
+            this.alphaData.loadRest();
+    };
     module.DataView.prototype.setFilter = function(interp) {
         this.filter = interp;
         for (var i = 0; i < this.data.length; i++)
@@ -382,8 +421,20 @@ var dataset = (function(module) {
         this.frames = images[json.name].length;
 
         this._interp = "nearest";
-        this.textures = [];
+        this.textures = new Array(this.frames);
+        this._nloaded = 0;
+        this._priority = 0;
+        this._inflight = false;
+        this._deferred = this.movie;
+        var nextFrame = function() {
+            for (var i = this._priority; i < this.frames; i++)
+                if (this.textures[i] === undefined) return i;
+            for (var j = 0; j < this._priority; j++)
+                if (this.textures[j] === undefined) return j;
+            return -1;
+        }.bind(this);
         var loadmosaic = function(idx) {
+            this._inflight = true;
             var img = new Image();
             img.addEventListener("load", function() {
                 this._width = img.width;
@@ -409,22 +460,57 @@ var dataset = (function(module) {
                 tex.needsUpdate = true;
                 tex.flipY = false;
                 this.shape = [((img.width-1) / this.mosaic[0])-1, ((img.height-1) / this.mosaic[1])-1];
-                this.textures.push(tex);
+                this.textures[idx] = tex;
+                this._nloaded += 1;
+                this._inflight = false;
 
-                if (this.textures.length < this.frames) {
-                    this.loaded.notify(this.textures.length);
-                    loadmosaic(this.textures.length);
+                this.loaded.notify(this._nloaded, idx);
+                if (this._nloaded < this.frames) {
+                    if (this._deferred) {
+                        this._paused = true;
+                        setTimeout(this.loadRest.bind(this), 2000);
+                    } else {
+                        var nxt = nextFrame();
+                        if (nxt >= 0)
+                            loadmosaic(nxt);
+                    }
                 } else {
                     this.loaded.resolve();
                 }
             }.bind(this));
-            img.src = this.data[this.textures.length];
+            img.src = this.data[idx];
         }.bind(this);
+        this._loadmosaic = loadmosaic;
+        this._nextFrame = nextFrame;
 
         loadmosaic(0);
     };
+    module.VolumeData.prototype.loadRest = function() {
+        this._deferred = false;
+        if (this._paused) {
+            this._paused = false;
+            var nxt = this._nextFrame();
+            if (nxt >= 0 && !this._inflight)
+                this._loadmosaic(nxt);
+        }
+    };
+
+    module.VolumeData.prototype.setPriority = function(frame) {
+        if (!this.movie || this._nloaded >= this.frames)
+            return;
+        this._priority = Math.max(0, Math.min(this.frames - 1, Math.round(frame)));
+        this._deferred = false;
+        if (!this._inflight) {
+            this._paused = false;
+            var nxt = this._nextFrame();
+            if (nxt >= 0)
+                this._loadmosaic(nxt);
+        }
+    };
     module.VolumeData.prototype.setFilter = function(interp) {
         for (var i = 0, il = this.textures.length; i < il; i++) {
+            if (this.textures[i] === undefined)
+                continue;
             this.textures[i].minFilter = module.filtertypes[interp];
             this.textures[i].magFilter = module.filtertypes[interp];
             this.textures[i].needsUpdate = true;
@@ -440,13 +526,20 @@ var dataset = (function(module) {
     };
 
     module.VolumeData.prototype.set = function(uniforms, dim, fframe) {
-        if (uniforms.data.value[dim*2] !== this.textures[fframe]) {
-            uniforms.data.value[dim*2] = this.textures[fframe];
-            if (this.frames > 1) {
-                uniforms.data.value[dim*2+1] = this.textures[(fframe+1).mod(this.frames)];
-            } else {
-                uniforms.data.value[dim*2+1] = null;
-            }
+        var tex = this.textures[fframe];
+        if (tex === undefined) {
+            return;
+        }
+        var next = tex;
+        if (this.frames > 1) {
+            next = this.textures[(fframe+1).mod(this.frames)];
+            if (next === undefined)
+                next = tex;
+        }
+        if (uniforms.data.value[dim*2] !== tex ||
+            uniforms.data.value[dim*2+1] !== next) {
+            uniforms.data.value[dim*2] = tex;
+            uniforms.data.value[dim*2+1] = this.frames > 1 ? next : null;
         }
     }
     module.VolumeData.prototype._setData = function(fframe, data) {
@@ -540,7 +633,9 @@ var dataset = (function(module) {
                     lattr.needsUpdate = true;
                     rattr.needsUpdate = true;
                     this.verts.push([lattr, rattr]);
-                    this.loaded.notify(available);
+                    // (count, index of the frame that just arrived), as for
+                    // volumes, so a frame held by a seek refreshes on arrival
+                    this.loaded.notify(available, available - 1);
                 }.bind(this));
             }.bind(this)).done(function(){
                 this.loaded.resolve();
@@ -555,8 +650,13 @@ var dataset = (function(module) {
     }
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
         var name = dim == 0 ? "data0":"data2";
+        // The next frame may not have streamed in yet: blend with the current
+        // one rather than wrapping (by the loaded count) round to frame 0.
+        var next = this.verts[(fframe+1).mod(this.frames)];
+        if (next === undefined)
+            next = this.verts[fframe];
         dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
-        dispatch({type:"attribute", name:"data"+(2*dim+1), value:this.verts[(fframe+1).mod(this.verts.length)]});
+        dispatch({type:"attribute", name:"data"+(2*dim+1), value:next});
         // The combined nanmask is dispatched by DataView.setFrame after
         // every dim's data has been set, so we don't dispatch it here.
     }

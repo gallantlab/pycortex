@@ -19,7 +19,7 @@ from configparser import NoOptionError
 from queue import Queue
 
 import numpy as np
-from tornado import web
+from tornado import ioloop, web
 
 from .. import dataset, options, utils, volume
 from ..database import db
@@ -530,36 +530,79 @@ def show(
     if open_browser is None:
         open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
 
+    # Plain 1D numeric arrays in a data dict (e.g. design-matrix regressors)
+    ref_traces: dict[str, list[float]] = {}
+    if isinstance(data, dict):
+        data = dict(data)
+        for key in list(data.keys()):
+            val = data[key]
+            if (isinstance(val, np.ndarray) and val.ndim == 1
+                    and np.issubdtype(val.dtype, np.number)):
+                ref_traces[key] = np.nan_to_num(
+                    val.astype(np.float64)).tolist()
+                del data[key]
+
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
     html = FallbackLoader([os.path.split(os.path.abspath(template))[0], serve.cwd]).load(template)
-    db.auxfile = data
 
-    #Extract the list of stimuli, for special-casing
     stims: dict[str, str] = dict()
-    for name, view in data:
-        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
-            sname = os.path.split(view.attrs['stim'])[1]
-            stims[sname] = view.attrs['stim']
+    package = None
+    metadata: dict[str, Any] = {}
+    images: dict[str, list] = dict()
+    subjects: list[str] = []
+    ctms: dict[str, str] = dict()
+    subjectjs = ""
+    _ready = threading.Event()
+    _prepare_failure: list[BaseException] = []
 
-    package = Package(data)
-    # Keep the metadata as a plain dict (rather than a JSON string) so that
-    # JSMixer.addData can merge newly added dataviews into it at runtime. It
-    # is serialized to JSON on demand, when the mixer page is generated.
-    metadata = package.metadata()
-    images = package.images
-    subjects = list(package.subjects)
+    class _WaitUntilPrepared:
+        """Mixin for request handlers that need the packaged data.
 
-    ctmargs = dict(method='mg2', level=9, recache=recache,
-        external_svg=overlay_file, overlays_available=overlays_available)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
-                for subj in subjects)
-    package.reorder(ctms)
+        show() starts the server and prints the URL before it packages the
+        data, so a request can arrive early; it waits here until packaging
+        is done. The wait runs on a worker thread, because blocking the
+        server's event-loop thread would stall every other request too.
+        """
+        async def prepare(self):
+            if not _ready.is_set():
+                await ioloop.IOLoop.current().run_in_executor(None, _ready.wait)
+            if _prepare_failure:
+                raise web.HTTPError(503, reason="The viewer failed to start")
 
-    subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
-    db.auxfile = None
+    def _prepare():
+        nonlocal package, metadata, subjects, subjectjs
+        db.auxfile = data
+
+        #Extract the list of stimuli, for special-casing
+        for name, view in data:
+            if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
+                sname = os.path.split(view.attrs['stim'])[1]
+                stims[sname] = view.attrs['stim']
+
+        package = Package(data, lazy=True)
+        metadata = package.metadata()
+        subjects = list(package.subjects)
+        # Views saved in the filestore, for the "camera > views" menu. Only the
+        # subjects this viewer displays are read. Set here rather than with the
+        # other view options, because subjects is only known once packaged.
+        my_viewopts['saved_views'] = _load_saved_views(subjects)
+        # So the animation panel can say what render size reproduces the png
+        # quickflat.make_png writes by default, for animations using the flat view.
+        my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
+                                         for subj in subjects}
+
+        ctmargs = dict(method='mg2', level=9, recache=recache,
+            external_svg=overlay_file, overlays_available=overlays_available)
+        ctms.update((subj, utils.get_ctmpack(subj, types, **ctmargs))
+                    for subj in subjects)
+        package.reorder(ctms)
+        images.update(package.images)
+
+        subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
+        db.auxfile = None
 
 
     linear = lambda x, y, m: (1.-m)*x + m*y
@@ -600,20 +643,12 @@ def show(
         if 'paths' in sec or 'labels' in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
 
-    # Views saved in the filestore, for the "camera > views" menu. Only the
-    # subjects this viewer displays are read.
-    my_viewopts['saved_views'] = _load_saved_views(subjects)
-
-    # So the animation panel can say what render size reproduces the png
-    # quickflat.make_png writes by default, for animations using the flat view.
-    my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
-                                     for subj in subjects}
-
     if pickerfun is None:
         pickerfun = lambda *a: None
 
-    class CTMHandler(web.RequestHandler):
+    class CTMHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
+            self.set_header("Cache-Control", "public, max-age=86400")
             subj, path = path.split('/')
             if path == '':
                 self.set_header("Content-Type", "application/json")
@@ -626,7 +661,7 @@ def show(
                 self.set_header("Content-Type", mtype)
                 self.write(open(os.path.join(fpath, path), 'rb').read())
 
-    class DataHandler(web.RequestHandler):
+    class DataHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
             path = path.strip("/")
             frame: Union[int, str]
@@ -637,7 +672,10 @@ def show(
                 frame = 0
 
             if dataname in images:
+                self.set_header("Cache-Control", "public, max-age=86400")
                 dataimg = images[dataname][int(frame)]
+                if dataimg is None:
+                    dataimg = package.get_image(dataname, int(frame))
                 if dataimg[1:6] == "NUMPY":
                     self.set_header("Content-Type", "application/octet-stream")
                 else:
@@ -658,7 +696,7 @@ def show(
                 self.set_status(404)
                 self.write_error(404)
 
-    class StimHandler(web.StaticFileHandler):
+    class StimHandler(_WaitUntilPrepared, web.StaticFileHandler):
         def initialize(self):
             pass
 
@@ -674,7 +712,7 @@ def show(
         def initialize(self):
             self.root = ''
 
-    class MixerHandler(web.RequestHandler):
+    class MixerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
             generated = html.generate(data=json.dumps(metadata),
@@ -1471,7 +1509,7 @@ def show(
                 self.getImage(filename%(fr+offset+1), size=size)
                 time.sleep(frame_sleep)
 
-    class PickerHandler(web.RequestHandler):
+    class PickerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
             voxel_arg = self.get_argument("voxel", None)
             if voxel_arg is None:
@@ -1492,6 +1530,81 @@ def show(
                 return
             hemi: str = self.get_argument("hemi")
             pickerfun(voxel, vertex, hemi)
+
+    # The browser's pick reports vertices in CTM order.
+    # The ctmpack's index array maps a concatenated (left-then-right) 
+    # CTM position back to the original vertex numbering that Vertex data uses.
+    ctm_vertex_index: dict[str, np.ndarray] = {}
+    def _get_ctm_index(subj):
+        if subj not in ctm_vertex_index:
+            npz = np.load(os.path.splitext(ctms[subj])[0] + ".npz")
+            ctm_vertex_index[subj] = npz["index"]
+        return ctm_vertex_index[subj]
+
+    class TimeseriesHandler(_WaitUntilPrepared, web.RequestHandler):
+        """Return one voxel's (or vertex's) timecourse as JSON, on demand.
+        """
+        def get(self):
+            views = dict(data)
+            name = self.get_argument("name", None)
+            if name is None:
+                name = next(iter(views), None)
+            view = views.get(name)
+            if view is None:
+                self.set_status(404)
+                self.finish({"error": "no dataview named %r" % name})
+                return
+            if not getattr(view, "movie", False):
+                self.set_status(422)
+                self.finish({"error": "dataview %r has no time axis" % name})
+                return
+
+            vertex = None
+            try:
+                if isinstance(view, (dataset.Vertex, dataset.VertexRGB)):
+                    base = view.red if isinstance(view, dataset.VertexRGB) else view
+                    vertex = int(self.get_argument("vertex"))
+                    if self.get_argument("hemi") == "right":
+                        vertex += base.llen
+                    vertex = int(_get_ctm_index(base.subject)[vertex])
+                    if isinstance(view, dataset.VertexRGB):
+                        # slice each channel view directly: assembling the
+                        # full RGBA array via .vertices copies the whole
+                        # movie per request
+                        chans = [c.vertices[:, vertex]
+                                 for c in (view.red, view.green, view.blue)]
+                    else:
+                        chans = [view.vertices[:, vertex]]
+                elif isinstance(view, (dataset.Volume, dataset.VolumeRGB)):
+                    x, y, z = (int(i) for i in
+                               self.get_argument("voxel").split(","))
+                    if isinstance(view, dataset.VolumeRGB):
+                        chans = [c.volume[:, z, y, x]
+                                 for c in (view.red, view.green, view.blue)]
+                    else:
+                        chans = [view.volume[:, z, y, x]]
+                else:
+                    self.set_status(422)
+                    self.finish({"error": "unsupported dataview type %s"
+                                 % type(view).__name__})
+                    return
+            except (ValueError, IndexError, web.MissingArgumentError) as exc:
+                self.set_status(400)
+                self.finish({"error": str(exc)})
+                return
+
+            def norm(ts):
+                ts = np.asarray(ts)
+                if ts.dtype == np.uint8:  # RGB channels: bytes -> [0, 1]
+                    ts = ts / 255.0
+                return np.nan_to_num(ts.astype(np.float64))
+            chans = [norm(ts) for ts in chans]
+            channels = ["R", "G", "B"] if len(chans) == 3 else ["bold"]
+            resp = dict(name=name, channels=channels,
+                        data=[ts.tolist() for ts in chans],
+                        vertex=vertex, refs=ref_traces or None)
+            self.set_header("Content-Type", "application/json")
+            self.finish(json.dumps(resp))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
@@ -1514,6 +1627,7 @@ def show(
                      (r'/stim/(.*)', StimHandler),
                      (r'/mixer.html', MixerHandler),
                      (r'/picker', PickerHandler),
+                     (r'/timeseries', TimeseriesHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
                     port)
@@ -1526,14 +1640,7 @@ def show(
     else:
         print("Open the viewer at %s (from another machine: %s)"
               %(local_url, network_url))
-    if open_browser:
-        # This runs on the same machine as the server, so localhost is both
-        # correct and the most reliable thing to hand the browser.
-        webbrowser.open(local_url)
-        client = server.get_client()
-        client.server = server
-        return client
-    elif display_url:
+    if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
             link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
@@ -1544,4 +1651,24 @@ def show(
         except:
             pass
 
+    # The server is up and the URL is shown; now package the data. Requests
+    # that arrive meanwhile wait for it without blocking the server (see
+    # _WaitUntilPrepared). If packaging fails, release them with an error and
+    # stop the server, so the port is free for another attempt.
+    try:
+        _prepare()
+    except BaseException as exc:
+        _prepare_failure.append(exc)
+        _ready.set()
+        server.stop()
+        raise
+    _ready.set()
+
+    if open_browser:
+        # This runs on the same machine as the server, so localhost is both
+        # correct and the most reliable thing to hand the browser.
+        webbrowser.open(local_url)
+        client = server.get_client()
+        client.server = server
+        return client
     return server
