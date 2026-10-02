@@ -1,0 +1,51 @@
+
+
+.. _sphx_glr_auto_examples_hcp:
+
+Examples with HCP fs_LR data
+------------------------------
+
+Examples showing how to use PyCortex to visualize HCP fs_LR 32k data, both on
+the HCP template and resampled to fsaverage.
+
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how to:">
+
+.. only:: html
+
+  .. image:: /auto_examples/hcp/images/thumb/sphx_glr_plot_hcp_fs_lr_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/hcp/plot_hcp_fs_lr`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Visualize HCP fs_LR data on the HCP template and on fsaverage</div>
+    </div>
+
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/hcp/plot_hcp_fs_lr
+

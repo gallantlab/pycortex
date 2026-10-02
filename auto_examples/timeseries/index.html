@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Timeseries Examples &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Timeseries of RGB Vertex Data" href="rgb_timeseries.html" />
+    <link rel="prev" title="Bumpy Flatmaps" href="../surface_analyses/plot_bumpy_flatmap.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="timeseries-examples">
+<span id="sphx-glr-auto-examples-timeseries"></span><h1>Timeseries Examples<a class="headerlink" href="#timeseries-examples" title="Link to this heading">¶</a></h1>
+<p>Examples for the click-a-voxel timeseries panel in the WebGL viewer
+(Open Controls -&gt; movie -&gt; timeseries).</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="An RGB dataset carries three timecourses per vertex, one per color channel. With the timeseries panel open (Open Controls -&gt; movie -&gt; timeseries), click a vertex and the panel plots all three channels, each with its own checkbox and color picker, above a strip showing the blended color over time - the color actually painted on the brain at each volume."><img alt="" src="../../_images/sphx_glr_rgb_timeseries_thumb.png" />
+<p><a class="reference internal" href="rgb_timeseries.html"><span class="doc">Timeseries of RGB Vertex Data</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Timeseries of RGB Vertex Data</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Load a static prediction-performance map (3D) together with the actual and predicted BOLD responses it was computed from (both 4D) into one WebGL viewer. Browse the R² map on the surface, open the timeseries panel (Open Controls -&gt; movie -&gt; timeseries) and click a voxel: the panel plots the actual and predicted timecourses at that location, so you can see what a voxel responds to and how well the model captures it. Plain 1D arrays in the data dict (the block design here) appear as optional reference traces. Clicking a timepoint in the panel seeks the 4D datasets to that volume; switch to the &quot;actual&quot; dataset (+ / - keys) to watch the brain follow."><img alt="" src="../../_images/sphx_glr_encoding_model_timeseries_thumb.png" />
+<p><a class="reference internal" href="encoding_model_timeseries.html"><span class="doc">Inspect Encoding-Model Predictions and Timeseries</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Inspect Encoding-Model Predictions and Timeseries</div>
+</div></div><div class="toctree-wrapper compound">
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Timeseries Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="../surface_analyses/plot_bumpy_flatmap.html" title="previous chapter">Bumpy Flatmaps</a></li>
+      <li>Next: <a href="rgb_timeseries.html" title="next chapter">Timeseries of RGB Vertex Data</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/auto_examples/timeseries/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

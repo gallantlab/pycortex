@@ -1,0 +1,6 @@
+﻿cortex.polyutils.folding\_height
+================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autofunction:: folding_height

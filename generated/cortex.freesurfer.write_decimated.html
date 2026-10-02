@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -41,7 +41,29 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.freesurfer.write_decimated">
 <span class="sig-prename descclassname"><span class="pre">cortex.freesurfer.</span></span><span class="sig-name descname"><span class="pre">write_decimated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polys</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/freesurfer.html#write_decimated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.freesurfer.write_decimated" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Decimate a surface mesh and write it out as a freesurfer surface plus
+a matching full-resolution patch file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">str</span></dt><dd><p>Path prefix to write to; <cite>.smoothwm</cite> and <cite>.full.patch.3d</cite> suffixes
+are appended for the surface and patch files, respectively.</p>
+</dd>
+<dt><strong>pts</strong><span class="classifier">ndarray</span></dt><dd><p>Vertex coordinates of the mesh to decimate.</p>
+</dd>
+<dt><strong>polys</strong><span class="classifier">ndarray</span></dt><dd><p>Triangle faces of the mesh to decimate.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd><p>Writes <cite>path + ‘.smoothwm’</cite> and <cite>path + ‘.full.patch.3d’</cite> as a side
+effect; has no return value.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 
@@ -75,6 +97,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

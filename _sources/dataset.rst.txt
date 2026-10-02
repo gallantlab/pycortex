@@ -95,11 +95,25 @@ If you provided either numpy arrays or :class:`Volume` objects without vmin/vmax
 
 2D dataviews
 ~~~~~~~~~~~~
-In order to specify 2D data views in webgl, this helper class lets you specify a pair of :class:`Volume` objects to be plotted using a 2D colormap. Currently, quickflat does not yet support 2D colormaps. To declare a 2D dataview::
+This helper class lets you specify a pair of :class:`Volume` (or :class:`Vertex`) objects to be plotted using a 2D colormap, both in webgl and in quickflat. To declare a 2D dataview::
 
     dim1 = cortex.Volume.random(subject, xfmname)
     dim2 = cortex.Volume.random(subject, xfmname)
-    twod = cortex.Volume2D(dim1, dim2, subject=None, xfmname=None, vmin2=None, vmax2=None, **kwargs)
+    twod = cortex.Volume2D(dim1, dim2, subject=None, xfmname=None, vmin2=None, vmax2=None, alpha=None, **kwargs)
+
+The optional ``alpha`` (an array in [0, 1], or a :class:`Volume`/:class:`Vertex` normalized by its own ``vmin``/``vmax``) is a per-voxel opacity that is multiplied into the alpha channel of the 2D colormap. Many bundled 2D colormaps (``*_alpha``) already encode opacity along their second axis; ``alpha`` is useful when both colormap axes are needed for data.
+
+NaN and transparency
+~~~~~~~~~~~~~~~~~~~~
+A NaN anywhere at a voxel or vertex means that its value is undefined, and pycortex renders it fully transparent so that the curvature shows through. This holds for every dataview type and for both renderers (quickflat and the webgl viewer):
+
+    * :class:`Volume` / :class:`Vertex`: NaN data is transparent.
+    * :class:`Volume2D` / :class:`Vertex2D`: NaN in *either* dimension, or in the ``alpha`` map, is transparent.
+    * :class:`VolumeRGB` / :class:`VertexRGB`: NaN in *any* color channel, or in the ``alpha`` channel, is transparent.
+
+Where there is no NaN, the opacity (2D colormap alpha, ``alpha=`` keyword, RGB alpha channel) is honored as given. In the webgl viewer, NaN masks and opacity belong to each dataview and are not carried over when switching between datasets.
+
+When several voxels contribute to one pixel (quickflat averages across cortical thickness; the webgl viewer when ``layers`` > 1), NaN voxels are left out of the average by default and the pixel is transparent only if every contributing voxel is NaN. This is ``nanmean=True`` in :func:`cortex.quickflat.make_figure` and the ``nanmean`` toggle in the webgl surface controls; switch either off to make any NaN contribution transparent. For :class:`VolumeRGB` / :class:`VertexRGB` the NaN has already become alpha 0 when the data is converted to RGBA, so there fully transparent voxels count as missing: ``nanmean`` skips them, and switching it off gives the alpha-weighted average instead.
 
 Dataset
 -------

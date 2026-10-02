@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -57,8 +57,8 @@ allowing more connections. Default True</p>
 <dt><strong>open_browser</strong><span class="classifier">bool, optional</span></dt><dd><p>If True, uses the webbrowser library to open the viewer in the default
 local browser. Default True</p>
 </dd>
-<dt><strong>port</strong><span class="classifier">int or None, optional</span></dt><dd><p>The port that will be used by the server. If None, a random port will be
-selected from the range 1024-65536. Default None</p>
+<dt><strong>port</strong><span class="classifier">int or None, optional</span></dt><dd><p>The port that will be used by the server. If None, a free ephemeral
+port is assigned by the operating system. Default None</p>
 </dd>
 <dt><strong>pickerfun</strong><span class="classifier">function or None, optional</span></dt><dd><p>Should be a function that takes three arguments, a 3-D voxel vector, a
 vertex index, and the hemisphere (“left” or “right”). Is called whenever
@@ -84,8 +84,17 @@ the viewer GUI). Default (‘rois’, )</p>
 </dd>
 </dl>
 </dd>
-<dt class="field-even">Other Parameters<span class="colon">:</span></dt>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
+<dt><strong>client</strong><span class="classifier">JSMixer or WebApp</span></dt><dd><p>If <cite>open_browser</cite> is True, a <cite>JSMixer</cite> client connected to the
+opened browser tab, which can be used to control the viewer
+programmatically (e.g. <cite>client.getImage()</cite>, <cite>client.animate()</cite>).
+If <cite>open_browser</cite> is False, returns the <cite>WebApp</cite> server object.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Other Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
 <dt><strong>types</strong><span class="classifier">tuple, optional</span></dt><dd><p>Types of surfaces to include in addition to the original (fiducial, pial,
 and white matter) and flat surfaces. Default (‘inflated’, )</p>
 </dd>
@@ -156,6 +165,8 @@ headless viewers. Default True</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -42,7 +42,7 @@
 <dt class="sig sig-object py" id="cortex.quickflat.make_png">
 <span class="sig-prename descclassname"><span class="pre">cortex.quickflat.</span></span><span class="sig-name descname"><span class="pre">make_png</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">PathLike</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">IO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">braindata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataview</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recache</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixelwise</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'nearest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bgcolor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/cortex/quickflat/view.html#make_png"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.quickflat.make_png" title="Link to this definition">¶</a></dt>
 <dd><p>Create a PNG of the VertexData or VolumeData on a flatmap.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>fname</strong><span class="classifier">str</span></dt><dd><p>Filename for where to save the PNG file</p>
@@ -54,41 +54,49 @@ resolves some errors. Useful if you’ve made changes to the alignment</p>
 </dd>
 <dt><strong>pixelwise</strong><span class="classifier">bool</span></dt><dd><p>Use pixel-wise mapping</p>
 </dd>
-<dt><strong>thick</strong><span class="classifier">int</span></dt><dd><p>Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</p>
-</dd>
-<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data</p>
+<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data. Options include
+‘trilinear’, ‘nearest’, ‘lanczos’; see functions in cortex.mapper.samplers.py for all options</p>
 </dd>
 <dt><strong>height</strong><span class="classifier">int</span></dt><dd><p>Height of the image to render. Automatically scales the width for the aspect of
 the subject’s flatmap</p>
 </dd>
-<dt><strong>depth</strong><span class="classifier">float</span></dt><dd><p>Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
-boundary, 1 = pial surface)</p>
-</dd>
-<dt><strong>with_rois, with_labels, with_colorbar, with_borders, with_dropout</strong><span class="classifier">bool, optional</span></dt><dd><p>Display the rois, labels, colorbar, annotated flatmap borders, and cross-hatch dropout?</p>
-</dd>
-<dt><strong>sampler</strong><span class="classifier">str</span></dt><dd><p>Name of sampling function used to sample underlying volume data. Options include
-‘trilinear’, ‘nearest’, ‘lanczos’; see functions in cortex.mapper.samplers.py for all options</p>
-</dd>
 </dl>
 </dd>
 <dt class="field-even">Other Parameters<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
+<dd class="field-even"><dl>
 <dt><strong>dpi</strong><span class="classifier">int</span></dt><dd><p>DPI of the generated image. Only applies to the scaling of matplotlib elements,
 specifically the colormap</p>
 </dd>
 <dt><strong>bgcolor</strong><span class="classifier">matplotlib colorspec</span></dt><dd><p>Color of background of image. <cite>None</cite> gives transparent background.</p>
 </dd>
-<dt><strong>linewidth</strong><span class="classifier">int, optional</span></dt><dd><p>Width of ROI lines. Defaults to roi options in your local <cite>options.cfg</cite></p>
+<dt><strong>**kwargs</strong></dt><dd><p>Additional keyword arguments are forwarded to <cite>make_figure</cite>. These include:</p>
+<dl class="simple">
+<dt>thick<span class="classifier">int</span></dt><dd><p>Number of layers through the cortical sheet to sample. Only applies for pixelwise = True</p>
 </dd>
-<dt><strong>linecolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification of line color</p>
+<dt>depth<span class="classifier">float</span></dt><dd><p>Value between 0 and 1 for how deep to sample the surface for the flatmap (0 = gray/white matter
+boundary, 1 = pial surface)</p>
 </dd>
-<dt><strong>roifill</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the fill of each ROI region</p>
+<dt>with_rois, with_labels, with_colorbar, with_borders, with_dropout, with_curvature<span class="classifier">bool, optional</span></dt><dd><p>Display the rois, labels, colorbar, annotated flatmap borders, cross-hatch dropout, and curvature</p>
 </dd>
-<dt><strong>shadow</strong><span class="classifier">int, optional</span></dt><dd><p>Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</p>
+<dt>linewidth<span class="classifier">int, optional</span></dt><dd><p>Width of ROI lines. Defaults to roi options in your local <cite>options.cfg</cite></p>
 </dd>
-<dt><strong>labelsize</strong><span class="classifier">str, optional</span></dt><dd><p>Font size for the label, e.g. “16pt”</p>
+<dt>linecolor<span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification of line color</p>
 </dd>
-<dt><strong>labelcolor</strong><span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the label color</p>
+<dt>roifill<span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the fill of each ROI region</p>
+</dd>
+<dt>shadow<span class="classifier">int, optional</span></dt><dd><p>Standard deviation of the gaussian shadow. Set to 0 if you want no shadow</p>
+</dd>
+<dt>labelsize<span class="classifier">str, optional</span></dt><dd><p>Font size for the label, e.g. “16pt”</p>
+</dd>
+<dt>labelcolor<span class="classifier">tuple of float, optional</span></dt><dd><p>(R, G, B, A) specification for the label color</p>
+</dd>
+<dt>cutout<span class="classifier">str, optional</span></dt><dd><p>Name of flatmap cutout with which to clip the full flatmap</p>
+</dd>
+<dt>overlay_file<span class="classifier">str, optional</span></dt><dd><p>Custom ROI overlays file to use</p>
+</dd>
+<dt>fig<span class="classifier">figure or ax, optional</span></dt><dd><p>Figure into which to plot flatmap</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </dd>
@@ -127,6 +135,8 @@ specifically the colormap</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

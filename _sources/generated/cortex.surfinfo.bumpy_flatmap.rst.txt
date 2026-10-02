@@ -1,0 +1,6 @@
+﻿cortex.surfinfo.bumpy\_flatmap
+==============================
+
+.. currentmodule:: cortex.surfinfo
+
+.. autofunction:: bumpy_flatmap

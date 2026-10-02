@@ -8,7 +8,7 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -38,7 +38,7 @@
   <h1>Source code for cortex.dataset.view2D</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -46,19 +46,23 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">options</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataview</span><span class="p">,</span> <span class="n">Volume</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">,</span> <span class="n">VolumeRGB</span><span class="p">,</span> <span class="n">VertexRGB</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.viewRGB</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn_alpha_range</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.braindata</span><span class="w"> </span><span class="kn">import</span> <span class="n">BrainData</span><span class="p">,</span> <span class="n">VolumeData</span><span class="p">,</span> <span class="n">VertexData</span>
 
-<span class="n">default_cmap2D</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;default_cmap2D&quot;</span><span class="p">)</span>
+<span class="n">default_cmap2D</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"basic"</span><span class="p">,</span> <span class="s2">"default_cmap2D"</span><span class="p">)</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Dataview2D</span><span class="p">(</span><span class="n">Dataview</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for 2-dimensional data views.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Abstract base class for 2-dimensional data views.</span>
+<span class="sd">    """</span>
     <span class="n">dim1</span><span class="p">:</span> <span class="n">Dataview</span>
     <span class="n">dim2</span><span class="p">:</span> <span class="n">Dataview</span>
+    <span class="n">_cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">[</span><span class="n">BrainData</span><span class="p">]</span>
+    <span class="n">_alpha_brain_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataview</span><span class="p">]</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">vmin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">vmin2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">vmin2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="n">cmap</span> <span class="ow">or</span> <span class="n">default_cmap2D</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vmin</span> <span class="o">=</span> <span class="n">vmin</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vmax</span> <span class="o">=</span> <span class="n">vmax</span>
@@ -67,25 +71,117 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">state</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">kwargs</span>
-        <span class="k">if</span> <span class="s1">&#39;priority&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;priority&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="s1">'priority'</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">'priority'</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">description</span>
+        <span class="c1"># Optional per-voxel/vertex alpha map. Kept as a Volume/Vertex (never</span>
+        <span class="c1"># inside ``attrs``, which is JSON-serialized for the WebGL viewer) so</span>
+        <span class="c1"># that both renderers can ship it like any other brain.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataview</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Optional alpha map (Volume/Vertex in [vmin, vmax]) multiplied into</span>
+<span class="sd">        the colormap alpha. NaN anywhere (dim1, dim2 or alpha) renders as</span>
+<span class="sd">        alpha 0 regardless of this map."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alpha</span>
+
+    <span class="nd">@alpha</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">Dataview</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="p">):</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="n">warn_alpha_range</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrap_alpha</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">alpha</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must belong to the same subject as dim1"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="s2">"xfmname"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="p">,</span> <span class="s2">"xfmname"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"alpha must use the same transform as dim1"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain_cache</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_alpha_brain</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataview</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""The alpha map normalized to [0, 1] (vmin=0, vmax=1), as shipped to</span>
+<span class="sd">        the WebGL viewer and stored in HDF files. NaN is preserved."""</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wrap_alpha</span><span class="p">(</span>
+                <span class="n">cast</span><span class="p">(</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_alpha</span><span class="p">()))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain_cache</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataview</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_normalized_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_volume</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""User alpha as float array in [0, 1] (NaN preserved), in the space of</span>
+<span class="sd">        ``.data`` or, for volumes with ``full_volume=True``, of ``.volume``."""</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">volume</span> <span class="k">if</span> <span class="n">full_volume</span> <span class="k">else</span> <span class="n">alpha</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">arr</span> <span class="o">/</span> <span class="mf">255.</span>
+        <span class="n">vmin</span> <span class="o">=</span> <span class="mf">0.</span> <span class="k">if</span> <span class="n">alpha</span><span class="o">.</span><span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="o">.</span><span class="n">vmin</span><span class="p">)</span>
+        <span class="n">vmax</span> <span class="o">=</span> <span class="mf">1.</span> <span class="k">if</span> <span class="n">alpha</span><span class="o">.</span><span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">alpha</span><span class="o">.</span><span class="n">vmax</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">vmax</span> <span class="o">==</span> <span class="n">vmin</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">arr</span> <span class="o">&gt;=</span> <span class="n">vmax</span><span class="p">,</span> <span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">arr</span> <span class="o">-</span> <span class="n">vmin</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">vmax</span> <span class="o">-</span> <span class="n">vmin</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">uniques</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collapse</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Yield the two underlying Dataview objects (dim1, dim2) that make</span>
+<span class="sd">        up this composite 2D view.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        collapse : bool, optional</span>
+<span class="sd">            Unused here; accepted for interface compatibility with</span>
+<span class="sd">            `Dataview.uniques`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        generator</span>
+<span class="sd">            Yields `self.dim1`, then `self.dim2`.</span>
+<span class="sd">        """</span>
         <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span>
         <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"data"</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Stored normalized to [0, 1] so that it can be restored with</span>
+            <span class="c1"># vmin=0, vmax=1 (BrainData nodes carry no range).</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain</span><span class="p">,</span> <span class="n">h5</span><span class="p">)</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
         <span class="n">viewnode</span> <span class="o">=</span> <span class="n">Dataview</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-        <span class="n">viewnode</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">name</span><span class="p">]])</span>
+        <span class="n">viewnode</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([</span><span class="n">names</span><span class="p">])</span>
         <span class="n">viewnode</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin2</span><span class="p">]])</span>
         <span class="n">viewnode</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">vmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax2</span><span class="p">]])</span>
         <span class="k">return</span> <span class="n">viewnode</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simple</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Serialize this 2D dataview to a JSON-compatible dict, for the</span>
+<span class="sd">        webgl viewer / HDF5 export.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simple : bool, optional</span>
+<span class="sd">            Unused here; accepted for interface compatibility with</span>
+<span class="sd">            `Dataview.to_json`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Serialized view data, including both dims' names, cmap,</span>
+<span class="sd">            vmin/vmax pairs, state, attrs, description, and (if the</span>
+<span class="sd">            underlying dims are Volumes) the shared xfm.</span>
+<span class="sd">        """</span>
         <span class="n">sdict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">name</span><span class="p">]],</span>
             <span class="n">state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> 
             <span class="n">attrs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">,</span> 
@@ -94,21 +190,38 @@
 
         <span class="n">d1js</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
         <span class="n">d2js</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+        <span class="c1"># Use ``is None`` rather than `or` because vmin/vmax can be 0.</span>
         <span class="n">sdict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
-            <span class="n">vmin</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">vmin</span> <span class="ow">or</span> <span class="n">d1js</span><span class="p">[</span><span class="s1">&#39;vmin&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin2</span> <span class="ow">or</span> <span class="n">d2js</span><span class="p">[</span><span class="s1">&#39;vmin&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]]],</span>
-            <span class="n">vmax</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">vmax</span> <span class="ow">or</span> <span class="n">d1js</span><span class="p">[</span><span class="s1">&#39;vmax&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax2</span> <span class="ow">or</span> <span class="n">d2js</span><span class="p">[</span><span class="s1">&#39;vmax&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]]],</span>
+            <span class="n">vmin</span> <span class="o">=</span> <span class="p">[[</span><span class="n">d1js</span><span class="p">[</span><span class="s1">'vmin'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span>
+                     <span class="n">d2js</span><span class="p">[</span><span class="s1">'vmin'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmin2</span><span class="p">]],</span>
+            <span class="n">vmax</span> <span class="o">=</span> <span class="p">[[</span><span class="n">d1js</span><span class="p">[</span><span class="s1">'vmax'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax</span><span class="p">,</span>
+                     <span class="n">d2js</span><span class="p">[</span><span class="s1">'vmax'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax2</span><span class="p">]],</span>
             <span class="p">))</span>
 
-        <span class="k">if</span> <span class="s2">&quot;xfm&quot;</span> <span class="ow">in</span> <span class="n">d1js</span><span class="p">:</span>
-            <span class="n">sdict</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[</span><span class="n">d1js</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">d2js</span><span class="p">[</span><span class="s1">&#39;xfm&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]]]</span>
+        <span class="k">if</span> <span class="s2">"xfm"</span> <span class="ow">in</span> <span class="n">d1js</span><span class="p">:</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">'xfm'</span><span class="p">]</span> <span class="o">=</span> <span class="p">[[</span><span class="n">d1js</span><span class="p">[</span><span class="s1">'xfm'</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">d2js</span><span class="p">[</span><span class="s1">'xfm'</span><span class="p">][</span><span class="mi">0</span><span class="p">]]]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># The alpha map, normalized to [0, 1], ships as its own brain; this</span>
+            <span class="c1"># names it. Read by DataView in dataset.js (json.alpha -&gt; alphaData).</span>
+            <span class="n">sdict</span><span class="p">[</span><span class="s1">'alpha'</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_alpha_brain</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">sdict</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_to_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_to_raw</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data1</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">data2</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
+                <span class="n">alpha</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span>
+                    <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">],</span>
+                    <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Colormap (data1, data2) through the 2D colormap.</span>
+
+<span class="sd">        Returns ``(r, g, b, a, nan_mask)`` as uint8 channels. ``a`` is the</span>
+<span class="sd">        colormap alpha multiplied by the (normalized) user ``alpha`` map when</span>
+<span class="sd">        given; it is forced to 0 wherever data1, data2 or alpha is NaN.</span>
+<span class="sd">        """</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.colors</span><span class="w"> </span><span class="kn">import</span> <span class="n">Normalize</span>
-        <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;webgl&quot;</span><span class="p">,</span> <span class="s2">&quot;colormaps&quot;</span><span class="p">)</span>
-        <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">.png&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">cmap</span><span class="p">))</span>
+        <span class="n">cmapdir</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"webgl"</span><span class="p">,</span> <span class="s2">"colormaps"</span><span class="p">)</span>
+        <span class="n">cmap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmapdir</span><span class="p">,</span> <span class="s2">"</span><span class="si">%s</span><span class="s2">.png"</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">cmap</span><span class="p">))</span>
         <span class="n">_warn_non_perceptually_uniform_colormap</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cmap</span><span class="p">)</span>
 
         <span class="n">norm1</span> <span class="o">=</span> <span class="n">Normalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">vmax</span><span class="p">)</span>
@@ -131,17 +244,16 @@
         <span class="n">g</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">dim1</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">b</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">dim1</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">a</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">dim1</span><span class="o">.</span><span class="n">shape</span>
-        <span class="c1"># Preserve nan values as alpha = 0</span>
+        <span class="c1"># NaN in either dimension (or in the alpha map) -&gt; alpha = 0</span>
         <span class="n">aidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">data1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">data2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">aidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">aidx</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">alpha</span><span class="p">))</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="o">*</span> <span class="n">user</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">aidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="n">aidx</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
         <span class="n">a</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="c1"># Code from main, to handle alpha input, prob better here but not tested.</span>
-        <span class="c1"># # Possibly move this above setting nans to alpha = 0;</span>
-        <span class="c1"># # Possibly multiply specified alpha by alpha in colormap??</span>
-        <span class="c1"># if &#39;alpha&#39; in self.attrs:</span>
-        <span class="c1">#     # Over-write alpha from colormap / nans with alpha arg if provided.</span>
-        <span class="c1">#     # Question: Might it be important tokeep alpha as an attr?</span>
-        <span class="c1">#     a = self.attrs.pop(&#39;alpha&#39;)</span>
-        <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span>
+        <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">aidx</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">subject</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -150,7 +262,7 @@
 <div class="viewcode-block" id="Volume2D">
 <a class="viewcode-back" href="../../../generated/cortex.dataset.Volume2D.html#cortex.dataset.Volume2D">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Volume2D</span><span class="p">(</span><span class="n">Dataview2D</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Contains two 3D volumes for simultaneous visualization. Includes information</span>
 <span class="sd">    on how the volumes should be jointly colormapped.</span>
 
@@ -174,37 +286,62 @@
 <span class="sd">        Colormap (or colormap name) to use. If not given defaults to the </span>
 <span class="sd">        `default_cmap2d` in your pycortex options.cfg file.</span>
 <span class="sd">    vmin : float, optional</span>
-<span class="sd">        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Minimum value in colormap for dim1. If not given, the ``vmin`` of dim1</span>
+<span class="sd">        is used (its own ``vmin`` for a Volume/Vertex object, the 1st percentile</span>
+<span class="sd">        of the data for an array).</span>
 <span class="sd">    vmax : float, optional</span>
-<span class="sd">        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Maximum value in colormap for dim1. If not given, the ``vmax`` of dim1</span>
+<span class="sd">        is used (its own ``vmax`` for a Volume/Vertex object, the 99th</span>
+<span class="sd">        percentile of the data for an array).</span>
 <span class="sd">    vmin2 : float, optional</span>
-<span class="sd">        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Minimum value in colormap for dim2. If not given, the ``vmin`` of dim2</span>
+<span class="sd">        is used (same rule as ``vmin``).</span>
 <span class="sd">    vmax2 : float, optional</span>
-<span class="sd">        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Maximum value in colormap for dim2. If not given, the ``vmax`` of dim2</span>
+<span class="sd">        is used (same rule as ``vmax``).</span>
+<span class="sd">    alpha : ndarray or Volume/Vertex, optional</span>
+<span class="sd">        Per-voxel (per-vertex) opacity multiplied into the colormap alpha.</span>
+<span class="sd">        Arrays are taken in [0, 1]; Volume/Vertex objects are normalized by</span>
+<span class="sd">        their own ``vmin``/``vmax``. Honored identically by quickflat and the</span>
+<span class="sd">        WebGL viewer. Wherever dim1, dim2 or alpha is NaN the data is</span>
+<span class="sd">        rendered fully transparent, regardless of this map.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        All additional arguments in kwargs are passed to the VolumeData and Dataview</span>
-
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">            state : untyped</span>
+<span class="sd">                role unclear</span>
+<span class="sd">            priority : int (default  = 1)</span>
+<span class="sd">                controls the order in which datasets are viewed in webgl</span>
+<span class="sd">            stim : str</span>
+<span class="sd">                path to stimulus file</span>
+<span class="sd">            rate : numeric (default 1)</span>
+<span class="sd">                frame rate for movie/time series playback in webgl</span>
+<span class="sd">            delay : numeric (default 0)</span>
+<span class="sd">                delay for movie/time series playback in webgl</span>
+<span class="sd">            filter : str (default  = "nearest")</span>
+<span class="sd">                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)</span>
+<span class="sd">            alpha : ndarray or Volume</span>
+<span class="sd">                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D</span>
+<span class="sd">    """</span>
     <span class="n">_cls</span> <span class="o">=</span> <span class="n">VolumeData</span>
     <span class="n">dim1</span><span class="p">:</span> <span class="n">Volume</span>
     <span class="n">dim2</span><span class="p">:</span> <span class="n">Volume</span>
 
 <div class="viewcode-block" id="Volume2D.__init__">
 <a class="viewcode-back" href="../../../generated/Volume2D/cortex.dataset.Volume2D.__init__.html#cortex.dataset.Volume2D.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim1</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span> <span class="n">dim2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim1</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span> <span class="n">dim2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Volume</span><span class="p">],</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">vmin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmin2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject and xfmname cannot be specified with Volumes&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Subject and xfmname cannot be specified with Volumes"</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="p">)</span> <span class="ow">or</span> <span class="n">dim2</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for second dimension&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Invalid data for second dimension"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span> <span class="o">=</span> <span class="n">dim1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span> <span class="o">=</span> <span class="n">dim2</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;If dim2 is a Volume, dim1 must be a Volume as well&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"If dim2 is a Volume, dim1 must be a Volume as well"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject and xfmname must be specified with raw data&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Subject and xfmname must be specified with raw data"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span> <span class="o">=</span> <span class="n">Volume</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax2</span><span class="p">)</span>
 
@@ -213,37 +350,48 @@
         <span class="n">vmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">vmax</span> <span class="k">if</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vmax</span>
         <span class="n">vmax2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">vmax</span> <span class="k">if</span> <span class="n">vmax2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vmax2</span>
 
-        <span class="nb">super</span><span class="p">(</span><span class="n">Volume2D</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span>
                                        <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">vmin2</span><span class="o">=</span><span class="n">vmin2</span><span class="p">,</span> <span class="n">vmax2</span><span class="o">=</span><span class="n">vmax2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&lt;2D volumetric data for (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">"&lt;2D volumetric data for (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&gt;"</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">):</span>
-        <span class="n">viewnode</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Volume2D</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_hdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"data"</span><span class="p">):</span>
+        <span class="n">viewnode</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_write_hdf</span><span class="p">(</span><span class="n">h5</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="n">viewnode</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">xfmname</span><span class="p">]])</span>
         <span class="k">return</span> <span class="n">viewnode</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;VolumeRGB object containing the colormapped data from this object.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VolumeRGB</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""VolumeRGB object containing the colormapped data from this object.</span>
+<span class="sd">        """</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">xfmname</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Both Volumes must have same xfmname to generate single raw volume&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Both Volumes must have same xfmname to generate single raw volume"</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">linear</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">linear</span><span class="p">)</span> <span class="ow">and</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="ow">and</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">mask</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">mask</span><span class="p">)):</span>
-            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">_same_mask</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">Volume</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Volume</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">linear</span> <span class="ow">and</span> <span class="n">b</span><span class="o">.</span><span class="n">linear</span> <span class="ow">and</span> <span class="n">a</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span>
+                        <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">mask</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">mask</span><span class="p">))</span>
+
+        <span class="n">linear</span> <span class="o">=</span> <span class="n">_same_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">linear</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">linear</span> <span class="o">=</span> <span class="n">_same_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="p">,</span> <span class="n">cast</span><span class="p">(</span><span class="n">Volume</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">linear</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">nan_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_alpha</span><span class="p">())</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">volume</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">volume</span><span class="p">)</span>
-        <span class="c1"># Allow manual override of alpha channel</span>
-        <span class="n">kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> 
-            <span class="n">state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;alpha&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
-            <span class="n">kws</span><span class="p">[</span><span class="s1">&#39;alpha&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
-        <span class="k">return</span> <span class="n">VolumeRGB</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">nan_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">volume</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">volume</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_alpha</span><span class="p">(</span><span class="n">full_volume</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">VolumeRGB</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span>
+                           <span class="n">xfmname</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                           <span class="n">state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+                           <span class="n">priority</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">priority</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">_nan_mask</span> <span class="o">=</span> <span class="n">nan_mask</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Volume</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Volume</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
 
     <span class="nd">@property</span>
@@ -254,7 +402,7 @@
 <div class="viewcode-block" id="Vertex2D">
 <a class="viewcode-back" href="../../../generated/cortex.dataset.Vertex2D.html#cortex.dataset.Vertex2D">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Vertex2D</span><span class="p">(</span><span class="n">Dataview2D</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Contains two vertex maps for simultaneous visualization. Includes information</span>
 <span class="sd">    on how the maps should be jointly colormapped.</span>
 
@@ -275,17 +423,42 @@
 <span class="sd">        Colormap (or colormap name) to use. If not given defaults to the </span>
 <span class="sd">        `default_cmap2d` in your pycortex options.cfg file.</span>
 <span class="sd">    vmin : float, optional</span>
-<span class="sd">        Minimum value in colormap for dim1. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Minimum value in colormap for dim1. If not given, the ``vmin`` of dim1</span>
+<span class="sd">        is used (its own ``vmin`` for a Volume/Vertex object, the 1st percentile</span>
+<span class="sd">        of the data for an array).</span>
 <span class="sd">    vmax : float, optional</span>
-<span class="sd">        Maximum value in colormap for dim1. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Maximum value in colormap for dim1. If not given, the ``vmax`` of dim1</span>
+<span class="sd">        is used (its own ``vmax`` for a Volume/Vertex object, the 99th</span>
+<span class="sd">        percentile of the data for an array).</span>
 <span class="sd">    vmin2 : float, optional</span>
-<span class="sd">        Minimum value in colormap for dim2. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Minimum value in colormap for dim2. If not given, the ``vmin`` of dim2</span>
+<span class="sd">        is used (same rule as ``vmin``).</span>
 <span class="sd">    vmax2 : float, optional</span>
-<span class="sd">        Maximum value in colormap for dim2. If not given defaults to TODO:WHAT</span>
+<span class="sd">        Maximum value in colormap for dim2. If not given, the ``vmax`` of dim2</span>
+<span class="sd">        is used (same rule as ``vmax``).</span>
+<span class="sd">    alpha : ndarray or Volume/Vertex, optional</span>
+<span class="sd">        Per-voxel (per-vertex) opacity multiplied into the colormap alpha.</span>
+<span class="sd">        Arrays are taken in [0, 1]; Volume/Vertex objects are normalized by</span>
+<span class="sd">        their own ``vmin``/``vmax``. Honored identically by quickflat and the</span>
+<span class="sd">        WebGL viewer. Wherever dim1, dim2 or alpha is NaN the data is</span>
+<span class="sd">        rendered fully transparent, regardless of this map.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        All additional arguments in kwargs are passed to the VolumeData and Dataview</span>
-
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">            state : untyped</span>
+<span class="sd">                role unclear</span>
+<span class="sd">            priority : int (default  = 1)</span>
+<span class="sd">                controls the order in which datasets are viewed in webgl</span>
+<span class="sd">            stim : str</span>
+<span class="sd">                path to stimulus file</span>
+<span class="sd">            rate : numeric (default 1)</span>
+<span class="sd">                frame rate for movie/time series playback in webgl</span>
+<span class="sd">            delay : numeric (default 0)</span>
+<span class="sd">                delay for movie/time series playback in webgl</span>
+<span class="sd">            filter : str (default  = "nearest")</span>
+<span class="sd">                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)</span>
+<span class="sd">            alpha : ndarray or Volume</span>
+<span class="sd">                overwrites the computed alpha channel from a cmap, but currently commented out in Dataview2D</span>
+<span class="sd">    """</span>
     <span class="n">_cls</span> <span class="o">=</span> <span class="n">VertexData</span>
     <span class="n">blend_curvature</span> <span class="o">=</span> <span class="n">_cls</span><span class="o">.</span><span class="n">blend_curvature</span>  <span class="c1"># hacky inheritance</span>
     <span class="n">dim1</span><span class="p">:</span> <span class="n">Vertex</span>
@@ -293,20 +466,20 @@
 
 <div class="viewcode-block" id="Vertex2D.__init__">
 <a class="viewcode-back" href="../../../generated/Vertex2D/cortex.dataset.Vertex2D.__init__.html#cortex.dataset.Vertex2D.__init__">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim1</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span> <span class="n">dim2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim1</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span> <span class="n">dim2</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">Vertex</span><span class="p">],</span> <span class="n">subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">cmap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">vmin</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmin2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">vmax2</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject cannot be specified with Vertex&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Subject cannot be specified with Vertex"</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="n">VertexData</span><span class="p">)</span> <span class="ow">or</span> <span class="n">dim2</span><span class="o">.</span><span class="n">subject</span> <span class="o">!=</span> <span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Invalid data for second dimension&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Invalid data for second dimension"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span> <span class="o">=</span> <span class="n">dim1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span> <span class="o">=</span> <span class="n">dim2</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cls</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;If dim2 is a Vertex, dim1 must be a Vertex as well&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"If dim2 is a Vertex, dim1 must be a Vertex as well"</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Subject must be specified with raw data&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"Subject must be specified with raw data"</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">dim1</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span> <span class="o">=</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">dim2</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax2</span><span class="p">)</span>
 
@@ -315,24 +488,28 @@
         <span class="n">vmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">vmax</span> <span class="k">if</span> <span class="n">vmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vmax</span>
         <span class="n">vmax2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">vmax</span> <span class="k">if</span> <span class="n">vmax2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">vmax2</span>
 
-        <span class="nb">super</span><span class="p">(</span><span class="n">Vertex2D</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">,</span>
                                        <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">vmin2</span><span class="o">=</span><span class="n">vmin2</span><span class="p">,</span>
                                        <span class="n">vmax2</span><span class="o">=</span><span class="n">vmax2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;&lt;2D vertex data for (</span><span class="si">%s</span><span class="s2">)&gt;&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span>
+        <span class="k">return</span> <span class="s2">"&lt;2D vertex data for (</span><span class="si">%s</span><span class="s2">)&gt;"</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;VertexRGB object containing the colormapped data from this object.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-        <span class="c1"># Allow manual override of alpha channel</span>
-        <span class="n">kws</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="s1">&#39;alpha&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
-            <span class="n">kws</span><span class="p">[</span><span class="s1">&#39;alpha&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span>
-        <span class="k">return</span> <span class="n">VertexRGB</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">raw</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VertexRGB</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""VertexRGB object containing the colormapped data from this object.</span>
+<span class="sd">        """</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">nan_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_to_raw</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim2</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_normalized_alpha</span><span class="p">())</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">VertexRGB</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                           <span class="n">state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+                           <span class="n">priority</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">priority</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">_nan_mask</span> <span class="o">=</span> <span class="n">nan_mask</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_wrap_alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Vertex</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Vertex</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim1</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">vertices</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -342,16 +519,16 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_warn_non_perceptually_uniform_colormap</span><span class="p">(</span><span class="n">cmap</span><span class="p">):</span>
     <span class="n">mapping</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;BuOr_2D&quot;</span><span class="p">:</span> <span class="s2">&quot;PU_BuOr_covar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;RdBu_covar&quot;</span><span class="p">:</span> <span class="s2">&quot;PU_RdBu_covar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;RdBu_covar2&quot;</span><span class="p">:</span> <span class="s2">&quot;PU_BuOr_covar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;RdBu_covar_alpha&quot;</span><span class="p">:</span> <span class="s2">&quot;PU_RdBu_covar_alpha&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;RdGn_covar&quot;</span><span class="p">:</span> <span class="s2">&quot;PU_RdGn_covar&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;hot_alpha&quot;</span><span class="p">:</span> <span class="s2">&quot;fire_alpha&quot;</span><span class="p">,</span>
+        <span class="s2">"BuOr_2D"</span><span class="p">:</span> <span class="s2">"PU_BuOr_covar"</span><span class="p">,</span>
+        <span class="s2">"RdBu_covar"</span><span class="p">:</span> <span class="s2">"PU_RdBu_covar"</span><span class="p">,</span>
+        <span class="s2">"RdBu_covar2"</span><span class="p">:</span> <span class="s2">"PU_BuOr_covar"</span><span class="p">,</span>
+        <span class="s2">"RdBu_covar_alpha"</span><span class="p">:</span> <span class="s2">"PU_RdBu_covar_alpha"</span><span class="p">,</span>
+        <span class="s2">"RdGn_covar"</span><span class="p">:</span> <span class="s2">"PU_RdGn_covar"</span><span class="p">,</span>
+        <span class="s2">"hot_alpha"</span><span class="p">:</span> <span class="s2">"fire_alpha"</span><span class="p">,</span>
     <span class="p">}</span>
     <span class="k">if</span> <span class="n">cmap</span> <span class="ow">in</span> <span class="n">mapping</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Colormap </span><span class="si">%r</span><span class="s2"> is not perceptually uniform. Consider using&quot;</span>
-                      <span class="s2">&quot; </span><span class="si">%r</span><span class="s2"> instead.&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="n">mapping</span><span class="p">[</span><span class="n">cmap</span><span class="p">]),</span> <span class="ne">UserWarning</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"Colormap </span><span class="si">%r</span><span class="s2"> is not perceptually uniform. Consider using"</span>
+                      <span class="s2">" </span><span class="si">%r</span><span class="s2"> instead."</span> <span class="o">%</span> <span class="p">(</span><span class="n">cmap</span><span class="p">,</span> <span class="n">mapping</span><span class="p">[</span><span class="n">cmap</span><span class="p">]),</span> <span class="ne">UserWarning</span><span class="p">)</span>
 </pre></div>
 
           </div>
@@ -383,6 +560,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
 </ul>

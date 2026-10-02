@@ -122,6 +122,23 @@ Examples demonstrating operations and analyses done on brain surfaces.
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="A flatmap throws away the folding of the cortical surface, which is a shame: where the gyri and sulci were is genuinely useful context, and once a flatmap is covered in data there is nothing left to show it. The usual fix is to shade the flatmap by curvature underneath the data, but that only works where the data is transparent.">
+
+.. only:: html
+
+  .. image:: /auto_examples/surface_analyses/images/thumb/sphx_glr_plot_bumpy_flatmap_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/surface_analyses/plot_bumpy_flatmap`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Bumpy Flatmaps</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -138,4 +155,5 @@ Examples demonstrating operations and analyses done on brain surfaces.
    /auto_examples/surface_analyses/plot_flatmap_distortion
    /auto_examples/surface_analyses/plot_subsurfaces
    /auto_examples/surface_analyses/plot_interpolate_data
+   /auto_examples/surface_analyses/plot_bumpy_flatmap
 

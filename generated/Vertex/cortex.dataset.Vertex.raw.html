@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -40,8 +40,18 @@
 <h1>cortex.dataset.Vertex.raw<a class="headerlink" href="#cortex-dataset-vertex-raw" title="Link to this heading">¶</a></h1>
 <dl class="py property">
 <dt class="sig sig-object py" id="cortex.dataset.Vertex.raw">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">Vertex.</span></span><span class="sig-name descname"><span class="pre">raw</span></span><a class="headerlink" href="#cortex.dataset.Vertex.raw" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">Vertex.</span></span><span class="sig-name descname"><span class="pre">raw</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../cortex.dataset.VertexRGB.html#cortex.dataset.VertexRGB" title="cortex.dataset.viewRGB.VertexRGB"><span class="pre">VertexRGB</span></a></span><a class="headerlink" href="#cortex.dataset.Vertex.raw" title="Link to this definition">¶</a></dt>
+<dd><p>Colormap this Vertex’s data into an RGBA VertexRGB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>VertexRGB</dt><dd><p>This Vertex’s data, mapped through <cite>cmap</cite>/<cite>vmin</cite>/<cite>vmax</cite> into
+per-vertex RGB colors, with alpha set to 0 for NaN vertices.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 
@@ -75,6 +85,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

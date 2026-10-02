@@ -1,7 +1,7 @@
 """
-===================================
+=======================================================
 Ignore NaN (not-a-number) values in thickness mapping
-===================================
+=======================================================
 
 By default, pycortex quickshow averages across the thickness of the cortex
 for each pixel in the resulting flatmap. If any of these layers contain a value

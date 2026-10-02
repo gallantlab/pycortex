@@ -1,0 +1,6 @@
+﻿cortex.quickflat.utils.get\_flatmask
+====================================
+
+.. currentmodule:: cortex.quickflat.utils
+
+.. autofunction:: get_flatmask

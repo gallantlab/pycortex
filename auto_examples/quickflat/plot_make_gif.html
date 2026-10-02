@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -48,47 +48,45 @@ to download the full example code.</p>
 <p>A convenient way to compare two flat maps (e.g., prediction performance or
 tuning weights) is to flip back and forth between them. This example shows how
 to make an animated gif in which each frame is a flatmap.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <p>Create several pycortex Volumes</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">volumes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;first&#39;</span><span class="p">:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s1">&#39;fullhead&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">),</span>
-           <span class="s1">&#39;second&#39;</span><span class="p">:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s1">&#39;fullhead&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;RdBu_r&quot;</span><span class="p">)}</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="n">volumes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'</span><span class="s1">first</span><span class="s1">'</span><span class="p">:</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-method reference internal" href="../../generated/Volume/cortex.dataset.Volume.random.html#cortex.dataset.Volume.random" title="cortex.Volume.random"><span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span></a><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">'</span><span class="s1">S1</span><span class="s1">'</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s1">'</span><span class="s1">fullhead</span><span class="s1">'</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">RdBu_r</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>           <span class="s1">'</span><span class="s1">second</span><span class="s1">'</span><span class="p">:</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-method reference internal" href="../../generated/Volume/cortex.dataset.Volume.random.html#cortex.dataset.Volume.random" title="cortex.Volume.random"><span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span></a><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">'</span><span class="s1">S1</span><span class="s1">'</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s1">'</span><span class="s1">fullhead</span><span class="s1">'</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">RdBu_r</span><span class="s2">&quot;</span><span class="p">)</span><span class="p">}</span><span class="w">
+</span></pre></div></div>
 <p>Plot flat maps individually</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="s1">&#39;first&#39;</span><span class="p">],</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="s1">&#39;second&#39;</span><span class="p">],</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="n">_</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-quickflat sphx-glr-backref-type-py-function reference internal" href="../../generated/cortex.quickflat.make_figure.html#cortex.quickflat.make_figure" title="cortex.quickflat.make_figure"><span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span></a><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="s1">'</span><span class="s1">first</span><span class="s1">'</span><span class="p">]</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">right</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">_</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-quickflat sphx-glr-backref-type-py-function reference internal" href="../../generated/cortex.quickflat.make_figure.html#cortex.quickflat.make_figure" title="cortex.quickflat.make_figure"><span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span></a><span class="p">(</span><span class="n">volumes</span><span class="p">[</span><span class="s1">'</span><span class="s1">second</span><span class="s1">'</span><span class="p">]</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">right</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">_</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <ul class="sphx-glr-horizontal">
 <li><img src="../../_images/sphx_glr_plot_make_gif_001.png" srcset="../../_images/sphx_glr_plot_make_gif_001.png" alt="plot make gif" class = "sphx-glr-multi-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_make_gif_002.png" srcset="../../_images/sphx_glr_plot_make_gif_002.png" alt="plot make gif" class = "sphx-glr-multi-img"/></li>
 </ul>
 <p>Generate an animated gif that switches between frames every 1.5 seconds</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;./flatmap_comparison.gif&quot;</span>
-<span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_gif</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">./flatmap_comparison.gif</span><span class="s2">&quot;</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_gif</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">right</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>'./flatmap_comparison.gif'
 </pre></div>
 </div>
 <p>Display gif inline in an IPython notebook</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-
-<span class="n">stream</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-<span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_gif</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">)</span>
-
-<span class="n">Image</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">io</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">IPython</span><span class="nn">.</span><span class="nn">display</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="w">
+</span><span class="w">
+</span><span class="n">stream</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_gif</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">volumes</span><span class="p">,</span> <span class="n">frame_duration</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">colorbar_location</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">right</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">Image</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;IPython.core.display.Image object&gt;
 </pre></div>
 </div>
 <img alt="../../_images/flatmap_comparison.gif" src="../../_images/flatmap_comparison.gif" />
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 8.885 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 8.358 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-quickflat-plot-make-gif-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/0171ca85d45eca4cef1870c2e499de10/plot_make_gif.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_make_gif.ipynb</span></code></a></p>
@@ -133,6 +131,8 @@ to make an animated gif in which each frame is a flatmap.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>
@@ -140,18 +140,22 @@ to make an animated gif in which each frame is a flatmap.</p>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="index.html">Quickflat Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
 </ul>

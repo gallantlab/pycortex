@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -41,8 +41,19 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="cortex.dataset.Dataset.append">
 <span class="sig-prename descclassname"><span class="pre">Dataset.</span></span><span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dataview</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.dataset.Dataset"><span class="pre">Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../cortex.dataset.Dataset.html#cortex.dataset.Dataset" title="cortex.dataset.dataset.Dataset"><span class="pre">Dataset</span></a></span></span><a class="reference internal" href="../../_modules/cortex/dataset/dataset.html#Dataset.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.dataset.Dataset.append" title="Link to this definition">¶</a></dt>
-<dd><p>Add the <cite>BrainData</cite> or <cite>Dataset</cite> objects in <cite>kwargs</cite> into this 
-dataset.</p>
+<dd><p>Add the views in <cite>kwargs</cite> into this dataset. Each keyword names
+one view; its value can be a Dataview, a tuple (implicitly converted
+to a Volume or Vertex), a filename string (loaded from an .hdf
+file), a dict (converted to a nested Dataset), or another Dataset
+(merged in). See the <cite>Dataset</cite> class docstring for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>Dataset</dt><dd><p>This dataset, with the new views added, for chaining.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -77,6 +88,8 @@ dataset.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

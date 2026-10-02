@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Timeseries of RGB Vertex Data &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Inspect Encoding-Model Predictions and Timeseries" href="encoding_model_timeseries.html" />
+    <link rel="prev" title="Timeseries Examples" href="index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-timeseries-rgb-timeseries-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="timeseries-of-rgb-vertex-data">
+<span id="sphx-glr-auto-examples-timeseries-rgb-timeseries-py"></span><h1>Timeseries of RGB Vertex Data<a class="headerlink" href="#timeseries-of-rgb-vertex-data" title="Link to this heading">¶</a></h1>
+<p>An RGB dataset carries three timecourses per vertex, one per color channel.
+With the timeseries panel open (Open Controls -&gt; movie -&gt; timeseries), click
+a vertex and the panel plots all three channels, each with its own checkbox
+and color picker, above a strip showing the blended color over time - the
+color actually painted on the brain at each volume.</p>
+<p>The data is synthetic, built for the example subject(S1). Three patches on
+the cortical surface pulse in the red, green and blue channels at different
+rates, so each patch blinks in its own color and clicking inside one shows
+which channel drives it.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="w">
+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="w">
+</span><span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">S1</span><span class="s2">&quot;</span><span class="w">
+</span><span class="n">n_volumes</span> <span class="o">=</span> <span class="mi">120</span><span class="w">
+</span><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_volumes</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="p">(</span><span class="n">lpts</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span><span class="p">,</span> <span class="p">(</span><span class="n">rpts</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">wm</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="p">[</span><span class="n">lpts</span><span class="p">,</span> <span class="n">rpts</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span><span class="n">n_vertices</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pts</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="k">def</span><span class="w"> </span><span class="nf">patch</span><span class="p">(</span><span class="n">center_vertex</span><span class="p">,</span> <span class="n">radius_mm</span><span class="o">=</span><span class="mf">18.0</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Gaussian surface patch (0-1) around one vertex, by 3D distance.&quot;&quot;&quot;</span><span class="w">
+</span>    <span class="n">d2</span> <span class="o">=</span> <span class="p">(</span><span class="p">(</span><span class="n">pts</span> <span class="o">-</span> <span class="n">pts</span><span class="p">[</span><span class="n">center_vertex</span><span class="p">]</span><span class="p">)</span> <span class="o">*</span><span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w">
+</span>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">d2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">radius_mm</span> <span class="o">*</span><span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">float32</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">centers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">n_vertices</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="n">rates</span> <span class="o">=</span> <span class="p">[</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]</span>                      <span class="c1"># pulse periods</span><span class="w">
+</span><span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
+</span><span class="k">for</span> <span class="n">center</span><span class="p">,</span> <span class="n">period</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">centers</span><span class="p">,</span> <span class="n">rates</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">pulse</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">t</span> <span class="o">/</span> <span class="n">period</span><span class="p">)</span>          <span class="c1"># (t,)</span><span class="w">
+</span>    <span class="n">signal</span> <span class="o">=</span> <span class="n">pulse</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">patch</span><span class="p">(</span><span class="n">center</span><span class="p">)</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:</span><span class="p">]</span>            <span class="c1"># (t, v)</span><span class="w">
+</span>    <span class="n">noise</span> <span class="o">=</span> <span class="mf">0.08</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n_volumes</span><span class="p">,</span> <span class="n">n_vertices</span><span class="p">)</span><span class="w">
+</span>    <span class="n">channels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">signal</span> <span class="o">+</span> <span class="n">noise</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span> <span class="o">=</span> <span class="n">channels</span><span class="w">
+</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="p">(</span><span class="n">n_volumes</span><span class="p">,</span> <span class="n">n_vertices</span><span class="p">)</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">float32</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">rgb</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">VertexRGB</span><span class="p">(</span><span class="n">red</span><span class="p">,</span> <span class="n">green</span><span class="p">,</span> <span class="n">blue</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">webshow</span><span class="p">(</span><span class="p">{</span><span class="s2">&quot;</span><span class="s2">rgb</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">rgb</span><span class="p">}</span><span class="p">)</span><span class="w">
+</span><span class="c1"># Like the other WebGL examples, run this from ipython/jupyter or with</span><span class="w">
+</span><span class="c1"># `python -i` so the interpreter (and the viewer's server) stays alive.</span><span class="w">
+</span></pre></div></div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-timeseries-rgb-timeseries-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/926ce5c5c657e1925661d39b6b6b35ca/rgb_timeseries.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">rgb_timeseries.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/847b9b54dc93a46e8d7a24c553b36c4d/rgb_timeseries.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">rgb_timeseries.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/835fcaca29153d5ffe77f7e1bcf93edc/rgb_timeseries.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">rgb_timeseries.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="index.html">Timeseries Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+  <li><a href="index.html">Timeseries Examples</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Timeseries Examples</a></li>
+      <li>Next: <a href="encoding_model_timeseries.html" title="next chapter">Inspect Encoding-Model Predictions and Timeseries</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/auto_examples/timeseries/rgb_timeseries.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

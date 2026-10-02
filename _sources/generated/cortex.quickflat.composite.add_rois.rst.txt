@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_rois
+====================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_rois

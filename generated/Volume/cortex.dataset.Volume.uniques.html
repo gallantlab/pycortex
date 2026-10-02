@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -41,7 +41,25 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="cortex.dataset.Volume.uniques">
 <span class="sig-prename descclassname"><span class="pre">Volume.</span></span><span class="sig-name descname"><span class="pre">uniques</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">collapse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cortex.dataset.Volume.uniques" title="Link to this definition">¶</a></dt>
-<dd><p>TODO: WHAT IS THIS</p>
+<dd><p>Yield the underlying BrainData object(s) this view is built from.</p>
+<p>For a plain Volume/Vertex, that’s just itself; composite views
+(VolumeRGB, VertexRGB, Volume2D, Vertex2D) override this to yield
+their individual channels instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>collapse</strong><span class="classifier">bool, optional</span></dt><dd><p>Unused here; accepted for interface compatibility with the
+composite-view overrides of this method.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>generator</dt><dd><p>Yields <cite>BrainData</cite></p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -76,6 +94,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

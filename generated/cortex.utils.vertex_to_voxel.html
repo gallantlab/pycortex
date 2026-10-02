@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -41,7 +41,9 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="cortex.utils.vertex_to_voxel">
 <span class="sig-prename descclassname"><span class="pre">cortex.utils.</span></span><span class="sig-name descname"><span class="pre">vertex_to_voxel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/utils.html#vertex_to_voxel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.utils.vertex_to_voxel" title="Link to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
+<dd><p>For each functional voxel, find the index of the nearest surface
+vertex, considering the fiducial, white matter, and pial surfaces.</p>
+<dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Name of subject</p>
@@ -49,7 +51,14 @@
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"></dd>
+<dd class="field-even"><dl class="simple">
+<dt><strong>all_verts</strong><span class="classifier">ndarray (z, y, x)</span></dt><dd><p>Array with the same shape as the reference image for the subject’s
+identity transform, containing for each voxel the index of the
+closest vertex on any of the fiducial, white matter, or pial
+surfaces.</p>
+</dd>
+</dl>
+</dd>
 </dl>
 </dd></dl>
 
@@ -85,6 +94,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

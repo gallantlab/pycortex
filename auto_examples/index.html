@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -45,12 +45,14 @@
 <ul class="simple">
 <li><p><a class="reference internal" href="#datasets-examples" id="id1">Datasets Examples</a></p></li>
 <li><p><a class="reference internal" href="#examples-with-fsaverage" id="id2">Examples with fsaverage</a></p></li>
-<li><p><a class="reference internal" href="#importing-surfaces-examples" id="id3">Importing Surfaces Examples</a></p></li>
-<li><p><a class="reference internal" href="#quickflat-examples" id="id4">Quickflat Examples</a></p></li>
-<li><p><a class="reference internal" href="#quickstart-examples" id="id5">Quickstart Examples</a></p></li>
-<li><p><a class="reference internal" href="#surface-analysis-examples" id="id6">Surface Analysis Examples</a></p></li>
-<li><p><a class="reference internal" href="#utility-examples" id="id7">Utility Examples</a></p></li>
-<li><p><a class="reference internal" href="#webgl-examples" id="id8">WebGL Examples</a></p></li>
+<li><p><a class="reference internal" href="#examples-with-hcp-fs-lr-data" id="id3">Examples with HCP fs_LR data</a></p></li>
+<li><p><a class="reference internal" href="#importing-surfaces-examples" id="id4">Importing Surfaces Examples</a></p></li>
+<li><p><a class="reference internal" href="#quickflat-examples" id="id5">Quickflat Examples</a></p></li>
+<li><p><a class="reference internal" href="#quickstart-examples" id="id6">Quickstart Examples</a></p></li>
+<li><p><a class="reference internal" href="#surface-analysis-examples" id="id7">Surface Analysis Examples</a></p></li>
+<li><p><a class="reference internal" href="#timeseries-examples" id="id8">Timeseries Examples</a></p></li>
+<li><p><a class="reference internal" href="#utility-examples" id="id9">Utility Examples</a></p></li>
+<li><p><a class="reference internal" href="#webgl-examples" id="id10">WebGL Examples</a></p></li>
 </ul>
 </nav>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"></div><section id="datasets-examples">
@@ -80,7 +82,7 @@
 </div><div class="sphx-glr-thumbcontainer" tooltip="This plots an example RGB dataset onto an example subject, S1, onto a flatmap using quickflat. In order for this to run, you have to a have a flatmap for this subject in the pycortex filestore."><img alt="" src="../_images/sphx_glr_plot_volumeRGB_thumb.png" />
 <p><a class="reference internal" href="datasets/plot_volumeRGB.html"><span class="doc">Plot RGB Volume Data</span></a></p>
   <div class="sphx-glr-thumbnail-title">Plot RGB Volume Data</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are  interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque."><img alt="" src="../_images/sphx_glr_plot_data_with_alpha_thumb.png" />
+</div><div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque."><img alt="" src="../_images/sphx_glr_plot_data_with_alpha_thumb.png" />
 <p><a class="reference internal" href="datasets/plot_data_with_alpha.html"><span class="doc">Plot Data with Alpha Values</span></a></p>
   <div class="sphx-glr-thumbnail-title">Plot Data with Alpha Values</div>
 </div></div></section>
@@ -91,8 +93,16 @@
 <p><a class="reference internal" href="fsaverage/upsample_to_fsaverage.html"><span class="doc">Upsample data from a lower resolution fsaverage template to fsaverage for visualization</span></a></p>
   <div class="sphx-glr-thumbnail-title">Upsample data from a lower resolution fsaverage template to fsaverage for visualization</div>
 </div></div></section>
+<section id="examples-with-hcp-fs-lr-data">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Examples with HCP fs_LR data</a><a class="headerlink" href="#examples-with-hcp-fs-lr-data" title="Link to this heading">¶</a></h2>
+<p>Examples showing how to use PyCortex to visualize HCP fs_LR 32k data, both on
+the HCP template and resampled to fsaverage.</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This example shows how to:"><img alt="" src="../_images/sphx_glr_plot_hcp_fs_lr_thumb.png" />
+<p><a class="reference internal" href="hcp/plot_hcp_fs_lr.html"><span class="doc">Visualize HCP fs_LR data on the HCP template and on fsaverage</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Visualize HCP fs_LR data on the HCP template and on fsaverage</div>
+</div></div></section>
 <section id="importing-surfaces-examples">
-<h2><a class="toc-backref" href="#id3" role="doc-backlink">Importing Surfaces Examples</a><a class="headerlink" href="#importing-surfaces-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id4" role="doc-backlink">Importing Surfaces Examples</a><a class="headerlink" href="#importing-surfaces-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating how to import surfraces from other software (e.g.
 FreeSurfer, fmriprep).</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatomical and functional data. Pycortex has a convenience function to import the output of this workflow."><img alt="" src="../_images/sphx_glr_import_fmriprep_thumb.png" />
@@ -100,7 +110,7 @@ FreeSurfer, fmriprep).</p>
   <div class="sphx-glr-thumbnail-title">Import fmriprep output</div>
 </div></div></section>
 <section id="quickflat-examples">
-<h2><a class="toc-backref" href="#id4" role="doc-backlink">Quickflat Examples</a><a class="headerlink" href="#quickflat-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Quickflat Examples</a><a class="headerlink" href="#quickflat-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating how to create flatmaps.</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="The sulci are defined in a sub-layer of the sulci layer in &lt;filestore&gt;/&lt;subject&gt;/overlays.svg."><img alt="" src="../_images/sphx_glr_plot_sulci_thumb.png" />
 <p><a class="reference internal" href="quickflat/plot_sulci.html"><span class="doc">Plot sulci on the flatmap</span></a></p>
@@ -108,12 +118,12 @@ FreeSurfer, fmriprep).</p>
 </div><div class="sphx-glr-thumbcontainer" tooltip="A dropout region is a region with very low EPI signal. In pycortex a crosshatch is used to display such dropout regions."><img alt="" src="../_images/sphx_glr_plot_dropout_thumb.png" />
 <p><a class="reference internal" href="quickflat/plot_dropout.html"><span class="doc">Plot dropout regions on the flatmap</span></a></p>
   <div class="sphx-glr-thumbnail-title">Plot dropout regions on the flatmap</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file."><img alt="" src="../_images/sphx_glr_plot_make_png_thumb.png" />
-<p><a class="reference internal" href="quickflat/plot_make_png.html"><span class="doc">Save a 2D static flatmap as PNG</span></a></p>
-  <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as SVG file."><img alt="" src="../_images/sphx_glr_plot_make_svg_thumb.png" />
 <p><a class="reference internal" href="quickflat/plot_make_svg.html"><span class="doc">Save a 2D static flatmap as SVG</span></a></p>
   <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as SVG</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Plot a 2D static flatmap and save it as PNG file."><img alt="" src="../_images/sphx_glr_plot_make_png_thumb.png" />
+<p><a class="reference internal" href="quickflat/plot_make_png.html"><span class="doc">Save a 2D static flatmap as PNG</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Save a 2D static flatmap as PNG</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="Cutouts are manually generated cuts of the cortical surface to highlight a region of interest."><img alt="" src="../_images/sphx_glr_plot_cutouts_thumb.png" />
 <p><a class="reference internal" href="quickflat/plot_cutouts.html"><span class="doc">Plot cutouts on the flatmap</span></a></p>
   <div class="sphx-glr-thumbnail-title">Plot cutouts on the flatmap</div>
@@ -140,7 +150,7 @@ FreeSurfer, fmriprep).</p>
   <div class="sphx-glr-thumbnail-title">Plot with advanced compositing</div>
 </div></div></section>
 <section id="quickstart-examples">
-<h2><a class="toc-backref" href="#id5" role="doc-backlink">Quickstart Examples</a><a class="headerlink" href="#quickstart-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id6" role="doc-backlink">Quickstart Examples</a><a class="headerlink" href="#quickstart-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating how to get started with pycortex.</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This demo shows how to plot example retinotopy data onto a subject&#x27;s brain in a web viewer. In order for this demo to work, you need to download this dataset_, but that can also be done automatically through the urllib command that is included."><img alt="" src="../_images/sphx_glr_retinotopy_webgl_thumb.png" />
 <p><a class="reference internal" href="quickstart/retinotopy_webgl.html"><span class="doc">Plot Example Retinotopy in Web Viewer</span></a></p>
@@ -153,7 +163,7 @@ FreeSurfer, fmriprep).</p>
   <div class="sphx-glr-thumbnail-title">Plot Example Retinotopy Flatmaps</div>
 </div></div></section>
 <section id="surface-analysis-examples">
-<h2><a class="toc-backref" href="#id6" role="doc-backlink">Surface Analysis Examples</a><a class="headerlink" href="#surface-analysis-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id7" role="doc-backlink">Surface Analysis Examples</a><a class="headerlink" href="#surface-analysis-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating operations and analyses done on brain surfaces.</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Creating a flatmap from a folded cortical surface always introduces some distortion. This is similar to what happens when a map of the globe is flattened into a 2-D map like a Mercator projection. For the cortical surface the amount and type of distortion will depend on the curvature of the surface (i.e. whether it is on a gyrus or a sulcus) and on the distance to the nearest cut."><img alt="" src="../_images/sphx_glr_plot_tissots_indicatrix_thumb.png" />
 <p><a class="reference internal" href="surface_analyses/plot_tissots_indicatrix.html"><span class="doc">Tissot’s Indicatrix</span></a></p>
@@ -173,11 +183,25 @@ FreeSurfer, fmriprep).</p>
 </div><div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to interpolate data from a sparse collection of points to all the points in the cortical surface."><img alt="" src="../_images/sphx_glr_plot_interpolate_data_thumb.png" />
 <p><a class="reference internal" href="surface_analyses/plot_interpolate_data.html"><span class="doc">Interpolate Data</span></a></p>
   <div class="sphx-glr-thumbnail-title">Interpolate Data</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="A flatmap throws away the folding of the cortical surface, which is a shame: where the gyri and sulci were is genuinely useful context, and once a flatmap is covered in data there is nothing left to show it. The usual fix is to shade the flatmap by curvature underneath the data, but that only works where the data is transparent."><img alt="" src="../_images/sphx_glr_plot_bumpy_flatmap_thumb.png" />
+<p><a class="reference internal" href="surface_analyses/plot_bumpy_flatmap.html"><span class="doc">Bumpy Flatmaps</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Bumpy Flatmaps</div>
+</div></div></section>
+<section id="timeseries-examples">
+<h2><a class="toc-backref" href="#id8" role="doc-backlink">Timeseries Examples</a><a class="headerlink" href="#timeseries-examples" title="Link to this heading">¶</a></h2>
+<p>Examples for the click-a-voxel timeseries panel in the WebGL viewer
+(Open Controls -&gt; movie -&gt; timeseries).</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="An RGB dataset carries three timecourses per vertex, one per color channel. With the timeseries panel open (Open Controls -&gt; movie -&gt; timeseries), click a vertex and the panel plots all three channels, each with its own checkbox and color picker, above a strip showing the blended color over time - the color actually painted on the brain at each volume."><img alt="" src="../_images/sphx_glr_rgb_timeseries_thumb.png" />
+<p><a class="reference internal" href="timeseries/rgb_timeseries.html"><span class="doc">Timeseries of RGB Vertex Data</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Timeseries of RGB Vertex Data</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Load a static prediction-performance map (3D) together with the actual and predicted BOLD responses it was computed from (both 4D) into one WebGL viewer. Browse the R² map on the surface, open the timeseries panel (Open Controls -&gt; movie -&gt; timeseries) and click a voxel: the panel plots the actual and predicted timecourses at that location, so you can see what a voxel responds to and how well the model captures it. Plain 1D arrays in the data dict (the block design here) appear as optional reference traces. Clicking a timepoint in the panel seeks the 4D datasets to that volume; switch to the &quot;actual&quot; dataset (+ / - keys) to watch the brain follow."><img alt="" src="../_images/sphx_glr_encoding_model_timeseries_thumb.png" />
+<p><a class="reference internal" href="timeseries/encoding_model_timeseries.html"><span class="doc">Inspect Encoding-Model Predictions and Timeseries</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Inspect Encoding-Model Predictions and Timeseries</div>
 </div></div></section>
 <section id="utility-examples">
-<h2><a class="toc-backref" href="#id7" role="doc-backlink">Utility Examples</a><a class="headerlink" href="#utility-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id9" role="doc-backlink">Utility Examples</a><a class="headerlink" href="#utility-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating how to do all sorts of beautiful things using pycortex.</p>
-<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the SVG ROI file (see /rois.rst)."><img alt="" src="../_images/sphx_glr_plot_get_roi_vertices_thumb.png" />
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="In this example we show how to get the vertices that are inside an ROI that was defined in the SVG ROI file (see /rois)."><img alt="" src="../_images/sphx_glr_plot_get_roi_vertices_thumb.png" />
 <p><a class="reference internal" href="utils/plot_get_roi_vertices.html"><span class="doc">Get Vertices for an ROI</span></a></p>
   <div class="sphx-glr-thumbnail-title">Get Vertices for an ROI</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="The utility function get_vox_dist returns the distance from each voxel in some space to the nearest vertex on the given surface. This function is used for generating ROI masks, cortical masks, etc."><img alt="" src="../_images/sphx_glr_plot_voxel_distance_from_surface_thumb.png" />
@@ -203,7 +227,7 @@ FreeSurfer, fmriprep).</p>
   <div class="sphx-glr-thumbnail-title">Get ROI Index Volume</div>
 </div></div></section>
 <section id="webgl-examples">
-<h2><a class="toc-backref" href="#id8" role="doc-backlink">WebGL Examples</a><a class="headerlink" href="#webgl-examples" title="Link to this heading">¶</a></h2>
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">WebGL Examples</a><a class="headerlink" href="#webgl-examples" title="Link to this heading">¶</a></h2>
 <p>Examples demonstrating how to make beautiful interactive 3-D viewers</p>
 <div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="A webgl viewer displays a 3D view of brain data in a web browser"><img alt="" src="../_images/sphx_glr_single_dataset_thumb.png" />
 <p><a class="reference internal" href="webgl/single_dataset.html"><span class="doc">Create a 3D WebGL Viewer</span></a></p>
@@ -267,6 +291,8 @@ FreeSurfer, fmriprep).</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>
@@ -274,18 +300,22 @@ FreeSurfer, fmriprep).</p>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Example Gallery</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#webgl-examples">WebGL Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="quickflat/index.html">Quickflat Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="quickstart/index.html">Quickstart Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="utils/index.html">Utility Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="webgl/index.html">WebGL Examples</a></li>
 </ul>

@@ -1,0 +1,6 @@
+﻿cortex.quickflat.utils.get\_flatcache
+=====================================
+
+.. currentmodule:: cortex.quickflat.utils
+
+.. autofunction:: get_flatcache

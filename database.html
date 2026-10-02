@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -58,7 +58,7 @@
 <section id="surfaces">
 <h2>Surfaces<a class="headerlink" href="#surfaces" title="Link to this heading">¶</a></h2>
 <p>Pycortex fundamentally operates on triangular mesh geometry computed from a subject’s anatomy. Surface geometries are usually created from a <a class="reference external" href="http://en.wikipedia.org/wiki/Marching_cubes">marching cubes</a> reconstruction of the segmented cortical sheet. This undistorted reconstruction in the original anatomical space is known as the fiducial surface. The fiducial surface is inflated and cut along anatomical and functional boundaries and is morphed by an energy metric to be on a flattened 2D surface.</p>
-<p>Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>. Another package which is generally more user-friendly is <a class="reference external" href="http://brainvis.wustl.edu/wiki/index.php/Main_Page">Caret</a>. pycortex includes some utility functions to interact with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>, documented ‘’’HERE’’’.</p>
+<p>Unfortunately, pycortex currently has no way of generating or editing these geometries directly. The recommended software for doing segmentation and flattening is <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>. Another package which is generally more user-friendly is <a class="reference external" href="http://brainvis.wustl.edu/wiki/index.php/Main_Page">Caret</a>. pycortex includes some utility functions to interact with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>, which are documented in <a class="reference internal" href="#database-freesurfer-import"><span class="std std-ref">Importing a subject from Freesurfer</span></a> below and in the <code class="docutils literal notranslate"><span class="pre">cortex.freesurfer</span></code> module.</p>
 <p>A surface in pycortex is any file specifying the triangular mesh geometry of a subject. Surfaces may be stored in any one of <strong>OFF</strong>, <strong>VTK</strong>, or <strong>npz</strong> formats. The highest performance is achieved with <strong>npz</strong> since it is binary and compressed. VTK is also efficient, having a <cite>Cython</cite> module to read files. Inside the filestore, surface names are formatted as <code class="docutils literal notranslate"><span class="pre">{type}_{hemisphere}.{format}</span></code>. Surfaces generally have three variables associated:</p>
 <blockquote>
 <div><ul class="simple">
@@ -77,12 +77,12 @@
 <h3>Command access<a class="headerlink" href="#command-access" title="Link to this heading">¶</a></h3>
 <p>For the direct command access, there are two call signatures:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="s1">'S1'</span><span class="p">,</span> <span class="s1">'fiducial'</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>This returns the points and polygons of the given subject and surface type. Hemisphere defaults to “both”, and since <code class="docutils literal notranslate"><span class="pre">merge</span></code> is true, they are vertically stacked <strong>left, then right</strong>. The polygon indices are shifted up for the right hemisphere to make a single unified geometry.</p>
 <p>With <code class="docutils literal notranslate"><span class="pre">merge=False</span></code>, the return looks different:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fiducial&#39;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="s1">'S1'</span><span class="p">,</span> <span class="s1">'fiducial'</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">lpts</span><span class="p">,</span> <span class="n">lpolys</span> <span class="o">=</span> <span class="n">left</span>
 <span class="n">rpts</span><span class="p">,</span> <span class="n">rpolys</span> <span class="o">=</span> <span class="n">right</span>
 </pre></div>
@@ -120,11 +120,166 @@
 </pre></div>
 </div>
 </section>
+<section id="subject-names-that-are-not-valid-python-identifiers">
+<h3>Subject names that are not valid Python identifiers<a class="headerlink" href="#subject-names-that-are-not-valid-python-identifiers" title="Link to this heading">¶</a></h3>
+<p>Attribute access only works for names that happen to be valid Python
+identifiers, so a subject called <code class="docutils literal notranslate"><span class="pre">S1-test</span></code> cannot be reached as
+<code class="docutils literal notranslate"><span class="pre">cortex.db.S1-test</span></code>. Every level of the tab interface also supports item
+access, which works for any name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">In</span> <span class="p">[</span><span class="mi">8</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">'S1-test'</span><span class="p">]</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">9</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">'S1-test'</span><span class="p">]</span><span class="o">.</span><span class="n">surfaces</span><span class="p">[</span><span class="s1">'flat'</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">10</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="s1">'S1-test'</span><span class="p">]</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s1">'fullhead'</span><span class="p">][</span><span class="s1">'coord'</span><span class="p">]</span><span class="o">.</span><span class="n">xfm</span>
+</pre></div>
+</div>
+<p>You can also test for a subject with <code class="docutils literal notranslate"><span class="pre">'S1-test'</span> <span class="pre">in</span> <span class="pre">cortex.db</span></code> and iterate
+over the subject names with <code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">subject</span> <span class="pre">in</span> <span class="pre">cortex.db</span></code>.</p>
+</section>
 <section id="adding-new-surfaces">
 <h3>Adding new surfaces<a class="headerlink" href="#adding-new-surfaces" title="Link to this heading">¶</a></h3>
 <p>Surface management is implemented through your file manager. To add a new surface to an existing subject, copy the surface file into <code class="docutils literal notranslate"><span class="pre">{$FILESTORE}/{$SUBJECT}/surfaces/</span></code> with the format <code class="docutils literal notranslate"><span class="pre">{type}_{hemisphere}.{format}</span></code>, where <code class="docutils literal notranslate"><span class="pre">hemisphere</span></code> is <strong>lh</strong> or <strong>rh</strong>, and format is one of <strong>OFF</strong>, <strong>VTK</strong>, or an <strong>npz</strong> file with keys ‘pts’ and ‘polys’. If you have a python session with pycortex imported already, please reload the session. The new surfaces should be accessible via the given interfaces immediately.</p>
 <p>In order to adequately utilize all the functions in pycortex, please add the <strong>fiducial</strong>, <strong>inflated</strong>, and <strong>flat</strong> geometries for both hemispheres. Again, make sure that all the surface types for a given subject and hemisphere have the same number of vertices, otherwise unexpected things may happen!</p>
 </section>
+</section>
+<section id="importing-a-subject-from-freesurfer">
+<span id="database-freesurfer-import"></span><h2>Importing a subject from Freesurfer<a class="headerlink" href="#importing-a-subject-from-freesurfer" title="Link to this heading">¶</a></h2>
+<p>The usual way to create a subject in the pycortex database is to import one that has
+already been segmented with <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">import_subj</span><span class="p">(</span><span class="n">freesurfer_subject</span><span class="p">,</span> <span class="n">pycortex_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="n">whitematter_surf</span><span class="o">=</span><span class="s1">'smoothwm'</span><span class="p">,</span>
+                              <span class="n">autoflatten</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This reads from the Freesurfer subject directory,
+<code class="docutils literal notranslate"><span class="pre">$SUBJECTS_DIR/{freesurfer_subject}/</span></code>, and writes into the pycortex filestore entry
+for the subject, <code class="docutils literal notranslate"><span class="pre">{filestore}/{pycortex_subject}/</span></code>. Only the files listed below are
+copied over. Note that <code class="docutils literal notranslate"><span class="pre">import_subj</span></code> overwrites any pre-existing pycortex subject
+of the same name, including all blender cuts, masks and transforms, and deletes all
+cached files for that subject.</p>
+<p>Anatomical volumes are converted with <code class="docutils literal notranslate"><span class="pre">mri_convert</span></code>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Freesurfer file</p></th>
+<th class="head"><p>pycortex file</p></th>
+<th class="head"><p>Contents</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mri/T1.mgz</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">anatomicals/raw.nii.gz</span></code></p></td>
+<td><p>T1-weighted anatomical</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mri/aseg.mgz</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">anatomicals/aseg.nii.gz</span></code></p></td>
+<td><p>Automatic segmentation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mri/wm.mgz</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">anatomicals/raw_wm.nii.gz</span></code></p></td>
+<td><p>White matter segmentation</p></td>
+</tr>
+</tbody>
+</table>
+<p>Surfaces are imported for both hemispheres (<code class="docutils literal notranslate"><span class="pre">lh</span></code> and <code class="docutils literal notranslate"><span class="pre">rh</span></code>) and are converted with
+<code class="docutils literal notranslate"><span class="pre">mris_convert</span> <span class="pre">--to-scanner</span></code>, so that they are stored in the same coordinate system
+as the anatomical volumes rather than in the Freesurfer TKR coordinate system (whose
+center is set to FOV/2). As a consequence, the imported surfaces will look misaligned
+with the anatomical volumes if you load them in <code class="docutils literal notranslate"><span class="pre">freeview</span></code>, which expects TKR
+coordinates. This is expected: the surfaces in the pycortex database are only meant to
+be used by pycortex.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Freesurfer file</p></th>
+<th class="head"><p>pycortex file</p></th>
+<th class="head"><p>Contents</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.smoothwm</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surfaces/wm_?h.gii</span></code></p></td>
+<td><p>White matter surface</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.pial</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surfaces/pia_?h.gii</span></code></p></td>
+<td><p>Pial surface</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.inflated</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surfaces/inflated_?h.gii</span></code></p></td>
+<td><p>Inflated surface</p></td>
+</tr>
+</tbody>
+</table>
+<p>The surface imported as <code class="docutils literal notranslate"><span class="pre">wm</span></code> is whichever surface is named by the
+<code class="docutils literal notranslate"><span class="pre">whitematter_surf</span></code> argument, so the first row above is really
+<code class="docutils literal notranslate"><span class="pre">surf/?h.{whitematter_surf}</span></code>. It defaults to <code class="docutils literal notranslate"><span class="pre">smoothwm</span></code>, but that surface is
+smoothed and may not be appropriate for every use; <code class="docutils literal notranslate"><span class="pre">white</span></code> is a good alternative.</p>
+<p>Surface info files hold one value per vertex. Both hemispheres are stored together in
+a single <code class="docutils literal notranslate"><span class="pre">.npz</span></code> file, under the keys <code class="docutils literal notranslate"><span class="pre">left</span></code> and <code class="docutils literal notranslate"><span class="pre">right</span></code>. Note that the values are
+stored <strong>negated</strong> with respect to the Freesurfer values.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Freesurfer files</p></th>
+<th class="head"><p>pycortex file</p></th>
+<th class="head"><p>Contents</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.sulc</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surface-info/sulcaldepth.npz</span></code></p></td>
+<td><p>Sulcal depth</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.thickness</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surface-info/thickness.npz</span></code></p></td>
+<td><p>Cortical thickness</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">surf/?h.curv</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">surface-info/curvature.npz</span></code></p></td>
+<td><p>Curvature</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">import_subj</span></code> also (re-)generates the fiducial surfaces, halfway between the white
+matter and the pial surfaces, which are used for cutting and flattening. Those are
+written back into the <em>Freesurfer</em> subject directory as <code class="docutils literal notranslate"><span class="pre">surf/?h.fiducial</span></code>, not into
+the pycortex filestore.</p>
+<p>Labels and annotations are not imported; see <code class="docutils literal notranslate"><span class="pre">cortex.freesurfer.get_label</span></code>.</p>
+</section>
+<section id="flattening-the-surfaces">
+<span id="database-autoflatten"></span><h2>Flattening the surfaces<a class="headerlink" href="#flattening-the-surfaces" title="Link to this heading">¶</a></h2>
+<p>Pycortex needs flat surfaces to make flatmaps, and creating them requires cutting the
+cortical surface open. By default, <code class="docutils literal notranslate"><span class="pre">import_subj</span></code> does this for you at the end of the
+import by calling <a class="reference external" href="https://gallantlab.org/autoflatten">autoflatten</a>, which projects a template set of cuts onto the
+subject’s surfaces, flattens the resulting patches, and imports the flatmaps into the
+pycortex database. <a class="reference external" href="https://gallantlab.org/autoflatten">autoflatten</a> is an optional dependency, installed with the
+<code class="docutils literal notranslate"><span class="pre">autoflatten</span></code> extra:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="s2">"pycortex[autoflatten]"</span>
+</pre></div>
+</div>
+<p>If <a class="reference external" href="https://gallantlab.org/autoflatten">autoflatten</a> is not installed, <code class="docutils literal notranslate"><span class="pre">import_subj</span></code> warns and skips this step. Note that
+flattening takes a while, typically 15-30 minutes for both hemispheres, so you may
+want to skip it and flatten the surfaces later (or by hand):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">import_subj</span><span class="p">(</span><span class="n">freesurfer_subject</span><span class="p">,</span> <span class="n">autoflatten</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You can then run the same step on its own at any time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">autoflatten_subject</span><span class="p">(</span><span class="n">freesurfer_subject</span><span class="p">,</span> <span class="n">pycortex_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                      <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Extra command line arguments for <a class="reference external" href="https://gallantlab.org/autoflatten">autoflatten</a> can be passed through the
+<code class="docutils literal notranslate"><span class="pre">autoflatten_args</span></code> argument of either function, for instance
+<code class="docutils literal notranslate"><span class="pre">autoflatten_args=['--backend',</span> <span class="pre">'freesurfer']</span></code> to flatten with Freesurfer’s
+<code class="docutils literal notranslate"><span class="pre">mris_flatten</span></code> instead of the default JAX-accelerated backend, or
+<code class="docutils literal notranslate"><span class="pre">autoflatten_args=['--overwrite']</span></code> to redo patches that already exist.</p>
+<p>If you would rather cut the surfaces by hand, see <a class="reference internal" href="segmentation_guide.html"><span class="doc">Surface Segmentation and Flattening</span></a>, and
+then import the flatmaps with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cortex</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span><span class="n">fs_subject</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">hemis</span><span class="o">=</span><span class="p">[</span><span class="s1">'lh'</span><span class="p">,</span> <span class="s1">'rh'</span><span class="p">],</span>
+                              <span class="n">cx_subject</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which writes <code class="docutils literal notranslate"><span class="pre">surfaces/flat_lh.gii</span></code> and <code class="docutils literal notranslate"><span class="pre">surfaces/flat_rh.gii</span></code>. Both
+<code class="docutils literal notranslate"><span class="pre">autoflatten_subject</span></code> and <code class="docutils literal notranslate"><span class="pre">import_flat</span></code> delete the subject’s <code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code>
+file and all of its cached files, since the flatmaps fundamentally change.</p>
 </section>
 <section id="transforms">
 <h2>Transforms<a class="headerlink" href="#transforms" title="Link to this heading">¶</a></h2>
@@ -132,10 +287,12 @@
 <p>Each transform is stored in its own subdirectory containing two files: <code class="docutils literal notranslate"><span class="pre">matrices.xfm</span></code>, and <code class="docutils literal notranslate"><span class="pre">reference.nii.gz</span></code>. Masks are also stored in the transforms directory.</p>
 <p>Transforms are saved as JSON-encoded text files. They have the format <code class="docutils literal notranslate"><span class="pre">{subject}_{transform}.xfm</span></code>. There are four fields in this JSON structure: <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">epifile</span></code>, <code class="docutils literal notranslate"><span class="pre">coord</span></code>, <code class="docutils literal notranslate"><span class="pre">magnet</span></code>. <code class="docutils literal notranslate"><span class="pre">epifile</span></code> gives the filename of the functional volume (EPI) that served as the reference for this transform. <code class="docutils literal notranslate"><span class="pre">coord</span></code> stores the transform from fiducial to coordinate space (for fast index lookups). <code class="docutils literal notranslate"><span class="pre">magnet</span></code> stores the transform from the fiducial to the magnet space, as defined in the return of <code class="docutils literal notranslate"><span class="pre">nibabel.affine</span></code>.</p>
 <p>Reference volumes are typically in <a class="reference external" href="http://nifti.nimh.nih.gov/nifti-1/">Nifti</a> format (<a href="#id1"><span class="problematic" id="id2">*</span></a>.nii), but can be any format that <a class="reference external" href="http://nipy.sourceforge.net/nibabel/">nibabel</a> understands. These are stored to ensure that we know what the reference for any transform was. This makes it possible to visually verify and tweak alignments as well as keep a static store of images for future coregistrations.</p>
+<section id="accessing-transforms">
+<h3>Accessing transforms<a class="headerlink" href="#accessing-transforms" title="Link to this heading">¶</a></h3>
 <p>Similar to the surfaces, transforms can be access through two methods: direct command access, and the tab interface.</p>
 <p>Command access looks like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="n">xfm</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fullhead&#39;</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;coord&#39;</span><span class="p">)</span>
+<span class="n">xfm</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="s1">'S1'</span><span class="p">,</span> <span class="s1">'fullhead'</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">'coord'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Tab complete looks like this:</p>
@@ -143,7 +300,7 @@
 <span class="n">In</span> <span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">S1</span><span class="o">.</span><span class="n">transforms</span>
 <span class="n">Out</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span> <span class="n">Transforms</span><span class="p">:</span> <span class="p">[</span><span class="n">fullhead</span><span class="p">,</span><span class="n">retinotopy</span><span class="p">]</span>
 
-<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">S1</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s1">&#39;fullhead&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">coord</span><span class="o">.</span><span class="n">xfm</span>
+<span class="n">In</span> <span class="p">[</span><span class="mi">3</span><span class="p">]:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">S1</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s1">'fullhead'</span><span class="p">]</span><span class="o">.</span><span class="n">coord</span><span class="o">.</span><span class="n">xfm</span>
 <span class="n">Out</span><span class="p">[</span><span class="mi">3</span><span class="p">]:</span>
  <span class="p">[[</span><span class="o">-</span><span class="mf">0.44486981846094426</span><span class="p">,</span>
    <span class="o">-</span><span class="mf">0.0021363672818559996</span><span class="p">,</span>
@@ -160,28 +317,43 @@
   <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]]</span>
 </pre></div>
 </div>
+</section>
+<section id="adding-new-transforms">
+<h3>Adding new transforms<a class="headerlink" href="#adding-new-transforms" title="Link to this heading">¶</a></h3>
 <p>Transforms from anatomical space to functional space are notoriously tricky. Automated algorithms generally give results optimized for various global energy metrics, but do not attempt to target the alignments for your ROIs. It is highly recommended that you use the included aligner to make your affine transforms. To add a transform, either directly create a transform json in <code class="docutils literal notranslate"><span class="pre">{$FILESTORE}/transforms/</span></code>, or use this command:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">&#39;magnet&#39;</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="s1">&#39;path_to_functional.nii&#39;</span><span class="p">)</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">'magnet'</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="s1">'path_to_functional.nii'</span><span class="p">)</span>
 </pre></div>
 </div>
-<p id="database-masks">One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex’s advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.</p>
+</section>
+<section id="masks">
+<span id="database-masks"></span><h3>Masks<a class="headerlink" href="#masks" title="Link to this heading">¶</a></h3>
+<p>One of the fundamental reasons for carefully aligning surfaces is to allow the creation and use of cortical masks. This limits the number of voxels you need to model. Traditionally, these masks are created by selecting the set of nearest neighbor voxels for each vertex on the transformed surface. Unfortunately, pycortex’s advanced per-pixel mapping precludes the use of this simple mask, since faces could potentially intersect with voxel corners which are not in this simple mask. Thus, the default masks in pycortex use a distance metric to compute mask membership.</p>
 <p>Masks were added into pycortex in May 2013, due to previous issues with masked data and the addition of the per-pixel mapping. Masked datasets are further discussed in the datasets page.</p>
+<section id="retrieving-a-mask">
+<h4>Retrieving a mask<a class="headerlink" href="#retrieving-a-mask" title="Link to this heading">¶</a></h4>
 <p>A mask is specified by three variables: <strong>subject</strong>, <strong>transform</strong>, and <strong>mask type</strong>. pycortex defines two named masks for each transform by default. These are the <code class="docutils literal notranslate"><span class="pre">'thick'</span></code> and the <code class="docutils literal notranslate"><span class="pre">'thin'</span></code> masks. They correspond to a distance of 8 mm and 2 mm, respectively, from any given cortical vertex. Additionally, masks corresponding to known mapper types (such as <code class="docutils literal notranslate"><span class="pre">'nearest'</span></code> and <code class="docutils literal notranslate"><span class="pre">'trilinear'</span></code>) are available. If the subject has both pial and white matter surfaces, all voxels of exactly the cortical thickness distance from each vertex are selected from the fiducial surface. To retrieve the thick mask for S1 using the fullhead transform:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="n">mask</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fullhead&#39;</span><span class="p">,</span> <span class="s1">&#39;thick&#39;</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_mask</span><span class="p">(</span><span class="s1">'S1'</span><span class="p">,</span> <span class="s1">'fullhead'</span><span class="p">,</span> <span class="s1">'thick'</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The first time you load a mask, it will be generated and stored inside the folder for the associated transform.</p>
+</section>
+<section id="loading-a-mask">
+<h4>Loading a mask<a class="headerlink" href="#loading-a-mask" title="Link to this heading">¶</a></h4>
 <p>If you use a custom mask for any reason, it is highly recommended that you load it into the database for future reference. It will allow more seamless integration with <code class="docutils literal notranslate"><span class="pre">Datasets</span></code>, and will prevent it from being lost. To add a custom mask to the database:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
 <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">load_mask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">masktype</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
+</section>
+</section>
 <section id="surface-info">
 <h2>Surface info<a class="headerlink" href="#surface-info" title="Link to this heading">¶</a></h2>
-<p>The filestore also manages several important quantifications about the surfaces. These include Tissot’s Indicatrix and the flatmap surface distortion. There are stored in the <code class="docutils literal notranslate"><span class="pre">/surface_info</span></code> directory.</p>
+<p>The filestore also manages several important quantifications about the surfaces. These include Tissot’s Indicatrix and the flatmap surface distortion. There are stored in the <code class="docutils literal notranslate"><span class="pre">/surface-info</span></code> directory. This is also where the per-vertex curvature, sulcal depth and thickness imported from <a class="reference external" href="http://surfer.nmr.mgh.harvard.edu/">Freesurfer</a> are stored (see <a class="reference internal" href="#database-freesurfer-import"><span class="std std-ref">Importing a subject from Freesurfer</span></a>). Each file is an <code class="docutils literal notranslate"><span class="pre">.npz</span></code> file holding one array per hemisphere, under the keys <code class="docutils literal notranslate"><span class="pre">left</span></code> and <code class="docutils literal notranslate"><span class="pre">right</span></code>, and can be loaded with <code class="docutils literal notranslate"><span class="pre">cortex.db.get_surfinfo</span></code>.</p>
+<p>Two of them cannot be returned as a <code class="docutils literal notranslate"><span class="pre">Vertex</span></code> object, because that conversion concatenates arrays stored under the keys <code class="docutils literal notranslate"><span class="pre">left</span></code> and <code class="docutils literal notranslate"><span class="pre">right</span></code> and assumes one value per vertex. <code class="docutils literal notranslate"><span class="pre">bumpy_flatmap.npz</span></code> holds the bumpy flatmap’s relief (see <a class="reference internal" href="generated/cortex.polyutils.FlatSlab.html#cortex.polyutils.FlatSlab" title="cortex.polyutils.FlatSlab"><code class="xref py py-class docutils literal notranslate"><span class="pre">cortex.polyutils.FlatSlab</span></code></a>) as a three-component offset per vertex, of which only the third is nonzero, under the keys <code class="docutils literal notranslate"><span class="pre">bump_left</span></code> and <code class="docutils literal notranslate"><span class="pre">bump_right</span></code>, and <code class="docutils literal notranslate"><span class="pre">equivolume_areas.npz</span></code> holds four scalar maps rather than two – the white matter and pial vertex areas the webgl viewer’s equivolume depth sampling needs – under <code class="docutils literal notranslate"><span class="pre">wm_left</span></code>, <code class="docutils literal notranslate"><span class="pre">wm_right</span></code>, <code class="docutils literal notranslate"><span class="pre">pia_left</span></code> and <code class="docutils literal notranslate"><span class="pre">pia_right</span></code>. For these, <code class="docutils literal notranslate"><span class="pre">cortex.db.get_surfinfo</span></code> hands back the <code class="docutils literal notranslate"><span class="pre">.npz</span></code> file itself rather than a <code class="docutils literal notranslate"><span class="pre">Vertex</span></code>; remember to close it.</p>
+<p>Anything computed from the flatmap – the distortion maps, the flatmap border and the bumpy flatmap – is deleted and regenerated when a new flatmap is imported with <code class="docutils literal notranslate"><span class="pre">cortex.freesurfer.import_flat</span></code>, since it describes a flatmap that no longer exists.</p>
 </section>
 <section id="views">
 <h2>Views<a class="headerlink" href="#views" title="Link to this heading">¶</a></h2>
@@ -191,13 +363,137 @@
 </pre></div>
 </div>
 <p>Where, <code class="docutils literal notranslate"><span class="pre">'subject'</span></code> is the subject identifier and <code class="docutils literal notranslate"><span class="pre">'name'</span></code> is a unique name for the stored view. A previously saved view can be applied to a webgl viewer using:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">get_view</span><span class="p">(</span><span class="n">viewer</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">get_view</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
 </pre></div>
 </div>
+<section id="default-views">
+<h3>Default views<a class="headerlink" href="#default-views" title="Link to this heading">¶</a></h3>
+<p>Every subject is offered a standard set of views whether or not anything has been saved for it, so a freshly imported subject already has the usual orientations one click away under <strong>camera &gt; views</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>View</p></th>
+<th class="head"><p>Shows</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dorsal</span></code></p></td>
+<td><p>From above, frontal lobe towards the top of the
+image, the subject’s right on the right.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ventral</span></code></p></td>
+<td><p>From below, frontal lobe towards the top.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lateral_left</span></code></p></td>
+<td><p>From the left, brain upright.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lateral_right</span></code></p></td>
+<td><p>From the right, brain upright.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">*_inflated</span></code></p></td>
+<td><p>The same four angles on the inflated surface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">flat</span></code></p></td>
+<td><p>The flattened surface. Omitted for a subject with
+no flat surface, which also puts the <code class="docutils literal notranslate"><span class="pre">_inflated</span></code>
+views at full inflation rather than half.</p></td>
+</tr>
+</tbody>
+</table>
+<p>They are built from the same tables <code class="docutils literal notranslate"><span class="pre">cortex.export.save_views</span></code> uses for <code class="xref py py-func docutils literal notranslate"><span class="pre">save_3d_views()</span></code>, and can be inspected from python:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">cortex.export.save_views</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_subject_views</span>
+<span class="n">default_subject_views</span><span class="p">()[</span><span class="s2">"dorsal"</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Each view but <code class="docutils literal notranslate"><span class="pre">flat</span></code> also fixes the camera’s aim and distance, so clicking it returns exactly the same scene every time, ready to render the same images again. The camera aims at the middle of the surface the view shows, from the distance at which that brain fills 85% of a 4:3 frame (<code class="docutils literal notranslate"><span class="pre">FRAMING_FILL</span></code> and <code class="docutils literal notranslate"><span class="pre">FRAMING_ASPECT</span></code> in <code class="docutils literal notranslate"><span class="pre">cortex.export.save_views</span></code>); in a wider window there is simply more room either side. Brains differ in size, and an inflated surface in shape, so this is fitted to each subject’s own surfaces — as the viewer lays them out — the first time a viewer opens that subject, and cached as <code class="docutils literal notranslate"><span class="pre">default_view_framing.json</span></code> in its cache directory; the cache is refitted when a surface file changes. Pass the subject to see the framed views:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">default_subject_views</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s2">"S1"</span><span class="p">)[</span><span class="s2">"dorsal"</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>A view saved in the filestore under one of these names replaces the default.</strong> So if a subject’s anatomy wants a different angle, or you prefer a different framing, save your own view under that name and it is used instead — for that subject only, leaving every other default in place:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">save_view</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"dorsal"</span><span class="p">,</span> <span class="n">is_overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">flat</span></code> view uses the viewer’s standard flatmap preset. It names no camera angle, because a flattened surface ignores one: the controls hold the camera square-on to the flatmap and discard whatever azimuth and altitude they are given (unless the surface’s <code class="docutils literal notranslate"><span class="pre">allow_tilt</span></code> is on). Leaving them out is what keeps an animation from spinning the brain as it flattens, and from overwriting the folded angle it returns to when it unfolds again. A flat view or keyframe captured in the viewer leaves them out for the same reason.</p>
+<p>It carries no zoom of its own either. Clicking it in the browser frames the flatmap the way <code class="docutils literal notranslate"><span class="pre">quickflat</span></code> frames the image it writes — the camera looks at the middle of the flatmap from the distance at which the field of view spans it — so that rendered at the pixel size quickflat uses, the frame is the png <code class="docutils literal notranslate"><span class="pre">cortex.quickflat.make_png</span></code> writes, same position and same scale. (The perspective camera is no obstacle: a plane square-on to it projects as a uniform scaling, which is all quickflat’s mapping of the flat surface onto the bounds of the image amounts to.)</p>
+<p>That framing is applied on request, never behind your back. Setting the flat view from python with <code class="docutils literal notranslate"><span class="pre">_set_view</span></code> leaves the camera where it is, so <code class="xref py py-func docutils literal notranslate"><span class="pre">cortex.export.save_3d_views()</span></code> and anything else driving the viewer render exactly as they always did; ask for it with <code class="docutils literal notranslate"><span class="pre">handle.fit_flat_view()</span></code>, and <code class="docutils literal notranslate"><span class="pre">getImage</span></code> then re-frames it for the image it is about to write, whatever the shape of the window. In the animation panel, tick <strong>match quickflat size</strong> in the render form: the size fields are filled with the subject’s quickflat size and flat keyframes are framed for it, including any already laid down. Type another size over it and flat keyframes are framed for that one instead.</p>
+<p>A view saved in the filestore under the name <code class="docutils literal notranslate"><span class="pre">flat</span></code> replaces all of this, framing included, since a saved view records the camera distance it was saved with.</p>
+<p>The camera keeps two targets — the point it orbits and looks at — one for the folded brain and one for the flatmap, and moves between them as the surface unfolds. Views store them separately, as <code class="docutils literal notranslate"><span class="pre">camera.target</span></code> (folded) and <code class="docutils literal notranslate"><span class="pre">camera.flat_target</span></code>, so an animation from a folded pose into the flat view leaves the folded target where it was, and unfolding again returns the brain exactly to its starting place. The flat target starts at the middle of the flatmap, so flattening lands centred without the flat view naming one. A flat view saved before <code class="docutils literal notranslate"><span class="pre">camera.flat_target</span></code> existed stores its flat target as <code class="docutils literal notranslate"><span class="pre">camera.target</span></code>, and is still read that way: a flat view that carries <code class="docutils literal notranslate"><span class="pre">camera.target</span></code> but no <code class="docutils literal notranslate"><span class="pre">camera.flat_target</span></code> sets the flat target.</p>
+</section>
+<section id="saved-views-in-the-browser">
+<h3>Saved views in the browser<a class="headerlink" href="#saved-views-in-the-browser" title="Link to this heading">¶</a></h3>
+<p>Every view stored for the subject(s) a viewer displays is loaded when the viewer starts, and appears as a button under <strong>camera &gt; views</strong> in the browser controls. Clicking one applies it. This works in static viewers made with <code class="docutils literal notranslate"><span class="pre">cortex.webgl.make_static</span></code> as well.</p>
+<p>The <strong>save view</strong> button in the same menu captures the current view under a name you choose. These stay in the browser rather than being written to the filestore, so that you can experiment freely; retrieve them from python with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">new_views</span> <span class="o">=</span> <span class="n">viewer</span><span class="o">.</span><span class="n">retrieve_new_views</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>which returns a dict mapping each name to a dict of view parameters, in the same format as <code class="docutils literal notranslate"><span class="pre">viewer._capture_view()</span></code>. To keep them, write them into the subject’s <code class="docutils literal notranslate"><span class="pre">views</span></code> directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">save_new_views</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This returns a dict mapping each name to the file it was written to. Pass <code class="docutils literal notranslate"><span class="pre">subject</span></code> to store them under a subject other than the first one displayed, <code class="docutils literal notranslate"><span class="pre">names</span></code> to save only some of them, and <code class="docutils literal notranslate"><span class="pre">is_overwrite=True</span></code> to replace views already stored under the same name. A view that has been stored is no longer “new”: it moves into the <strong>camera &gt; views</strong> menu of the running viewer and stops being returned by <code class="docutils literal notranslate"><span class="pre">retrieve_new_views</span></code>, so calling <code class="docutils literal notranslate"><span class="pre">save_new_views</span></code> twice will not rewrite the same files.</p>
+</section>
+<section id="animations">
+<h3>Animations<a class="headerlink" href="#animations" title="Link to this heading">¶</a></h3>
+<p>The <strong>create animation</strong> button opens a panel for building an animation out of keyframes. Set the current frame with the slider (frames that already hold a keyframe are marked with a yellow dot), pose the brain, and press <strong>add keyframe</strong>; the values in between are interpolated. <strong>play animation</strong> previews the result at the chosen frame rate, and <strong>render animation</strong> writes one PNG per frame.</p>
+<p>The <strong>smoothing</strong> dropdown sets how the curve through the keyframes is shaped. Each keyframe carries its own setting, which describes both how the animation arrives at it and how it leaves, so the motion between two keyframes depends on the pair at either end. The dropdown always shows the setting of the keyframe under the playhead; when there is no keyframe there it shows the one new keyframes will be given.</p>
+<p>Eight options are available:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Behaviour</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>bezier (smooth)</p></td>
+<td><p>Default. A cubic Bezier with automatically placed
+control points. Velocity carries smoothly through
+the keyframe and the brain never swings past the
+pose you set.</p></td>
+</tr>
+<tr class="row-odd"><td><p>cubic hermite (smooth)</p></td>
+<td><p>As above, using the tangents directly rather than
+control points. Very nearly the same curve.</p></td>
+</tr>
+<tr class="row-even"><td><p>linear</p></td>
+<td><p>Straight lines between keyframes, which is what the
+panel did before smoothing was added. The motion
+changes direction abruptly at each keyframe.</p></td>
+</tr>
+<tr class="row-odd"><td><p>bezier in, hold</p></td>
+<td><p>Arrive smoothly, then freeze on this pose until the
+next keyframe.</p></td>
+</tr>
+<tr class="row-even"><td><p>hermite in, hold</p></td>
+<td><p>As above, arriving along a Hermite tangent.</p></td>
+</tr>
+<tr class="row-odd"><td><p>linear in, hold</p></td>
+<td><p>Arrive in a straight line, then freeze.</p></td>
+</tr>
+<tr class="row-even"><td><p>linear in, bezier out</p></td>
+<td><p>Arrive in a straight line and leave along it, easing
+out with a Bezier. May swing past the next pose.</p></td>
+</tr>
+<tr class="row-odd"><td><p>linear in, hermite out</p></td>
+<td><p>As above with a Hermite. May swing past the next
+pose.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The two “smooth” options and the three holds stay within the poses you set. The two “linear in” options carry the incoming speed out of the keyframe and so can overshoot, which is useful for a sense of momentum and unhelpful if you need the camera to stop exactly where you put it.</p>
+<p>The same eight modes are available when rendering from python, either for a whole animation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">viewer</span><span class="o">.</span><span class="n">make_movie_views</span><span class="p">(</span><span class="n">animation</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">"Bezier"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or per keyframe, by giving a keyframe its own <code class="docutils literal notranslate"><span class="pre">interpolation</span></code> key — which is what the panel does. The browser and <code class="docutils literal notranslate"><span class="pre">cortex.webgl.interpolation</span></code> share their arithmetic, so a movie rendered from python matches the preview played in the viewer. The older whole-animation easings <code class="docutils literal notranslate"><span class="pre">&quot;linear&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;smoothstep&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;smootherstep&quot;</span></code> still work, but ease each pair of keyframes separately and cannot be combined with per-keyframe modes.</p>
+<p><strong>render animation</strong> builds the movie in the browser and downloads it as one file, the way <strong>Save image</strong> does — so it lands on the computer running the browser, wherever that browser saves downloads, and the server writes nothing. It works in static viewers made with <a class="reference internal" href="generated/cortex.webgl.make_static.html#cortex.webgl.make_static" title="cortex.webgl.make_static"><code class="xref py py-func docutils literal notranslate"><span class="pre">cortex.webgl.make_static()</span></code></a> too. Choose the format in the render form:</p>
+<ul class="simple">
+<li><p><strong>PNG frames (.zip)</strong> — one lossless PNG per frame, transparent outside the brain, named after the animation’s frame numbers inside a folder named after the movie (<code class="docutils literal notranslate"><span class="pre">brainmovie/brainmovie_00000.png</span></code>, …). These are the frames to use when they must match a flatmap from <code class="docutils literal notranslate"><span class="pre">cortex.quickflat.make_png</span></code>. A zip holds at most 65,535 frames and 4 GiB; render a shorter range of frames if a movie is larger than that.</p></li>
+<li><p><strong>MP4 video</strong> — H.264, encoded by the browser itself (WebCodecs). It is lossy and has no transparency, so frames are laid on black, as the viewer shows them. Browsers only offer video encoding in a secure context — a viewer opened on <code class="docutils literal notranslate"><span class="pre">localhost</span></code>, over <code class="docutils literal notranslate"><span class="pre">https</span></code>, or from a local file — so the option is unavailable when a viewer is reached over plain http from another machine. The largest size depends on the browser’s encoder, and a size it cannot encode is refused before rendering starts; an odd width or height gets one extra row or column of black, since H.264 needs even dimensions.</p></li>
+</ul>
+</section>
 </section>
 <section id="overlays-svg">
 <h2><code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code><a class="headerlink" href="#overlays-svg" title="Link to this heading">¶</a></h2>
-<p>Overlays are stored as <a class="reference external" href="http://en.wikipedia.org/wiki/Scalable_Vector_Graphics">SVG</a>’s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call <code class="docutils literal notranslate"><span class="pre">cortex.add_roi</span></code>. ROI overlays are created and edited in <a class="reference external" href="http://inkscape.org/">Inkscape</a>. For more information, see <a href="#id3"><span class="problematic" id="id4">:module:`svgroi.py`</span></a>.</p>
+<p>Overlays are stored as <a class="reference external" href="http://en.wikipedia.org/wiki/Scalable_Vector_Graphics">SVG</a>’s. This is where surface ROIs are defined. Since these surface ROIs are invariant to transform, only one ROI map is needed for each subject. These SVGs are automatically created for a subject if you call <code class="docutils literal notranslate"><span class="pre">cortex.add_roi</span></code>. ROI overlays are created and edited in <a class="reference external" href="http://inkscape.org/">Inkscape</a>. For more information, see <code class="docutils literal notranslate"><span class="pre">svgroi.py</span></code>.</p>
 </section>
 <section id="rois-svg">
 <h2><code class="docutils literal notranslate"><span class="pre">rois.svg</span></code><a class="headerlink" href="#rois-svg" title="Link to this heading">¶</a></h2>
@@ -208,7 +504,9 @@
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>filestore/db
 └──<span class="w"> </span>S1
 <span class="w">    </span>├──<span class="w"> </span>anatomicals
-<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>raw.nii.gz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>aseg.nii.gz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>raw.nii.gz
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>raw_wm.nii.gz
 <span class="w">    </span>├──<span class="w"> </span>cache
 <span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flatmask_1024.npz
 <span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flatpixel_fullhead_1024_nearest_l32.npz
@@ -217,8 +515,13 @@
 <span class="w">    </span>├──<span class="w"> </span>overlays.svg
 <span class="w">    </span>├──<span class="w"> </span>rois.svg
 <span class="w">    </span>├──<span class="w"> </span>surface-info
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>bumpy_flatmap.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>curvature.npz
 <span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>areal<span class="o">]</span>.npz
-<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>metric<span class="o">]</span>.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>distortion<span class="o">[</span><span class="nv">dist_type</span><span class="o">=</span>metric<span class="o">]</span>.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>equivolume_areas.npz
+<span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>sulcaldepth.npz
+<span class="w">    </span>│<span class="w">   </span>└──<span class="w"> </span>thickness.npz
 <span class="w">    </span>├──<span class="w"> </span>surfaces
 <span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flat_lh.gii
 <span class="w">    </span>│<span class="w">   </span>├──<span class="w"> </span>flat_rh.gii
@@ -272,6 +575,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#anatomical-scans">Anatomical scans</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cache">Cache</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#surfaces">Surfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#importing-a-subject-from-freesurfer">Importing a subject from Freesurfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#flattening-the-surfaces">Flattening the surfaces</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#transforms">Transforms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#surface-info">Surface info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#views">Views</a></li>
@@ -282,6 +587,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
 </ul>

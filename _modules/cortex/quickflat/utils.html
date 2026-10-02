@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cortex.quickflat.utils &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex.quickflat.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Makes flattened views of volumetric data on the cortical surface.</span>
+<span class="sd">"""</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">string</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">reduce</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">npt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rgba_nan_mask</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataview</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Boolean NaN mask (or None) stored by a raw conversion (``Volume.raw``,</span>
+<span class="sd">    ``Volume2D.raw``, ...), in the layout of the uint8 RGBA representation</span>
+<span class="sd">    ``shape`` (time axis included). None for native RGB dataviews: there NaN</span>
+<span class="sd">    has become alpha 0 and is indistinguishable from intentional transparency,</span>
+<span class="sd">    exactly as in the WebGL viewer's RGB textures.</span>
+<span class="sd">    """</span>
+    <span class="n">stored</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="s2">"_nan_mask"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">stored</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">stored</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stored</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">stored</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">stored</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_flatmap_image</span><span class="p">(</span><span class="n">braindata</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">dataset</span><span class="o">.</span><span class="n">Volume</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Vertex</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Dataview</span><span class="p">],</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">recache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nanmean</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Generate flatmap image from volumetric brain data</span>
+
+<span class="sd">    This </span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    braindata : one of: {cortex.Volume, cortex.Vertex, cortex.Dataview}</span>
+<span class="sd">        Object containing containing data to be plotted, subject (surface identifier), </span>
+<span class="sd">        and transform.</span>
+<span class="sd">    height : scalar </span>
+<span class="sd">        Height of image. None defaults to height of images already present in figure. </span>
+<span class="sd">    recache : boolean</span>
+<span class="sd">        Whether or not to recache intermediate files. Takes longer to plot this way, potentially</span>
+<span class="sd">        resolves some errors. Useful if you've made changes to the alignment.</span>
+<span class="sd">    nanmean : bool, optional (default = True)</span>
+<span class="sd">        If True, NaN voxels are ignored when averaging across cortical</span>
+<span class="sd">        thickness (mean([1, NaN]) = 1); if False, any NaN voxel contributing</span>
+<span class="sd">        to a pixel makes it NaN / transparent. For 2D dataviews the NaN mask</span>
+<span class="sd">        of the conversion to RGBA is used. For RGB dataviews NaN has already</span>
+<span class="sd">        become alpha 0, so fully transparent voxels count as missing: they</span>
+<span class="sd">        are skipped by ``nanmean=True`` and alpha-weighted otherwise (the</span>
+<span class="sd">        same rule as the WebGL viewer's RGB textures).</span>
+<span class="sd">    kwargs : idk</span>
+<span class="sd">        idk</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    image : numpy.ndarray[np.uint8] or numpy.ndarray[np.floating]</span>
+<span class="sd">        The generated flatmap image. uint8 if braindata's data is already</span>
+<span class="sd">        uint8, otherwise cast to float.</span>
+<span class="sd">    extents : numpy.ndarray[np.floating]</span>
+<span class="sd">        The extents of the generated flatmap image.</span>
+
+<span class="sd">    """</span>
+    <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">get_flatmask</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="s2">"xfmname"</span><span class="p">):</span>
+        <span class="n">pixmap</span> <span class="o">=</span> <span class="n">get_flatcache</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span>
+                               <span class="kc">None</span><span class="p">,</span>
+                               <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+                               <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span>
+                               <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Vertex2D</span><span class="p">):</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">braindata</span><span class="o">.</span><span class="n">raw</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">vertices</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">braindata</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">braindata</span><span class="o">.</span><span class="n">vertices</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">pixmap</span> <span class="o">=</span> <span class="n">get_flatcache</span><span class="p">(</span><span class="n">braindata</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span>
+                               <span class="n">braindata</span><span class="o">.</span><span class="n">xfmname</span><span class="p">,</span>
+                               <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+                               <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span>
+                               <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">braindata</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">Volume2D</span><span class="p">):</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">braindata</span><span class="o">.</span><span class="n">raw</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">volume</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="n">braindata</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">braindata</span><span class="o">.</span><span class="n">volume</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Input data was not the correct dimensionality - please provide 3D Volume or 2D Vertex data"</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+        <span class="c1"># Convert data to float to avoid image artifacts</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+        <span class="c1"># RGBA data. Average across cortical thickness in *premultiplied*</span>
+        <span class="c1"># space, as the WebGL viewer does (textures are uploaded with</span>
+        <span class="c1"># premultiplyAlpha=true), then un-premultiply. Averaging straight RGBA</span>
+        <span class="c1"># lets transparent voxels (NaN, alpha=0) bleed their (black) color</span>
+        <span class="c1"># into neighbouring pixels, producing dark halos in quickflat only.</span>
+        <span class="n">rgba</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">/</span> <span class="mf">255.</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">rgba</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">premult</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">rgba</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">alpha</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">premult</span><span class="p">))</span>
+
+        <span class="c1"># NaN handling (``nanmean``), as in the float branch below. NaN has</span>
+        <span class="c1"># already become alpha 0 in the RGBA conversion, so the voxel validity</span>
+        <span class="c1"># comes from the NaN mask when the conversion provides one (2D views,</span>
+        <span class="c1"># Volume.raw) and otherwise -- native RGB, like the WebGL RGB</span>
+        <span class="c1"># textures -- from "fully transparent".</span>
+        <span class="n">nan_mask</span> <span class="o">=</span> <span class="n">_rgba_nan_mask</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">nan_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">nan_mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">valid</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">w_valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">valid</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">nanmean</span><span class="p">:</span>
+            <span class="c1"># mean over the valid voxels only: mean([c, NaN]) = c</span>
+            <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+                <span class="n">avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">w_valid</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">avg</span> <span class="o">/</span> <span class="n">w_valid</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">nan_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># any NaN voxel contributing to the pixel hides it</span>
+            <span class="n">w_nan</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">((</span><span class="o">~</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+            <span class="n">avg</span><span class="p">[</span><span class="n">w_nan</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+        <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">avg</span><span class="p">)</span>
+        <span class="n">opaque</span> <span class="o">=</span> <span class="n">avg</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">opaque</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg</span><span class="p">[</span><span class="n">opaque</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">/</span> <span class="n">avg</span><span class="p">[</span><span class="n">opaque</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="n">out</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="o">+</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">img</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Make img a c-contiguous array or pil will complain when saving it</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">img</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">"C_CONTIGUOUS"</span><span class="p">]:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">"C"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">extents</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">badmask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pixmap</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">mimg</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">badmask</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Pixmap is a (pixels x voxels) sparse non-negative weight matrix where</span>
+        <span class="c1"># each row sums to 1, so pixmap.dot(vec) gives the mean of vec across</span>
+        <span class="c1"># cortical thickness.</span>
+
+        <span class="c1"># To ignore NaNs (or masked data) in the weighted mean, we normalize by</span>
+        <span class="c1"># the sum of the non-ignored weights: sum(weights * non-ignored values)</span>
+        <span class="c1"># / sum(weights on non-ignored values)</span>
+        <span class="n">ignored</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">nanmean</span><span class="p">:</span>  <span class="c1"># NaN are not ignored: mean([1., 2., NaN]) = NaN</span>
+            <span class="n">averaged_data</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">MaskedArray</span><span class="p">):</span>  
+                <span class="n">ignored</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">mask</span>  <span class="c1"># masked voxels are ignored</span>
+    
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># NaN are ignored: mean([1., 2., NaN]) = 1.5</span>
+            <span class="n">averaged_data</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">()))</span>
+            <span class="n">ignored</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">MaskedArray</span><span class="p">):</span>
+                <span class="n">ignored</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">MaskedArray</span><span class="p">,</span> <span class="n">ignored</span><span class="p">)</span><span class="o">.</span><span class="n">filled</span><span class="p">()</span>  <span class="c1"># masked voxels are also ignored</span>
+
+        <span class="k">if</span> <span class="n">ignored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">weights_not_ignored</span> <span class="o">=</span> <span class="n">pixmap</span><span class="o">.</span><span class="n">dot</span><span class="p">((</span><span class="o">~</span><span class="n">ignored</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+            <span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">RuntimeWarning</span><span class="p">)</span>
+                <span class="n">averaged_data</span> <span class="o">=</span> <span class="n">averaged_data</span> <span class="o">/</span> <span class="n">weights_not_ignored</span>
+
+        <span class="n">mimg</span><span class="p">[</span><span class="n">badmask</span><span class="p">]</span> <span class="o">=</span> <span class="n">averaged_data</span><span class="p">[</span><span class="n">badmask</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">mimg</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">img</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">mimg</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">T</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1"># Make img a c-contiguous array or pil will complain when saving it</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">img</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">"C_CONTIGUOUS"</span><span class="p">]:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">"C"</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">extents</span>
+
+<div class="viewcode-block" id="get_flatmask">
+<a class="viewcode-back" href="../../../generated/cortex.quickflat.utils.get_flatmask.html#cortex.quickflat.utils.get_flatmask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_flatmask</span><span class="p">(</span><span class="n">subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">recache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Name of subject in pycortex store</span>
+<span class="sd">    height : int</span>
+<span class="sd">        Height in pixels to generate the image</span>
+<span class="sd">    recache : bool</span>
+<span class="sd">        Recache the intermediate files? Can resolve some issues but is slower.</span>
+<span class="sd">    """</span>
+    <span class="n">cachedir</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
+    <span class="n">cachefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cachedir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"flatmask_</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s2">.npz"</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
+        <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">_make_flatmask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">cachefile</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span> <span class="n">extents</span><span class="o">=</span><span class="n">extents</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">npz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">npz</span><span class="p">[</span><span class="s1">'mask'</span><span class="p">],</span> <span class="n">npz</span><span class="p">[</span><span class="s1">'extents'</span><span class="p">]</span>
+        <span class="n">npz</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span></div>
+
+
+<div class="viewcode-block" id="get_flatcache">
+<a class="viewcode-back" href="../../../generated/cortex.quickflat.utils.get_flatcache.html#cortex.quickflat.utils.get_flatcache">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_flatcache</span><span class="p">(</span><span class="n">subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">pixelwise</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">thick</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">sampler</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">'nearest'</span><span class="p">,</span>
+                  <span class="n">recache</span><span class="p">:</span> <span class="nb">bool</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject name in pycortex db</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Name of transform for subject</span>
+<span class="sd">    pixelwise : bool</span>
+<span class="sd">    </span>
+<span class="sd">    thick : int</span>
+<span class="sd">    </span>
+<span class="sd">    sampler : </span>
+<span class="sd">    </span>
+<span class="sd">    recache : bool</span>
+<span class="sd">        Recache intermediate files? Doing so is slower but can resolve some errors.</span>
+<span class="sd">    height : int</span>
+<span class="sd">        Height in pixels of image to generated</span>
+<span class="sd">    depth : float</span>
+<span class="sd">    </span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    """</span>
+    <span class="n">cachedir</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span>
+    <span class="n">cachefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cachedir</span><span class="p">,</span> <span class="s2">"flatverts_</span><span class="si">{height}</span><span class="s2">.npz"</span><span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pixelwise</span> <span class="ow">and</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cachefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cachedir</span><span class="p">,</span> <span class="s2">"flatpixel_</span><span class="si">{xfmname}</span><span class="s2">_</span><span class="si">{height}</span><span class="s2">_</span><span class="si">{sampler}</span><span class="s2">_</span><span class="si">{extra}</span><span class="s2">.npz"</span><span class="p">)</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="s2">"l</span><span class="si">%d</span><span class="s2">"</span><span class="o">%</span><span class="n">thick</span> <span class="k">if</span> <span class="n">thick</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"d</span><span class="si">%g</span><span class="s2">"</span><span class="o">%</span><span class="n">depth</span>
+        <span class="n">cachefile</span> <span class="o">=</span> <span class="n">cachefile</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">extra</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span> <span class="ow">or</span> <span class="n">recache</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Generating a flatmap cache"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pixelwise</span> <span class="ow">and</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pixmap</span> <span class="o">=</span> <span class="n">_make_pixel_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span> <span class="n">thick</span><span class="o">=</span><span class="n">thick</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pixmap</span> <span class="o">=</span> <span class="n">_make_vertex_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">cachefile</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">indptr</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">npz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span>
+        <span class="n">pixmap</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">((</span><span class="n">npz</span><span class="p">[</span><span class="s1">'data'</span><span class="p">],</span> <span class="n">npz</span><span class="p">[</span><span class="s1">'indices'</span><span class="p">],</span> <span class="n">npz</span><span class="p">[</span><span class="s1">'indptr'</span><span class="p">]),</span> <span class="n">shape</span><span class="o">=</span><span class="n">npz</span><span class="p">[</span><span class="s1">'shape'</span><span class="p">])</span>
+        <span class="n">npz</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pixelwise</span> <span class="ow">and</span> <span class="n">xfmname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..mapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapper</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="n">utils</span><span class="o">.</span><span class="n">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">sampler</span><span class="p">)</span>
+        <span class="c1"># get_mapper isn't typed yet (Mapper's typing PR lands after this one), so</span>
+        <span class="c1"># mapper is currently just Any. TODO: once that PR types cortex/mapper,</span>
+        <span class="c1"># get_mapper's own return annotation makes this redundant -- remove this</span>
+        <span class="c1"># import and assert.</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mapper</span><span class="p">,</span> <span class="n">Mapper</span><span class="p">)</span>
+        <span class="n">pixmap</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">,</span> <span class="n">pixmap</span> <span class="o">*</span> <span class="n">sparse</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">mapper</span><span class="o">.</span><span class="n">masks</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">pixmap</span></div>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_return_pixel_pairs</span><span class="p">(</span><span class="n">vert_pair_list</span><span class="p">,</span> <span class="n">x_dict</span><span class="p">,</span> <span class="n">y_dict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Janky and probably unnecessary"""</span>
+    <span class="n">pix_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">vert_pairs_valid</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">vert1</span><span class="p">,</span> <span class="n">vert2</span><span class="p">)</span> <span class="ow">in</span> <span class="n">vert_pair_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">vert1</span> <span class="ow">in</span> <span class="n">x_dict</span> <span class="ow">and</span> <span class="n">vert2</span> <span class="ow">in</span> <span class="n">x_dict</span><span class="p">:</span>
+            <span class="n">pix1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">x_dict</span><span class="p">[</span><span class="n">vert1</span><span class="p">],</span> <span class="n">y_dict</span><span class="p">[</span><span class="n">vert1</span><span class="p">]))</span>
+            <span class="n">pix2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="n">x_dict</span><span class="p">[</span><span class="n">vert2</span><span class="p">],</span> <span class="n">y_dict</span><span class="p">[</span><span class="n">vert2</span><span class="p">]))</span>
+            <span class="n">pix_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pix1</span><span class="p">,</span> <span class="n">pix2</span><span class="p">]))</span>
+            <span class="n">vert_pairs_valid</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">vert1</span><span class="p">,</span> <span class="n">vert2</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#These are vertex pairs not represented in the flatmap. I have found them to belong to the middle brain are that is deleted while creating the flat map.</span>
+            <span class="k">pass</span> 
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pix_list</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vert_pairs_valid</span><span class="p">)</span>
+
+<span class="c1">### --- Hidden helper functions --- ###</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_color2hex</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Convert arbitrary color input to hex string"""</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">colors</span>
+    <span class="n">cc</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">ColorConverter</span><span class="p">()</span>
+    <span class="n">rgba</span> <span class="o">=</span> <span class="n">cc</span><span class="o">.</span><span class="n">to_rgba</span><span class="p">(</span><span class="n">color</span><span class="p">)</span>
+    <span class="n">hexcol</span> <span class="o">=</span> <span class="n">colors</span><span class="o">.</span><span class="n">rgb2hex</span><span class="p">(</span><span class="n">rgba</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">hexcol</span>
+    
+<span class="k">def</span><span class="w"> </span><span class="nf">_convert_svg_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Convert matplotlib-like plotting property names/values to svg object property names/values"""</span>
+    <span class="n">svg_style_key_mapping</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">linewidth</span><span class="o">=</span><span class="s1">'stroke-width'</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="s1">'stroke-width'</span><span class="p">,</span>
+        <span class="n">linecolor</span><span class="o">=</span><span class="s1">'stroke'</span><span class="p">,</span>
+        <span class="n">lc</span><span class="o">=</span><span class="s1">'stroke'</span><span class="p">,</span>
+        <span class="n">labelcolor</span><span class="o">=</span><span class="s1">'label-fill'</span><span class="p">,</span>  <span class="c1"># we start label kwargs with "label-"</span>
+        <span class="n">labelsize</span><span class="o">=</span><span class="s1">'label-font-size'</span><span class="p">,</span>
+        <span class="n">linealpha</span><span class="o">=</span><span class="s1">'stroke-opacity'</span><span class="p">,</span>
+        <span class="n">roifill</span><span class="o">=</span><span class="s1">'fill'</span><span class="p">,</span>
+        <span class="n">fillcolor</span><span class="o">=</span><span class="s1">'fill'</span><span class="p">,</span>
+        <span class="n">fillalpha</span><span class="o">=</span><span class="s1">'fill-opacity'</span><span class="p">,</span>
+        <span class="n">dashes</span><span class="o">=</span><span class="s1">'stroke-dasharray'</span>
+        <span class="c1">#dash_capstyle # ADD ME?</span>
+        <span class="c1">#dash_joinstyle # ADD ME?</span>
+        <span class="p">)</span>  
+    <span class="n">svg_style_value_mapping</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">linewidth</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">lw</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">linecolor</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> 
+        <span class="n">lc</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> 
+        <span class="n">labelcolor</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> 
+        <span class="n">labelsize</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">linealpha</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">roifill</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+        <span class="n">fillcolor</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+        <span class="n">fillalpha</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span>
+        <span class="n">dashes</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">),</span>
+        <span class="c1">#dash_capstyle # ADD ME?</span>
+        <span class="c1">#dash_joinstyle # ADD ME?</span>
+        <span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="n">svg_style_key_mapping</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span> <span class="n">svg_style_value_mapping</span><span class="p">[</span><span class="n">k</span><span class="p">](</span><span class="n">v</span><span class="p">)</span> 
+               <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_parse_defaults</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">section</span><span class="p">))</span>
+    <span class="n">defaults</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="c1"># Convert numbers to floating point numbers</span>
+        <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">string</span><span class="o">.</span><span class="n">digits</span> <span class="o">+</span> <span class="s1">'.'</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">','</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+                <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">','</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="c1"># Convert 'None' to None</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="s1">'None'</span><span class="p">:</span>
+            <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Special case formatting</span>
+        <span class="k">if</span> <span class="n">k</span><span class="o">==</span><span class="s1">'stroke'</span> <span class="ow">or</span> <span class="n">k</span><span class="o">==</span><span class="s1">'fill'</span><span class="p">:</span>
+            <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">_color2hex</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">k</span><span class="o">==</span><span class="s1">'stroke-dasharray'</span><span class="p">:</span>
+            <span class="n">dasharray</span> <span class="o">=</span> <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dasharray</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
+                <span class="n">defaults</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="n">dasharray</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">defaults</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_fig_and_ax</span><span class="p">(</span><span class="n">fig</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Get figure and current ax. Input can be either a figure or an ax."""</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Axes</span><span class="p">):</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">):</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"fig should be a matplotlib Figure or Axes instance."</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_images</span><span class="p">(</span><span class="n">fig</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Get all images in a given matplotlib axis"""</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.image</span><span class="w"> </span><span class="kn">import</span> <span class="n">AxesImage</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">_get_fig_and_ax</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="o">.</span><span class="n">get_label</span><span class="p">():</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_children</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">AxesImage</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="n">images</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_extents</span><span class="p">(</span><span class="n">fig</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Get extents of images current in a given matplotlib figure"""</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="n">_get_images</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">'data'</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"You must specify `extents` argument if you have not yet plotted a data flatmap!"</span><span class="p">)</span>
+    <span class="n">extents</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="s1">'data'</span><span class="p">]</span><span class="o">.</span><span class="n">get_extent</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">extents</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_height</span><span class="p">(</span><span class="n">fig</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Get height of images in currently in a given matplotlib figure"""</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="n">_get_images</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">'data_cutout'</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">"Can't add plots once cutout has been performed! Do cutouts last!"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">'data'</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="n">images</span><span class="p">[</span><span class="s1">'data'</span><span class="p">]</span><span class="o">.</span><span class="n">get_array</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># No images, revert to default</span>
+        <span class="n">height</span> <span class="o">=</span> <span class="mi">1024</span>
+    <span class="k">return</span> <span class="n">height</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_hatch_image</span><span class="p">(</span><span class="n">hatch_data</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="s1">'nearest'</span><span class="p">,</span> <span class="n">hatch_space</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Make hatch image</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hatch_data : cortex.Dataview</span>
+<span class="sd">        brain data with values ranging from 0-1, specifying where to show hatch marks (data value</span>
+<span class="sd">        will be mapped to alpha value of hatch marks)</span>
+<span class="sd">    height : scalar</span>
+<span class="sd">        height of image to display</span>
+<span class="sd">    sampler : string</span>
+<span class="sd">        pycortex sampler string, {'nearest', ...} (FILL ME IN ??)</span>
+<span class="sd">    hatch_space : scalar</span>
+<span class="sd">        space between hatch lines (in pixels)</span>
+<span class="sd">    recache : boolean</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    hatchim : RGBA array</span>
+<span class="sd">        flatmap image with hatches over hatch_data</span>
+<span class="sd">    """</span>
+    <span class="n">dmap</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">make_flatmap_image</span><span class="p">(</span>
+        <span class="n">hatch_data</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="n">recache</span><span class="p">,</span> <span class="n">nanmean</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">mask_nans</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">dmap</span><span class="p">)</span>
+    <span class="n">hx</span><span class="p">,</span> <span class="n">hy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">dmap</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">range</span><span class="p">(</span><span class="n">dmap</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
+    <span class="n">hatchpat</span> <span class="o">=</span> <span class="p">(</span><span class="n">hx</span><span class="o">+</span><span class="n">hy</span><span class="p">)</span><span class="o">%</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">hatch_space</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span>
+    <span class="c1"># Leila code that breaks:</span>
+    <span class="c1">#hatch_size = [0, 4, 4]</span>
+    <span class="c1">#hatchpat = (hx + hy + hatch_size[0])%(hatch_size[1] * hatch_space) &lt; hatch_size[2]</span>
+
+    <span class="n">hatchpat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span><span class="n">hatchpat</span><span class="p">,</span> <span class="n">hatchpat</span><span class="p">[:,::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">hatchim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">([</span><span class="mi">1</span><span class="o">-</span><span class="n">hatchpat</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span> <span class="o">+</span> <span class="p">[</span><span class="n">hatchpat</span><span class="p">])</span>
+    <span class="n">hatchim</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">dmap</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="c1"># Set nans to alpha = 0. for transparency</span>
+    <span class="n">hatchim</span><span class="p">[</span><span class="n">mask_nans</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+    <span class="k">return</span> <span class="n">hatchim</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_flatmask</span><span class="p">(</span><span class="n">subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]]:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImageDraw</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">polyutils</span>
+    <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">trace_poly</span><span class="p">(</span><span class="n">polyutils</span><span class="o">.</span><span class="n">boundary_edges</span><span class="p">(</span><span class="n">polys</span><span class="p">))</span>
+
+    <span class="n">aspect</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">/</span> <span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">lpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">left</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
+    <span class="n">rpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">right</span><span class="p">]</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
+
+    <span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="s1">'L'</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">aspect</span> <span class="o">*</span> <span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">height</span><span class="p">))</span>
+    <span class="n">draw</span> <span class="o">=</span> <span class="n">ImageDraw</span><span class="o">.</span><span class="n">Draw</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
+    <span class="n">draw</span><span class="o">.</span><span class="n">polygon</span><span class="p">(</span><span class="n">lpts</span><span class="p">[:,:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">fill</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">draw</span><span class="o">.</span><span class="n">polygon</span><span class="p">(</span><span class="n">rpts</span><span class="p">[:,:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">fill</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+    <span class="n">extents</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">pts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">pts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)])[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">im</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">extents</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_vertex_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
+    <span class="n">flat</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span>
+    <span class="n">fmax</span><span class="p">,</span> <span class="n">fmin</span> <span class="o">=</span> <span class="n">flat</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">flat</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="n">fmax</span> <span class="o">-</span> <span class="n">fmin</span>
+    <span class="n">aspect</span> <span class="o">=</span> <span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">aspect</span> <span class="o">*</span> <span class="n">height</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="n">fmin</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">fmax</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">width</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="n">fmin</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">fmax</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">height</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">get_flatmask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">width</span> <span class="ow">and</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">height</span>
+
+    <span class="n">kdt</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">flat</span><span class="p">[</span><span class="n">valid</span><span class="p">,:</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">dist</span><span class="p">,</span> <span class="n">vert</span> <span class="o">=</span> <span class="n">kdt</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+    <span class="n">vert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">vert</span><span class="p">)</span>
+    <span class="n">dataij</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">vert</span><span class="p">),)),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">vert</span><span class="p">)),</span> <span class="n">valid</span><span class="p">[</span><span class="n">vert</span><span class="p">]]))</span>
+    <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">dataij</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="nb">len</span><span class="p">(</span><span class="n">flat</span><span class="p">)))</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_make_pixel_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">thick</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sampler</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="s1">'nearest'</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Delaunay</span>
+    <span class="n">flat</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span>
+    <span class="n">fmax</span><span class="p">,</span> <span class="n">fmin</span> <span class="o">=</span> <span class="n">flat</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">flat</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="n">fmax</span> <span class="o">-</span> <span class="n">fmin</span>
+    <span class="n">aspect</span> <span class="o">=</span> <span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">aspect</span> <span class="o">*</span> <span class="n">height</span><span class="p">)</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mgrid</span><span class="p">[</span><span class="n">fmin</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">fmax</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">width</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">,</span> <span class="n">fmin</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">fmax</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span><span class="n">height</span><span class="o">*</span><span class="mi">1</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">mask</span><span class="p">,</span> <span class="n">extents</span> <span class="o">=</span> <span class="n">get_flatmask</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">width</span> <span class="ow">and</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">height</span>
+
+    <span class="c1"># Get barycentric coordinates</span>
+    <span class="n">dl</span> <span class="o">=</span> <span class="n">Delaunay</span><span class="p">(</span><span class="n">flat</span><span class="p">[</span><span class="n">valid</span><span class="p">,:</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">simps</span> <span class="o">=</span> <span class="n">dl</span><span class="o">.</span><span class="n">find_simplex</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()])</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="n">simps</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">tfms</span> <span class="o">=</span> <span class="n">dl</span><span class="o">.</span><span class="n">transform</span><span class="p">[</span><span class="n">simps</span><span class="p">]</span>
+    <span class="n">l1</span><span class="p">,</span> <span class="n">l2</span> <span class="o">=</span> <span class="p">(</span><span class="n">tfms</span><span class="p">[:,:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">mask</span><span class="o">.</span><span class="n">ravel</span><span class="p">()]</span> <span class="o">-</span> <span class="n">tfms</span><span class="p">[:,</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">l3</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">l1</span> <span class="o">-</span> <span class="n">l2</span>
+
+    <span class="n">ll</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">l1</span><span class="p">,</span> <span class="n">l2</span><span class="p">,</span> <span class="n">l3</span><span class="p">])</span>
+    <span class="n">ll</span><span class="p">[:,</span><span class="n">missing</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..mapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">samplers</span>
+    <span class="n">xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s1">'coord'</span><span class="p">)</span>
+    <span class="n">sampclass</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">samplers</span><span class="p">,</span> <span class="n">sampler</span><span class="p">)</span>
+
+    <span class="c1"># Transform fiducial vertex locations to pixel locations using barycentric xfm</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pia</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"pia"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">wm</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"wm"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">piacoords</span> <span class="o">=</span> <span class="n">xfm</span><span class="p">((</span><span class="n">pia</span><span class="p">[</span><span class="n">valid</span><span class="p">][</span><span class="n">dl</span><span class="o">.</span><span class="n">simplices</span><span class="p">][</span><span class="n">simps</span><span class="p">]</span> <span class="o">*</span> <span class="n">ll</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+        <span class="n">wmcoords</span> <span class="o">=</span> <span class="n">xfm</span><span class="p">((</span><span class="n">wm</span><span class="p">[</span><span class="n">valid</span><span class="p">][</span><span class="n">dl</span><span class="o">.</span><span class="n">simplices</span><span class="p">][</span><span class="n">simps</span><span class="p">]</span> <span class="o">*</span> <span class="n">ll</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">valid_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">piacoords</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                            <span class="n">piacoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                            <span class="n">piacoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="n">piacoords</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">valid_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">valid_p</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">valid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">wmcoords</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                            <span class="n">wmcoords</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                            <span class="n">wmcoords</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                            <span class="n">wmcoords</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">valid_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">valid_w</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">valid_p</span><span class="p">,</span> <span class="n">valid_w</span><span class="p">)</span>
+        <span class="n">vidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">mapper</span><span class="p">:</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">((</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">thick</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">sampclass</span><span class="p">(</span><span class="n">piacoords</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">*</span><span class="n">depth</span> <span class="o">+</span> <span class="n">wmcoords</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">depth</span><span class="p">),</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">mapper</span> <span class="o">=</span> <span class="n">mapper</span> <span class="o">+</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">thick</span><span class="p">),</span> <span class="p">(</span><span class="n">vidx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">j</span><span class="p">)),</span>
+                                                <span class="n">shape</span><span class="o">=</span><span class="n">mapper</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">mapper</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">thick</span><span class="o">+</span><span class="mi">2</span><span class="p">)[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">sampclass</span><span class="p">(</span><span class="n">piacoords</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">*</span><span class="n">t</span> <span class="o">+</span> <span class="n">wmcoords</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">t</span><span class="p">),</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">mapper</span> <span class="o">=</span> <span class="n">mapper</span> <span class="o">+</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">thick</span><span class="p">),</span> <span class="p">(</span><span class="n">vidx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">j</span><span class="p">)),</span>
+                                                <span class="n">shape</span><span class="o">=</span><span class="n">mapper</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mapper</span>
+
+    <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+        <span class="n">fid</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"fiducial"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">fidcoords</span> <span class="o">=</span> <span class="n">xfm</span><span class="p">((</span><span class="n">fid</span><span class="p">[</span><span class="n">valid</span><span class="p">][</span><span class="n">dl</span><span class="o">.</span><span class="n">simplices</span><span class="p">][</span><span class="n">simps</span><span class="p">]</span> <span class="o">*</span> <span class="n">ll</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">,</span>
+                       <span class="p">[</span><span class="n">reduce</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">fidcoords</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">),</span>
+                        <span class="n">fidcoords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                        <span class="n">fidcoords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                        <span class="n">fidcoords</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+
+        <span class="n">vidx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">sampclass</span><span class="p">(</span><span class="n">fidcoords</span><span class="p">[</span><span class="n">valid</span><span class="p">],</span> <span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">csrshape</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">xfm</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">vidx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">j</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="n">csrshape</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

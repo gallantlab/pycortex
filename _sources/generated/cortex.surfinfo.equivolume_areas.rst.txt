@@ -1,0 +1,6 @@
+﻿cortex.surfinfo.equivolume\_areas
+=================================
+
+.. currentmodule:: cortex.surfinfo
+
+.. autofunction:: equivolume_areas

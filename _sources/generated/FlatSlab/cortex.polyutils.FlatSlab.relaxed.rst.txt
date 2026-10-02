@@ -1,0 +1,6 @@
+cortex.polyutils.FlatSlab.relaxed
+=================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoproperty:: FlatSlab.relaxed

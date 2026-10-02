@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Visualize HCP fs_LR data on the HCP template and on fsaverage &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Importing Surfaces Examples" href="../import_surface/index.html" />
+    <link rel="prev" title="Examples with HCP fs_LR data" href="index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-hcp-plot-hcp-fs-lr-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="visualize-hcp-fs-lr-data-on-the-hcp-template-and-on-fsaverage">
+<span id="sphx-glr-auto-examples-hcp-plot-hcp-fs-lr-py"></span><h1>Visualize HCP fs_LR data on the HCP template and on fsaverage<a class="headerlink" href="#visualize-hcp-fs-lr-data-on-the-hcp-template-and-on-fsaverage" title="Link to this heading">¶</a></h1>
+<p>This example shows how to:</p>
+<ol class="loweralpha simple">
+<li><p>visualize data defined on the HCP fs_LR 32k surface directly on the HCP
+template (the <code class="docutils literal notranslate"><span class="pre">32k_fs_LR</span></code> pycortex subject), and</p></li>
+<li><p>resample that data to fsaverage6 with <code class="xref py py-mod docutils literal notranslate"><span class="pre">cortex.hcp</span></code> and visualize it as
+a flatmap.</p></li>
+</ol>
+<p>Both steps produce a flatmap.</p>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>The first time you run this, the <code class="docutils literal notranslate"><span class="pre">32k_fs_LR</span></code> and <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> subjects are
+downloaded into your pycortex filestore.</p></li>
+<li><p>The resampling matrix is built from the HCP standard-mesh spheres, which are
+downloaded on demand (no Connectome Workbench needed).</p></li>
+<li><p>fsaverage6 is not itself a renderable pycortex subject, so the fsaverage6
+result is upsampled to the full <code class="docutils literal notranslate"><span class="pre">fsaverage</span></code> surface for display using
+<code class="xref py py-func docutils literal notranslate"><span class="pre">cortex.freesurfer.upsample_to_fsaverage()</span></code>. The fsaverage5/6 upsampling
+tables ship with pycortex, so no FreeSurfer installation is needed.</p></li>
+</ul>
+<ul class="sphx-glr-horizontal">
+<li><img src="../../_images/sphx_glr_plot_hcp_fs_lr_001.png" srcset="../../_images/sphx_glr_plot_hcp_fs_lr_001.png" alt="HCP fs_LR 32k (native)" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_plot_hcp_fs_lr_002.png" srcset="../../_images/sphx_glr_plot_hcp_fs_lr_002.png" alt="Resampled to fsaverage6 (shown on fsaverage)" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Downloading from: https://ndownloader.figshare.com/files/66442049
+Downloading subject 32k_fs_LR to /tmp/tmpiv2uan66
+Done downloading to /tmp/tmpiv2uan66/32k_fs_LR.tar.gz
+Extracting subject 32k_fs_LR to /home/runner/work/pycortex/pycortex/filestore/db
+Generating a flatmap cache
+fsaverage6 data shape: (81924,)
+Downloading from: https://ndownloader.figshare.com/files/17827577?private_link=4871247dce31e188e758
+Downloading subject fsaverage to /tmp/tmpqarb9ukr
+Done downloading to /tmp/tmpqarb9ukr/fsaverage.tar.gz
+Extracting subject fsaverage to /home/runner/work/pycortex/pycortex/filestore/db
+Generating a flatmap cache
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="nn">.</span><span class="nn">hcp</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># ---------------------------------------------------------------------------</span><span class="w">
+</span><span class="c1"># a) Visualize data on the HCP fs_LR 32k template</span><span class="w">
+</span><span class="c1"># ---------------------------------------------------------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="n">hcp_subject</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">32k_fs_LR</span><span class="s2">&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Make sure the HCP template is in the pycortex filestore, downloading if not.</span><span class="w">
+</span><span class="k">if</span> <span class="n">hcp_subject</span> <span class="ow">not</span> <span class="ow">in</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-property reference internal" href="../../generated/Database/cortex.database.Database.subjects.html#cortex.database.Database.subjects" title="cortex.database.Database.subjects"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">subjects</span></a><span class="p">:</span><span class="w">
+</span>    <span class="n">cortex</span><span class="o">.</span><span class="n">hcp</span><span class="o">.</span><span class="n">download_fs_lr</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Create some smooth demo data on the full fs_LR 32k surface (64984 vertices,</span><span class="w">
+</span><span class="c1"># both hemispheres, medial wall included). Here we use the anterior-posterior</span><span class="w">
+</span><span class="c1"># (y) coordinate of the inflated surface as a smooth gradient. For real HCP</span><span class="w">
+</span><span class="c1"># data stored as CIFTI grayordinates, expand it to the full surface first with</span><span class="w">
+</span><span class="c1"># ``cortex.hcp.cifti_to_surface`` (or go straight to fsaverage with</span><span class="w">
+</span><span class="c1"># ``cortex.hcp.to_fsaverage``).</span><span class="w">
+</span><span class="n">pts</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-method reference internal" href="../../generated/Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf" title="cortex.database.Database.get_surf"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span></a><span class="p">(</span><span class="n">hcp_subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">inflated</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="w">
+</span><span class="n">data_fslr</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="p">:</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="w">
+</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">data_fslr</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Visualize on the HCP template just like any other vertex dataset.</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">vtx_hcp</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span></a><span class="p">(</span><span class="n">data_fslr</span><span class="p">,</span> <span class="n">hcp_subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">turbo</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">vtx_hcp</span></a><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">HCP fs_LR 32k (native)</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># ---------------------------------------------------------------------------</span><span class="w">
+</span><span class="c1"># b) Resample the same data to fsaverage6 and visualize it</span><span class="w">
+</span><span class="c1"># ---------------------------------------------------------------------------</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Project fs_LR 32k -&gt; fsaverage6 (81924 vertices, both hemispheres).</span><span class="w">
+</span><span class="n">data_fs6</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">hcp</span><span class="o">.</span><span class="n">project_fslr_to_fsaverage</span><span class="p">(</span><span class="n">data_fslr</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">fsaverage6</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">fsaverage6 data shape:</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">data_fs6</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># fsaverage6 is not a renderable pycortex subject, so upsample the fsaverage6</span><span class="w">
+</span><span class="c1"># result to the full fsaverage surface for the flatmap.</span><span class="w">
+</span><span class="k">if</span> <span class="s2">&quot;</span><span class="s2">fsaverage</span><span class="s2">&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-property reference internal" href="../../generated/Database/cortex.database.Database.subjects.html#cortex.database.Database.subjects" title="cortex.database.Database.subjects"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">subjects</span></a><span class="p">:</span><span class="w">
+</span>    <span class="n">cortex</span><span class="o">.</span><span class="n">download_subject</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">fsaverage</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">data_fs</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">freesurfer</span><span class="o">.</span><span class="n">upsample_to_fsaverage</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">data_fs6</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">fsaverage6</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">vtx_fs</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span></a><span class="p">(</span><span class="n">data_fs</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">fsaverage</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">turbo</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">vtx_fs</span></a><span class="p">,</span> <span class="n">with_curvature</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">gcf</span><span class="p">(</span><span class="p">)</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">Resampled to fsaverage6 (shown on fsaverage)</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 27.056 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-hcp-plot-hcp-fs-lr-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/e8c24f2efb50d165c79022422cf31da8/plot_hcp_fs_lr.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_hcp_fs_lr.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/36545eb08d50d2fdfe051065a98d964e/plot_hcp_fs_lr.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_hcp_fs_lr.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/4cd110677c9c760900b3b4176dc51826/plot_hcp_fs_lr.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">plot_hcp_fs_lr.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="index.html">Examples with HCP fs_LR data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Example Gallery</a><ul>
+  <li><a href="index.html">Examples with HCP fs_LR data</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Examples with HCP fs_LR data</a></li>
+      <li>Next: <a href="../import_surface/index.html" title="next chapter">Importing Surfaces Examples</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/auto_examples/hcp/plot_hcp_fs_lr.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

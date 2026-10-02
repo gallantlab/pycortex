@@ -29,5 +29,8 @@
    .. autosummary::
    
       ~Transform.inv
+      ~Transform.reference_nifti
+      ~Transform.shape
+      ~Transform.reference
    
    

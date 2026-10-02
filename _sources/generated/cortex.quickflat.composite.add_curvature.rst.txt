@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_curvature
+=========================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_curvature

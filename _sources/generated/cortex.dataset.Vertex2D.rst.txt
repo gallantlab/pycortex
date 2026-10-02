@@ -30,6 +30,7 @@
    .. autosummary::
       :toctree: Vertex2D
    
+      ~Vertex2D.alpha
       ~Vertex2D.priority
       ~Vertex2D.raw
       ~Vertex2D.subject

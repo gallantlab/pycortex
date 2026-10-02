@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -69,7 +69,7 @@
 <p>To run the pycortex demo, using IPython, run:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ipython
 In [1]: import cortex
-In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;))
+In [2]: cortex.webshow(cortex.Volume.random("S1", "fullhead"))
 </pre></div>
 </div>
 <p>If everything went well, this should pop up a web browser window with a demo subject.</p>
@@ -92,6 +92,18 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
 <span class="n">filestore</span><span class="o">=/</span><span class="nb">abs</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">filestore</span>
 </pre></div>
 </div>
+<p>Pycortex also caches some derived, subject-specific files (such as flatmap
+and MNI transform caches) that don’t need to live in the filestore itself.
+By default, these caches are stored inside the filestore, at
+<code class="file docutils literal notranslate"><em><span class="pre">filestore</span></em><span class="pre">/</span><em><span class="pre">subject</span></em><span class="pre">/cache</span></code>. To store them somewhere else instead
+(for example on faster local storage), set the <code class="docutils literal notranslate"><span class="pre">cache</span></code> option under
+<code class="docutils literal notranslate"><span class="pre">[basic]</span></code> in the config file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">basic</span><span class="p">]</span>
+<span class="n">cache</span><span class="o">=/</span><span class="nb">abs</span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">cache</span>
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">cache</span></code> is set, per-subject cache files are stored at
+<code class="file docutils literal notranslate"><em><span class="pre">cache</span></em><span class="pre">/</span><em><span class="pre">subject</span></em><span class="pre">/cache</span></code>.</p>
 </section>
 </section>
 
@@ -130,6 +142,8 @@ In [2]: cortex.webshow(cortex.Volume.random(&quot;S1&quot;, &quot;fullhead&quot;
 <li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
 </ul>

@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_hatch
+=====================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_hatch

@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -75,53 +75,52 @@ Generating distortion surface info...
 <div class="line-block">
 <div class="line"><br /></div>
 </div>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">cortex.polyutils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Distortion</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-<span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;S1&quot;</span>
-
-<span class="c1"># First let&#39;s load the surface and compute the distortion directly using the</span>
-<span class="c1"># Distortion class</span>
-
-<span class="c1"># load fiducial (mid-cortical) surfaces</span>
-<span class="c1"># we&#39;re ignoring the right hemisphere surface here</span>
-<span class="c1"># the polys (triangles) are the same for the fiducial and flat surfaces</span>
-<span class="p">(</span><span class="n">lfidpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">)</span>
-
-<span class="c1"># load flattened surfaces</span>
-<span class="p">(</span><span class="n">lflatpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">),</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">)</span>
-
-<span class="c1"># Create the Distortion object</span>
-<span class="n">dist</span> <span class="o">=</span> <span class="n">Distortion</span><span class="p">(</span><span class="n">lflatpts</span><span class="p">,</span> <span class="n">lfidpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">)</span>
-
-<span class="c1"># Compute areal distortion</span>
-<span class="c1"># this returns an array of values for each vertex, which we will put into</span>
-<span class="c1"># a Vertex object for plotting</span>
-<span class="n">areal_dist</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">areal</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="c1"># areal distortion is in log_2 units (e.g. -1 is half the area, 1 is double)</span>
-
-<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">areal_dist</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-
-<span class="c1"># Next compute metric distortion</span>
-<span class="n">metric_dist</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">metric</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="c1"># metric distortion is in mm (e.g. -1 means flatmap edge is 1 mm shorter)</span>
-
-<span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><span class="n">metric_dist</span><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-
-<span class="c1"># Both of these distortion metrics can also be fetched easily via the pycortex</span>
-<span class="c1"># database</span>
-
-<span class="c1"># these also return Vertex objects like those we created above</span>
-<span class="n">areal_dist_2</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;distortion&quot;</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s2">&quot;areal&quot;</span><span class="p">)</span>
-<span class="n">metric_dist_2</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;distortion&quot;</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s2">&quot;metric&quot;</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 22.385 seconds)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">cortex</span><span class="nn">.</span><span class="nn">polyutils</span><span class="w"> </span><span class="kn">import</span> <a class="sphx-glr-backref-module-cortex-polyutils sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion" title="cortex.polyutils.Distortion"><span class="n">Distortion</span></a><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="w">
+</span><span class="n">subject</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="s2">S1</span><span class="s2">&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># First let's load the surface and compute the distortion directly using the</span><span class="w">
+</span><span class="c1"># Distortion class</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># load fiducial (mid-cortical) surfaces</span><span class="w">
+</span><span class="c1"># we're ignoring the right hemisphere surface here</span><span class="w">
+</span><span class="c1"># the polys (triangles) are the same for the fiducial and flat surfaces</span><span class="w">
+</span><span class="p">(</span><span class="n">lfidpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">)</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-method reference internal" href="../../generated/Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf" title="cortex.database.Database.get_surf"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span></a><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">fiducial</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># load flattened surfaces</span><span class="w">
+</span><span class="p">(</span><span class="n">lflatpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">)</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-method reference internal" href="../../generated/Database/cortex.database.Database.get_surf.html#cortex.database.Database.get_surf" title="cortex.database.Database.get_surf"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surf</span></a><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">flat</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Create the Distortion object</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex-polyutils sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion" title="cortex.polyutils.Distortion"><span class="n">dist</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-polyutils sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.polyutils.Distortion.html#cortex.polyutils.Distortion" title="cortex.polyutils.Distortion"><span class="n">Distortion</span></a><span class="p">(</span><span class="n">lflatpts</span><span class="p">,</span> <span class="n">lfidpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Compute areal distortion</span><span class="w">
+</span><span class="c1"># this returns an array of values for each vertex, which we will put into</span><span class="w">
+</span><span class="c1"># a Vertex object for plotting</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">areal_dist</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span></a><span class="p">(</span><a class="sphx-glr-backref-module-cortex-polyutils sphx-glr-backref-type-py-property reference internal" href="../../generated/Distortion/cortex.polyutils.Distortion.areal.html#cortex.polyutils.Distortion.areal" title="cortex.polyutils.Distortion.areal"><span class="n">dist</span><span class="o">.</span><span class="n">areal</span></a><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="w">
+</span><span class="c1"># areal distortion is in log_2 units (e.g. -1 is half the area, 1 is double)</span><span class="w">
+</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">areal_dist</span></a><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Next compute metric distortion</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">metric_dist</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">cortex</span><span class="o">.</span><span class="n">Vertex</span></a><span class="p">(</span><a class="sphx-glr-backref-module-cortex-polyutils sphx-glr-backref-type-py-property reference internal" href="../../generated/Distortion/cortex.polyutils.Distortion.metric.html#cortex.polyutils.Distortion.metric" title="cortex.polyutils.Distortion.metric"><span class="n">dist</span><span class="o">.</span><span class="n">metric</span></a><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="w">
+</span><span class="c1"># metric distortion is in mm (e.g. -1 means flatmap edge is 1 mm shorter)</span><span class="w">
+</span><span class="w">
+</span><span class="n">cortex</span><span class="o">.</span><span class="n">quickshow</span><span class="p">(</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">metric_dist</span></a><span class="p">,</span> <span class="n">with_rois</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_labels</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Both of these distortion metrics can also be fetched easily via the pycortex</span><span class="w">
+</span><span class="c1"># database</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># these also return Vertex objects like those we created above</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">areal_dist_2</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-method reference internal" href="../../generated/Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo" title="cortex.database.Database.get_surfinfo"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span></a><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">distortion</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">areal</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Vertex.html#cortex.dataset.Vertex" title="cortex.Vertex"><span class="n">metric_dist_2</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-database sphx-glr-backref-type-py-method reference internal" href="../../generated/Database/cortex.database.Database.get_surfinfo.html#cortex.database.Database.get_surfinfo" title="cortex.database.Database.get_surfinfo"><span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_surfinfo</span></a><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">distortion</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">metric</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 22.863 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-surface-analyses-plot-flatmap-distortion-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/a075cfaa8cd8b107253dda362b33178e/plot_flatmap_distortion.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_flatmap_distortion.ipynb</span></code></a></p>
@@ -166,6 +165,8 @@ Generating distortion surface info...
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>
@@ -173,18 +174,22 @@ Generating distortion surface info...
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
 </ul>

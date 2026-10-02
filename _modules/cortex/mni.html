@@ -8,7 +8,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -36,10 +36,10 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.mni</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Functions for finding MNI transforms for individual subjects and transforming</span>
 <span class="sd">functional data and surfaces to and from MNI space.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span>
@@ -52,26 +52,34 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
 
-<span class="n">fslprefix</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;basic&quot;</span><span class="p">,</span> <span class="s2">&quot;fsl_prefix&quot;</span><span class="p">)</span>
-<span class="n">fsldir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;FSLDIR&quot;</span><span class="p">)</span>
+<span class="n">fslprefix</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"basic"</span><span class="p">,</span> <span class="s2">"fsl_prefix"</span><span class="p">)</span>
+<span class="n">fsldir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"FSLDIR"</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">fsldir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Can&#39;t find FSLDIR environment variable, assuming default FSL location..&quot;</span><span class="p">)</span>
-    <span class="n">fsldir</span> <span class="o">=</span> <span class="s2">&quot;/usr/share/fsl/5.0&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">"Can't find FSLDIR environment variable, assuming default FSL location.."</span><span class="p">)</span>
+    <span class="n">fsldir</span> <span class="o">=</span> <span class="s2">"/usr/share/fsl/5.0"</span>
 
-<span class="n">default_template</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fsldir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;standard&quot;</span><span class="p">,</span> <span class="s2">&quot;MNI152_T1_1mm_brain.nii.gz&quot;</span><span class="p">)</span>
+<span class="n">default_template</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fsldir</span><span class="p">,</span> <span class="s2">"data"</span><span class="p">,</span> <span class="s2">"standard"</span><span class="p">,</span> <span class="s2">"MNI152_T1_1mm_brain.nii.gz"</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_save_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">):</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%0.10f</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="s2">"</span><span class="si">%0.10f</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_load_fsl_xfm</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_mktemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">""</span><span class="p">):</span>
+    <span class="c1"># mkstemp (unlike deprecated mktemp) opens the file itself to avoid a</span>
+    <span class="c1"># race condition; close its fd immediately since only the path is</span>
+    <span class="c1"># needed here (flirt/nibabel write to it as an external process).</span>
+    <span class="n">fd</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span>
 
 <div class="viewcode-block" id="compute_mni_transform">
 <a class="viewcode-back" href="../../generated/cortex.mni.compute_mni_transform.html#cortex.mni.compute_mni_transform">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute_mni_transform</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span>
                           <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Compute transform from the space specified by `xfm` to MNI standard space.</span>
 
 <span class="sd">    Parameters</span>
@@ -79,29 +87,29 @@
 <span class="sd">    subject : str</span>
 <span class="sd">        Subject identifier</span>
 <span class="sd">    xfm : str</span>
-<span class="sd">        Name of functional space transform. Can be &#39;identity&#39; for anat space.</span>
+<span class="sd">        Name of functional space transform. Can be 'identity' for anat space.</span>
 <span class="sd">    template : str, optional</span>
-<span class="sd">        Path to MNI template volume. Defaults to FSL&#39;s MNI152_T1_1mm_brain.</span>
+<span class="sd">        Path to MNI template volume. Defaults to FSL's MNI152_T1_1mm_brain.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    numpy.ndarray</span>
 <span class="sd">        Transformation matrix from the space specified by `xfm` to MNI space.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Set up some paths</span>
-    <span class="n">anat_to_mni_xfm</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">()</span>
+    <span class="n">anat_to_mni_xfm</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">()</span>
 
     <span class="c1"># Get anatomical image</span>
-    <span class="n">anat_filename</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;brainmask&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
+    <span class="n">anat_filename</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_anat</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"brainmask"</span><span class="p">)</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
     
     <span class="c1"># First use flirt to align masked subject anatomical to MNI template</span>
-    <span class="n">cmd</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">{fslprefix}</span><span class="s2">flirt&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
-                     <span class="s2">&quot;-searchrx -180 180&quot;</span><span class="p">,</span>
-                     <span class="s2">&quot;-searchry -180 180&quot;</span><span class="p">,</span>
-                     <span class="s2">&quot;-searchrz -180 180&quot;</span><span class="p">,</span>
-                     <span class="s2">&quot;-ref&quot;</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span>
-                     <span class="s2">&quot;-in&quot;</span><span class="p">,</span> <span class="n">anat_filename</span><span class="p">,</span>
-                     <span class="s2">&quot;-omat&quot;</span><span class="p">,</span> <span class="n">anat_to_mni_xfm</span><span class="p">]))</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">shlex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">"</span><span class="si">{fslprefix}</span><span class="s2">flirt"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
+                     <span class="s2">"-searchrx -180 180"</span><span class="p">,</span>
+                     <span class="s2">"-searchry -180 180"</span><span class="p">,</span>
+                     <span class="s2">"-searchrz -180 180"</span><span class="p">,</span>
+                     <span class="s2">"-ref"</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span>
+                     <span class="s2">"-in"</span><span class="p">,</span> <span class="n">anat_filename</span><span class="p">,</span>
+                     <span class="s2">"-omat"</span><span class="p">,</span> <span class="n">anat_to_mni_xfm</span><span class="p">]))</span>
     
     <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
 
@@ -118,7 +126,7 @@
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_to_mni.html#cortex.mni.transform_to_mni">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">transform_to_mni</span><span class="p">(</span><span class="n">volumedata</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span> 
                      <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Transform data in `volumedata` to MNI space, resample at the resolution of </span>
 <span class="sd">    the atlas image.</span>
 
@@ -130,29 +138,29 @@
 <span class="sd">        Transformation matrix from the space of `volumedata` to MNI space. Get this</span>
 <span class="sd">        from `compute_mni_transform`.</span>
 <span class="sd">    template : str, optional</span>
-<span class="sd">        Path to MNI template volume, used as reference for flirt. Defaults to FSL&#39;s </span>
+<span class="sd">        Path to MNI template volume, used as reference for flirt. Defaults to FSL's </span>
 <span class="sd">        MNI152_T1_1mm_brain.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    nibabel.nifti1.Nifti1Image</span>
 <span class="sd">        `volumedata` after transformation to MNI space.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Set up paths</span>
-    <span class="n">func_nii</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">)</span>
-    <span class="n">func_to_mni_xfm</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.mat&quot;</span><span class="p">)</span>
-    <span class="n">func_in_mni</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">)</span>
+    <span class="n">func_nii</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".nii.gz"</span><span class="p">)</span>
+    <span class="n">func_to_mni_xfm</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".mat"</span><span class="p">)</span>
+    <span class="n">func_in_mni</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".nii.gz"</span><span class="p">)</span>
 
     <span class="c1"># Save out relevant things</span>
     <span class="n">volumedata</span><span class="o">.</span><span class="n">save_nii</span><span class="p">(</span><span class="n">func_nii</span><span class="p">)</span>
     <span class="n">_save_fsl_xfm</span><span class="p">(</span><span class="n">func_to_mni_xfm</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">)</span>
     
     <span class="c1"># Use flirt to resample functional data</span>
-    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">{fslprefix}</span><span class="s2">flirt&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
-                     <span class="s2">&quot;-in&quot;</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span>
-                     <span class="s2">&quot;-ref&quot;</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span>
-                     <span class="s2">&quot;-applyxfm&quot;</span><span class="p">,</span> <span class="s2">&quot;-init&quot;</span><span class="p">,</span> <span class="n">func_to_mni_xfm</span><span class="p">,</span>
-                     <span class="s2">&quot;-out&quot;</span><span class="p">,</span> <span class="n">func_in_mni</span><span class="p">])</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">"</span><span class="si">{fslprefix}</span><span class="s2">flirt"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
+                     <span class="s2">"-in"</span><span class="p">,</span> <span class="n">func_nii</span><span class="p">,</span>
+                     <span class="s2">"-ref"</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span>
+                     <span class="s2">"-applyxfm"</span><span class="p">,</span> <span class="s2">"-init"</span><span class="p">,</span> <span class="n">func_to_mni_xfm</span><span class="p">,</span>
+                     <span class="s2">"-out"</span><span class="p">,</span> <span class="n">func_in_mni</span><span class="p">])</span>
 
     <span class="k">return</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">func_in_mni</span><span class="p">)</span></div>
 
@@ -160,7 +168,7 @@
 <div class="viewcode-block" id="transform_surface_to_mni">
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_surface_to_mni.html#cortex.mni.transform_surface_to_mni">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">transform_surface_to_mni</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surfname</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Transform the surface named `surfname` for subject called `subject` into</span>
 <span class="sd">    MNI coordinates. Returns [(lpts, lpolys), (rpts, rpolys)].</span>
 
@@ -175,15 +183,15 @@
 <span class="sd">    -------</span>
 <span class="sd">    [(mni_lpts, lpolys), (mni_rpts, rpolys)]</span>
 <span class="sd">        MNI-transformed surface in same format returned by db.get_surf.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Get MNI affine transform</span>
     <span class="n">mni_affine</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">default_template</span><span class="p">)</span><span class="o">.</span><span class="n">affine</span>
 
     <span class="c1"># Get subject anatomical-to-MNI transform</span>
-    <span class="n">mni_xfm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mni_affine</span><span class="p">,</span> <span class="n">db</span><span class="o">.</span><span class="n">get_mnixfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">))</span>
+    <span class="n">mni_xfm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">mni_affine</span><span class="p">,</span> <span class="n">db</span><span class="o">.</span><span class="n">get_mnixfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"identity"</span><span class="p">))</span>
 
     <span class="c1"># Get transform from surface points to anatomical space</span>
-    <span class="n">ident_xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;identity&quot;</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">&quot;coord&quot;</span><span class="p">)</span>
+    <span class="n">ident_xfm</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"identity"</span><span class="p">,</span> <span class="n">xfmtype</span><span class="o">=</span><span class="s2">"coord"</span><span class="p">)</span>
 
     <span class="c1"># Get surfaces</span>
     <span class="p">(</span><span class="n">lpts</span><span class="p">,</span> <span class="n">lpolys</span><span class="p">),</span> <span class="p">(</span><span class="n">rpts</span><span class="p">,</span> <span class="n">rpolys</span><span class="p">)</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">surfname</span><span class="p">)</span>
@@ -202,7 +210,7 @@
 <a class="viewcode-back" href="../../generated/cortex.mni.transform_mni_to_subject.html#cortex.mni.transform_mni_to_subject">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">transform_mni_to_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">,</span> <span class="n">volarray</span><span class="p">,</span> <span class="n">func_to_mni</span><span class="p">,</span>
                              <span class="n">template</span><span class="o">=</span><span class="n">default_template</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Transform data in `volarray` from MNI space to functional space specified by `xfm`.</span>
 
 <span class="sd">    Parameters</span>
@@ -217,7 +225,7 @@
 <span class="sd">        Transformation matrix from `xfm` space to MNI space. Get this</span>
 <span class="sd">        from compute_mni_transform.</span>
 <span class="sd">    template : str, optional</span>
-<span class="sd">        Path to MNI template volume, used as reference. Defaults to FSL&#39;s </span>
+<span class="sd">        Path to MNI template volume, used as reference. Defaults to FSL's </span>
 <span class="sd">        MNI152_T1_1mm_brain.</span>
 
 <span class="sd">    Returns</span>
@@ -225,11 +233,11 @@
 <span class="sd">    nibabel.nifti1.Nifti1Image</span>
 <span class="sd">        `volarray` after transformation from MNI space to space specified by `xfm`.</span>
 
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="c1"># Set up paths</span>
-    <span class="n">mnispace_func_nii</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">)</span>
-    <span class="n">mni_to_func_xfm</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.mat&quot;</span><span class="p">)</span>
-    <span class="n">funcspace_nii</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;.nii.gz&quot;</span><span class="p">)</span>
+    <span class="n">mnispace_func_nii</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".nii.gz"</span><span class="p">)</span>
+    <span class="n">mni_to_func_xfm</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".mat"</span><span class="p">)</span>
+    <span class="n">funcspace_nii</span> <span class="o">=</span> <span class="n">_mktemp</span><span class="p">(</span><span class="s2">".nii.gz"</span><span class="p">)</span>
 
     <span class="c1"># Save out relevant things</span>
     <span class="n">affine</span> <span class="o">=</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">template</span><span class="p">)</span><span class="o">.</span><span class="n">affine</span>
@@ -239,11 +247,11 @@
     <span class="c1"># Use flirt to resample data to functional space</span>
     <span class="n">ref_filename</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_xfm</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfm</span><span class="p">)</span><span class="o">.</span><span class="n">reference</span><span class="o">.</span><span class="n">get_filename</span><span class="p">()</span>
     
-    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">&quot;</span><span class="si">{fslprefix}</span><span class="s2">flirt&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
-                     <span class="s2">&quot;-in&quot;</span><span class="p">,</span> <span class="n">mnispace_func_nii</span><span class="p">,</span>
-                     <span class="s2">&quot;-ref&quot;</span><span class="p">,</span> <span class="n">ref_filename</span><span class="p">,</span>
-                     <span class="s2">&quot;-applyxfm&quot;</span><span class="p">,</span> <span class="s2">&quot;-init&quot;</span><span class="p">,</span> <span class="n">mni_to_func_xfm</span><span class="p">,</span>
-                     <span class="s2">&quot;-out&quot;</span><span class="p">,</span> <span class="n">funcspace_nii</span><span class="p">])</span>
+    <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">([</span><span class="s2">"</span><span class="si">{fslprefix}</span><span class="s2">flirt"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fslprefix</span><span class="o">=</span><span class="n">fslprefix</span><span class="p">),</span>
+                     <span class="s2">"-in"</span><span class="p">,</span> <span class="n">mnispace_func_nii</span><span class="p">,</span>
+                     <span class="s2">"-ref"</span><span class="p">,</span> <span class="n">ref_filename</span><span class="p">,</span>
+                     <span class="s2">"-applyxfm"</span><span class="p">,</span> <span class="s2">"-init"</span><span class="p">,</span> <span class="n">mni_to_func_xfm</span><span class="p">,</span>
+                     <span class="s2">"-out"</span><span class="p">,</span> <span class="n">funcspace_nii</span><span class="p">])</span>
 
     <span class="k">return</span> <span class="n">nibabel</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">funcspace_nii</span><span class="p">)</span></div>
 
@@ -278,6 +286,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

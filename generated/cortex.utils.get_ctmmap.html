@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -46,13 +46,36 @@ in the freesurfer surface.
 The mapping is a numpy array, such that <cite>ctm2fs_left[i] = j</cite> means that the
 i-th vertex in the CTM surface corresponds to the j-th vertex in the freesurfer
 surface.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
+<dd class="field-odd"><dl>
 <dt><strong>subject</strong><span class="classifier">str</span></dt><dd><p>Subject name</p>
 </dd>
-<dt><strong>kwargs</strong><span class="classifier">dict</span></dt><dd><p>Keyword arguments to pass to get_ctmpack. The most relevant keyword for this
-function is the <cite>method</cite> kwarg (either <cite>mg2</cite> or <cite>raw</cite>).</p>
+<dt><strong>**kwargs</strong></dt><dd><p>Additional keyword arguments are forwarded to <cite>get_ctmpack</cite>:</p>
+<dl class="simple">
+<dt>types<span class="classifier">tuple, optional</span></dt><dd><p>Surfaces between which to interpolate. Default (“inflated”,).</p>
+</dd>
+<dt>method<span class="classifier">str, optional</span></dt><dd><p>Method for computing inverse transforms for labels (determines
+how labels are displayed on the 3D viewer). One of ‘mg2’, ‘raw’.
+Default ‘raw’.</p>
+</dd>
+<dt>level<span class="classifier">int, optional</span></dt><dd><p>Level-of-detail value used (together with <cite>decimate</cite>) to build a
+distinct cache filename for the generated ctm pack. Default 0.</p>
+</dd>
+<dt>recache<span class="classifier">bool, optional</span></dt><dd><p>Whether to re-generate .ctm files. Can resolve some errors but
+takes more time to re-generate cached files. Default False.</p>
+</dd>
+<dt>decimate<span class="classifier">bool, optional</span></dt><dd><p>Whether to decimate the mesh geometry of the hemispheres to
+reduce file size. Default False.</p>
+</dd>
+<dt>external_svg<span class="classifier">str, optional</span></dt><dd><p>File path for an .svg file containing alternative overlays for
+the brain viewer. If None, the subject’s own overlays.svg file
+is used.</p>
+</dd>
+<dt>overlays_available<span class="classifier">tuple, optional</span></dt><dd><p>Which overlays in the svg file to include in the viewer. If
+None, all layers in the relevant svg file are included.</p>
+</dd>
+</dl>
 </dd>
 </dl>
 </dd>
@@ -102,6 +125,8 @@ method, which corresponds to storing surfaces with a compressed format.</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_colorbar
+========================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_colorbar

@@ -120,16 +120,18 @@ headless renderer as `cortex.export.save_3d_views`.
 
  .. code-block:: none
 
+    Started server on port 45075
+    Open the viewer at http://localhost:45075/mixer.html (from another machine: http://runnervm8df0l:45075/mixer.html)
     Generating new ctm file...
     wm
     wm
+    Generating equivolume_areas surface info...
     inflated
     inflated
-    Started server on port 12964
-    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
 
 
@@ -209,11 +211,12 @@ Save individual views to files
 
  .. code-block:: none
 
-    Started server on port 29983
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    Started server on port 39935
+    Open the viewer at http://localhost:39935/mixer.html (from another machine: http://runnervm8df0l:39935/mixer.html)
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
 
 
@@ -301,109 +304,43 @@ are added.
 
  .. code-block:: none
 
-    Started server on port 27660
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    Started server on port 39771
+    Open the viewer at http://localhost:39771/mixer.html (from another machine: http://runnervm8df0l:39771/mixer.html)
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.altitude 179.9 -> 180
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 0
-    waiting for camera.altitude {} -> 90
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 0.5
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
-    waiting for camera.altitude {} -> 0
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 1
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 0
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
     Stopping server
-    Started server on port 21044
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 0
-    waiting for camera.altitude {} -> 90
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 0.5
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
-    waiting for camera.altitude {} -> 0
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 1
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 0
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
+    Started server on port 33663
+    Open the viewer at http://localhost:33663/mixer.html (from another machine: http://runnervm8df0l:33663/mixer.html)
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
-    Started server on port 27736
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    Started server on port 40005
+    Open the viewer at http://localhost:40005/mixer.html (from another machine: http://runnervm8df0l:40005/mixer.html)
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.altitude 179.9 -> 180
+    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.altitude 0.1 -> 0
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.altitude 179.9 -> 180
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
-    Started server on port 44375
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
-    waiting for camera.altitude {} -> 180
-    waiting for camera.target {} -> [0, -100, 0]
-    waiting for surface.S1.unfold {} -> 0.25
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 0
-    waiting for camera.altitude {} -> 90
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 0.25
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    Stopping server
-    Started server on port 39086
-    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    Started server on port 46079
+    Open the viewer at http://localhost:46079/mixer.html (from another machine: http://runnervm8df0l:46079/mixer.html)
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     waiting for camera.altitude 179.9 -> 180
-    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 0
-    waiting for camera.altitude {} -> 90
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 0.5
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 10
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
-    {'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
-    waiting for camera.azimuth {} -> 180
-    waiting for camera.altitude {} -> 0
-    waiting for camera.target {} -> [0, 0, 0]
-    waiting for surface.S1.unfold {} -> 1
-    waiting for surface.S1.pivot {} -> 180
-    waiting for surface.S1.shift {} -> 0
-    waiting for surface.S1.specularity {} -> 0
-    waiting for surface.S1.sampler {} -> nearest
-    waiting for surface.S1.layers {} -> 1
+    Stopping server
+    Started server on port 45891
+    Open the viewer at http://localhost:45891/mixer.html (from another machine: http://runnervm8df0l:45891/mixer.html)
+    {'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    waiting for camera.altitude 179.9 -> 180
+    {'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+    {'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
     Stopping server
 
 
@@ -412,7 +349,7 @@ are added.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (5 minutes 37.082 seconds)
+   **Total running time of the script:** (5 minutes 10.944 seconds)
 
 
 .. _sphx_glr_download_auto_examples_webgl_plot_panels_headless.py:

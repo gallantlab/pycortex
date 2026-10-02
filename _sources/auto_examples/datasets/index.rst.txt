@@ -158,7 +158,7 @@ Examples demonstrating how to create, manipulate, plot datasets.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are  interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque.">
+    <div class="sphx-glr-thumbcontainer" tooltip="It is often useful to plot a primary map (the &quot;data&quot; you are interested in) masked or attenuated by a secondary map (a &quot;confidence&quot; or &quot;weight&quot; map). For example, an encoding model&#x27;s tuning maps are interpretable where the model fits well, so one could plot tuning maps with opacity proportional to the per-voxel/per-vertex prediction accuracy. Voxels/vertices where the model fits poorly fade into the gray curvature underlay; voxels/vertices where the model fits well are fully opaque.">
 
 .. only:: html
 

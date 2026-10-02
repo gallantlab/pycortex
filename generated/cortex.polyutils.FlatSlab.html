@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cortex.polyutils.FlatSlab &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="cortex-polyutils-flatslab">
+<h1>cortex.polyutils.FlatSlab<a class="headerlink" href="#cortex-polyutils-flatslab" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="cortex.polyutils.FlatSlab">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cortex.polyutils.</span></span><span class="sig-name descname"><span class="pre">FlatSlab</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pia</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">correlation_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">polish</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cortex/polyutils/bumpy.html#FlatSlab"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cortex.polyutils.FlatSlab" title="Link to this definition">¶</a></dt>
+<dd><p>The cortical slab’s relief, as an offset from the flat white surface.</p>
+<p><cite>folding_height</cite>, smoothed and with the whole-map swell taken out.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>flat</strong><span class="classifier">2D ndarray, shape (total_verts, 3)</span></dt><dd><p>Location of each vertex in flatmap space. Only the first two columns
+are used; the flatmap is taken to lie in the z = 0 plane.</p>
+</dd>
+<dt><strong>wm, pia</strong><span class="classifier">2D ndarray, shape (total_verts, 3)</span></dt><dd><p>The white matter and pial surfaces.</p>
+</dd>
+<dt><strong>polys</strong><span class="classifier">2D ndarray, shape (total_polys, 3)</span></dt><dd><p>Triangle vertex indices of the <em>flat</em> surface. Vertices in no triangle
+– the medial wall, which is cut away from the flatmap – get a zero
+offset.</p>
+</dd>
+<dt><strong>correlation_length</strong><span class="classifier">float, optional</span></dt><dd><p>Length scale over which the height ratio is regularised – enough to
+stop a vertex whose white matter area nearly vanishes from spiking.</p>
+</dd>
+<dt><strong>polish</strong><span class="classifier">float, optional</span></dt><dd><p>Smoothing of the finished relief, as a diffusion time. Beware the
+scale: <cite>t</cite> halves a wavelength of <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">pi</span> <span class="pre">*</span> <span class="pre">sqrt(t)</span></code>, so the default
+cuts at 11 mm and not, as it looks, at 3. Much more takes the gyri too.</p>
+</dd>
+<dt><strong>detrend</strong><span class="classifier">float, optional</span></dt><dd><p>Wavelength above which the relief is flattened. Cortex is regionally
+thicker in some lobes than others, and on S1 that swell is a third of
+the relief’s variance in one map-spanning mode – real, but not folding,
+and the viewer’s scale setting multiplies it along with everything else.
+Pass 0 to keep it.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>info</strong><span class="classifier">dict</span></dt><dd><p>Height statistics from the last computed relief.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="FlatSlab/cortex.polyutils.FlatSlab.__init__.html#cortex.polyutils.FlatSlab.__init__" title="cortex.polyutils.FlatSlab.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(flat, wm, pia, polys[, ...])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="FlatSlab/cortex.polyutils.FlatSlab.relaxed.html#cortex.polyutils.FlatSlab.relaxed" title="cortex.polyutils.FlatSlab.relaxed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">relaxed</span></code></a></p></td>
+<td><p>The pial surface's height above the flat white matter surface.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/generated/cortex.polyutils.FlatSlab.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

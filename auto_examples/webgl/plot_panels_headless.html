@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -55,72 +55,71 @@ brain data in scripts and notebooks.</p>
 <section id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">¶</a></h2>
 <p>Install Playwright and download the bundled Chromium binary once:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">playwright</span>
-<span class="n">playwright</span> <span class="n">install</span> <span class="n">chromium</span>
-</pre></div>
-</div>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">cortex.export</span>
-
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
-
-<span class="n">volume</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s2">&quot;fullhead&quot;</span><span class="p">)</span>
-
-<span class="c1"># Choose which angles and surface states to render</span>
-<span class="c1"># Each entry in ``list_angles`` is paired with the corresponding entry in</span>
-<span class="c1"># ``list_surfaces``.  Both lists must have the same length.</span>
-<span class="n">list_angles</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;lateral_pivot&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;medial_pivot&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;left&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;right&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-<span class="n">list_surfaces</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;inflated&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_angles</span><span class="p">)</span>
-</pre></div>
-</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span class="n">pip</span> <span class="n">install</span> <span class="n">playwright</span><span class="w">
+</span><span class="n">playwright</span> <span class="n">install</span> <span class="n">chromium</span><span class="w">
+</span></pre></div></div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span><span class="nn">.</span><span class="nn">pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="nn">.</span><span class="nn">export</span><span class="w">
+</span><span class="w">
+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.Volume"><span class="n">volume</span></a> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-method reference internal" href="../../generated/Volume/cortex.dataset.Volume.random.html#cortex.dataset.Volume.random" title="cortex.Volume.random"><span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span></a><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">S1</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">xfmname</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">fullhead</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Choose which angles and surface states to render</span><span class="w">
+</span><span class="c1"># Each entry in ``list_angles`` is paired with the corresponding entry in</span><span class="w">
+</span><span class="c1"># ``list_surfaces``.  Both lists must have the same length.</span><span class="w">
+</span><span class="n">list_angles</span> <span class="o">=</span> <span class="p">[</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">lateral_pivot</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">medial_pivot</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">left</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span>    <span class="s2">&quot;</span><span class="s2">right</span><span class="s2">&quot;</span><span class="p">,</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span><span class="n">list_surfaces</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;</span><span class="s2">inflated</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_angles</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 </section>
 <section id="render-and-save-using-plot-panels">
 <h2>Render and save using plot_panels<a class="headerlink" href="#render-and-save-using-plot-panels" title="Link to this heading">¶</a></h2>
 <p>Build a list of panels (one panel per angle/surface) and render them into
 a single figure with <cite>cortex.export.plot_panels</cite>.  This uses the same
 headless renderer as <cite>cortex.export.save_3d_views</cite>.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">panels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">PanelParams</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_angles</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">surface</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">list_angles</span><span class="p">,</span> <span class="n">list_surfaces</span><span class="p">)):</span>
-    <span class="n">panels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-        <span class="p">{</span>
-            <span class="s2">&quot;extent&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
-            <span class="s2">&quot;view&quot;</span><span class="p">:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">PanelView</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="n">surface</span><span class="p">),</span>
-        <span class="p">}</span>
-    <span class="p">)</span>
-
-<span class="n">fig</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">plot_panels</span><span class="p">(</span>
-    <span class="n">volume</span><span class="p">,</span>
-    <span class="n">panels</span><span class="o">=</span><span class="n">panels</span><span class="p">,</span>
-    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">windowsize</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">768</span> <span class="o">*</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">viewer_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">labels_visible</span><span class="o">=</span><span class="p">[],</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rois&quot;</span><span class="p">]),</span>
-    <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
-<img src="../../_images/sphx_glr_plot_panels_headless_001.png" srcset="../../_images/sphx_glr_plot_panels_headless_001.png" alt="plot panels headless" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Generating new ctm file...
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="n">panels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">PanelParams</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="p">]</span><span class="w">
+</span><span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_angles</span><span class="p">)</span><span class="w">
+</span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">surface</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">list_angles</span><span class="p">,</span> <span class="n">list_surfaces</span><span class="p">)</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">panels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="w">
+</span>        <span class="p">{</span><span class="w">
+</span>            <span class="s2">&quot;</span><span class="s2">extent</span><span class="s2">&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">i</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>            <span class="s2">&quot;</span><span class="s2">view</span><span class="s2">&quot;</span><span class="p">:</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">PanelView</span><span class="p">(</span><span class="n">angle</span><span class="o">=</span><span class="n">angle</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="n">surface</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>        <span class="p">}</span><span class="w">
+</span>    <span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="n">fig</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">plot_panels</span><span class="p">(</span><span class="w">
+</span>    <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.Volume"><span class="n">volume</span></a><span class="p">,</span><span class="w">
+</span>    <span class="n">panels</span><span class="o">=</span><span class="n">panels</span><span class="p">,</span><span class="w">
+</span>    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="n">windowsize</span><span class="o">=</span><span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">768</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="n">viewer_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">labels_visible</span><span class="o">=</span><span class="p">[</span><span class="p">]</span><span class="p">,</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">rois</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
+<img src="../../_images/sphx_glr_plot_panels_headless_001.png" srcset="../../_images/sphx_glr_plot_panels_headless_001.png" alt="plot panels headless" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Started server on port 45075
+Open the viewer at http://localhost:45075/mixer.html (from another machine: http://runnervm8df0l:45075/mixer.html)
+Generating new ctm file...
 wm
 wm
+Generating equivolume_areas surface info...
 inflated
 inflated
-Started server on port 12964
-{&#39;camera.azimuth&#39;: 90, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 0, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 270, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 0, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+{'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 Stopping server
 </pre></div>
 </div>
@@ -128,42 +127,42 @@ Stopping server
 <section id="save-individual-views-to-files">
 <h2>Save individual views to files<a class="headerlink" href="#save-individual-views-to-files" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">cortex.export.save_3d_views</span></code> saves each angle as a separate PNG file.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sphinx_gallery_multi_image_block = &quot;single&quot;</span>
-
-<span class="n">TARGET_WIDTH</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># inches — consistent width for uniform title sizing</span>
-
-<span class="n">base_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(),</span> <span class="s2">&quot;fig&quot;</span><span class="p">)</span>
-<span class="n">fnames</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">save_3d_views</span><span class="p">(</span>
-    <span class="n">volume</span><span class="p">,</span>
-    <span class="n">base_name</span><span class="o">=</span><span class="n">base_name</span><span class="p">,</span>
-    <span class="n">list_angles</span><span class="o">=</span><span class="n">list_angles</span><span class="p">,</span>
-    <span class="n">list_surfaces</span><span class="o">=</span><span class="n">list_surfaces</span><span class="p">,</span>
-    <span class="n">viewer_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">labels_visible</span><span class="o">=</span><span class="p">[],</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rois&quot;</span><span class="p">]),</span>
-    <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="k">for</span> <span class="n">fname</span><span class="p">,</span> <span class="n">angle</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fnames</span><span class="p">,</span> <span class="n">list_angles</span><span class="p">):</span>
-    <span class="n">img</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-    <span class="n">aspect</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">TARGET_WIDTH</span><span class="p">,</span> <span class="n">TARGET_WIDTH</span> <span class="o">*</span> <span class="n">aspect</span><span class="p">))</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
-    <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.88</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="c1"># sphinx_gallery_multi_image_block = &quot;single&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="n">TARGET_WIDTH</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># inches — consistent width for uniform title sizing</span><span class="w">
+</span><span class="w">
+</span><span class="n">base_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="s2">&quot;</span><span class="s2">fig</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="n">fnames</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">save_3d_views</span><span class="p">(</span><span class="w">
+</span>    <a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.Volume"><span class="n">volume</span></a><span class="p">,</span><span class="w">
+</span>    <span class="n">base_name</span><span class="o">=</span><span class="n">base_name</span><span class="p">,</span><span class="w">
+</span>    <span class="n">list_angles</span><span class="o">=</span><span class="n">list_angles</span><span class="p">,</span><span class="w">
+</span>    <span class="n">list_surfaces</span><span class="o">=</span><span class="n">list_surfaces</span><span class="p">,</span><span class="w">
+</span>    <span class="n">viewer_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">labels_visible</span><span class="o">=</span><span class="p">[</span><span class="p">]</span><span class="p">,</span> <span class="n">overlays_visible</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;</span><span class="s2">rois</span><span class="s2">&quot;</span><span class="p">]</span><span class="p">)</span><span class="p">,</span><span class="w">
+</span>    <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="w">
+</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="k">for</span> <span class="n">fname</span><span class="p">,</span> <span class="n">angle</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fnames</span><span class="p">,</span> <span class="n">list_angles</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">img</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span><span class="w">
+</span>    <span class="n">aspect</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w">
+</span>    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">TARGET_WIDTH</span><span class="p">,</span> <span class="n">TARGET_WIDTH</span> <span class="o">*</span> <span class="n">aspect</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">off</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">bold</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span>    <span class="n">fig</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.88</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <ul class="sphx-glr-horizontal">
 <li><img src="../../_images/sphx_glr_plot_panels_headless_002.png" srcset="../../_images/sphx_glr_plot_panels_headless_002.png" alt="lateral_pivot" class = "sphx-glr-single-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_003.png" srcset="../../_images/sphx_glr_plot_panels_headless_003.png" alt="medial_pivot" class = "sphx-glr-single-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_004.png" srcset="../../_images/sphx_glr_plot_panels_headless_004.png" alt="left" class = "sphx-glr-single-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_005.png" srcset="../../_images/sphx_glr_plot_panels_headless_005.png" alt="right" class = "sphx-glr-single-img"/></li>
 </ul>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Started server on port 29983
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 90, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 0, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 270, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 0, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Started server on port 39935
+Open the viewer at http://localhost:39935/mixer.html (from another machine: http://runnervm8df0l:39935/mixer.html)
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 90, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 270, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 0, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 Stopping server
 </pre></div>
 </div>
@@ -175,29 +174,28 @@ Every public name matching <code class="docutils literal notranslate"><span clas
 directly to <code class="docutils literal notranslate"><span class="pre">cortex.export.plot_panels</span></code>.  The loop below discovers
 them automatically, so this gallery stays up-to-date when new presets
 are added.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sphinx_gallery_multi_image_block = &quot;single&quot;</span>
-
-<span class="n">predefined</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">dir</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="p">))</span>
-    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;params_&quot;</span><span class="p">)</span>
-<span class="p">}</span>
-
-<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">predefined</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="n">fig</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">plot_panels</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
-    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_size_inches</span><span class="p">()</span>
-    <span class="c1"># Rescale to a consistent width</span>
-    <span class="n">new_w</span> <span class="o">=</span> <span class="n">TARGET_WIDTH</span>
-    <span class="n">new_h</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="p">(</span><span class="n">TARGET_WIDTH</span> <span class="o">/</span> <span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.6</span>
-    <span class="n">scale</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">TARGET_WIDTH</span> <span class="o">/</span> <span class="n">w</span><span class="p">)</span> <span class="o">/</span> <span class="n">new_h</span>
-    <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_axes</span><span class="p">():</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_position</span><span class="p">()</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_position</span><span class="p">([</span><span class="n">pos</span><span class="o">.</span><span class="n">x0</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">y0</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="n">scale</span><span class="p">])</span>
-    <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">new_w</span><span class="p">,</span> <span class="n">new_h</span><span class="p">)</span>
-    <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.2</span> <span class="o">/</span> <span class="n">new_h</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="c1"># sphinx_gallery_multi_image_block = &quot;single&quot;</span><span class="w">
+</span><span class="w">
+</span><span class="n">predefined</span> <span class="o">=</span> <span class="p">{</span><span class="w">
+</span>    <span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">dir</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span>    <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;</span><span class="s2">params_</span><span class="s2">&quot;</span><span class="p">)</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span><span class="w">
+</span><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">predefined</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>    <span class="n">fig</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">plot_panels</span><span class="p">(</span><a class="sphx-glr-backref-module-cortex sphx-glr-backref-type-py-class sphx-glr-backref-instance reference internal" href="../../generated/cortex.dataset.Volume.html#cortex.dataset.Volume" title="cortex.Volume"><span class="n">volume</span></a><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">*</span><span class="o">*</span><span class="n">params</span><span class="p">)</span><span class="w">
+</span>    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_size_inches</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>    <span class="c1"># Rescale to a consistent width</span><span class="w">
+</span>    <span class="n">new_w</span> <span class="o">=</span> <span class="n">TARGET_WIDTH</span><span class="w">
+</span>    <span class="n">new_h</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="p">(</span><span class="n">TARGET_WIDTH</span> <span class="o">/</span> <span class="n">w</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.6</span><span class="w">
+</span>    <span class="n">scale</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">TARGET_WIDTH</span> <span class="o">/</span> <span class="n">w</span><span class="p">)</span> <span class="o">/</span> <span class="n">new_h</span><span class="w">
+</span>    <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_axes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span><span class="w">
+</span>        <span class="n">pos</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">get_position</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span>        <span class="n">ax</span><span class="o">.</span><span class="n">set_position</span><span class="p">(</span><span class="p">[</span><span class="n">pos</span><span class="o">.</span><span class="n">x0</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">y0</span> <span class="o">*</span> <span class="n">scale</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">pos</span><span class="o">.</span><span class="n">height</span> <span class="o">*</span> <span class="n">scale</span><span class="p">]</span><span class="p">)</span><span class="w">
+</span>    <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="n">new_w</span><span class="p">,</span> <span class="n">new_h</span><span class="p">)</span><span class="w">
+</span>    <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;</span><span class="s2">bold</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.2</span> <span class="o">/</span> <span class="n">new_h</span><span class="p">)</span><span class="w">
+</span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <ul class="sphx-glr-horizontal">
 <li><img src="../../_images/sphx_glr_plot_panels_headless_006.png" srcset="../../_images/sphx_glr_plot_panels_headless_006.png" alt="params_flatmap_inflated_lateral_medial_ventral" class = "sphx-glr-single-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_007.png" srcset="../../_images/sphx_glr_plot_panels_headless_007.png" alt="params_flatmap_lateral_medial" class = "sphx-glr-single-img"/></li>
@@ -205,113 +203,47 @@ are added.</p>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_009.png" srcset="../../_images/sphx_glr_plot_panels_headless_009.png" alt="params_inflatedless_lateral_medial_ventral" class = "sphx-glr-single-img"/></li>
 <li><img src="../../_images/sphx_glr_plot_panels_headless_010.png" srcset="../../_images/sphx_glr_plot_panels_headless_010.png" alt="params_occipital_triple_view" class = "sphx-glr-single-img"/></li>
 </ul>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Started server on port 27660
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 180, &#39;camera.target&#39;: [0, -100, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Started server on port 39771
+Open the viewer at http://localhost:39771/mixer.html (from another machine: http://runnervm8df0l:39771/mixer.html)
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 waiting for camera.altitude 179.9 -&gt; 180
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 0
-waiting for camera.altitude {} -&gt; 90
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 0.5
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 10
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 0, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 1, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 180
-waiting for camera.altitude {} -&gt; 0
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 1
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 0
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
 Stopping server
-Started server on port 21044
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 0
-waiting for camera.altitude {} -&gt; 90
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 0.5
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 10
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 0, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 1, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 180
-waiting for camera.altitude {} -&gt; 0
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 1
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 0
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
+Started server on port 33663
+Open the viewer at http://localhost:33663/mixer.html (from another machine: http://runnervm8df0l:33663/mixer.html)
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 Stopping server
-Started server on port 27736
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 0, &#39;camera.target&#39;: [0, -100, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+Started server on port 40005
+Open the viewer at http://localhost:40005/mixer.html (from another machine: http://runnervm8df0l:40005/mixer.html)
+{'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+waiting for camera.altitude 179.9 -&gt; 180
+{'camera.azimuth': 180, 'camera.altitude': 0, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 waiting for camera.altitude 0.1 -&gt; 0
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 180, &#39;camera.target&#39;: [0, -100, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.altitude 179.9 -&gt; 180
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 Stopping server
-Started server on port 44375
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.25, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 180, &#39;camera.target&#39;: [0, -100, 0], &#39;surface.{subject}.unfold&#39;: 0.25, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 180
-waiting for camera.altitude {} -&gt; 180
-waiting for camera.target {} -&gt; [0, -100, 0]
-waiting for surface.S1.unfold {} -&gt; 0.25
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 10
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.25, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 0
-waiting for camera.altitude {} -&gt; 90
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 0.25
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 10
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
-Stopping server
-Started server on port 39086
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 180, &#39;camera.target&#39;: [0, -100, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
+Started server on port 46079
+Open the viewer at http://localhost:46079/mixer.html (from another machine: http://runnervm8df0l:46079/mixer.html)
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.25, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 waiting for camera.altitude 179.9 -&gt; 180
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-{&#39;camera.azimuth&#39;: 0, &#39;camera.altitude&#39;: 90, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 0.5, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 10, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 0
-waiting for camera.altitude {} -&gt; 90
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 0.5
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 10
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
-{&#39;camera.azimuth&#39;: 180, &#39;camera.altitude&#39;: 0, &#39;camera.target&#39;: [0, 0, 0], &#39;surface.{subject}.unfold&#39;: 1, &#39;surface.{subject}.pivot&#39;: 180, &#39;surface.{subject}.shift&#39;: 0, &#39;surface.{subject}.specularity&#39;: 0, &#39;surface.{subject}.sampler&#39;: &#39;nearest&#39;, &#39;surface.{subject}.layers&#39;: 1}
-waiting for camera.azimuth {} -&gt; 180
-waiting for camera.altitude {} -&gt; 0
-waiting for camera.target {} -&gt; [0, 0, 0]
-waiting for surface.S1.unfold {} -&gt; 1
-waiting for surface.S1.pivot {} -&gt; 180
-waiting for surface.S1.shift {} -&gt; 0
-waiting for surface.S1.specularity {} -&gt; 0
-waiting for surface.S1.sampler {} -&gt; nearest
-waiting for surface.S1.layers {} -&gt; 1
+Stopping server
+Started server on port 45891
+Open the viewer at http://localhost:45891/mixer.html (from another machine: http://runnervm8df0l:45891/mixer.html)
+{'camera.azimuth': 180, 'camera.altitude': 180, 'camera.target': [0, -100, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+waiting for camera.altitude 179.9 -&gt; 180
+{'camera.azimuth': 0, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 1, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 0, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
+{'camera.azimuth': 180, 'camera.altitude': 90, 'camera.target': [0, 0, 0], 'surface.{subject}.unfold': 0.5, 'surface.{subject}.pivot': 180, 'surface.{subject}.shift': 10, 'surface.{subject}.lighting.specularity': 0, 'surface.{subject}.sampler': 'nearest', 'surface.{subject}.layers': 1}
 Stopping server
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (5 minutes 37.082 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (5 minutes 10.944 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-webgl-plot-panels-headless-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/c958092382e9f72b2318a1fc6884d70d/plot_panels_headless.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_panels_headless.ipynb</span></code></a></p>
@@ -357,6 +289,8 @@ Stopping server
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>
@@ -364,18 +298,22 @@ Stopping server
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="index.html">WebGL Examples</a></li>
 </ul>

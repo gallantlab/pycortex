@@ -1,0 +1,29 @@
+﻿cortex.polyutils.FlatSlab
+=========================
+
+.. currentmodule:: cortex.polyutils
+
+.. autoclass:: FlatSlab
+
+   
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :toctree: FlatSlab
+   
+     ~FlatSlab.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+      :toctree: FlatSlab
+   
+      ~FlatSlab.relaxed
+   
+   

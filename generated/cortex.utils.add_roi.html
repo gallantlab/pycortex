@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -49,9 +49,9 @@ the subject  in the pycortex database. Most often, this is data to be
 used for defining a region (or several regions) of interest, such as a
 localizer contrast (e.g. a t map of Faces &gt; Houses).</p>
 <p>Use the <a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs inputs to specify</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
+<dd class="field-odd"><dl>
 <dt><strong>data</strong><span class="classifier">DataView</span></dt><dd><p>The data used to generate the flatmap image.</p>
 </dd>
 <dt><strong>name</strong><span class="classifier">str, optional</span></dt><dd><dl class="simple">
@@ -67,7 +67,36 @@ be created in the ROI group with the same <cite>name</cite> as the overlay.</p>
 <dt><strong>overlay_file</strong><span class="classifier">str, optional</span></dt><dd><p>Custom overlays.svg file to use instead of the default one for this
 subject (if not None). Default None.</p>
 </dd>
-<dt><strong>kwargs</strong><span class="classifier">dict</span></dt><dd><p>Passed to cortex.quickflat.make_png</p>
+<dt><strong>**kwargs</strong></dt><dd><p>Additional keyword arguments are forwarded to
+<cite>cortex.quickflat.make_png</cite> (note that <cite>height</cite>, <cite>with_rois</cite>, and
+<cite>with_labels</cite> are already set by this function and cannot be
+overridden):</p>
+<dl class="simple">
+<dt>recache<span class="classifier">bool, optional</span></dt><dd><p>Whether to re-generate intermediate files. Takes longer to plot
+this way, but can resolve some errors.</p>
+</dd>
+<dt>pixelwise<span class="classifier">bool, optional</span></dt><dd><p>Use pixel-wise mapping.</p>
+</dd>
+<dt>sampler<span class="classifier">str, optional</span></dt><dd><p>Name of sampling function used to sample underlying volume data.</p>
+</dd>
+<dt>bgcolor<span class="classifier">matplotlib colorspec, optional</span></dt><dd><p>Color of background of image. <cite>None</cite> (default) gives
+transparent background.</p>
+</dd>
+<dt>dpi<span class="classifier">int, optional</span></dt><dd><p>DPI of the generated image.</p>
+</dd>
+</dl>
+<p>Further keyword arguments accepted by <cite>make_png</cite>’s own <cite>**kwargs</cite>
+(forwarded on to <cite>cortex.quickflat.make_figure</cite>, e.g. <cite>depth</cite>,
+<cite>with_colorbar</cite>, <cite>with_borders</cite>, <cite>with_dropout</cite>, <cite>with_curvature</cite>,
+<cite>linewidth</cite>, <cite>linecolor</cite>, <cite>roifill</cite>, <cite>shadow</cite>, <cite>labelsize</cite>,
+<cite>labelcolor</cite>, <cite>cutout</cite>) are also accepted here.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>returncode</strong><span class="classifier">int or None</span></dt><dd><p>If <cite>open_inkscape</cite> is True, the return code from launching Inkscape
+(via <cite>subprocess.call</cite>). If <cite>open_inkscape</cite> is False, returns None.</p>
 </dd>
 </dl>
 </dd>
@@ -106,6 +135,8 @@ subject (if not None). Default None.</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

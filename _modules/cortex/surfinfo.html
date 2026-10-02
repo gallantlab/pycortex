@@ -8,7 +8,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -36,10 +36,10 @@
           <div class="body" role="main">
             
   <h1>Source code for cortex.surfinfo</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span></span><span class="sd">"""</span>
 <span class="sd">Contains functions for computing various surface properties. Mostly wrappers</span>
 <span class="sd">for functions in `polyutils.Surface` and `polyutils.Distortion`.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shlex</span>
@@ -57,7 +57,7 @@
 <div class="viewcode-block" id="curvature">
 <a class="viewcode-back" href="../../generated/cortex.surfinfo.curvature.html#cortex.surfinfo.curvature">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">curvature</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Compute smoothed mean curvature of the fiducial surface for the given </span>
 <span class="sd">    subject and save it to `outfile`.</span>
 
@@ -69,9 +69,9 @@
 <span class="sd">        Subject in the pycortex database for whom curvature will be computed.</span>
 <span class="sd">    smooth : float, optional</span>
 <span class="sd">        Amount of smoothing to apply to the curvature map. Default 20.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">curvs</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="ow">in</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"fiducial"</span><span class="p">):</span>
         <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
         <span class="n">curv</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">smooth</span><span class="p">(</span><span class="n">surf</span><span class="o">.</span><span class="n">mean_curvature</span><span class="p">(),</span> <span class="n">smooth</span><span class="p">)</span>
         <span class="n">curvs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curv</span><span class="p">)</span>
@@ -80,17 +80,17 @@
 
 <div class="viewcode-block" id="distortion">
 <a class="viewcode-back" href="../../generated/cortex.surfinfo.distortion.html#cortex.surfinfo.distortion">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">distortion</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s1">&#39;areal&#39;</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">distortion</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s1">'areal'</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Compute distortion of flatmap relative to fiducial surface and save it</span>
 <span class="sd">    at `outfile`. Several different types of distortion are available:</span>
 <span class="sd">    </span>
-<span class="sd">    &#39;areal&#39;: computes the areal distortion for each triangle in the flatmap, defined as the</span>
+<span class="sd">    'areal': computes the areal distortion for each triangle in the flatmap, defined as the</span>
 <span class="sd">    log ratio of the area in the fiducial mesh to the area in the flat mesh. Returns</span>
 <span class="sd">    a per-vertex value that is the average of the neighboring triangles.</span>
 <span class="sd">    See: http://brainvis.wustl.edu/wiki/index.php/Caret:Operations/Morphing</span>
 <span class="sd">    </span>
-<span class="sd">    &#39;metric&#39;: computes the linear distortion for each vertex in the flatmap, defined as</span>
+<span class="sd">    'metric': computes the linear distortion for each vertex in the flatmap, defined as</span>
 <span class="sd">    the mean squared difference between distances in the fiducial map and distances in</span>
 <span class="sd">    the flatmap, for each pair of neighboring vertices. See Fishl, Sereno, and Dale, 1999.</span>
 
@@ -100,16 +100,16 @@
 <span class="sd">        Path where the distortion map will be saved as an npz file.</span>
 <span class="sd">    subject : str</span>
 <span class="sd">        Subject in the pycortex database for whom distortion will be computed.</span>
-<span class="sd">    dist_type : [&#39;areal&#39;, &#39;metric&#39;], optional</span>
-<span class="sd">        Type of distortion to compute. Default &#39;areal&#39;.</span>
+<span class="sd">    dist_type : ['areal', 'metric'], optional</span>
+<span class="sd">        Type of distortion to compute. Default 'areal'.</span>
 <span class="sd">    smooth : float, optional</span>
 <span class="sd">        Amount of smoothing to apply to the distortion map before returning.</span>
 <span class="sd">        Default 20.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">distortions</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">]:</span>
-        <span class="n">fidvert</span><span class="p">,</span> <span class="n">fidtri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
-        <span class="n">flatvert</span><span class="p">,</span> <span class="n">flattri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">]:</span>
+        <span class="n">fidvert</span><span class="p">,</span> <span class="n">fidtri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"fiducial"</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+        <span class="n">flatvert</span><span class="p">,</span> <span class="n">flattri</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
         <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">fidvert</span><span class="p">,</span> <span class="n">fidtri</span><span class="p">)</span>
 
         <span class="n">dist</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">polyutils</span><span class="o">.</span><span class="n">Distortion</span><span class="p">(</span><span class="n">flatvert</span><span class="p">,</span> <span class="n">fidvert</span><span class="p">,</span> <span class="n">flattri</span><span class="p">),</span> <span class="n">dist_type</span><span class="p">)</span>
@@ -122,7 +122,7 @@
 <div class="viewcode-block" id="thickness">
 <a class="viewcode-back" href="../../generated/cortex.surfinfo.thickness.html#cortex.surfinfo.thickness">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">thickness</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Compute cortical thickness as the distance between corresponding pial and </span>
 <span class="sd">    white matter vertices for the given subject. Note that this is slightly</span>
 <span class="sd">    different than the method used by Freesurfer, and will yield ever-so-slightly</span>
@@ -135,9 +135,9 @@
 <span class="sd">    subject : str</span>
 <span class="sd">        Subject in the pycortex database for whom cortical thickness will be </span>
 <span class="sd">        computed.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">pl</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;pia&quot;</span><span class="p">)</span>
-    <span class="n">wl</span><span class="p">,</span> <span class="n">wr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;wm&quot;</span><span class="p">)</span>
+<span class="sd">    """</span>
+    <span class="n">pl</span><span class="p">,</span> <span class="n">pr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"pia"</span><span class="p">)</span>
+    <span class="n">wl</span><span class="p">,</span> <span class="n">wr</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"wm"</span><span class="p">)</span>
     <span class="n">left</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">pl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">wl</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
     <span class="n">right</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">pr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">wr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
     <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span><span class="p">)</span></div>
@@ -146,12 +146,12 @@
 <div class="viewcode-block" id="tissots_indicatrix">
 <a class="viewcode-back" href="../../generated/cortex.surfinfo.tissots_indicatrix.html#cortex.surfinfo.tissots_indicatrix">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">tissots_indicatrix</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">spacing</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Compute a Tissot&#39;s indicatrix for the given subject and save the result to</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Compute a Tissot's indicatrix for the given subject and save the result to</span>
 <span class="sd">    a file. This involves randomly filling in discs of fixed geodesic radius</span>
 <span class="sd">    on the fiducial surface.</span>
 
-<span class="sd">    See https://en.wikipedia.org/wiki/Tissot&#39;s_indicatrix for more info.</span>
+<span class="sd">    See https://en.wikipedia.org/wiki/Tissot's_indicatrix for more info.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -164,11 +164,11 @@
 <span class="sd">        The geodesic radius of each disc in mm. Default 10.</span>
 <span class="sd">    spacing : float, optional</span>
 <span class="sd">        The minimum distance between disc centers in mm. Default 50.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
     <span class="n">tissots</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">allcenters</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lh&quot;</span><span class="p">,</span> <span class="s2">&quot;rh&quot;</span><span class="p">]:</span>
-        <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">hem</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">]:</span>
+        <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="s2">"fiducial"</span><span class="p">,</span> <span class="n">hem</span><span class="p">)</span>
         <span class="c1">#G = make_surface_graph(fidtri)</span>
         <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span><span class="p">)</span>
         <span class="n">nvert</span> <span class="o">=</span> <span class="n">fidpts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -186,7 +186,7 @@
             <span class="c1">## Pick random vertex</span>
             <span class="n">centervert</span> <span class="o">=</span> <span class="n">possverts</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">possverts</span><span class="p">))]</span>
             <span class="n">centers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">centervert</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Adding vertex </span><span class="si">%d</span><span class="s2">..&quot;</span> <span class="o">%</span> <span class="n">centervert</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"Adding vertex </span><span class="si">%d</span><span class="s2">.."</span> <span class="o">%</span> <span class="n">centervert</span><span class="p">)</span>
             <span class="n">dists</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">geodesic_distance</span><span class="p">([</span><span class="n">centervert</span><span class="p">])</span>
             <span class="n">cdists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
 
@@ -198,17 +198,33 @@
         <span class="n">allcenters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">centers</span><span class="p">))</span>
     
     <span class="c1"># make an array of objects to allow different lengths for each hemisphere</span>
-    <span class="n">allcenters</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">allcenters</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
+    <span class="n">allcenters</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">allcenters</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">"object"</span><span class="p">)</span>
     <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">tissots</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">right</span><span class="o">=</span><span class="n">tissots</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">centers</span><span class="o">=</span><span class="n">allcenters</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="flat_border">
 <a class="viewcode-back" href="../../generated/cortex.surfinfo.flat_border.html#cortex.surfinfo.flat_border">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">flat_border</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
-    <span class="n">flatpts</span><span class="p">,</span> <span class="n">flatpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Compute the boundary of the flatmap as a set of line segments, split into</span>
+<span class="sd">    segments that lie along the medial wall and segments that don't, and</span>
+<span class="sd">    save the result to `outfile`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the border map will be saved as an npz file, with `lines`</span>
+<span class="sd">        (a list of boundary line segments, each an array of 2D points) and</span>
+<span class="sd">        `ismwalls` (a boolean flag for each segment indicating whether it</span>
+<span class="sd">        lies along the medial wall) arrays.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database for whom the flatmap border will be</span>
+<span class="sd">        computed.</span>
+<span class="sd">    """</span>
+    <span class="n">flatpts</span><span class="p">,</span> <span class="n">flatpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">flatpolyset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">flatpolys</span><span class="p">])</span>
     
-    <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">&quot;fiducial&quot;</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">fidpts</span><span class="p">,</span> <span class="n">fidpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"fiducial"</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">nudge</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">fidpolyset</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">fidpolys</span><span class="p">])</span>
     <span class="n">fidonlypolys</span> <span class="o">=</span> <span class="n">fidpolyset</span> <span class="o">-</span> <span class="n">flatpolyset</span>
     <span class="n">fidonlypolyverts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">fidonlypolys</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
@@ -238,7 +254,7 @@
     <span class="n">mwallset</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">v</span><span class="p">])</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fog</span><span class="o">.</span><span class="n">nodes</span><span class="p">()))</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">allbounds</span><span class="p">)</span>
     <span class="c1">#cutset = (set(g.nodes()) - mwallset) &amp; set(allbounds)</span>
 
-    <span class="n">mwallbounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">in1d</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">mwallset</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">]</span>
+    <span class="n">mwallbounds</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">mwallset</span><span class="p">)</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bounds</span><span class="p">]</span>
     <span class="n">changes</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span><span class="o">!=</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mwallbounds</span><span class="p">]</span>
     
     <span class="c1">#splitbounds = [np.split(b, c) for b,c in zip(bounds, changes)]</span>
@@ -252,12 +268,16 @@
         <span class="n">splitbounds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sb</span><span class="p">)</span>
     
     <span class="n">ismwall</span> <span class="o">=</span> <span class="p">[[</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">&gt;</span><span class="mf">0.5</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">mwb</span><span class="p">,</span> <span class="n">c</span><span class="p">)]</span> <span class="k">for</span> <span class="n">mwb</span><span class="p">,</span><span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mwallbounds</span><span class="p">,</span> <span class="n">changes</span><span class="p">)]</span>
-    
+
+    <span class="c1"># FIXME: `height` is undefined -- this raises NameError as written.</span>
+    <span class="c1"># It was presumably meant to be a parameter (see the commented-out</span>
+    <span class="c1"># Image.new(...) call below, which used it as the output image height</span>
+    <span class="c1"># in pixels). Needs a reviewer decision on the right fix/default.</span>
     <span class="n">aspect</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">/</span> <span class="p">(</span><span class="n">flatpts</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))[</span><span class="mi">1</span><span class="p">])</span>
     <span class="n">lpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">flatpts</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
     <span class="n">rpts</span> <span class="o">=</span> <span class="p">(</span><span class="n">flatpts</span> <span class="o">-</span> <span class="n">flatpts</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">*</span> <span class="n">aspect</span>
     
-    <span class="c1">#im = Image.new(&#39;RGBA&#39;, (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))</span>
+    <span class="c1">#im = Image.new('RGBA', (int(aspect * (flatpts.max(0) - flatpts.min(0))[0]), height))</span>
     <span class="c1">#draw = ImageDraw.Draw(im)</span>
 
     <span class="n">ismwalls</span> <span class="o">=</span> <span class="p">[]</span>
@@ -271,6 +291,99 @@
             <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">pbnd</span><span class="p">,:</span><span class="mi">2</span><span class="p">])</span>
     
     <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="n">lines</span><span class="p">,</span> <span class="n">ismwalls</span><span class="o">=</span><span class="n">ismwalls</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="bumpy_flatmap">
+<a class="viewcode-back" href="../../generated/cortex.surfinfo.bumpy_flatmap.html#cortex.surfinfo.bumpy_flatmap">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bumpy_flatmap</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Give the flatmap the relief of the cortical slab, and cache it.</span>
+
+<span class="sd">    Hemispheres with no flat surface get an array of zeros rather than an error.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the offsets will be saved as an npz file.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database whose flatmap gets the relief.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Passed to `cortex.polyutils.FlatSlab`.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Stored under ``bump_left`` and ``bump_right`` rather than ``left`` and</span>
+<span class="sd">    ``right`` on purpose: `get_surfinfo` turns a file with the latter into a</span>
+<span class="sd">    `Vertex` by concatenating them, which assumes one value per vertex and</span>
+<span class="sd">    would mangle these three-component offsets.</span>
+<span class="sd">    """</span>
+    <span class="n">offsets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">):</span>
+        <span class="n">wm</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"wm"</span><span class="p">,</span> <span class="n">hemi</span><span class="p">)</span>
+        <span class="n">pia</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"pia"</span><span class="p">,</span> <span class="n">hemi</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">flat</span><span class="p">,</span> <span class="n">flatpolys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"flat"</span><span class="p">,</span> <span class="n">hemi</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="n">offsets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">wm</span><span class="p">))</span>
+            <span class="k">continue</span>
+        <span class="n">offsets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">polyutils</span><span class="o">.</span><span class="n">FlatSlab</span><span class="p">(</span><span class="n">flat</span><span class="p">,</span> <span class="n">wm</span><span class="p">,</span> <span class="n">pia</span><span class="p">,</span> <span class="n">flatpolys</span><span class="p">,</span>
+                                          <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">relaxed</span><span class="p">)</span>
+
+    <span class="c1"># Compressed, and single precision: these are millimetre offsets that end</span>
+    <span class="c1"># up in a float32 vertex attribute anyway, so the extra digits are only</span>
+    <span class="c1"># taking up room in the filestore.</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span>
+                        <span class="n">bump_left</span><span class="o">=</span><span class="n">offsets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+                        <span class="n">bump_right</span><span class="o">=</span><span class="n">offsets</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="equivolume_areas">
+<a class="viewcode-back" href="../../generated/cortex.surfinfo.equivolume_areas.html#cortex.surfinfo.equivolume_areas">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">equivolume_areas</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">smooth</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Compute smoothed vertex areas on the white matter and pial surfaces.</span>
+
+<span class="sd">    These are what the webgl viewer's equivolume depth sampling needs in order to</span>
+<span class="sd">    turn a requested volume fraction through the cortical sheet into a position</span>
+<span class="sd">    between the two surfaces. They used to be recomputed in javascript on every</span>
+<span class="sd">    viewer load with a uniform "umbrella" smoothing; computing them here instead</span>
+<span class="sd">    means they are cached, and lets them be smoothed with the cotangent-weighted</span>
+<span class="sd">    operator in `cortex.polyutils.Surface.smooth`, which respects the varying</span>
+<span class="sd">    size of the triangles rather than treating every neighbour equally.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path where the areas will be saved as an npz file.</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject in the pycortex database for whom the areas will be computed.</span>
+<span class="sd">    smooth : float, optional</span>
+<span class="sd">        Amount of smoothing to apply. Default 1.0. Pass 0 for the raw</span>
+<span class="sd">        barycentric vertex areas.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Stored under ``wm_left`` / ``wm_right`` / ``pia_left`` / ``pia_right``; see</span>
+<span class="sd">    the note in `bumpy_flatmap` for why ``left`` and ``right`` are avoided.</span>
+
+<span class="sd">    Changing the smoothing operator does move the depths the viewer samples at,</span>
+<span class="sd">    slightly: against the five umbrella iterations the javascript used, the</span>
+<span class="sd">    depth equivolume sampling picks for a requested fraction of 0.5 shifts by</span>
+<span class="sd">    about 0.01 of the cortical thickness at the median on S1. The tail is larger,</span>
+<span class="sd">    but it is concentrated where the two areas are nearly equal and the depth is</span>
+<span class="sd">    poorly determined either way.</span>
+<span class="sd">    """</span>
+    <span class="n">areas</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">hemi</span><span class="p">,</span> <span class="n">side</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">],</span> <span class="p">[</span><span class="s2">"left"</span><span class="p">,</span> <span class="s2">"right"</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"wm"</span><span class="p">,</span> <span class="s2">"pia"</span><span class="p">]:</span>
+            <span class="n">pts</span><span class="p">,</span> <span class="n">polys</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_surf</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">hemi</span><span class="p">)</span>
+            <span class="n">surf</span> <span class="o">=</span> <span class="n">polyutils</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="n">polys</span><span class="p">)</span>
+            <span class="c1"># The lumped mass matrix of the Laplace-Beltrami operator is exactly</span>
+            <span class="c1"># the barycentric vertex area, i.e. a third of each incident face.</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">vertex_area</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">laplace_operator</span>
+            <span class="n">areas</span><span class="p">[</span><span class="s2">"</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">side</span><span class="p">)]</span> <span class="o">=</span> <span class="n">surf</span><span class="o">.</span><span class="n">smooth</span><span class="p">(</span><span class="n">vertex_area</span><span class="p">,</span> <span class="n">smooth</span><span class="p">)</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="o">**</span><span class="n">areas</span><span class="p">)</span></div>
 
 </pre></div>
 
@@ -303,6 +416,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

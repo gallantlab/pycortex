@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -50,40 +50,39 @@ standard atlas spaces (e.g. MNI-152). This functionality is built on top of FSL.
 <p>This example shows how to create a transform from some subject functional space
 to MNI space (the same as in subject_to_mni.py), and how to use that to put data
 into subject space from MNI space.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-
-<span class="c1"># First let&#39;s do this &quot;manually&quot;, using cortex.mni</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">cortex</span><span class="w"> </span><span class="kn">import</span> <span class="n">mni</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span>
-
-
-<span class="c1"># This transform is gonna be from one specific functional space for a subject</span>
-<span class="c1"># which is defined by the transform (xfm)</span>
-<span class="n">s1_to_mni</span> <span class="o">=</span> <span class="n">mni</span><span class="o">.</span><span class="n">compute_mni_transform</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="n">xfm</span><span class="o">=</span><span class="s1">&#39;fullhead&#39;</span><span class="p">)</span>
-<span class="c1"># s1_to_mni is a 4x4 array describing the transformation in homogeneous corods</span>
-
-<span class="c1"># Transform data from MNI to subject space</span>
-<span class="c1"># first we will create a dataset to transform</span>
-<span class="c1"># this uses the implicitly created &quot;identity&quot; transform, which is used for data</span>
-<span class="c1"># in the native anatomical space (i.e. same dims as the base anatomical image,</span>
-<span class="c1"># and in the same space as the surface)</span>
-<span class="n">data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="s1">&#39;MNI&#39;</span><span class="p">,</span> <span class="s1">&#39;identity&#39;</span><span class="p">)</span>
-
-<span class="c1"># then transform it into the space defined by the &#39;fullhead&#39; transform for &#39;S1&#39;</span>
-<span class="n">subject_data</span> <span class="o">=</span> <span class="n">mni</span><span class="o">.</span><span class="n">transform_mni_to_subject</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fullhead&#39;</span><span class="p">,</span>
-                                            <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">s1_to_mni</span><span class="p">)</span>
-<span class="c1"># subject_data is a nibabel Nifti1Image</span>
-
-<span class="n">subject_data_vol</span> <span class="o">=</span> <span class="n">mni_data</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">()</span> <span class="c1"># the actual array, shape=(100,100,31)</span>
-
-<span class="c1"># That was the manual method. pycortex can also cache these transforms for you</span>
-<span class="c1"># if you get them using the pycortex database</span>
-<span class="n">s1_to_mni_db</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_mnixfm</span><span class="p">(</span><span class="s1">&#39;S1&#39;</span><span class="p">,</span> <span class="s1">&#39;fullhead&#39;</span><span class="p">)</span>
-<span class="c1"># this is the same as s1_to_mni, but will return instantly on subsequent calls</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># First let's do this &quot;manually&quot;, using cortex.mni</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">cortex</span><span class="w"> </span><span class="kn">import</span> <span class="n">mni</span><span class="w">
+</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span><span class="w">
+</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1234</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># This transform is gonna be from one specific functional space for a subject</span><span class="w">
+</span><span class="c1"># which is defined by the transform (xfm)</span><span class="w">
+</span><span class="n">s1_to_mni</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-mni sphx-glr-backref-type-py-function reference internal" href="../../generated/cortex.mni.compute_mni_transform.html#cortex.mni.compute_mni_transform" title="cortex.mni.compute_mni_transform"><span class="n">mni</span><span class="o">.</span><span class="n">compute_mni_transform</span></a><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="s1">'</span><span class="s1">S1</span><span class="s1">'</span><span class="p">,</span> <span class="n">xfm</span><span class="o">=</span><span class="s1">'</span><span class="s1">fullhead</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="c1"># s1_to_mni is a 4x4 array describing the transformation in homogeneous corods</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># Transform data from MNI to subject space</span><span class="w">
+</span><span class="c1"># first we will create a dataset to transform</span><span class="w">
+</span><span class="c1"># this uses the implicitly created &quot;identity&quot; transform, which is used for data</span><span class="w">
+</span><span class="c1"># in the native anatomical space (i.e. same dims as the base anatomical image,</span><span class="w">
+</span><span class="c1"># and in the same space as the surface)</span><span class="w">
+</span><span class="n">data</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="s1">'</span><span class="s1">MNI</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">identity</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># then transform it into the space defined by the 'fullhead' transform for 'S1'</span><span class="w">
+</span><span class="n">subject_data</span> <span class="o">=</span> <a class="sphx-glr-backref-module-cortex-mni sphx-glr-backref-type-py-function reference internal" href="../../generated/cortex.mni.transform_mni_to_subject.html#cortex.mni.transform_mni_to_subject" title="cortex.mni.transform_mni_to_subject"><span class="n">mni</span><span class="o">.</span><span class="n">transform_mni_to_subject</span></a><span class="p">(</span><span class="s1">'</span><span class="s1">S1</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">fullhead</span><span class="s1">'</span><span class="p">,</span><span class="w">
+</span>                                            <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">s1_to_mni</span><span class="p">)</span><span class="w">
+</span><span class="c1"># subject_data is a nibabel Nifti1Image</span><span class="w">
+</span><span class="w">
+</span><span class="n">subject_data_vol</span> <span class="o">=</span> <span class="n">mni_data</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">(</span><span class="p">)</span> <span class="c1"># the actual array, shape=(100,100,31)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># That was the manual method. pycortex can also cache these transforms for you</span><span class="w">
+</span><span class="c1"># if you get them using the pycortex database</span><span class="w">
+</span><span class="n">s1_to_mni_db</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_mnixfm</span><span class="p">(</span><span class="s1">'</span><span class="s1">S1</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">fullhead</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="c1"># this is the same as s1_to_mni, but will return instantly on subsequent calls</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-utils-mni-to-subject-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/c74b122a2f122b3931ba518c8dce3b97/mni_to_subject.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">mni_to_subject.ipynb</span></code></a></p>
@@ -128,6 +127,8 @@ into subject space from MNI space.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>
@@ -135,18 +136,22 @@ into subject space from MNI space.</p>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickstart/index.html">Quickstart Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="index.html">Utility Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
 </ul>

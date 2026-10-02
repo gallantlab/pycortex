@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -74,13 +74,13 @@ etc.</p>
 <td><p>Create subsurface for efficient operations on subset of Surface</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.edge_collapse.html#cortex.polyutils.Surface.edge_collapse" title="cortex.polyutils.Surface.edge_collapse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_collapse</span></code></a>(p1, p2, target)</p></td>
-<td><p></p></td>
+<td><p>Collapse the edge between vertices <cite>p1</cite> and <cite>p2</cite> into <cite>target</cite>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.exact_geodesic_distance.html#cortex.polyutils.Surface.exact_geodesic_distance" title="cortex.polyutils.Surface.exact_geodesic_distance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exact_geodesic_distance</span></code></a>(vertex)</p></td>
 <td><p>Compute exact geodesic distance along surface</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.extract_chunk.html#cortex.polyutils.Surface.extract_chunk" title="cortex.polyutils.Surface.extract_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_chunk</span></code></a>([nfaces, seed, auxpts])</p></td>
-<td><p>Extract a chunk of the surface using breadth first search, for testing purposes</p></td>
+<td><p>Extract a chunk of the surface using breadth-first search, for testing purposes.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.extract_geodesic_chunk.html#cortex.polyutils.Surface.extract_geodesic_chunk" title="cortex.polyutils.Surface.extract_geodesic_chunk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_geodesic_chunk</span></code></a>(origin, radius)</p></td>
 <td><p>Extract a chunk of the surface that is within radius of the origin by geodesic distance.</p></td>
@@ -110,7 +110,7 @@ etc.</p>
 <td><p>return patch that includes v0, v1, their geodesic path, and all points within some radius</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_graph.html#cortex.polyutils.Surface.get_graph" title="cortex.polyutils.Surface.get_graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_graph</span></code></a>()</p></td>
-<td><p></p></td>
+<td><p>Get a NetworkX undirected graph representing this surface.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.get_strip_coordinates.html#cortex.polyutils.Surface.get_strip_coordinates" title="cortex.polyutils.Surface.get_strip_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_strip_coordinates</span></code></a>(v0, v1[, ...])</p></td>
 <td><p>get 2D coordinates of surface from v0 to v1</p></td>
@@ -125,13 +125,13 @@ etc.</p>
 <td><p>Compute mean curvature of this surface using the Laplace-Beltrami operator.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.patches.html#cortex.polyutils.Surface.patches" title="cortex.polyutils.Surface.patches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">patches</span></code></a>([auxpts, n])</p></td>
-<td><p></p></td>
+<td><p>Iterate over a small local patch of geometry around each vertex.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.plot_subsurface_rotating_gif.html#cortex.polyutils.Surface.plot_subsurface_rotating_gif" title="cortex.polyutils.Surface.plot_subsurface_rotating_gif"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_subsurface_rotating_gif</span></code></a>(path[, ...])</p></td>
 <td><p>create a rotating gif of subsurface</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.polyhedra.html#cortex.polyutils.Surface.polyhedra" title="cortex.polyutils.Surface.polyhedra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">polyhedra</span></code></a>(wm)</p></td>
-<td><p>Iterates through the polyhedra that make up the closest volume to a certain vertex</p></td>
+<td><p>Iterate through the polyhedra that make up the closest volume to each vertex.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.smooth.html#cortex.polyutils.Surface.smooth" title="cortex.polyutils.Surface.smooth"><code class="xref py py-obj docutils literal notranslate"><span class="pre">smooth</span></code></a>(scalars[, factor, iterations])</p></td>
 <td><p>Smooth vertex-wise function given by <cite>scalars</cite> across the surface using mean curvature flow method (see <a class="reference external" href="http://brickisland.net/cs177fa12/?p=302">http://brickisland.net/cs177fa12/?p=302</a>).</p></td>
@@ -175,7 +175,7 @@ etc.</p>
 <td><p>NetworkX undirected graph representing this Surface.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.iter_surfedges.html#cortex.polyutils.Surface.iter_surfedges" title="cortex.polyutils.Surface.iter_surfedges"><code class="xref py py-obj docutils literal notranslate"><span class="pre">iter_surfedges</span></code></a></p></td>
-<td><p></p></td>
+<td><p>Iterate over all edges of the surface, one triangle at a time.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.iter_surfedges_weighted.html#cortex.polyutils.Surface.iter_surfedges_weighted" title="cortex.polyutils.Surface.iter_surfedges_weighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">iter_surfedges_weighted</span></code></a></p></td>
 <td><p>iterate through edges</p></td>
@@ -193,7 +193,7 @@ etc.</p>
 <td><p>Normal vector for each vertex (average of normals for neighboring faces).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="Surface/cortex.polyutils.Surface.weighted_distance_graph.html#cortex.polyutils.Surface.weighted_distance_graph" title="cortex.polyutils.Surface.weighted_distance_graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">weighted_distance_graph</span></code></a></p></td>
-<td><p></p></td>
+<td><p>NetworkX undirected graph representing this Surface, with each edge weighted by its length (see <cite>edge_lengths</cite>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -231,6 +231,8 @@ etc.</p>
 <li class="toctree-l1"><a class="reference internal" href="../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../colormaps.html">Colormaps</a></li>
 </ul>

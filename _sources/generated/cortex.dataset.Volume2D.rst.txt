@@ -29,6 +29,7 @@
    .. autosummary::
       :toctree: Volume2D
    
+      ~Volume2D.alpha
       ~Volume2D.priority
       ~Volume2D.raw
       ~Volume2D.subject

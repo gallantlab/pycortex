@@ -1,0 +1,69 @@
+
+
+.. _sphx_glr_auto_examples_timeseries:
+
+Timeseries Examples
+------------------------------
+
+Examples for the click-a-voxel timeseries panel in the WebGL viewer
+(Open Controls -> movie -> timeseries).
+
+
+.. raw:: html
+
+  <div id='sg-tag-list' class='sphx-glr-tag-list'></div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="An RGB dataset carries three timecourses per vertex, one per color channel. With the timeseries panel open (Open Controls -&gt; movie -&gt; timeseries), click a vertex and the panel plots all three channels, each with its own checkbox and color picker, above a strip showing the blended color over time - the color actually painted on the brain at each volume.">
+
+.. only:: html
+
+  .. image:: /auto_examples/timeseries/images/thumb/sphx_glr_rgb_timeseries_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/timeseries/rgb_timeseries`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Timeseries of RGB Vertex Data</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Load a static prediction-performance map (3D) together with the actual and predicted BOLD responses it was computed from (both 4D) into one WebGL viewer. Browse the R² map on the surface, open the timeseries panel (Open Controls -&gt; movie -&gt; timeseries) and click a voxel: the panel plots the actual and predicted timecourses at that location, so you can see what a voxel responds to and how well the model captures it. Plain 1D arrays in the data dict (the block design here) appear as optional reference traces. Clicking a timepoint in the panel seeks the 4D datasets to that volume; switch to the &quot;actual&quot; dataset (+ / - keys) to watch the brain follow.">
+
+.. only:: html
+
+  .. image:: /auto_examples/timeseries/images/thumb/sphx_glr_encoding_model_timeseries_thumb.png
+    :alt:
+
+  :doc:`/auto_examples/timeseries/encoding_model_timeseries`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Inspect Encoding-Model Predictions and Timeseries</div>
+    </div>
+
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/timeseries/rgb_timeseries
+   /auto_examples/timeseries/encoding_model_timeseries
+

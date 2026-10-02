@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_custom
+======================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_custom

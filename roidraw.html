@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>In-browser ROI and sulcus drawing &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Transform formats" href="transforms.html" />
+    <link rel="prev" title="WebGL Viewer Overview" href="userguide/webgl.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="in-browser-roi-and-sulcus-drawing">
+<h1>In-browser ROI and sulcus drawing<a class="headerlink" href="#in-browser-roi-and-sulcus-drawing" title="Link to this heading">¶</a></h1>
+<p><a class="reference external" href="https://github.com/gallantlab/pycortex-roidraw">pycortex-roidraw</a> is a drop-in add-on that
+lets you draw, edit, and export ROIs and sulci directly in a pycortex WebGL viewer — no Inkscape
+and no re-generation of the viewer required. You draw on the flattened cortical surface; the
+stroke is fitted to a smooth, re-editable bezier curve, drawn as a colored outline and label baked
+into the surface.</p>
+<p>ROIs are <strong>closed</strong> curves that carry per-hemisphere vertex membership and export to a portable
+JSON vertex set. Sulci are <strong>open</strong> curves that carry no vertex data and export as a standalone SVG
+whose <code class="docutils literal notranslate"><span class="pre">sulci</span></code> layer is the same representation pycortex already uses for sulci.</p>
+<p>It ships as a single self-contained bundle (<code class="docutils literal notranslate"><span class="pre">roidraw.bundle.js</span></code>, CSS included) that can be added
+to <strong>any</strong> pycortex viewer — a static <code class="docutils literal notranslate"><span class="pre">make_static</span></code> export or a freshly generated dynamic viewer.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>pycortex-roidraw lives in its own repository and is distributed separately from pycortex. The
+ROIs it exports are a portable JSON <strong>vertex set</strong> (with the editable bezier), independent of
+the Inkscape-based <a class="reference internal" href="rois.html"><span class="doc">surface-defined ROI system</span></a> — they are not read by
+<code class="docutils literal notranslate"><span class="pre">get_roi_masks</span></code> and friends. Use it for quick interactive annotation in the viewer; use the
+Inkscape workflow when you need ROI masks in the pycortex Python API.</p>
+<p>Drawn <strong>sulci</strong> are different: they are exported as <code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code> markup, so they <em>are</em> read
+by pycortex’s own machinery (<code class="docutils literal notranslate"><span class="pre">quickflat</span></code>’s sulci overlay, the WebGL viewer, Inkscape) once
+their shape groups are copied into a subject’s overlay file — see <a class="reference internal" href="#installing-drawn-sulci"><span class="std std-ref">Installing drawn sulci into a subject</span></a>.</p>
+</div>
+<section id="adding-it-to-a-viewer">
+<h2>Adding it to a viewer<a class="headerlink" href="#adding-it-to-a-viewer" title="Link to this heading">¶</a></h2>
+<ol class="arabic">
+<li><p>Download <code class="docutils literal notranslate"><span class="pre">roidraw.bundle.js</span></code> from the
+<a class="reference external" href="https://github.com/gallantlab/pycortex-roidraw/releases/latest">latest release</a>
+(or build it from source — see the project README).</p></li>
+<li><p>Copy it next to the viewer’s HTML.</p></li>
+<li><p>Add two tags before the closing <code class="docutils literal notranslate"><span class="pre">&lt;/body&gt;</span></code> (pycortex <code class="docutils literal notranslate"><span class="pre">make_static</span></code> fragments have no
+<code class="docutils literal notranslate"><span class="pre">&lt;/body&gt;</span></code> — append at the end instead):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">script</span> <span class="n">src</span><span class="o">=</span><span class="s2">"roidraw.bundle.js"</span><span class="o">&gt;&lt;/</span><span class="n">script</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">script</span><span class="o">&gt;</span><span class="n">window</span><span class="o">.</span><span class="n">ROIDraw</span><span class="o">.</span><span class="n">autoAttach</span><span class="p">();</span><span class="o">&lt;/</span><span class="n">script</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">autoAttach()</span></code> waits for the viewer to finish loading, then attaches. That is the entire
+integration. The project also provides a <code class="docutils literal notranslate"><span class="pre">bake.py</span></code> helper that injects the bundle and the two
+script tags into an existing static viewer non-destructively.</p>
+</section>
+<section id="drawing-and-editing">
+<h2>Drawing and editing<a class="headerlink" href="#drawing-and-editing" title="Link to this heading">¶</a></h2>
+<p>A <strong>Display / Draw</strong> toggle is added at the top of the viewer. Switch to <strong>Draw</strong>: the brain
+flattens and a draw panel appears. A <code class="docutils literal notranslate"><span class="pre">ROI</span> <span class="pre">|</span> <span class="pre">Sulcus</span></code> selector at the top of the panel chooses what
+a plain drag draws.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Gesture</p></th>
+<th class="head"><p>Action</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>drag (ROI)</p></td>
+<td><p>Lasso a region, name it, and fit it to a smooth closed bezier</p></td>
+</tr>
+<tr class="row-odd"><td><p>drag (Sulcus)</p></td>
+<td><p>Trace along the sulcus, name it, and fit it to a smooth open bezier</p></td>
+</tr>
+<tr class="row-even"><td><p>scroll wheel</p></td>
+<td><p>Zoom (to draw fine detail)</p></td>
+</tr>
+<tr class="row-odd"><td><p>shift + drag</p></td>
+<td><p>Pan the surface</p></td>
+</tr>
+<tr class="row-even"><td><p>shift + click</p></td>
+<td><p>Inspect the voxel under the cursor</p></td>
+</tr>
+<tr class="row-odd"><td><p>esc</p></td>
+<td><p>Cancel the current stroke (or finish editing)</p></td>
+</tr>
+</tbody>
+</table>
+<p>Click <strong>✎ edit</strong> next to any shape in the panel to reveal its bezier anchors and tangent handles:
+drag anchors and handles to reshape the curve, double-click the curve to insert an anchor,
+double-click an anchor to toggle smooth/corner, and press <code class="docutils literal notranslate"><span class="pre">Delete</span></code> to remove one. An open curve’s
+endpoints show a single handle each and are always corners. For an ROI, vertex membership is
+re-derived from the bezier on every change, so the exported vertex set always matches the curve you
+see; a sulcus has no membership, and its label instead follows the curve.</p>
+</section>
+<section id="export-formats">
+<h2>Export formats<a class="headerlink" href="#export-formats" title="Link to this heading">¶</a></h2>
+<p><strong>Export ROIs (JSON)</strong> writes a <code class="docutils literal notranslate"><span class="pre">rois.json</span></code> file holding, per ROI, the per-hemisphere subject
+vertex indices, an ordered boundary ring, a label vertex, and the editable bezier (control points
+in view-independent flat-UV coordinates). It re-imports — here or in any viewer on the same
+surface — to the exact same outline, ready to re-edit.</p>
+<p><strong>Export sulci (SVG)</strong> writes a standalone <code class="docutils literal notranslate"><span class="pre">sulci.svg</span></code> document whose <code class="docutils literal notranslate"><span class="pre">sulci</span></code> layer is in
+pycortex’s own overlay format: open, unfilled <code class="docutils literal notranslate"><span class="pre">&lt;path&gt;</span></code> elements, one inkscape-labeled group per
+named sulcus. Trace a sulcus on each hemisphere and give both strokes the same name, and they merge
+into a single group with one <code class="docutils literal notranslate"><span class="pre">&lt;path&gt;</span></code> per hemisphere — exactly how a hand-authored sulcus such as
+<code class="docutils literal notranslate"><span class="pre">CaS</span></code> is stored.</p>
+<p>Sulci carry no vertex data, matching pycortex: there is no <code class="docutils literal notranslate"><span class="pre">get_sulci_verts</span></code>, and sulci are
+display geometry. The <code class="docutils literal notranslate"><span class="pre">sulci_labels</span></code> layer is deliberately left empty — pycortex derives each
+sulcus’s label position from its path geometry when the overlay is loaded, so no label needs to be
+written. Sulcus export is one-way: sulci are not re-imported from SVG.</p>
+</section>
+<section id="installing-drawn-sulci-into-a-subject">
+<span id="installing-drawn-sulci"></span><h2>Installing drawn sulci into a subject<a class="headerlink" href="#installing-drawn-sulci-into-a-subject" title="Link to this heading">¶</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Copy the <code class="docutils literal notranslate"><span class="pre">&lt;g</span> <span class="pre">inkscape:label=&quot;…&quot;&gt;</span></code> groups out of the exported file’s <code class="docutils literal notranslate"><span class="pre">sulci_shapes</span></code> group and
+into the <strong>existing</strong> <code class="docutils literal notranslate"><span class="pre">sulci_shapes</span></code> group of the subject’s <code class="docutils literal notranslate"><span class="pre">overlays.svg</span></code>.</p>
+<p>Do <strong>not</strong> append the whole <code class="docutils literal notranslate"><span class="pre">&lt;g</span> <span class="pre">id=&quot;sulci&quot;&gt;</span></code> layer. <code class="docutils literal notranslate"><span class="pre">SVGOverlay</span></code> keys its layers by
+<code class="docutils literal notranslate"><span class="pre">inkscape:label</span></code>, so a second layer labelled <code class="docutils literal notranslate"><span class="pre">sulci</span></code> replaces the subject’s own in
+<code class="docutils literal notranslate"><span class="pre">SVGOverlay.layers</span></code> — every sulcus already in that file becomes invisible to pycortex.</p>
+</div>
+<p>So, given an exported <code class="docutils literal notranslate"><span class="pre">sulci.svg</span></code> containing a group for the central sulcus:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="cm">&lt;!-- sulci.svg, as downloaded --&gt;</span>
+<span class="nt">&lt;svg</span><span class="w"> </span><span class="na">xmlns=</span><span class="s">"http://www.w3.org/2000/svg"</span>
+<span class="w">     </span><span class="na">xmlns:inkscape=</span><span class="s">"http://www.inkscape.org/namespaces/inkscape"</span><span class="w"> </span><span class="err">...</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;g</span><span class="w"> </span><span class="na">inkscape:groupmode=</span><span class="s">"layer"</span><span class="w"> </span><span class="na">id=</span><span class="s">"sulci"</span><span class="w"> </span><span class="na">inkscape:label=</span><span class="s">"sulci"</span><span class="w"> </span><span class="na">style=</span><span class="s">"display:inline"</span><span class="nt">&gt;</span>
+<span class="w">    </span><span class="nt">&lt;g</span><span class="w"> </span><span class="na">inkscape:groupmode=</span><span class="s">"layer"</span><span class="w"> </span><span class="na">id=</span><span class="s">"sulci_shapes"</span><span class="w"> </span><span class="na">inkscape:label=</span><span class="s">"shapes"</span><span class="nt">&gt;</span>
+
+<span class="w">      </span><span class="nt">&lt;g</span><span class="w"> </span><span class="na">inkscape:groupmode=</span><span class="s">"layer"</span><span class="w"> </span><span class="na">inkscape:label=</span><span class="s">"CS"</span><span class="nt">&gt;</span><span class="w">     </span><span class="cm">&lt;!-- copy THIS group ... --&gt;</span>
+<span class="w">        </span><span class="nt">&lt;path</span><span class="w"> </span><span class="na">style=</span><span class="s">"fill:none;stroke:white;..."</span><span class="w"> </span><span class="na">d=</span><span class="s">"M412.55,301.90C..."</span><span class="w"> </span><span class="nt">/&gt;</span>
+<span class="w">        </span><span class="nt">&lt;path</span><span class="w"> </span><span class="na">style=</span><span class="s">"fill:none;stroke:white;..."</span><span class="w"> </span><span class="na">d=</span><span class="s">"M598.31,297.44C..."</span><span class="w"> </span><span class="nt">/&gt;</span>
+<span class="w">      </span><span class="nt">&lt;/g&gt;</span>
+
+<span class="w">    </span><span class="nt">&lt;/g&gt;</span>
+<span class="w">    </span><span class="nt">&lt;g</span><span class="w"> </span><span class="na">inkscape:groupmode=</span><span class="s">"layer"</span><span class="w"> </span><span class="na">id=</span><span class="s">"sulci_labels"</span><span class="w"> </span><span class="na">inkscape:label=</span><span class="s">"labels"</span><span class="w"> </span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/g&gt;</span>
+<span class="nt">&lt;/svg&gt;</span>
+</pre></div>
+</div>
+<p>paste that one <code class="docutils literal notranslate"><span class="pre">&lt;g</span> <span class="pre">inkscape:label=&quot;CS&quot;&gt;</span></code> group inside the subject’s own
+<code class="docutils literal notranslate"><span class="pre">&lt;g</span> <span class="pre">id=&quot;sulci_shapes&quot;&gt;</span></code>, alongside the sulci already there. Then:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
+<span class="n">svg</span> <span class="o">=</span> <span class="n">cortex</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_overlay</span><span class="p">(</span><span class="s1">'S1'</span><span class="p">)</span>
+<span class="n">svg</span><span class="o">.</span><span class="n">sulci</span><span class="p">[</span><span class="s1">'CS'</span><span class="p">]</span>                                   <span class="c1"># the drawn sulcus, parsed</span>
+<span class="n">cortex</span><span class="o">.</span><span class="n">quickflat</span><span class="o">.</span><span class="n">make_figure</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">with_sulci</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The paths’ coordinates are already in the overlay’s own coordinate system, so nothing needs to be
+rescaled. Inkscape can also open the exported file directly.</p>
+</section>
+<section id="full-documentation">
+<h2>Full documentation<a class="headerlink" href="#full-documentation" title="Link to this heading">¶</a></h2>
+<p>See the <a class="reference external" href="https://github.com/gallantlab/pycortex-roidraw">pycortex-roidraw README</a> for the
+complete gesture reference, the JSON schema, the helper scripts, and notes on porting the tool to
+other viewer engines.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">In-browser ROI and sulcus drawing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#adding-it-to-a-viewer">Adding it to a viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#drawing-and-editing">Drawing and editing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#export-formats">Export formats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installing-drawn-sulci-into-a-subject">Installing drawn sulci into a subject</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#full-documentation">Full documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="userguide/webgl.html" title="previous chapter">WebGL Viewer Overview</a></li>
+      <li>Next: <a href="transforms.html" title="next chapter">Transform formats</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/roidraw.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

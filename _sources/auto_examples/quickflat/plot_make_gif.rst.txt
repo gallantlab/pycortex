@@ -118,6 +118,12 @@ Generate an animated gif that switches between frames every 1.5 seconds
 
 
 
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+
+    './flatmap_comparison.gif'
 
 
 
@@ -160,7 +166,7 @@ Display gif inline in an IPython notebook
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 8.885 seconds)
+   **Total running time of the script:** (0 minutes 8.358 seconds)
 
 
 .. _sphx_glr_download_auto_examples_quickflat_plot_make_gif.py:

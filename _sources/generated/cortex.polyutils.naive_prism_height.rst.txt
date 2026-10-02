@@ -1,0 +1,6 @@
+﻿cortex.polyutils.naive\_prism\_height
+=====================================
+
+.. currentmodule:: cortex.polyutils
+
+.. autofunction:: naive_prism_height

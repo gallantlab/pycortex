@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_sulci
+=====================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_sulci

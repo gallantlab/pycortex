@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -42,14 +42,27 @@
 <dt class="sig sig-object py" id="cortex.polyutils.Surface.laplace_operator">
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">Surface.</span></span><span class="sig-name descname"><span class="pre">laplace_operator</span></span><a class="headerlink" href="#cortex.polyutils.Surface.laplace_operator" title="Link to this definition">¶</a></dt>
 <dd><p>Laplace-Beltrami operator for this surface. A sparse adjacency matrix with
-edge weights determined by the cotangents of the angles opposite each edge.
-Returns a 4-tuple (B,D,W,V) where D is the ‘lumped mass matrix’, W is the weighted
-adjacency matrix, and V is a diagonal matrix that normalizes the adjacencies.
-The ‘stiffness matrix’, A, can be computed as V - W.</p>
-<p>The full LB operator can be computed as D^{-1} (V - W).</p>
-<p>B is the finite element method (FEM) ‘mass matrix’, which replaces D in FEM analyses.</p>
+edge weights determined by the cotangents of the angles opposite each edge.</p>
+<p>The full LB operator can be computed as D^{-1} (V - W). The ‘stiffness matrix’,
+A, can be computed as V - W.</p>
 <p>See ‘Discrete Laplace-Beltrami operators for shape analysis and segmentation’
 by Reuter et al., 2009 for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>B</strong><span class="classifier">sparse matrix</span></dt><dd><p>Finite element method (FEM) ‘mass matrix’, which replaces D in FEM
+analyses.</p>
+</dd>
+<dt><strong>D</strong><span class="classifier">sparse matrix, dia</span></dt><dd><p>‘Lumped mass matrix’.</p>
+</dd>
+<dt><strong>W</strong><span class="classifier">sparse matrix</span></dt><dd><p>Weighted adjacency matrix, with edge weights given by
+<cite>cotangent_weights</cite>.</p>
+</dd>
+<dt><strong>V</strong><span class="classifier">sparse matrix, dia</span></dt><dd><p>Diagonal matrix that normalizes the adjacencies (row sums of W).</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -84,6 +97,8 @@ by Reuter et al., 2009 for details.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

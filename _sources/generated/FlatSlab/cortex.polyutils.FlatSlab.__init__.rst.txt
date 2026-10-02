@@ -1,0 +1,6 @@
+cortex.polyutils.FlatSlab.\_\_init\_\_
+======================================
+
+.. currentmodule:: cortex.polyutils
+
+.. automethod:: FlatSlab.__init__

@@ -1,0 +1,6 @@
+﻿cortex.quickflat.composite.add\_cutout
+======================================
+
+.. currentmodule:: cortex.quickflat.composite
+
+.. autofunction:: add_cutout

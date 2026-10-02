@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**01:37.568** total execution time for 6 files **from auto_examples/surface_analyses**:
+**01:36.942** total execution time for 7 files **from auto_examples/surface_analyses**:
 
 .. container::
 
@@ -33,20 +33,23 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_tissots_indicatrix.py` (``plot_tissots_indicatrix.py``)
-     - 00:25.948
+     - 00:24.007
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_flatmap_distortion.py` (``plot_flatmap_distortion.py``)
-     - 00:22.385
+     - 00:22.863
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_subsurfaces.py` (``plot_subsurfaces.py``)
-     - 00:16.294
+     - 00:16.486
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_distance.py` (``plot_geodesic_distance.py``)
-     - 00:13.739
+     - 00:13.243
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_interpolate_data.py` (``plot_interpolate_data.py``)
-     - 00:12.209
+     - 00:11.634
      - 0.0
    * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_geodesic_path.py` (``plot_geodesic_path.py``)
-     - 00:06.994
+     - 00:06.709
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_surface_analyses_plot_bumpy_flatmap.py` (``plot_bumpy_flatmap.py``)
+     - 00:02.000
      - 0.0

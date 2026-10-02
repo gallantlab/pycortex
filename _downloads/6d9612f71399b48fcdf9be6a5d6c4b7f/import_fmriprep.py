@@ -1,7 +1,7 @@
 """
-==================
+======================
 Import fmriprep output
-==================
+======================
 
 Recently, many people have start to use fmriprep as a complete preprocessing workflow of anatomical and functional data. Pycortex has a convenience function to import
 the output of this workflow.

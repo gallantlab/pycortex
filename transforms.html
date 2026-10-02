@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Colormaps" href="colormaps.html" />
-    <link rel="prev" title="Surface-defined ROIs" href="rois.html" />
+    <link rel="prev" title="In-browser ROI and sulcus drawing" href="roidraw.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -41,7 +41,7 @@
   <section id="transform-formats">
 <h1>Transform formats<a class="headerlink" href="#transform-formats" title="Link to this heading">¶</a></h1>
 <p>Functional data, usually collected by an epi sequence, typically does not have the same scan parameters as the anatomical MPRAGE scan used to generate the surfaces. Additionally, fMRI sequences which are usually optimized for T2* have drastically different and larger distortions than a typical T1 anatomical sequence. While automatic algorithms exist to align these two scan types, they will sometimes fail spectacularly, especially if a partial volume slice prescription is necessary.</p>
-<p>pycortex includes a tool based on <a class="reference external" href="http://docs.enthought.com/mayavi/mayavi/">mayavi</a> to do manual <strong>affine</strong> alignments. Please see the <a href="#id1"><span class="problematic" id="id2">:module:`align`</span></a> module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from <strong>fiducial to functional</strong> space. They have four variables associated:</p>
+<p>pycortex includes a tool based on <a class="reference external" href="http://docs.enthought.com/mayavi/mayavi/">mayavi</a> to do manual <strong>affine</strong> alignments. Please see the <a class="reference internal" href="api_reference_flat.html#module-cortex.align" title="cortex.align"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cortex.align</span></code></a> module for more information. Alternatively, if an automatic algorithm works well enough, you can also commit your own transform to the database. Transforms in pycortex always go from <strong>fiducial to functional</strong> space. They have four variables associated:</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><strong>Subject</strong> : name of the subject, must match the surfaces used to create the transform</p></li>
@@ -50,7 +50,7 @@
 <li><p><strong>epifile</strong> : the filename of the functional data that the fiducial is aligned to</p></li>
 </ul>
 </div></blockquote>
-<p>Transforms always store the epifile in order to allow visual validation of alignment using the <a href="#id3"><span class="problematic" id="id4">:module:`align`</span></a> module.</p>
+<p>Transforms always store the epifile in order to allow visual validation of alignment using the <a class="reference internal" href="api_reference_flat.html#module-cortex.align" title="cortex.align"><code class="xref py py-mod docutils literal notranslate"><span class="pre">cortex.align</span></code></a> module.</p>
 </section>
 
 
@@ -83,6 +83,8 @@
 <li class="toctree-l1"><a class="reference internal" href="database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="colormaps.html">Colormaps</a></li>
 </ul>
@@ -97,7 +99,7 @@
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="rois.html" title="previous chapter">Surface-defined ROIs</a></li>
+      <li>Previous: <a href="roidraw.html" title="previous chapter">In-browser ROI and sulcus drawing</a></li>
       <li>Next: <a href="colormaps.html" title="next chapter">Colormaps</a></li>
   </ul></li>
 </ul>

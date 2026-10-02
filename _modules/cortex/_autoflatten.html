@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cortex._autoflatten &#8212; pycortex 1.3.0.dev0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <script src="../../_static/documentation_options.js?v=e5de4b90"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cortex._autoflatten</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Automatic cutting and flattening of cortical surfaces with ``autoflatten``.</span>
+
+<span class="sd">`autoflatten &lt;https://gallantlab.org/autoflatten&gt;`_ projects a template set of</span>
+<span class="sd">cuts onto a freesurfer subject's surfaces and flattens the resulting patches,</span>
+<span class="sd">which removes the need to cut the surfaces by hand (see</span>
+<span class="sd">:doc:`/segmentation_guide` for the manual workflow). It is an optional</span>
+<span class="sd">dependency of pycortex, installed with ``pip install "pycortex[autoflatten]"``.</span>
+
+<span class="sd">`cortex.freesurfer.import_subj` calls `autoflatten_subject` at the end of the</span>
+<span class="sd">import, unless it is called with ``autoflatten=False``. This module is private;</span>
+<span class="sd">`autoflatten_subject` is re-exported as `cortex.freesurfer.autoflatten_subject`.</span>
+<span class="sd">"""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="c1">#: Base name that ``autoflatten`` gives to the patch files it writes into the</span>
+<span class="c1">#: freesurfer subject's ``surf/`` directory, i.e. ``?h.autoflatten.patch.3d`` for</span>
+<span class="c1">#: the cut patch and ``?h.autoflatten.flat.patch.3d`` for the flattened patch.</span>
+<span class="n">PATCH_NAME</span> <span class="o">=</span> <span class="s2">"autoflatten"</span>
+
+<span class="c1">#: Warning issued before starting a run, since it takes a long time. It is issued</span>
+<span class="c1">#: by `autoflatten_subject`, which is also called by `import_subj`, so it cannot</span>
+<span class="c1">#: refer to the `autoflatten` argument as if it were always available.</span>
+<span class="n">RUNTIME_WARNING</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"Flattening the surfaces with autoflatten takes a while, typically 15-30 "</span>
+    <span class="s2">"minutes for both hemispheres. `cortex.freesurfer.import_subj` takes an "</span>
+    <span class="s2">"`autoflatten=False` argument to skip this step, so that the surfaces can "</span>
+    <span class="s2">"be flattened later with `cortex.freesurfer.autoflatten_subject(...)`."</span>
+<span class="p">)</span>
+
+<span class="c1">#: Error message used when the optional `autoflatten` package is missing.</span>
+<span class="n">MISSING_MESSAGE</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"The `autoflatten` package is not installed, so the surfaces cannot be "</span>
+    <span class="s2">"automatically cut and flattened. Install it with "</span>
+    <span class="s1">'`pip install "pycortex[autoflatten]"` (or `pip install autoflatten`).'</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_command</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">"""Command prefix that invokes the autoflatten command line interface.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cmd : list of str or None</span>
+<span class="sd">        The command to run autoflatten with the interpreter that is running</span>
+<span class="sd">        pycortex, or None if the `autoflatten` package is not installed.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">find_spec</span><span class="p">(</span><span class="s2">"autoflatten"</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s2">"-m"</span><span class="p">,</span> <span class="s2">"autoflatten.cli"</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">is_available</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Whether the optional `autoflatten` package is installed."""</span>
+    <span class="k">return</span> <span class="n">get_command</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">check_autoflatten_available</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Whether autoflatten can run, warning with install instructions if it cannot.</span>
+
+<span class="sd">    Used by `cortex.freesurfer.import_subj` to decide whether to skip the</span>
+<span class="sd">    automatic flattening step, without failing the whole import.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    available : bool</span>
+<span class="sd">        True if the `autoflatten` package is installed. If it is not, a warning</span>
+<span class="sd">        is issued and False is returned.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">is_available</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+        <span class="n">MISSING_MESSAGE</span> <span class="o">+</span> <span class="s2">" The surfaces will be imported without flatmaps; once "</span>
+        <span class="s2">"autoflatten is installed, create them with "</span>
+        <span class="s2">"`cortex.freesurfer.autoflatten_subject(...)`. Pass `autoflatten=False` to "</span>
+        <span class="s2">"silence this warning."</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_hemispheres</span><span class="p">(</span>
+    <span class="n">autoflatten_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Hemispheres that ``autoflatten run`` will flatten, given its extra arguments.</span>
+
+<span class="sd">    ``autoflatten`` flattens both hemispheres unless it is told otherwise with</span>
+<span class="sd">    ``--hemispheres lh`` (or ``--hemispheres=lh``), so the patch files to expect</span>
+<span class="sd">    afterwards depend on `autoflatten_args`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    autoflatten_args : list of str, optional</span>
+<span class="sd">        Extra command line arguments passed to ``autoflatten run``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    hemis : tuple of str</span>
+<span class="sd">        ``("lh", "rh")``, or a single hemisphere if one was selected.</span>
+<span class="sd">    """</span>
+    <span class="n">both</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"lh"</span><span class="p">,</span> <span class="s2">"rh"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">autoflatten_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">both</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">autoflatten_args</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">arg</span> <span class="o">==</span> <span class="s2">"--hemispheres"</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">arg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"--hemispheres="</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">arg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"="</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">both</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="p">,)</span>
+    <span class="k">return</span> <span class="n">both</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_forces_overwrite</span><span class="p">(</span>
+    <span class="n">autoflatten_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Whether `autoflatten_args` makes ``autoflatten run`` redo existing patches.</span>
+
+<span class="sd">    ``autoflatten`` skips patches that are already on disk unless it is passed</span>
+<span class="sd">    ``--overwrite``, so this is what decides whether a run that finds the flat</span>
+<span class="sd">    patches already in place is slow or returns almost immediately.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    autoflatten_args : list of str, optional</span>
+<span class="sd">        Extra command line arguments passed to ``autoflatten run``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    overwrite : bool</span>
+<span class="sd">        True if ``--overwrite`` is among the arguments.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">autoflatten_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="s2">"--overwrite"</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">autoflatten_args</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="autoflatten_subject">
+<a class="viewcode-back" href="../../generated/cortex.freesurfer.autoflatten_subject.html#cortex.freesurfer.autoflatten_subject">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">autoflatten_subject</span><span class="p">(</span>
+    <span class="n">freesurfer_subject</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">pycortex_subject</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">freesurfer_subject_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">autoflatten_args</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">import_flatmaps</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Automatically cut and flatten a freesurfer subject with ``autoflatten``.</span>
+
+<span class="sd">    This runs the `autoflatten &lt;https://gallantlab.org/autoflatten&gt;`_ pipeline on</span>
+<span class="sd">    the freesurfer subject, which projects a template set of cuts onto the</span>
+<span class="sd">    subject's surfaces and flattens the resulting patches, and then imports the</span>
+<span class="sd">    flatmaps into the pycortex database with `cortex.freesurfer.import_flat`.</span>
+
+<span class="sd">    ``autoflatten`` is an optional dependency; install it with</span>
+<span class="sd">    ``pip install "pycortex[autoflatten]"``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    freesurfer_subject : str</span>
+<span class="sd">        Freesurfer subject name.</span>
+<span class="sd">    pycortex_subject : str, optional</span>
+<span class="sd">        Pycortex subject name to import the flatmaps into. By default it uses</span>
+<span class="sd">        the freesurfer subject name.</span>
+<span class="sd">    freesurfer_subject_dir : str, optional</span>
+<span class="sd">        Freesurfer subjects directory to work in. By default uses the directory</span>
+<span class="sd">        given by the environment variable ``$SUBJECTS_DIR``.</span>
+<span class="sd">    autoflatten_args : list of str, optional</span>
+<span class="sd">        Extra command line arguments passed to ``autoflatten run``, for example</span>
+<span class="sd">        ``["--backend", "freesurfer"]`` or ``["--n-cores", "4"]``. See</span>
+<span class="sd">        ``autoflatten run --help`` for the available options. Note that</span>
+<span class="sd">        ``--output-dir`` must not be changed, since the flat patches are</span>
+<span class="sd">        expected in the freesurfer subject's ``surf/`` directory.</span>
+<span class="sd">    import_flatmaps : bool, optional</span>
+<span class="sd">        Whether to import the resulting flatmaps into the pycortex database</span>
+<span class="sd">        (True by default). Note that importing the flatmaps deletes the</span>
+<span class="sd">        overlays.svg file and all cached files for the pycortex subject, since</span>
+<span class="sd">        the flatmaps change.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    flat_files : dict</span>
+<span class="sd">        Mapping from hemisphere (``lh``, ``rh``, or just one of them if</span>
+<span class="sd">        ``autoflatten_args`` selects a single hemisphere) to the flat patch file</span>
+<span class="sd">        that ``autoflatten`` produced.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This function requires freesurfer to be sourced, and takes a while to run</span>
+<span class="sd">    (typically 15-30 minutes for both hemispheres). Patches that already exist</span>
+<span class="sd">    are not recomputed; pass ``autoflatten_args=["--overwrite"]`` to force</span>
+<span class="sd">    ``autoflatten`` to flatten the surfaces again.</span>
+<span class="sd">    """</span>
+    <span class="c1"># imported here rather than at the module level, since cortex.freesurfer</span>
+    <span class="c1"># imports this module</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">freesurfer</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">get_command</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">cmd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="n">MISSING_MESSAGE</span><span class="p">)</span>
+
+    <span class="n">freesurfer_subject_dir</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">_get_freesurfer_subject_dir</span><span class="p">(</span>
+        <span class="n">freesurfer_subject_dir</span>
+    <span class="p">)</span>
+    <span class="n">subject_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span> <span class="n">freesurfer_subject</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">subject_dir</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span>
+            <span class="s2">"Freesurfer subject directory not found: </span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject_dir</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">pycortex_subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pycortex_subject</span> <span class="o">=</span> <span class="n">freesurfer_subject</span>
+
+    <span class="c1"># autoflatten writes its patches into the freesurfer subject's surf/ directory</span>
+    <span class="n">patch_template</span> <span class="o">=</span> <span class="n">freesurfer</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span>
+        <span class="n">freesurfer_subject</span><span class="p">,</span>
+        <span class="s2">"</span><span class="si">{hemi}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="s2">"patch"</span><span class="p">,</span>
+        <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">hemis</span> <span class="o">=</span> <span class="n">_get_hemispheres</span><span class="p">(</span><span class="n">autoflatten_args</span><span class="p">)</span>
+    <span class="n">flat_files</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">hemi</span><span class="p">:</span> <span class="n">patch_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hemi</span><span class="o">=</span><span class="n">hemi</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">PATCH_NAME</span> <span class="o">+</span> <span class="s2">".flat"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">hemi</span> <span class="ow">in</span> <span class="n">hemis</span>
+    <span class="p">}</span>
+    <span class="c1"># autoflatten skips patches that already exist, so there is nothing slow to</span>
+    <span class="c1"># warn about if both hemispheres have already been flattened -- unless</span>
+    <span class="c1"># `--overwrite` forces it to flatten them again anyway</span>
+    <span class="k">if</span> <span class="n">_forces_overwrite</span><span class="p">(</span><span class="n">autoflatten_args</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">flat_files</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+    <span class="p">):</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">RUNTIME_WARNING</span><span class="p">)</span>
+
+    <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"run"</span><span class="p">,</span> <span class="n">subject_dir</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">autoflatten_args</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="n">cmd</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">autoflatten_args</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Calling:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)))</span>
+    <span class="c1"># autoflatten resolves the subject (and the fsaverage template it maps the</span>
+    <span class="c1"># cuts from) by name through $SUBJECTS_DIR in the subprocess, so it has to</span>
+    <span class="c1"># agree with `freesurfer_subject_dir`, which may have been passed explicitly.</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="n">SUBJECTS_DIR</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">)</span>
+    <span class="c1"># Let autoflatten write its progress directly to stdout/stderr, since this</span>
+    <span class="c1"># takes a long time and the user will want to see how far along it is.</span>
+    <span class="n">sp</span><span class="o">.</span><span class="n">check_call</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
+
+    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">path</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">flat_files</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span>
+            <span class="s2">"autoflatten did not produce the expected flat patch file(s): "</span>
+            <span class="s2">"</span><span class="si">{}</span><span class="s2">"</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">))</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">import_flatmaps</span><span class="p">:</span>
+        <span class="n">freesurfer</span><span class="o">.</span><span class="n">import_flat</span><span class="p">(</span>
+            <span class="n">freesurfer_subject</span><span class="p">,</span>
+            <span class="n">PATCH_NAME</span><span class="p">,</span>
+            <span class="n">hemis</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">hemis</span><span class="p">),</span>
+            <span class="n">cx_subject</span><span class="o">=</span><span class="n">pycortex_subject</span><span class="p">,</span>
+            <span class="n">flat_type</span><span class="o">=</span><span class="s2">"freesurfer"</span><span class="p">,</span>
+            <span class="n">auto_overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">freesurfer_subject_dir</span><span class="o">=</span><span class="n">freesurfer_subject_dir</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">flat_files</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pycortex</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=gallantlab&repo=pycortex&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../segmentation_guide.html">Surface Segmentation and Flattening</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference_flat.html">Python API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2012–2026, Gallant Lab.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

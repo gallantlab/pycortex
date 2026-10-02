@@ -1,7 +1,7 @@
 """
-===================
+=========================================================================================
 Upsample data from a lower resolution fsaverage template to fsaverage for visualization
-===================
+=========================================================================================
 
 This example shows how data in a lower resolution fsaverage template 
 (e.g., fsaverage5 or fsaverage6) can be upsampled to the high resolution fsaverage 

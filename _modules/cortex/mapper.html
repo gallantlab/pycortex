@@ -8,7 +8,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -47,7 +47,50 @@
 
 <div class="viewcode-block" id="get_mapper">
 <a class="viewcode-back" href="../../generated/cortex.mapper.get_mapper.html#cortex.mapper.get_mapper">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_mapper</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">'nearest'</span><span class="p">,</span> <span class="n">recache</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Get a Mapper object that projects data between volume and vertex</span>
+<span class="sd">    (surface) space for the given subject and transform, loading a cached</span>
+<span class="sd">    version from disk if one already exists.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    subject : str</span>
+<span class="sd">        Subject identifier. Must exist in the pycortex database.</span>
+<span class="sd">    xfmname : str</span>
+<span class="sd">        Transform name. Must exist in the pycortex database.</span>
+<span class="sd">    type : str, optional</span>
+<span class="sd">        Mapping method to use for projecting between volume and surface</span>
+<span class="sd">        space. One of 'nearest', 'trilinear', 'gaussian', 'lanczos',</span>
+<span class="sd">        'const_patch_nn', 'const_patch_trilin', 'const_patch_lanczos',</span>
+<span class="sd">        'line_nearest', 'line_trilinear', 'line_lanczos'. Default is</span>
+<span class="sd">        'nearest'.</span>
+<span class="sd">    recache : bool, optional</span>
+<span class="sd">        If True, ignore any cached mapper file on disk and recompute it.</span>
+<span class="sd">        Default is False.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        Extra keyword arguments are passed to the chosen mapper's sampling</span>
+<span class="sd">        function, and which ones matter depends on `type`:</span>
+<span class="sd">            sigma : float (default 1)</span>
+<span class="sd">                Standard deviation of the gaussian kernel. Only used when</span>
+<span class="sd">                type='gaussian'.</span>
+<span class="sd">            window : int (default 3)</span>
+<span class="sd">                Kernel window size, in voxels. Used when type='gaussian' or</span>
+<span class="sd">                type='lanczos'.</span>
+<span class="sd">            npts : int (default 64)</span>
+<span class="sd">                Number of random sample points per patch/line segment. Used</span>
+<span class="sd">                by the 'const_patch_*' and 'line_*' types.</span>
+<span class="sd">            mp : bool (default True)</span>
+<span class="sd">                Whether to parallelize sampling across processes. Used by</span>
+<span class="sd">                the 'const_patch_*' types.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Mapper</span>
+<span class="sd">        A Mapper subclass instance (e.g. PointNN, LineTrilin, ...) that can</span>
+<span class="sd">        project data between volume and vertex space for this</span>
+<span class="sd">        subject/transform.</span>
+<span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">..database</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">point</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">line</span>
 
@@ -64,17 +107,17 @@
         <span class="n">line_lanczos</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">LineLanczos</span><span class="p">)</span>
     <span class="n">Map</span> <span class="o">=</span> <span class="n">mapcls</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span>
     <span class="n">ptype</span> <span class="o">=</span> <span class="n">Map</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-    <span class="n">kwds</span> <span class="o">=</span><span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">())])</span>
+    <span class="n">kwds</span> <span class="o">=</span><span class="s1">'_'</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">'</span><span class="si">%s%s</span><span class="s1">'</span><span class="o">%</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">())])</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwds</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">ptype</span> <span class="o">+=</span> <span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">kwds</span>
+        <span class="n">ptype</span> <span class="o">+=</span> <span class="s1">'_'</span><span class="o">+</span><span class="n">kwds</span>
 
-    <span class="n">fname</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{xfmname}</span><span class="s2">_</span><span class="si">{projection}</span><span class="s2">.npz&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="n">ptype</span><span class="p">)</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">xfmname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">ptype</span><span class="si">}</span><span class="s2">.npz"</span>
 
-    <span class="n">xfmfile</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">&#39;xfmdir&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">)</span>
+    <span class="n">xfmfile</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_paths</span><span class="p">(</span><span class="n">subject</span><span class="p">)[</span><span class="s1">'xfmdir'</span><span class="p">]</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xfmname</span><span class="o">=</span><span class="n">xfmname</span><span class="p">)</span>
     <span class="n">cachefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">get_cache</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span> <span class="n">fname</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">recache</span> <span class="ow">and</span> <span class="p">(</span><span class="n">xfmname</span> <span class="o">==</span> <span class="s2">&quot;identity&quot;</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">&gt;</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">xfmfile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">recache</span> <span class="ow">and</span> <span class="p">(</span><span class="n">xfmname</span> <span class="o">==</span> <span class="s2">"identity"</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">cachefile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span> <span class="o">&gt;</span> <span class="n">os</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="n">xfmfile</span><span class="p">)</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">Map</span><span class="o">.</span><span class="n">from_cache</span><span class="p">(</span><span class="n">cachefile</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">xfmname</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">Exception</span>
     <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
@@ -111,6 +154,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>

@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
@@ -47,36 +47,31 @@ to download the full example code.</p>
 <span id="sphx-glr-auto-examples-quickstart-show-config-py"></span><h1>Finding out where the config and filestore are<a class="headerlink" href="#finding-out-where-the-config-and-filestore-are" title="Link to this heading">¶</a></h1>
 <p>Easily locating your config file and filestore locations.
 This comes in useful when things don’t work because the config file is not set correctly.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">print_function</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">cortex.options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">print_function</span><span class="w">
+</span><span class="kn">import</span><span class="w"> </span><span class="nn">cortex</span><span class="w">
+</span><span class="kn">from</span><span class="w"> </span><span class="nn">cortex</span><span class="nn">.</span><span class="nn">options</span><span class="w"> </span><span class="kn">import</span> <span class="n">config</span><span class="w">
+</span></pre></div></div>
 <p>Finding where your config file is.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span><span class="p">)</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><span class="n">cortex</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">usercfg</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <p>Finding where the current filestore is.
 Useful for when your subjects don’t show up in cortex.db, and all you have is S1.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="s1">&#39;filestore&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'</span><span class="s1">basic</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">filestore</span><span class="s1">'</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <p>Finding where pycortex is looking for colormaps.
 Useful for when you get color map not found messages.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;webgl&#39;</span><span class="p">,</span> <span class="s1">&#39;colormaps&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="nb">print</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'</span><span class="s1">webgl</span><span class="s1">'</span><span class="p">,</span> <span class="s1">'</span><span class="s1">colormaps</span><span class="s1">'</span><span class="p">)</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <p>To look at your config file, it is recommended that you open it with a text editor.
 However, you <em>can</em> still look at options from within pycortex.</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sections gets the upper-level sections in the config file</span>
-<span class="n">sections</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span>
-
-<span class="c1"># items gets the option items within a section as a list of key-value pairs.</span>
-<span class="n">basic_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s1">&#39;paths_default&#39;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">basic_config</span><span class="p">)</span>
-</pre></div>
-</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span class="c1"># sections gets the upper-level sections in the config file</span><span class="w">
+</span><span class="n">sections</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">sections</span><span class="p">(</span><span class="p">)</span><span class="w">
+</span><span class="nb">print</span><span class="p">(</span><span class="n">sections</span><span class="p">)</span><span class="w">
+</span><span class="w">
+</span><span class="c1"># items gets the option items within a section as a list of key-value pairs.</span><span class="w">
+</span><span class="n">basic_config</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s1">'</span><span class="s1">paths_default</span><span class="s1">'</span><span class="p">)</span><span class="w">
+</span><span class="nb">print</span><span class="p">(</span><span class="n">basic_config</span><span class="p">)</span><span class="w">
+</span></pre></div></div>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-quickstart-show-config-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/5ec582772cb6c68c66aedc35da2aec38/show_config.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">show_config.ipynb</span></code></a></p>
@@ -121,6 +116,8 @@ However, you <em>can</em> still look at options from within pycortex.</p>
 <li class="toctree-l1"><a class="reference internal" href="../../database.html">Surface Database</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../align.html">Alignments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../rois.html">Surface-defined ROIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../userguide/webgl.html">WebGL Viewer Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../roidraw.html">In-browser ROI and sulcus drawing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../transforms.html">Transform formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../colormaps.html">Colormaps</a></li>
 </ul>
@@ -128,18 +125,22 @@ However, you <em>can</em> still look at options from within pycortex.</p>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Example Gallery</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../index.html#datasets-examples">Datasets Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-fsaverage">Examples with fsaverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#examples-with-hcp-fs-lr-data">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#importing-surfaces-examples">Importing Surfaces Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickflat-examples">Quickflat Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#quickstart-examples">Quickstart Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#surface-analysis-examples">Surface Analysis Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#timeseries-examples">Timeseries Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../index.html#utility-examples">Utility Examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="../index.html#webgl-examples">WebGL Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datasets/index.html">Datasets Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../fsaverage/index.html">Examples with fsaverage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../hcp/index.html">Examples with HCP fs_LR data</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../import_surface/index.html">Importing Surfaces Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../quickflat/index.html">Quickflat Examples</a></li>
 <li class="toctree-l3 current"><a class="reference internal" href="index.html">Quickstart Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../surface_analyses/index.html">Surface Analysis Examples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../timeseries/index.html">Timeseries Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../utils/index.html">Utility Examples</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../webgl/index.html">WebGL Examples</a></li>
 </ul>
