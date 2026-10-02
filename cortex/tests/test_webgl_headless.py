@@ -1096,3 +1096,104 @@ def test_ortho_views_split_the_canvas():
             browser.close()
     finally:
         server.stop()
+
+
+# ---------------------------------------------------------------------------
+# Group 8: The orthographic camera
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_the_camera_switches_to_orthographic():
+    """`orthographic` swaps the camera the controls move for one with no
+    vanishing point, where the radius is the zoom rather than the distance,
+    and offers the isometric view it is wanted for.
+
+    The camera carries the lights and stands in the scene, so the swap is
+    checked by what reaches the canvas as well as by the camera itself.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def camera():
+                return page.evaluate(
+                    "() => { var c = window.viewer.camera;"
+                    " return {type: c.type, top: c.top, right: c.right, aspect: c.aspect}; }")
+
+            def lit():
+                """How much of the canvas the brain is drawn on, lit."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i] + d[i+1] + d[i+2] > 150) n++;
+                    return n / (s.width * s.height);
+                }""")
+
+            def isometric_shown():
+                return page.evaluate(
+                    "window.viewer._cam_ui._controls.isometric.__li.style.display") != "none"
+
+            assert page.evaluate("window.viewer.setOrthographic()") is False
+            assert camera()["type"] == "PerspectiveCamera"
+            assert not isometric_shown(), (
+                "the isometric view is offered without the camera it is for")
+            perspective = lit()
+            assert perspective > 0.02, "the brain was not drawn to begin with"
+
+            page.evaluate("window.viewer.ui.set('camera.orthographic', true)")
+            page.wait_for_timeout(1500)
+            ortho = camera()
+            assert ortho["type"] == "OrthographicCamera"
+            assert isometric_shown()
+            # the camera sees what the perspective one saw at that radius, so
+            # the brain is the same size on screen and the radius goes on
+            # being the zoom
+            half = 400 * np.tan(np.radians(45) / 2)
+            assert abs(ortho["top"] - half) < 1
+            assert abs(ortho["right"] / ortho["top"] - 1000 / 700) < 0.01
+            # the lights hang off the camera, which the renderer only finds
+            # through the scene: a camera swapped in outside it draws the
+            # brain in its emissive color alone
+            assert lit() > perspective / 2, "the brain went dark under the new camera"
+
+            page.evaluate("window.viewer.ui.set('camera.radius', 200)")
+            page.wait_for_timeout(1500)
+            assert abs(camera()["top"] - half / 2) < 1, "the radius is not the zoom"
+
+            # the isometric view turns each axis away from the eye by the same
+            # angle, so the eye lies along a diagonal of the three
+            page.evaluate("window.viewer.setIsometric()")
+            page.wait_for_timeout(2500)
+            eye = page.evaluate(
+                "window.viewer.camera.position.clone().sub(window.viewer.controls.target)"
+                ".normalize().toArray()")
+            assert [round(abs(v), 2) for v in eye] == [round(1 / np.sqrt(3), 2)] * 3, (
+                "the isometric view is not down the diagonal: %s" % eye)
+
+            page.evaluate("window.viewer.ui.set('camera.orthographic', false)")
+            page.wait_for_timeout(1500)
+            assert camera()["type"] == "PerspectiveCamera"
+            assert not isometric_shown()
+            assert lit() > perspective / 2
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

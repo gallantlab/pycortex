@@ -170,6 +170,12 @@ var jsplot = (function (module) {
         if (desc.toggle && ctrl !== undefined && ctrl.__li !== undefined)
             ctrl.__li.className += " toggle";
 
+        //a control that belongs to the menu only in some state of the page is
+        //built with the rest, so that it keeps its place among them, and hidden
+        //until whatever shows it does
+        if (desc.shown === false && ctrl !== undefined && ctrl.__li !== undefined)
+            ctrl.__li.style.display = "none";
+
         //setup keyboard shortcuts for commands
         if (desc.key) {
             var key = desc.key;

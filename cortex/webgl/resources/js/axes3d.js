@@ -2,6 +2,13 @@ var jsplot = (function (module) {
 
     var retina_scale = window.devicePixelRatio || 1;
 
+    //The angle the perspective camera takes in, and the slab an orthographic
+    //one sees: it has no vanishing point, so near and far only say what is
+    //clipped, and the slab is deep enough to hold the scene wherever the
+    //controls put the camera.
+    var camera_fov = 45;
+    var camera_slab = 1000;
+
     //Fractional view options (top-left lighting, uniform illumination) used to
     //be plain booleans, so accept both spellings.
     module.parseFraction = function(val) {
@@ -21,7 +28,7 @@ var jsplot = (function (module) {
         }
 
         // scene and camera
-        this.camera = new THREE.PerspectiveCamera( 45, this.canvas.width()/this.canvas.height(), 1., 1000. );
+        this.camera = new THREE.PerspectiveCamera( camera_fov, this.canvas.width()/this.canvas.height(), 1., 1000. );
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
@@ -122,8 +129,7 @@ var jsplot = (function (module) {
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
-        this.camera.aspect = aspect;
-        this.camera.updateProjectionMatrix();
+        this.aimCamera(aspect);
 
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.schedule();
@@ -141,6 +147,60 @@ var jsplot = (function (module) {
         //guard against the initial call, which happens before _schedule exists
         if (this._schedule !== undefined)
             this.schedule();
+    };
+    //Whether the viewer looks through an orthographic camera rather than the
+    //perspective one it opens with. Both are aimed by the same azimuth,
+    //altitude and radius, and the two show the brain at the same size at the
+    //radius it is switched over at, so the view carries across.
+    module.Axes3D.prototype.setOrthographic = function(val) {
+        if (val === undefined)
+            return this._orthographic === true;
+        if (this._orthographic === !!val)
+            return;
+        this._orthographic = !!val;
+
+        var aspect = this.height ? this.width / this.height
+                                 : this.canvas.width() / this.canvas.height();
+        var was = this.camera;
+        var camera = this._orthographic
+            ? new THREE.OrthographicCamera(-1, 1, 1, -1, -camera_slab, camera_slab)
+            : new THREE.PerspectiveCamera(camera_fov, aspect, 1., 1000.);
+        camera.up.copy(was.up);
+        camera.position.copy(was.position);
+        camera.quaternion.copy(was.quaternion);
+        //the lights are children of the camera and are aimed at it, so they
+        //move over to whichever one is now looking
+        for (var i = 0; i < this.lights.length; i++) {
+            was.remove(this.lights[i]);
+            this.lights[i].target = camera;
+            camera.add(this.lights[i]);
+        }
+        //and the camera itself stands in the scene, because the renderer
+        //lights a scene with the lights it finds in it
+        if (was.parent !== undefined && was.parent !== null) {
+            var scene = was.parent;
+            scene.remove(was);
+            scene.add(camera);
+        }
+        this.camera = camera;
+        this.aimCamera(aspect);
+        this.schedule();
+    };
+    //What the camera takes in across a viewport of this shape. A perspective
+    //camera takes the aspect alone; an orthographic one is given the rectangle
+    //the perspective one covers at the distance the controls hold it at, which
+    //is what leaves the radius as the zoom.
+    module.Axes3D.prototype.aimCamera = function(aspect) {
+        if (this._orthographic) {
+            var half = this.controls.radius * Math.tan(camera_fov * Math.PI / 360);
+            this.camera.top = half;
+            this.camera.bottom = -half;
+            this.camera.right = half * aspect;
+            this.camera.left = -half * aspect;
+        } else {
+            this.camera.aspect = aspect;
+        }
+        this.camera.updateProjectionMatrix();
     };
     module.Axes3D.prototype.schedule = function() {
         if (!this._scheduled) {
@@ -160,6 +220,11 @@ var jsplot = (function (module) {
         }
 
         this.controls.update(this.camera);
+        //An orthographic camera sees everything at the size it is, however far
+        //off it stands, so the radius the controls hold is the zoom only once
+        //it is put into the frustum, which the controls have just moved.
+        if (this._orthographic)
+            this.aimCamera(this.width / this.height);
 
         var view, left, bottom, width, height, camera;
         if (this.views.length > 1) {
@@ -180,10 +245,8 @@ var jsplot = (function (module) {
                 if (view.prepare !== undefined)
                     view.prepare(width, height);
                 camera = view.camera === undefined ? this.camera : view.camera;
-                if (camera === this.camera) {
-                    this.camera.aspect = width / height;
-                    this.camera.updateProjectionMatrix();
-                }
+                if (camera === this.camera)
+                    this.aimCamera(width / height);
                 this.drawView(view.scene, view.surf === undefined ? i : view.surf, camera);
                 //anything that belongs over the view rather than in it
                 if (view.overlay !== undefined)
@@ -350,15 +413,13 @@ var jsplot = (function (module) {
         var clearAlpha = this.renderer.getClearAlpha();
         var clearColor = this.renderer.getClearColor();
         var oldw = this.canvas.width(), oldh = this.canvas.height();
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
+        this.aimCamera(width / height);
         this.renderer.setSize(width, height);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
         this.renderer.render(this.views[0].scene, this.camera, renderbuf);
         this.renderer.setSize(oldw, oldh);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
-        this.camera.aspect = oldw / oldh;
-        this.camera.updateProjectionMatrix();
+        this.aimCamera(oldw / oldh);
 
         var img = mriview.getTexture(this.renderer.context, renderbuf)
         if (post !== undefined)
