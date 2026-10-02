@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .. import options
-from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB
+from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB, json_attrs
 from .braindata import BrainData, VolumeData, VertexData
 
 default_cmap2D = options.config.get("basic", "default_cmap2D")
@@ -50,7 +50,7 @@ class Dataview2D(Dataview):
     def to_json(self, simple=False):
         sdict = dict(data=[[self.dim1.name, self.dim2.name]],
             state=self.state, 
-            attrs=self.attrs, 
+            attrs=json_attrs(self.attrs), 
             desc=self.description,
             cmap=[self.cmap] )
 

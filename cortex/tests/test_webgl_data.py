@@ -1,5 +1,7 @@
 """Tests for the WebGL serialization layer in cortex.webgl.data."""
 
+import json
+
 import numpy as np
 import pytest
 
@@ -192,3 +194,39 @@ def test_volumergb_alpha_is_NOT_premultiplied_in_package():
         )
         > 5
     ), "VolumeRGB Package output looks premultiplied; Three.js will then double-attenuate"
+
+
+@pytest.mark.parametrize("name", ["volume", "volume2D", "vertex"])
+def test_a_view_with_an_array_attr_still_packages(name):
+    """A view carrying an array in its attrs has to reach the browser.
+
+    ``alpha`` is the array that gets there: a 2D view takes one to override
+    the alpha of its colormap, and it ends up among the attrs, which the page
+    is handed as JSON. json has no way to write an array, so the page the
+    viewer serves came back as a 500 and nothing was drawn.
+    """
+    rng = np.random.default_rng(0)
+    alpha = (rng.uniform(0, 1, volshape) * 255).astype(np.uint8)
+    if name == "volume":
+        view = cortex.Volume(rng.normal(size=volshape), subj, xfmname, alpha=alpha)
+    elif name == "volume2D":
+        view = cortex.Volume2D(rng.normal(size=volshape), rng.normal(size=volshape),
+                               subj, xfmname, alpha=alpha)
+    else:
+        view = cortex.Vertex(rng.normal(size=nverts), subj,
+                             alpha=rng.uniform(0, 1, nverts))
+
+    with pytest.warns(UserWarning, match="alpha"):
+        metadata = Package(dataset.Dataset(view=view)).metadata()
+    json.dumps(metadata)
+    assert "alpha" not in metadata["views"][0]["attrs"]
+
+
+def test_the_attrs_a_page_reads_survive_packaging():
+    """Leaving the arrays out keeps everything the page does read, including
+    the numbers numpy hands back, which json cannot write either."""
+    view = cortex.Volume(np.random.randn(*volshape), subj, xfmname,
+                         priority=np.int64(3), rate=2.5, filter="trilinear")
+    attrs = json.loads(json.dumps(Package(dataset.Dataset(view=view)).metadata()))
+    attrs = attrs["views"][0]["attrs"]
+    assert attrs == {"priority": 3, "rate": 2.5, "filter": "trilinear"}

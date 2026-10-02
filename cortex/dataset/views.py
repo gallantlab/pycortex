@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import sys
+import warnings
 from typing import Any, Optional, TypedDict, Union, cast, overload, Literal
 if sys.version_info < (3, 11):
     from typing_extensions import NotRequired
@@ -182,6 +183,34 @@ class DataviewJSON(TypedDict):
     subject: NotRequired[str] # is this actually from BrainData?
 
 
+def json_attrs(attrs: dict[str, Any]) -> dict[str, Any]:
+    """The attrs of a view as JSON can carry them.
+
+    An attr holding an array is data, not something the page reads: the
+    ``alpha`` a 2D view takes is drawn into the colors of its ``raw`` view,
+    and the viewer colors the two dimensions itself from the data it is sent.
+    The json encoder refuses an array outright, so such an attr is left out,
+    with a warning. Numpy's own scalars, which it refuses as well, go in as
+    the python ones.
+    """
+    carried, left_out = {}, []
+    for name, value in attrs.items():
+        if isinstance(value, np.generic):
+            value = value.item()
+        try:
+            json.dumps(value)
+        except TypeError:
+            left_out.append(name)
+            continue
+        carried[name] = value
+    if left_out:
+        warnings.warn(
+            "%s cannot be written as JSON, so %s left out of the data the "
+            "viewer is sent" % (", ".join(sorted(left_out)),
+                                "they are" if len(left_out) > 1 else "it is"))
+    return carried
+
+
 class Dataview:
     _nan_mask: Optional[npt.NDArray[np.bool_]]
 
@@ -233,7 +262,7 @@ class Dataview:
         desc = self.description
         if isinstance(desc, bytes):
             desc = desc.decode()
-        sdict = dict(state=self.state, attrs=self.attrs.copy(), desc=desc)
+        sdict = dict(state=self.state, attrs=json_attrs(self.attrs), desc=desc)
         try:
             sdict.update(
                 dict(
