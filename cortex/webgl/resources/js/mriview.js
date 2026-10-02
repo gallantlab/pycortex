@@ -1460,6 +1460,8 @@ var mriview = (function(module) {
         this.canvas.resize(function() { this.resize(); }.bind(this));
 
         var cam_ui = this.ui.addFolder("camera", true);
+        //kept, because the isometric button is shown with its own camera
+        this._cam_ui = cam_ui;
         cam_ui.add({
             azimuth: {action:[this.controls, 'setAzimuth', 0, 360]},
             altitude: {action:[this.controls, 'setAltitude', 0, 180]},
@@ -1469,6 +1471,8 @@ var mriview = (function(module) {
             // movement.js).
             target: {action:[this.controls, 'setFoldedTarget'], hidden:true},
             flat_target: {action:[this.controls, 'setFlatTarget'], hidden:true},
+            orthographic: {action:[this, "setOrthographic"], toggle:true},
+            isometric: {action:this.setIsometric.bind(this), shown:false},
         });
 
         var fold_brain = function() {
@@ -1798,6 +1802,30 @@ var mriview = (function(module) {
     };
     module.Viewer.prototype.toggleSliceViews = function() {
         this.setSliceViews(!this._sliceviews);
+    };
+    //The view down the diagonal of the three axes, where each is turned away
+    //from the eye by the same angle: what an orthographic camera is usually
+    //wanted for, since it draws the three of them to one scale. The button
+    //for it is in the menu only while that camera is the one looking.
+    var isometric_altitude = 180 * Math.acos(1 / Math.sqrt(3)) / Math.PI;
+    module.Viewer.prototype.setIsometric = function() {
+        this.animate([
+            {state:'camera.azimuth', idx:parseFloat(viewopts.anim_speed), value:45},
+            {state:'camera.altitude', idx:parseFloat(viewopts.anim_speed),
+             value:isometric_altitude},
+        ]);
+    };
+    module.Viewer.prototype.setOrthographic = function(val) {
+        if (val === undefined)
+            return jsplot.Axes3D.prototype.setOrthographic.call(this);
+
+        jsplot.Axes3D.prototype.setOrthographic.call(this, val);
+        this._showIsometric(this.setOrthographic());
+    };
+    module.Viewer.prototype._showIsometric = function(show) {
+        var ctrl = this._cam_ui === undefined ? undefined : this._cam_ui._controls.isometric;
+        if (ctrl !== undefined && ctrl.__li !== undefined)
+            ctrl.__li.style.display = show ? "" : "none";
     };
     //-------------------------------------------------------------------------
     // Orthogonal slice views
