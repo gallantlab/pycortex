@@ -1,3 +1,12 @@
+/* The viewer fills the window and is laid out from its edges: the ends of
+   the colorbar, for one, are placed off the window on purpose. Pinning the
+   page itself as well as the body keeps a scrollbar off it even where the
+   body's own overflow is overridden, by a stylesheet loaded after this one
+   or by the browser. */
+html {
+    height:100%;
+    overflow:hidden;
+}
 body {
     background-color:#333;
     font-family:Helvetica Neue, sans-serif;
