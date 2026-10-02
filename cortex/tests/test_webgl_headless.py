@@ -1197,3 +1197,41 @@ def test_the_camera_switches_to_orthographic():
             browser.close()
     finally:
         server.stop()
+
+
+@pytest.mark.timeout(300)
+def test_the_viewer_page_does_not_scroll():
+    """The viewer is laid out from the edges of the window, with the ends of
+    the colorbar off it on purpose, so a page that scrolls shows a band of
+    nothing and moves the brain out from under the pointer. Both the page and
+    the body are pinned against it."""
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1200, "height": 760})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            for width, height in [(1200, 760), (1920, 1080), (640, 480), (1600, 400)]:
+                page.set_viewport_size({"width": width, "height": height})
+                page.wait_for_timeout(700)
+                over = page.evaluate(
+                    "() => { var d = document.documentElement;"
+                    " return [d.scrollWidth - d.clientWidth, d.scrollHeight - d.clientHeight]; }")
+                assert over == [0, 0], (
+                    "the page scrolls at %dx%d, by %s" % (width, height, over))
+                assert page.evaluate(
+                    "getComputedStyle(document.documentElement).overflowY") == "hidden"
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
