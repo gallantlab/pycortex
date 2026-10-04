@@ -204,13 +204,16 @@ def get_occlusion(subject, recache=False, **kwargs):
 
     Worked out with `polyutils.vertex_occlusion` on the surfaces as they are
     in the pack, a hemisphere at a time, and written beside the pack as one
-    file: three little-endian uint32 giving how many surfaces it holds and how
+    file: three little-endian uint32 giving how many blocks it holds and how
     many vertices each hemisphere has, then the occlusion of every vertex as a
     byte, 0 for one that sees the whole sky and 255 for one the surface closes
-    over, surface by surface in the order the viewer mixes them -- the folded
-    surface, the pack's `names`, then the flat surface when there is one --
-    the left hemisphere's before the right's. The flat surface blocks none of
-    its own sky, so its bytes are written as zeros.
+    over, a block at a time with the left hemisphere's before the right's.
+    The blocks are the folded surface at depth 0 (the pial surface) and at
+    depth 1 (the white matter surface), which the viewer mixes by the depth
+    it draws the sheet at, then the pack's `names` and the flat surface when
+    there is one, in the order the viewer mixes them. A subject without a
+    white matter surface gets its fiducial surface at both depths. The flat
+    surface blocks none of its own sky, so its bytes are written as zeros.
 
     Parameters
     ----------
@@ -233,44 +236,60 @@ def get_occlusion(subject, recache=False, **kwargs):
     jsfile = get_ctmpack(subject, **kwargs)
     base = os.path.splitext(jsfile)[0]
     aofile = base + "_ao.bin"
-    if os.path.exists(aofile) and not recache:
-        return aofile
-
-    from . import brainctm
     with open(jsfile) as fp:
         pack = json.load(fp)
-    counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
     hasflat = "flatlims" in pack
+    nblocks = 2 + len(pack["names"]) + (1 if hasflat else 0)
+    if os.path.exists(aofile) and not recache:
+        #a file written before the folded surface had both depths holds
+        #fewer blocks, and is built again
+        if np.fromfile(aofile, dtype="<u4", count=1)[0] == nblocks:
+            return aofile
 
-    #the surfaces the viewer mixes between, as the pack loads them
-    surfaces = [db.get_surf(subject, "fiducial", merge=False)]
+    from . import brainctm
+    counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
+
+    #the surfaces the viewer mixes between, as the pack loads them: the
+    #folded one at both depths, then the others
+    try:
+        surfaces = [db.get_surf(subject, "pia", merge=False),
+                    db.get_surf(subject, "wm", merge=False)]
+    except IOError:
+        surfaces = [db.get_surf(subject, "fiducial", merge=False)] * 2
     surfaces += [db.get_surf(subject, name, nudge=False, merge=False) for name in pack["names"]]
 
     blocks = []
     if os.path.exists(base + ".npz"):
         #the pack's numbering of the vertices, both hemispheres end to end
         index = np.load(base + ".npz")["index"]
+        done = {}
         for hemis in surfaces:
             at = 0
             for hemi, ((pts, polys), count) in enumerate(zip(hemis, counts)):
-                occlusion = polyutils.vertex_occlusion(pts, polys)
+                #the fiducial surface standing in at both depths is worked
+                #out once
+                key = (id(pts), hemi)
+                if key not in done:
+                    done[key] = polyutils.vertex_occlusion(pts, polys)
+                occlusion = done[key]
                 blocks.append(occlusion[index[at:at + count] - (0 if hemi == 0 else counts[0])])
                 at += count
     else:
         #an older pack, saved before the map was kept beside it: the folded
-        #surface is worked out from the pack's own mesh, and nothing can be
-        #said about the others
-        for pts, polys in brainctm.read_pack(base + ".ctm"):
-            blocks.append(polyutils.vertex_occlusion(pts, polys))
+        #surface is worked out from the pack's own mesh at both depths, and
+        #nothing can be said about the others
+        folded = [polyutils.vertex_occlusion(pts, polys) for pts, polys in brainctm.read_pack(base + ".ctm")]
+        blocks += folded + folded
         for name in pack["names"]:
             blocks += [np.zeros(count, dtype=np.float32) for count in counts]
     if hasflat:
         blocks += [np.zeros(count, dtype=np.float32) for count in counts]
+    assert len(blocks) == nblocks * len(counts)
 
     #written whole, so that a reader never gets half a file
     handle, temp = tempfile.mkstemp(dir=os.path.split(aofile)[0], suffix=".bin")
     with os.fdopen(handle, "wb") as fp:
-        np.array([len(blocks) // len(counts)] + counts, dtype="<u4").tofile(fp)
+        np.array([nblocks] + counts, dtype="<u4").tofile(fp)
         for block in blocks:
             np.clip(np.round(block * 255), 0, 255).astype(np.uint8).tofile(fp)
     os.replace(temp, aofile)

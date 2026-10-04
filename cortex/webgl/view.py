@@ -693,7 +693,9 @@ def show(
                         return self.write_error(404)
                     build = functools.partial(utils.get_lod, subj, cell,
                                               **dict(ctmargs, recache=False))
-                elif path.endswith("_ao.bin") and not os.path.exists(os.path.join(fpath, path)):
+                elif path.endswith("_ao.bin"):
+                    #asked for every time, since it also builds a file whose
+                    #layout is out of date again
                     build = functools.partial(utils.get_occlusion, subj,
                                               **dict(ctmargs, recache=False))
                 if build is not None:

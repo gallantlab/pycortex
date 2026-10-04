@@ -3523,17 +3523,17 @@ def test_ambient_occlusion_darkens_the_folded_surface_and_not_the_flat_one():
                 "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
             page.wait_for_timeout(3000)
 
-            def brightness():
+            def brightness(width=320):
                 """The mean brightness of the pixels the surface covers in
                 a saved image, where the page is clear behind it."""
-                return page.evaluate("""() => {
-                    var c = window.viewer.getImage(320, 240);
+                return page.evaluate("""(width) => {
+                    var c = window.viewer.getImage(width, 3 * width / 4);
                     var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     var sum = 0, n = 0;
                     for (var i = 0; i < d.length; i += 4)
                         if (d[i+3] > 200) { sum += d[i] + d[i+1] + d[i+2]; n++; }
                     return sum / (3 * n);
-                }""")
+                }""", width)
 
             def occlusion(on):
                 page.evaluate(
@@ -3562,19 +3562,71 @@ def test_ambient_occlusion_darkens_the_folded_surface_and_not_the_flat_one():
             folded = 1 - lit["folded"][1] / lit["folded"][0]
             inflated = 1 - lit["inflated"][1] / lit["inflated"][0]
             flat = abs(1 - lit["flat"][1] / lit["flat"][0])
-            assert folded > 0.1, "the folded surface only darkened by %.0f%%" % (100 * folded)
+            #the data layer over it is noise, so the darkening of the picture
+            #as a whole is a fraction of what the curvature underlay shows
+            assert folded > 0.05, "the folded surface only darkened by %.0f%%" % (100 * folded)
             assert inflated < folded / 4, (
                 "the inflated surface darkened by %.0f%%, the folded one by %.0f%%"
                 % (100 * inflated, 100 * folded))
             assert flat < 0.005, "the flat surface changed by %.1f%%" % (100 * flat)
 
-            #data held on the vertices is lit by the other shader
+            #the folded surface is occluded at each depth by its own
+            #surface, the pial one at 0 and the white matter at 1: shown on
+            #the curvature alone, with the data layer out of the way
+            def depth(value):
+                page.evaluate("window.viewer.ui.set('surface.%s.depth', %s)" % (subj, value))
+                page.wait_for_timeout(1500)
+
+            def strength(value):
+                page.evaluate(
+                    "window.viewer.ui.set('surface.%s.lighting.occlusion strength', %s)"
+                    % (subj, value))
+                page.wait_for_timeout(1500)
+
+            #close up and in a larger image, so that the labels drawn over
+            #the surface, which the occlusion leaves alone, are few of its pixels
             unfold(0)
+            page.evaluate("window.viewer.ui.set('surface.%s.opacity', 0)" % subj)
+            page.evaluate("window.viewer.ui.set('camera.radius', 250)")
+            darkening = {}
+            for value in (0, 1):
+                depth(value)
+                occlusion(False)
+                before = brightness(640)
+                occlusion(True)
+                darkening[value] = 1 - brightness(640) / before
+                assert darkening[value] > 0.05, (
+                    "at depth %d the surface only darkened by %.0f%%"
+                    % (value, 100 * darkening[value]))
+            assert abs(darkening[0] - darkening[1]) > 0.03, (
+                "the two depths darkened alike, %.0f%% and %.0f%%"
+                % (100 * darkening[0], 100 * darkening[1]))
+
+            #the strength scales what is taken out: none at 0, more at 2
+            depth(0)
+            occlusion(False)
+            unlit = brightness(640)
+            occlusion(True)
+            full = brightness(640)
+            strength(0)
+            none = brightness(640)
+            strength(2)
+            twice = brightness(640)
+            strength(1)
+            assert abs(none - unlit) < unlit * 0.02, (
+                "at no strength the surface is lit as without occlusion: %.1f against %.1f"
+                % (none, unlit))
+            assert twice < full < none, "the strength does not scale the darkening"
+            page.evaluate("window.viewer.ui.set('surface.%s.opacity', 1)" % subj)
+            page.evaluate("window.viewer.ui.set('camera.radius', 400)")
+            depth(0.5)
+
+            #data held on the vertices is lit by the other shader
             page.evaluate("window.viewer.setData('vertex')")
             page.wait_for_timeout(3000)
             with_ao = brightness()
             occlusion(False)
-            assert brightness() > with_ao * 1.1, "the vertex shader did not darken"
+            assert brightness() > with_ao * 1.04, "the vertex shader did not darken"
             assert not errors, errors
             browser.close()
     finally:

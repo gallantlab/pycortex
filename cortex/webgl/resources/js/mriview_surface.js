@@ -94,6 +94,9 @@ var mriview = (function(module) {
                 hatchColor: { type:'v3', value:new THREE.Vector3( 0,0,0 )},
 
                 dataAlpha:  { type:'f', value:1.},
+                //how much of the sky a vertex misses is taken out of its
+                //light: 1 is the occlusion as worked out, 0 none of it
+                occlusionStrength: { type:'f', value:1.},
                 overlay:    { type:'t', value:null },
                 brightness:  { type:'f', value:parseFloat(viewopts.brightness)},
                 smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
@@ -150,6 +153,7 @@ var mriview = (function(module) {
             uniform_illumination: {action:[this, "setUniformIllumination", 0, 1]},
             specularity: {action:[this, "setSpecular", 0, 1]},
             "ambient occlusion": {action:[this, "setOcclusion"], toggle:true},
+            "occlusion strength": {action:[this.uniforms.occlusionStrength, "value", 0, 2]},
         });
 
         this.ui.addFolder("curvature", true).add({
@@ -805,12 +809,12 @@ var mriview = (function(module) {
         this.dispatchEvent({type:"update"});
     };
     //Ambient occlusion: how much of the sky each vertex misses, worked out in
-    //python for each surface the viewer mixes between (utils.get_occlusion)
-    //and fetched the first time it is asked for. It rides in a spare
-    //component of attributes that are already here, the w of each morph
-    //target's position and of the white matter position (auxdat.z for a
-    //subject with no white matter surface), because these shaders use every
-    //one of the 16 attribute slots WebGL guarantees.
+    //python for each surface the viewer mixes between (utils.get_occlusion),
+    //the folded one at both depths, and fetched the first time it is asked
+    //for. It rides in a spare component of attributes that are already here,
+    //the w of each morph target's position and of the white matter position
+    //(auxdat.z for a subject with no white matter surface), because these
+    //shaders use every one of the 16 attribute slots WebGL guarantees.
     module.Surface.prototype.setOcclusion = function(on) {
         if (on === undefined)
             return this._occlusion === true;
@@ -839,48 +843,59 @@ var mriview = (function(module) {
         }
         this.dispatchEvent({type:"update"});
     };
-    //The file holds how many surfaces it covers and how many vertices each
-    //hemisphere has, as three uint32, then a byte per vertex, surface by
-    //surface and the left hemisphere's before the right's.
+    //The file holds how many blocks it has and how many vertices each
+    //hemisphere has, as three uint32, then a byte per vertex a block at a
+    //time, the left hemisphere's before the right's: the folded surface at
+    //depth 0 (pial) and at depth 1 (white matter), then each surface the
+    //viewer mixes between after the folded one, the flat surface last.
     module.Surface.prototype._applyOcclusion = function(buffer) {
         var head = new Uint32Array(buffer, 0, 3);
         var bytes = new Uint8Array(buffer, 12);
         var counts = {left: head[1], right: head[2]};
-        var names = ["left", "right"], at = 0;
-        for (var surface = 0; surface < head[0]; surface++) {
-            for (var i = 0; i < names.length; i++) {
-                var hemi = this.hemis[names[i]], count = counts[names[i]];
-                var values = bytes.subarray(at, at + count);
-                at += count;
-                if (hemi === undefined)
-                    continue;
-                //written into the surface as it is held, at the place the
-                //loader put each vertex of the pack; a surface drawn a vertex
-                //per corner reads copies, which are written out again
-                var attrs = hemi._welded === undefined ? hemi.attributes : hemi._welded.attributes;
-                var carrier = this._occlusionCarrier(attrs, surface);
-                if (carrier === undefined)
-                    continue;
-                var array = carrier.attr.array, size = carrier.attr.itemSize;
-                var map = this._lodMap(hemi), n = Math.min(count, map.length);
+        var names = ["left", "right"];
+        for (var i = 0; i < names.length; i++) {
+            var hemi = this.hemis[names[i]], count = counts[names[i]];
+            if (hemi === undefined)
+                continue;
+            //the blocks of this hemisphere
+            var blocks = [];
+            for (var block = 0; block < head[0]; block++) {
+                var at = block * (counts.left + counts.right) + (i == 0 ? 0 : counts.left);
+                blocks.push(bytes.subarray(at, at + count));
+            }
+            //written into the surface as it is held, at the place the loader
+            //put each vertex of the pack; a surface drawn a vertex per corner
+            //reads copies, which are written out again
+            var attrs = hemi._welded === undefined ? hemi.attributes : hemi._welded.attributes;
+            var map = this._lodMap(hemi), n = Math.min(count, map.length);
+            var written = {};
+            if (attrs.wm !== undefined) {
+                //both depths of the folded surface, as two bytes of one value
+                var wm = attrs.wm.array;
                 for (var v = 0; v < n; v++)
-                    array[map[v] * size + carrier.component] = values[v] / 255;
-                carrier.attr.needsUpdate = true;
+                    wm[map[v] * 4 + 3] = blocks[0][v] + 256 * blocks[1][v];
+                written.wm = attrs.wm;
+            } else {
+                var aux = attrs.auxdat.array;
+                for (var v = 0; v < n; v++)
+                    aux[map[v] * 4 + 2] = blocks[0][v] / 255;
+                written.auxdat = attrs.auxdat;
+            }
+            for (var block = 2; block < blocks.length; block++) {
+                var name = "mixSurfs" + (block - 2);
+                if (attrs[name] === undefined)
+                    continue;
+                var array = attrs[name].array;
+                for (var v = 0; v < n; v++)
+                    array[map[v] * 4 + 3] = blocks[block][v] / 255;
+                written[name] = attrs[name];
+            }
+            for (var name in written) {
+                written[name].needsUpdate = true;
                 if (hemi._welded !== undefined)
-                    hemi.addAttribute(carrier.name, this._facetAttribute(hemi, carrier.attr, false));
+                    hemi.addAttribute(name, this._facetAttribute(hemi, written[name], false));
             }
         }
-    };
-    module.Surface.prototype._occlusionCarrier = function(attrs, surface) {
-        if (surface === 0) {
-            if (attrs.wm !== undefined)
-                return {name: "wm", attr: attrs.wm, component: 3};
-            return {name: "auxdat", attr: attrs.auxdat, component: 2};
-        }
-        var name = "mixSurfs" + (surface - 1);
-        if (attrs[name] === undefined)
-            return undefined;
-        return {name: name, attr: attrs[name], component: 3};
     };
     module.Surface.prototype._makeOutline = function() {
         var shaders = Shaders.outline({

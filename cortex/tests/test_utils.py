@@ -243,12 +243,15 @@ def test_get_occlusion_is_built_once_and_read_back():
     counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
     head = np.fromfile(path, dtype="<u4", count=3)
     values = np.fromfile(path, dtype=np.uint8, offset=12)
-    #the folded surface, each of the pack's names, and the flat surface
-    assert head[0] == 2 + len(pack["names"])
+    #the folded surface at both depths, each of the pack's names, and the
+    #flat surface
+    assert head[0] == 3 + len(pack["names"])
     assert list(head[1:]) == counts
     assert len(values) == head[0] * sum(counts)
     values = values.reshape(head[0], sum(counts)) / 255.
-    folded, inflated, flat = values[0], values[1], values[-1]
+    pial, wm, inflated, flat = values[0], values[1], values[2], values[-1]
     assert flat.max() == 0, "a flat surface blocks none of its own sky"
-    assert 0.3 < folded.mean() < 0.9, "the folded surface is mostly sulcal wall"
-    assert inflated.mean() < folded.mean() / 5, "inflation did not open the sulci"
+    assert 0.3 < pial.mean() < 0.9, "the pial surface is mostly sulcal wall"
+    assert 0.3 < wm.mean() < 0.95, "the white matter surface is mostly sulcal wall"
+    assert abs(pial - wm).mean() > 0.05, "the two depths came out the same"
+    assert inflated.mean() < pial.mean() / 5, "inflation did not open the sulci"

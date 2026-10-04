@@ -204,14 +204,19 @@ var Shaderlib = (function() {
 
         //The occlusion of this vertex on the folded surface. It rides in a
         //spare component of an attribute that is already here, since these
-        //shaders use every one of the 16 attribute slots WebGL guarantees: the
-        //w of the white matter position, or auxdat.z for a subject that has no
-        //white matter surface, where the equivolume areas it is meant for are
-        //never read.
+        //shaders use every one of the 16 attribute slots WebGL guarantees. A
+        //subject with a white matter surface has two values, one on the pial
+        //surface and one on the white matter, mixed by the depth the sheet
+        //is drawn at as its position is; they ride as two bytes in the w of
+        //the white matter position, the pial one low. Without one there is
+        //a single value, in auxdat.z, where the equivolume areas it is meant
+        //for are never read.
         occlusion_main: [
             "#ifdef OCCLUSION",
                 "#ifdef CORTSHEET",
-                    "vOcclusion = mixfunc_occlusion(wm.w);",
+                    "float pialocc = mod(wm.w, 256.) / 255.;",
+                    "float wmocc = floor(wm.w / 256.) / 255.;",
+                    "vOcclusion = mixfunc_occlusion(mix(pialocc, wmocc, use_thickmix));",
                 "#else",
                     "vOcclusion = mixfunc_occlusion(auxdat.z);",
                 "#endif",
@@ -220,10 +225,11 @@ var Shaderlib = (function() {
         //Takes the sky a vertex misses out of the light that reaches it, once
         //the fragment is lit. Squared, so that a crown with a little of its
         //sky blocked by the gyri across from it stays nearly as bright as an
-        //open plane, while the floor of a sulcus goes dark.
+        //open plane, while the floor of a sulcus goes dark; the strength
+        //scales how much is taken, past 1 for more than was worked out.
         occlusion_fragment: [
             "#ifdef OCCLUSION",
-                "gl_FragColor.rgb *= 1. - vOcclusion * vOcclusion;",
+                "gl_FragColor.rgb *= clamp(1. - occlusionStrength * vOcclusion * vOcclusion, 0., 1.);",
             "#endif",
         ].join("\n"),
 
@@ -498,6 +504,7 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "#ifdef OCCLUSION",
                 "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
             "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;",
@@ -680,6 +687,7 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "#ifdef OCCLUSION",
                 "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
             "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;", // the x,y,z coordinates of this pixel
@@ -1087,6 +1095,7 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "#ifdef OCCLUSION",
                 "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
             "#endif",
             // "varying float vDrop;",
 
@@ -1237,6 +1246,7 @@ var Shaderlib = (function() {
             "varying float vMedial;",
             "#ifdef OCCLUSION",
                 "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
             "#endif",
             "uniform float thickmix;",
 
