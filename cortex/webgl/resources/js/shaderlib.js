@@ -183,9 +183,49 @@ var Shaderlib = (function() {
             }
             glsl += [ "",
             "}",
+            //The ambient occlusion of a vertex, mixed between the surfaces as
+            //its position is: each surface's rides in the w of its position,
+            //the folded surface's in what the caller hands in.
+            "float mixfunc_occlusion(float baseocc) {",
+                "float smix = surfmix * "+(morphs-1)+".;",
+                "float factor = clamp(1. - smix, 0., 1.);",
+                "float occ = factor * baseocc;",
+            ].join("\n");
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+                glsl += "occ += factor * mixSurfs"+i+".w;\n";
+            }
+            glsl += [ "",
+                "return occ;",
+            "}",
             ].join("\n");
             return glsl;
         },
+
+        //The occlusion of this vertex on the folded surface. It rides in a
+        //spare component of an attribute that is already here, since these
+        //shaders use every one of the 16 attribute slots WebGL guarantees: the
+        //w of the white matter position, or auxdat.z for a subject that has no
+        //white matter surface, where the equivolume areas it is meant for are
+        //never read.
+        occlusion_main: [
+            "#ifdef OCCLUSION",
+                "#ifdef CORTSHEET",
+                    "vOcclusion = mixfunc_occlusion(wm.w);",
+                "#else",
+                    "vOcclusion = mixfunc_occlusion(auxdat.z);",
+                "#endif",
+            "#endif",
+        ].join("\n"),
+        //Takes the sky a vertex misses out of the light that reaches it, once
+        //the fragment is lit. Squared, so that a crown with a little of its
+        //sky blocked by the gyri across from it stays nearly as bright as an
+        //open plane, while the floor of a sulcus goes dark.
+        occlusion_fragment: [
+            "#ifdef OCCLUSION",
+                "gl_FragColor.rgb *= 1. - vOcclusion * vOcclusion;",
+            "#endif",
+        ].join("\n"),
 
         // thickmixer: header code that loads the uniforms needed to do
         // equivolume sampling, for vertex shaders. The white matter and pial
@@ -413,6 +453,9 @@ var Shaderlib = (function() {
                 header += "#define FLATSHADE\n";
             else if (opts.shading == "gouraud")
                 header += "#define GOURAUD\n";
+            //and the sky each vertex misses is taken out of the light on it
+            if (opts.occlusion)
+                header += "#define OCCLUSION\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -453,6 +496,9 @@ var Shaderlib = (function() {
             "varying vec2 vUv;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+            "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;",
             // "varying float vDrop;",
@@ -506,6 +552,7 @@ var Shaderlib = (function() {
 
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
+                utils.occlusion_main,
 
             "#ifdef CORTSHEET",
                 // 
@@ -631,6 +678,9 @@ var Shaderlib = (function() {
 
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+            "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;", // the x,y,z coordinates of this pixel
 
@@ -850,6 +900,7 @@ var Shaderlib = (function() {
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
                 lighting,
+                utils.occlusion_fragment,
     "#endif",
             "}"
             ].join("\n");
@@ -990,6 +1041,9 @@ var Shaderlib = (function() {
                 header += "#define FLATSHADE\n";
             else if (opts.shading == "gouraud")
                 header += "#define GOURAUD\n";
+            //and the sky each vertex misses is taken out of the light on it
+            if (opts.occlusion)
+                header += "#define OCCLUSION\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -1031,6 +1085,9 @@ var Shaderlib = (function() {
             "varying vec2 vUv;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+            "#endif",
             // "varying float vDrop;",
 
             "#ifdef GOURAUD",
@@ -1089,6 +1146,7 @@ var Shaderlib = (function() {
 
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
+                utils.occlusion_main,
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
@@ -1177,6 +1235,9 @@ var Shaderlib = (function() {
             // "varying float vDrop;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+            "#endif",
             "uniform float thickmix;",
 
             "#ifdef GOURAUD",
@@ -1233,6 +1294,7 @@ var Shaderlib = (function() {
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
                 lighting,
+                utils.occlusion_fragment,
             "}"
             ].join("\n");
 

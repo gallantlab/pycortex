@@ -149,6 +149,7 @@ var mriview = (function(module) {
             topleft_lighting: {action:[this, "setTopLeftLighting", 0, 1]},
             uniform_illumination: {action:[this, "setUniformIllumination", 0, 1]},
             specularity: {action:[this, "setSpecular", 0, 1]},
+            "ambient occlusion": {action:[this, "setOcclusion"], toggle:true},
         });
 
         this.ui.addFolder("curvature", true).add({
@@ -183,6 +184,9 @@ var mriview = (function(module) {
                                json.data.replace(/\.ctm$/, "_lod{cell}.bin");
                 this._lodcells = json.lod_cells;
                 this._lod = {};
+                //and the ambient occlusion of its vertices, likewise
+                this._aourl = loader.extractUrlBase(ctminfo) +
+                              json.data.replace(/\.ctm$/, "_ao.bin");
             }
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
             var center = [
@@ -420,6 +424,7 @@ var mriview = (function(module) {
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
                 shading: this._shading,
                 faceted: this._facets === true,
+                occlusion: this._occlusion === true && this._occluded === true,
                 hasflat: this.flatlims !== undefined,
                 morphs: this.names.length, 
                 volume: this.volume, 
@@ -798,6 +803,84 @@ var mriview = (function(module) {
         if (this._inked !== undefined && this._inked.length > 0)
             this._inked[0].material.uniforms.outlineWidth.value = width;
         this.dispatchEvent({type:"update"});
+    };
+    //Ambient occlusion: how much of the sky each vertex misses, worked out in
+    //python for each surface the viewer mixes between (utils.get_occlusion)
+    //and fetched the first time it is asked for. It rides in a spare
+    //component of attributes that are already here, the w of each morph
+    //target's position and of the white matter position (auxdat.z for a
+    //subject with no white matter surface), because these shaders use every
+    //one of the 16 attribute slots WebGL guarantees.
+    module.Surface.prototype.setOcclusion = function(on) {
+        if (on === undefined)
+            return this._occlusion === true;
+
+        this._occlusion = !!on;
+        if (this._occlusion && !this._occluded) {
+            //the shaders switch over once the values are in
+            if (this._aourl !== undefined && this._aorequest === undefined) {
+                var request = new XMLHttpRequest();
+                request.open("GET", this._aourl, true);
+                request.responseType = "arraybuffer";
+                request.onload = function() {
+                    this._aorequest = undefined;
+                    if (request.status !== 200)
+                        return;
+                    this._applyOcclusion(request.response);
+                    this._occluded = true;
+                    if (this._occlusion)
+                        this.resetShaders();
+                }.bind(this);
+                this._aorequest = request;
+                request.send();
+            }
+        } else {
+            this.resetShaders();
+        }
+        this.dispatchEvent({type:"update"});
+    };
+    //The file holds how many surfaces it covers and how many vertices each
+    //hemisphere has, as three uint32, then a byte per vertex, surface by
+    //surface and the left hemisphere's before the right's.
+    module.Surface.prototype._applyOcclusion = function(buffer) {
+        var head = new Uint32Array(buffer, 0, 3);
+        var bytes = new Uint8Array(buffer, 12);
+        var counts = {left: head[1], right: head[2]};
+        var names = ["left", "right"], at = 0;
+        for (var surface = 0; surface < head[0]; surface++) {
+            for (var i = 0; i < names.length; i++) {
+                var hemi = this.hemis[names[i]], count = counts[names[i]];
+                var values = bytes.subarray(at, at + count);
+                at += count;
+                if (hemi === undefined)
+                    continue;
+                //written into the surface as it is held, at the place the
+                //loader put each vertex of the pack; a surface drawn a vertex
+                //per corner reads copies, which are written out again
+                var attrs = hemi._welded === undefined ? hemi.attributes : hemi._welded.attributes;
+                var carrier = this._occlusionCarrier(attrs, surface);
+                if (carrier === undefined)
+                    continue;
+                var array = carrier.attr.array, size = carrier.attr.itemSize;
+                var map = this._lodMap(hemi), n = Math.min(count, map.length);
+                for (var v = 0; v < n; v++)
+                    array[map[v] * size + carrier.component] = values[v] / 255;
+                carrier.attr.needsUpdate = true;
+                if (hemi._welded !== undefined)
+                    hemi.addAttribute(carrier.name, this._facetAttribute(hemi, carrier.attr, false));
+            }
+        }
+    };
+    module.Surface.prototype._occlusionCarrier = function(attrs, surface) {
+        if (surface === 0) {
+            if (attrs.wm !== undefined)
+                return {name: "wm", attr: attrs.wm, component: 3};
+            return {name: "auxdat", attr: attrs.auxdat, component: 2};
+        }
+        var name = "mixSurfs" + (surface - 1);
+        if (attrs[name] === undefined)
+            return undefined;
+        return {name: name, attr: attrs[name], component: 3};
     };
     module.Surface.prototype._makeOutline = function() {
         var shaders = Shaders.outline({

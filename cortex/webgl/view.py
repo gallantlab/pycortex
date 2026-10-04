@@ -305,11 +305,13 @@ def make_static(
         ctms[subj] = newfname + ".json"
 
         #Nothing cuts a coarse surface for a viewer that is served as files,
-        #so the ones its control offers are cut here.
+        #or works out the ambient occlusion of its vertices, so the ones its
+        #controls offer are made here.
         lodfiles = []
         if copy_ctmfiles:
             lodfiles = [utils.get_lod(subj, cell, **dict(ctmargs, recache=False))
                         for cell in utils.LOD_CELLS]
+            lodfiles.append(utils.get_occlusion(subj, **dict(ctmargs, recache=False)))
 
         for ext in ["json", "ctm", "svg"]:
             srcfile = os.path.join(oldpath, "%s.%s" % (fname, ext))
@@ -678,7 +680,7 @@ def show(
         pickerfun = lambda *a: None
 
     class CTMHandler(_WaitUntilPrepared, web.RequestHandler):
-        def get(self, path: str):
+        async def get(self, path: str):
             self.set_header("Cache-Control", "public, max-age=86400")
             subj, path = path.split('/')
             if path == '':
@@ -686,15 +688,25 @@ def show(
                 self.write(open(ctms[subj]).read())
             else:
                 fpath = os.path.split(ctms[subj])[0]
-                #coarse faces are cut the first time they are asked for and
-                #kept beside the pack from then on
+                #coarse faces, and the ambient occlusion of the vertices, are
+                #worked out the first time they are asked for and kept beside
+                #the pack from then on
+                build = None
                 coarse = re.match(r".+_lod(\d+)\.bin$", path)
                 if coarse is not None and not os.path.exists(os.path.join(fpath, path)):
                     cell = int(coarse.group(1))
                     if not 0 < cell <= utils.LOD_MAX:
                         self.set_status(404)
                         return self.write_error(404)
-                    utils.get_lod(subj, cell, **dict(ctmargs, recache=False))
+                    build = functools.partial(utils.get_lod, subj, cell,
+                                              **dict(ctmargs, recache=False))
+                elif path.endswith("_ao.bin") and not os.path.exists(os.path.join(fpath, path)):
+                    build = functools.partial(utils.get_occlusion, subj,
+                                              **dict(ctmargs, recache=False))
+                if build is not None:
+                    #on a thread, so that the server goes on answering while
+                    #it runs: the occlusion takes some seconds a surface
+                    await ioloop.IOLoop.current().run_in_executor(None, build)
                 mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
                 if mtype is None:
                     mtype = "application/octet-stream"

@@ -168,3 +168,87 @@ def test_get_lod_is_built_once_and_read_back(tmp_path):
         at += count
         assert hemi.max() < len(pts), "a face points past the end of the surface"
         assert len(hemi) < len(polys) / 50
+
+
+def _patch(corner, du, dv, n):
+    """A square patch of `n` by `n` cells from `corner` along `du` and `dv`,
+    wound so that its normals point along cross(du, dv)."""
+    import numpy as np
+
+    corner, du, dv = (np.asarray(a, dtype=float) for a in (corner, du, dv))
+    u, v = np.meshgrid(np.arange(n + 1), np.arange(n + 1), indexing="ij")
+    pts = corner + u.reshape(-1, 1) * du / n + v.reshape(-1, 1) * dv / n
+    ids = np.arange((n + 1) ** 2).reshape(n + 1, n + 1)
+    a, b, c, d = (ids[:-1, :-1].ravel(), ids[1:, :-1].ravel(),
+                  ids[1:, 1:].ravel(), ids[:-1, 1:].ravel())
+    polys = np.vstack([np.stack([a, b, c], 1), np.stack([a, c, d], 1)])
+    return pts, polys
+
+
+def test_vertex_occlusion_is_none_on_a_plane_and_most_in_a_pit():
+    """A plane blocks none of its own sky; the floor of a pit misses most
+    of it and the rim of the pit about half."""
+    import numpy as np
+
+    from cortex import polyutils
+
+    pts, polys = _patch([0, 0, 0], [40, 0, 0], [0, 40, 0], 20)
+    assert polyutils.vertex_occlusion(pts, polys).max() == 0
+
+    #an open shaft 10 mm wide and 20 mm deep, its walls facing in: from its
+    #floor the rays that are followed reach every wall
+    size, depth, n = 10., 20., 10
+    parts = [
+        _patch([0, 0, 0], [size, 0, 0], [0, size, 0], n),
+        _patch([0, 0, 0], [0, 0, depth], [size, 0, 0], n),
+        _patch([0, size, 0], [size, 0, 0], [0, 0, depth], n),
+        _patch([0, 0, 0], [0, size, 0], [0, 0, depth], n),
+        _patch([size, 0, 0], [0, 0, depth], [0, size, 0], n),
+    ]
+    pts, polys, at = [], [], 0
+    for p, f in parts:
+        pts.append(p)
+        polys.append(f + at)
+        at += len(p)
+    occlusion = polyutils.vertex_occlusion(np.vstack(pts), np.vstack(polys))
+    floor = occlusion[:(n + 1) ** 2].reshape(n + 1, n + 1)
+    walls = occlusion[(n + 1) ** 2:].reshape(4, n + 1, n + 1)
+    assert floor[n // 2, n // 2] > 0.6, "the floor of the shaft sees too much sky"
+    #the top edge of a wall looks half into the shaft and half out of it
+    assert 0.3 < walls[:, :, -1].mean() < 0.7
+    assert floor.mean() > walls[:, :, -1].mean(), "the floor is no darker than the rim"
+    assert len(occlusion) == len(np.vstack(pts))
+    assert occlusion.dtype == np.float32
+
+
+def test_get_occlusion_is_built_once_and_read_back():
+    """The occlusion is worked out when it is first asked for and kept."""
+    import json
+    import os
+
+    import numpy as np
+
+    from cortex import brainctm, utils
+
+    ctmargs = dict(method="mg2", level=9)
+    path = utils.get_occlusion("S1", **ctmargs)
+    assert os.path.exists(path)
+    written = os.path.getmtime(path)
+    assert utils.get_occlusion("S1", **ctmargs) == path
+    assert os.path.getmtime(path) == written, "the file was built a second time"
+
+    base = os.path.splitext(utils.get_ctmpack("S1", **ctmargs))[0]
+    with open(base + ".json") as fp:
+        pack = json.load(fp)
+    counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
+    head = np.fromfile(path, dtype="<u4", count=3)
+    values = np.fromfile(path, dtype=np.uint8, offset=12)
+    #the folded surface, each of the pack's names, and the flat surface
+    assert head[0] == 2 + len(pack["names"])
+    assert list(head[1:]) == counts
+    assert len(values) == head[0] * sum(counts)
+    values = values.reshape(head[0], sum(counts)) / 255.
+    folded, inflated, flat = values[0], values[1], values[-1]
+    assert flat.max() == 0, "a flat surface blocks none of its own sky"
+    assert 0.3 < folded.mean() < 0.9, "the folded surface is mostly sulcal wall"
+    assert inflated.mean() < folded.mean() / 5, "inflation did not open the sulci"

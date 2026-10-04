@@ -198,6 +198,85 @@ def get_lod(subject, cell, recache=False, **kwargs):
     return lodfile
 
 
+def get_occlusion(subject, recache=False, **kwargs):
+    """Ambient occlusion of the vertices of this subject's ctm pack, on each
+    surface the viewer mixes between, cached, built if missing.
+
+    Worked out with `polyutils.vertex_occlusion` on the surfaces as they are
+    in the pack, a hemisphere at a time, and written beside the pack as one
+    file: three little-endian uint32 giving how many surfaces it holds and how
+    many vertices each hemisphere has, then the occlusion of every vertex as a
+    byte, 0 for one that sees the whole sky and 255 for one the surface closes
+    over, surface by surface in the order the viewer mixes them -- the folded
+    surface, the pack's `names`, then the flat surface when there is one --
+    the left hemisphere's before the right's. The flat surface blocks none of
+    its own sky, so its bytes are written as zeros.
+
+    Parameters
+    ----------
+    subject : str
+        Name of subject in the pycortex store.
+    recache : bool, optional
+        Whether to build the file again when one is already there.
+    **kwargs
+        Forwarded to `get_ctmpack`, which says which pack this is for.
+
+    Returns
+    -------
+    aofile : str
+        Path to the file.
+    """
+    import json
+
+    from . import polyutils
+
+    jsfile = get_ctmpack(subject, **kwargs)
+    base = os.path.splitext(jsfile)[0]
+    aofile = base + "_ao.bin"
+    if os.path.exists(aofile) and not recache:
+        return aofile
+
+    from . import brainctm
+    with open(jsfile) as fp:
+        pack = json.load(fp)
+    counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
+    hasflat = "flatlims" in pack
+
+    #the surfaces the viewer mixes between, as the pack loads them
+    surfaces = [db.get_surf(subject, "fiducial", merge=False)]
+    surfaces += [db.get_surf(subject, name, nudge=False, merge=False) for name in pack["names"]]
+
+    blocks = []
+    if os.path.exists(base + ".npz"):
+        #the pack's numbering of the vertices, both hemispheres end to end
+        index = np.load(base + ".npz")["index"]
+        for hemis in surfaces:
+            at = 0
+            for hemi, ((pts, polys), count) in enumerate(zip(hemis, counts)):
+                occlusion = polyutils.vertex_occlusion(pts, polys)
+                blocks.append(occlusion[index[at:at + count] - (0 if hemi == 0 else counts[0])])
+                at += count
+    else:
+        #an older pack, saved before the map was kept beside it: the folded
+        #surface is worked out from the pack's own mesh, and nothing can be
+        #said about the others
+        for pts, polys in brainctm.read_pack(base + ".ctm"):
+            blocks.append(polyutils.vertex_occlusion(pts, polys))
+        for name in pack["names"]:
+            blocks += [np.zeros(count, dtype=np.float32) for count in counts]
+    if hasflat:
+        blocks += [np.zeros(count, dtype=np.float32) for count in counts]
+
+    #written whole, so that a reader never gets half a file
+    handle, temp = tempfile.mkstemp(dir=os.path.split(aofile)[0], suffix=".bin")
+    with os.fdopen(handle, "wb") as fp:
+        np.array([len(blocks) // len(counts)] + counts, dtype="<u4").tofile(fp)
+        for block in blocks:
+            np.clip(np.round(block * 255), 0, 255).astype(np.uint8).tofile(fp)
+    os.replace(temp, aofile)
+    return aofile
+
+
 def _medial_wall(subject, base, counts):
     """Which vertices of a ctm pack are on the medial wall, as the pack says.
 

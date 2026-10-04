@@ -14,6 +14,7 @@ from .misc import (
     face_volume,
     decimate,
     decimate_faces,
+    vertex_occlusion,
     inside_convex_poly,
     make_cube,
     boundary_edges,

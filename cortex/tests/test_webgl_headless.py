@@ -3493,3 +3493,89 @@ def test_the_saved_image_can_be_antialiased():
             browser.close()
     finally:
         server.stop()
+
+
+@pytest.mark.timeout(600)
+def test_ambient_occlusion_darkens_the_folded_surface_and_not_the_flat_one():
+    """`ambient occlusion` takes the sky a vertex misses out of the light on
+    it, worked out on each surface the viewer mixes between: the folded
+    surface is mostly sulcal wall and darkens, the inflated one has opened
+    its sulci and barely changes, and the flat one blocks none of its own sky
+    and does not change at all.
+    """
+    from playwright.sync_api import sync_playwright
+
+    data = cortex.Dataset(
+        volume=cortex.Volume(np.random.randn(*volshape), subj, xfmname),
+        vertex=cortex.Vertex(np.random.randn(nverts), subj))
+    server = cortex.webgl.show(data, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 800, "height": 560})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.on("console", lambda msg: errors.append(msg.text)
+                    if msg.type == "error" and "WebGL" in msg.text else None)
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def brightness():
+                """The mean brightness of the pixels the surface covers in
+                a saved image, where the page is clear behind it."""
+                return page.evaluate("""() => {
+                    var c = window.viewer.getImage(320, 240);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var sum = 0, n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i+3] > 200) { sum += d[i] + d[i+1] + d[i+2]; n++; }
+                    return sum / (3 * n);
+                }""")
+
+            def occlusion(on):
+                page.evaluate(
+                    "window.viewer.ui.set('surface.%s.lighting.ambient occlusion', %s)"
+                    % (subj, "true" if on else "false"))
+                if on:
+                    #the values are fetched, and worked out by the server
+                    #the first time, before the shaders switch over
+                    page.wait_for_function(
+                        "window.viewer.surfs[0].surf._occluded === true", timeout=300000)
+                page.wait_for_timeout(2000)
+
+            def unfold(mix):
+                page.evaluate("window.viewer.ui.set('surface.%s.unfold', %s)" % (subj, mix))
+                page.wait_for_timeout(1500)
+
+            lit = {}
+            for mix, name in [(0, "folded"), (0.5, "inflated"), (1, "flat")]:
+                unfold(mix)
+                occlusion(False)
+                before = brightness()
+                occlusion(True)
+                lit[name] = (before, brightness())
+                assert page.evaluate("window.viewer.surfs[0].surf.setOcclusion()") is True
+
+            folded = 1 - lit["folded"][1] / lit["folded"][0]
+            inflated = 1 - lit["inflated"][1] / lit["inflated"][0]
+            flat = abs(1 - lit["flat"][1] / lit["flat"][0])
+            assert folded > 0.1, "the folded surface only darkened by %.0f%%" % (100 * folded)
+            assert inflated < folded / 4, (
+                "the inflated surface darkened by %.0f%%, the folded one by %.0f%%"
+                % (100 * inflated, 100 * folded))
+            assert flat < 0.005, "the flat surface changed by %.1f%%" % (100 * flat)
+
+            #data held on the vertices is lit by the other shader
+            unfold(0)
+            page.evaluate("window.viewer.setData('vertex')")
+            page.wait_for_timeout(3000)
+            with_ao = brightness()
+            occlusion(False)
+            assert brightness() > with_ao * 1.1, "the vertex shader did not darken"
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

@@ -158,6 +158,101 @@ def decimate_faces(pts, polys, cell, split=None):
     return np.sort(verts), faces[np.sort(first)].astype(np.uint32)
 
 
+def vertex_occlusion(pts, polys, distance=12., voxel=1., rays=32):
+    """How much of the sky over each vertex the surface itself blocks.
+
+    Ambient occlusion, baked a vertex at a time: the surface is set in a grid
+    of `voxel` mm cells, and from each vertex `rays` directions over the
+    hemisphere of its normal, more of them near the normal, are followed
+    through the grid for `distance` mm. The occlusion is the share of them
+    that meet the surface, 0 on a plane or over a gyral crown and near 1 at
+    the bottom of a deep sulcus.
+
+    Parameters
+    ----------
+    pts : (N, 3) array
+        The vertices, in mm.
+    polys : (M, 3) array
+        The faces, as indices into `pts`. The normals, and so which side of
+        the surface the sky is on, follow their winding.
+    distance : float, optional
+        How far a ray is followed, in mm: the surface beyond it does not
+        count. 12 by default, which takes in the far bank of a sulcus but
+        little of the gyri across from a crown.
+    voxel : float, optional
+        The width of a cell of the grid, in mm; 1 by default.
+    rays : int, optional
+        How many directions are followed from each vertex; 32 by default.
+
+    Returns
+    -------
+    occlusion : (N,) float32 array
+        The occlusion of each vertex, 0 to 1. A vertex in no face has no
+        normal to look out from and gets 0.
+    """
+    pts = np.asarray(pts, dtype=np.float64)
+    polys = np.asarray(polys, dtype=np.int64)
+    corners = pts[polys]
+
+    #the normal at a vertex, from the faces around it weighted by their area
+    fnorm = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    normals = np.zeros_like(pts)
+    for c in range(3):
+        np.add.at(normals, polys[:, c], fnorm)
+    length = np.linalg.norm(normals, axis=1)
+    has = length > 0
+    normals[has] /= length[has, None]
+
+    #the surface in the grid: points over every face, close enough together
+    #that each cell a face passes through is marked
+    origin = pts.min(0) - 2 * voxel
+    shape = np.ceil((pts.max(0) - origin) / voxel).astype(int) + 3
+    grid = np.zeros(int(np.prod(shape)), dtype=bool)
+    edges = np.linalg.norm(corners - np.roll(corners, 1, axis=1), axis=2)
+    across = int(np.ceil(edges.max() / voxel)) + 1 if len(edges) else 1
+    for i in range(across + 1):
+        for j in range(across + 1 - i):
+            a, b = i / across, j / across
+            sample = corners[:, 0] * a + corners[:, 1] * b + corners[:, 2] * (1 - a - b)
+            cell = np.floor((sample - origin) / voxel).astype(int)
+            grid[np.ravel_multi_index(cell.T, shape)] = True
+
+    #the directions, spread over the hemisphere with more of them near the
+    #normal (the sky nearer the normal lights a surface more), the same ones
+    #turned to the normal of each vertex
+    k = np.arange(rays) + 0.5
+    radius = np.sqrt(k / rays)
+    angle = 2 * np.pi * ((k * 0.6180339887498949) % 1.)
+    local = np.stack([radius * np.cos(angle), radius * np.sin(angle),
+                      np.sqrt(1 - k / rays)], axis=1)
+    helper = np.where(np.abs(normals[:, :1]) < 0.9, [[1., 0., 0.]], [[0., 1., 0.]])
+    tangent = np.cross(normals, helper)
+    tlen = np.linalg.norm(tangent, axis=1)
+    tangent[has] /= tlen[has, None]
+    bitangent = np.cross(normals, tangent)
+
+    #followed from a cell off the surface, so that the cells the surface
+    #around the vertex is in do not count as blocking it
+    steps = int(np.ceil(distance / voxel))
+    start = pts + normals * voxel
+    occlusion = np.zeros(len(pts), dtype=np.float32)
+    chunk = 16384
+    for lo in range(0, len(pts), chunk):
+        hi = min(lo + chunk, len(pts))
+        dirs = (local[None, :, 0, None] * tangent[lo:hi, None, :] +
+                local[None, :, 1, None] * bitangent[lo:hi, None, :] +
+                local[None, :, 2, None] * normals[lo:hi, None, :])
+        hit = np.zeros((hi - lo, rays), dtype=bool)
+        for step in range(1, steps + 1):
+            cell = np.floor((start[lo:hi, None, :] + dirs * (step * voxel) - origin) / voxel).astype(int)
+            inside = np.all((cell >= 0) & (cell < shape), axis=2)
+            flat = np.ravel_multi_index(np.clip(cell, 0, shape - 1).reshape(-1, 3).T, shape)
+            hit |= inside & grid[flat].reshape(hi - lo, rays)
+        occlusion[lo:hi] = hit.mean(axis=1)
+    occlusion[~has] = 0
+    return occlusion
+
+
 def inside_convex_poly(pts):
     """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts
 
