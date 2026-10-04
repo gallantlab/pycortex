@@ -403,7 +403,21 @@ var jsplot = (function (module) {
             height = width * this.canvas.height() / this.canvas.width();
 
         console.log(width, height);
-        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
+
+        //A render target carries one sample a pixel, whatever the canvas was
+        //made with, so an image is antialiased by rendering it larger and
+        //averaging it back down to the size asked for.
+        width = Math.round(width);
+        height = Math.round(height);
+        var gl = this.renderer.context;
+        var maxsize = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE),
+                               gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+        var samples = parseInt(this.imageAntialias, 10) || 1;
+        while (samples > 1 && (width * samples > maxsize || height * samples > maxsize))
+            samples--;
+        var bufwidth = width * samples, bufheight = height * samples;
+
+        var renderbuf = new THREE.WebGLRenderTarget(bufwidth, bufheight, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format:THREE.RGBAFormat,
@@ -414,14 +428,14 @@ var jsplot = (function (module) {
         var clearColor = this.renderer.getClearColor();
         var oldw = this.canvas.width(), oldh = this.canvas.height();
         this.aimCamera(width / height);
-        this.renderer.setSize(width, height);
+        this.renderer.setSize(bufwidth, bufheight);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
         this.renderer.render(this.views[0].scene, this.camera, renderbuf);
         this.renderer.setSize(oldw, oldh);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.aimCamera(oldw / oldh);
 
-        var img = mriview.getTexture(this.renderer.context, renderbuf)
+        var img = mriview.getTexture(this.renderer.context, renderbuf, samples);
         // Read back into `img` now, so free the target: left alone, every call
         // keeps its framebuffer and texture on the GPU, which over a rendered
         // movie adds up to a few megabytes a frame.

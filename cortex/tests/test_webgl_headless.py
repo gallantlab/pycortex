@@ -3350,3 +3350,122 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
             browser.close()
     finally:
         server.stop()
+
+
+@pytest.mark.timeout(400)
+def test_the_saved_image_can_be_antialiased():
+    """`Antialias` renders the image larger and averages it back down.
+
+    A webgl render target carries one sample a pixel whatever the canvas was
+    made with, so an image read out of one has hard edges. Rendering it
+    several samples across a pixel and averaging those back down leaves an
+    edge pixel the color of the surface and an alpha from how much of it the
+    surface covers, so the edge fades into the transparent background rather
+    than into black.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 800, "height": 560})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            #a buffer whose top left pixel is half on an opaque red surface and
+            #half off it, and whose bottom right one is all on a green surface
+            block = page.evaluate("""() => {
+                var w = 4, h = 4;
+                var raw = new Uint8Array(w * h * 4);
+                function put(x, y, r, g, b, a) {
+                    var i = 4 * (y * w + x);
+                    raw[i] = r; raw[i+1] = g; raw[i+2] = b; raw[i+3] = a;
+                }
+                //readPixels counts the rows from the bottom, so rows 2 and 3
+                //are the top of the image and rows 0 and 1 the bottom of it
+                put(0, 3, 255, 0, 0, 255);
+                put(1, 2, 255, 0, 0, 255);
+                for (var y = 0; y < 2; y++)
+                    for (var x = 2; x < 4; x++)
+                        put(x, y, 0, 255, 0, 255);
+                var gl = {FRAMEBUFFER:0, RGBA:1, UNSIGNED_BYTE:2,
+                          bindFramebuffer:function() {},
+                          readPixels:function(x, y, w, h, f, t, out) { out.set(raw); }};
+                var canvas = mriview.downsampleTexture(
+                    gl, {width:w, height:h, __webglFramebuffer:null}, 2);
+                var d = canvas.getContext('2d').getImageData(0, 0, 2, 2).data;
+                return [canvas.width, canvas.height].concat(
+                    Array.prototype.slice.call(d));
+            }""")
+            assert block[:2] == [2, 2], "the buffer was not averaged down"
+            #the half covered pixel keeps the color of the surface and takes
+            #its alpha from the half of it the surface is not on
+            assert block[2:5] == [255, 0, 0], "the edge was averaged into black"
+            assert abs(block[5] - 128) <= 2, "the edge did not take a part alpha"
+            assert block[6:10] == [0, 0, 0, 0] and block[10:14] == [0, 0, 0, 0]
+            #the covered pixel stays as it was, at the end it was read from
+            assert block[14:18] == [0, 255, 0, 255], "the image came back flipped"
+
+            def saved(mode):
+                """Save an image and count how the surface meets the page.
+
+                A pixel the surface does not cover is clear and one it covers
+                is solid; a hard edge is a clear pixel straight against a
+                solid one, which is the step antialiasing grades. Fractional
+                alpha on its own says nothing here, because the data layer
+                leaves some of the surface at an alpha of its own.
+                """
+                page.evaluate(
+                    "window.viewer.ui.set('camera.Save image.Antialias', %r)" % mode)
+                page.wait_for_timeout(500)
+                return page.evaluate("""() => {
+                    var c = window.viewer.getImage(256, 192);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var out = {width:c.width, height:c.height, solid:0, hard:0};
+                    for (var y = 0; y < c.height; y++) {
+                        for (var x = 0; x < c.width; x++) {
+                            var i = 4 * (y * c.width + x), j = i + 4;
+                            if (d[i+3] === 255) out.solid++;
+                            if (x + 1 === c.width) continue;
+                            if ((d[i+3] === 0 && d[j+3] > 200) ||
+                                (d[j+3] === 0 && d[i+3] > 200)) out.hard++;
+                        }
+                    }
+                    return out;
+                }""")
+
+            one = saved("none")
+            assert (one["width"], one["height"]) == (256, 192)
+            assert one["solid"] > 1000, "the brain was not drawn"
+            #one sample a pixel, so the surface stops where a pixel does
+            assert one["hard"] > 40, (
+                "the silhouette of %d pixels has only %d hard edges"
+                % (one["solid"], one["hard"]))
+
+            many = saved("4x")
+            assert (many["width"], many["height"]) == (256, 192), (
+                "antialiasing changed the size the image is saved at")
+            assert many["solid"] > 1000, "the brain was not drawn"
+            #averaged down from sixteen samples a pixel, the surface fades
+            #into the page instead of stopping against it
+            assert many["hard"] < one["hard"] / 2, (
+                "%d of the %d hard edges are still there"
+                % (many["hard"], one["hard"]))
+
+            #the buffer each image was read from is handed back, and the page
+            #goes on drawing
+            page.wait_for_timeout(1000)
+            assert page.evaluate(
+                "() => { window.viewer.draw();"
+                " return window.viewer.renderer.info.render.faces; }") > 100000
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

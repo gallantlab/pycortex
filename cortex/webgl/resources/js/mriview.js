@@ -1502,6 +1502,9 @@ var mriview = (function(module) {
         // saves out current view as a png
         this.imageWidth = 2400;
         this.imageHeight = 1200;
+        //how many samples across a pixel the image is rendered at before it is
+        //averaged back down to the size asked for
+        this.imageAntialias = "none";
         var saveImage = function() {
             var image = viewer.getImage(this.imageWidth.toFixed(), this.imageHeight.toFixed());
             var a = document.createElement('a');
@@ -1523,7 +1526,8 @@ var mriview = (function(module) {
         imageFolder.add({
             "Save": {action:saveImage, key:'S', modKeys: ['shiftKey'], help:'Save current view as a png'},
             "Width": {action:[this, 'imageWidth', 500, 4000]},
-            "Height": {action:[this, 'imageHeight', 500, 4000]}
+            "Height": {action:[this, 'imageHeight', 500, 4000]},
+            "Antialias": {action:[this, 'imageAntialias', ["none", "2x", "3x", "4x"]]}
         });
 
         // Saved views and the keyframe animation panel (resources/js/viewtools.js).
