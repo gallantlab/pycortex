@@ -505,7 +505,10 @@ class WebApp(threading.Thread):
         """
         where = self.host if host is None else host
         address = "http://%s:%d/%s" % (where, self.port, page.lstrip("/"))
-        return address + "?token=" + self.token if self.token else address
+        if not self.token:
+            return address
+        #after whatever query the page already carries
+        return address + ("&" if "?" in page else "?") + "token=" + self.token
 
     @property
     def host(self) -> str:
