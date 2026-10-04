@@ -3236,19 +3236,22 @@ def test_the_low_poly_slider_draws_fewer_faces():
 def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
     """`shading` colors a face at one of its corners and lights it from its
     own normal, at its corners or at every pixel, which asks for a vertex per
-    corner of a face and so for a surface coarse enough to hold them.
-    `outline` draws the surface again, inside out and grown, which leaves a
-    line around it.
+    corner of a face and so for a surface coarse enough to hold them. The
+    light is worked out on the face that is drawn, so a coarse surface drawn
+    flat is solid patches. `outline` draws the surface again, inside out and
+    grown, which leaves a line around it.
     """
     from playwright.sync_api import sync_playwright
 
-    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
-    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    data = cortex.Dataset(
+        volume=cortex.Volume(np.random.randn(*volshape), subj, xfmname),
+        vertex=cortex.Vertex(np.random.randn(nverts), subj))
+    server = cortex.webgl.show(data, open_browser=False, display_url=False, autoclose=False)
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True, args=[
                 "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
-            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page = browser.new_page(viewport={"width": 800, "height": 560})
             errors = []
             page.on("pageerror", lambda exc: errors.append(str(exc)))
             page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
@@ -3268,6 +3271,29 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
                 page.evaluate("window.viewer.ui.set('surface.%s.shading', %r)" % (subj, mode))
                 page.wait_for_timeout(2500)
 
+            def solid():
+                """How much of the brain is drawn in patches of one color: a
+                face lit by its own normal is one shade all over, so the
+                pixels beside each other within it are the same."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var same = 0, pairs = 0;
+                    for (var y = 0; y < s.height; y++) {
+                        for (var x = 0; x + 1 < s.width; x++) {
+                            var i = 4 * (y * s.width + x), j = i + 4;
+                            if (d[i] + d[i+1] + d[i+2] < 45) continue;
+                            if (d[j] + d[j+1] + d[j+2] < 45) continue;
+                            pairs++;
+                            if (d[i] == d[j] && d[i+1] == d[j+1] && d[i+2] == d[j+2]) same++;
+                        }
+                    }
+                    return pairs ? same / pairs : 0;
+                }""")
+
             whole = surf("hemis.left.attributes.position.array.length / 3")
 
             #a surface of its own detail is too many faces to give each one a
@@ -3276,6 +3302,7 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
             assert surf("_facets") is False
             assert surf("hemis.left.attributes.position.array.length / 3") == whole
             assert faces() > 100000, "the surface stopped being drawn"
+            shading("smooth")
 
             page.evaluate("window.viewer.ui.set('surface.%s.low poly', 8)" % subj)
             deadline = time.time() + 60
@@ -3284,15 +3311,30 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
             coarse = faces()
             assert coarse < 100000, "the coarse surface never arrived"
 
-            for mode in ["flat", "gouraud", "phong"]:
-                shading(mode)
-                assert surf("_facets") is True, "%s did not take a vertex per corner" % mode
-                assert surf("hemis.left.attributes.facepos") is not None
-                assert faces() == coarse, (
-                    "%s changed how many faces are drawn" % mode)
-                assert surf("setShading()") == mode
+            for name in ["volume", "vertex"]:
+                page.evaluate("window.viewer.setData(%r)" % name)
+                page.wait_for_timeout(3000)
+                shading("smooth")
+                smooth = solid()
+                for mode in ["flat", "gouraud", "phong"]:
+                    shading(mode)
+                    assert surf("_facets") is True, (
+                        "%s on %s data did not take a vertex per corner" % (mode, name))
+                    assert surf("setShading()") == mode
+                    assert faces() == coarse, (
+                        "%s changed how many faces are drawn" % mode)
+                    patches = solid()
+                    if mode == "flat":
+                        #the light comes from the face that is drawn, so the
+                        #coarse faces are solid patches
+                        assert patches > 0.25, (
+                            "%s data drawn flat is not in patches of one color: %.2f"
+                            % (name, patches))
+                    else:
+                        assert patches < smooth + 0.1, (
+                            "%s is shading a face as flat does" % mode)
+                shading("smooth")
 
-            shading("smooth")
             assert surf("_facets") is False
             assert surf("hemis.left.attributes.position.array.length / 3") == whole
 

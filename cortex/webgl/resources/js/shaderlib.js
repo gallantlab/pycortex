@@ -982,6 +982,14 @@ var Shaderlib = (function() {
                 header += "#define HASFLAT\n"
             if (opts.equivolume)
                 header += "#define EQUIVOLUME\n"
+            //the light on a face worked out from its own normal (flat) or at
+            //its corners (gouraud) rather than at every pixel of it; the
+            //color is already one to a face where the surface is drawn with
+            //a vertex per corner, since it is read off the vertices
+            if (opts.shading == "flat")
+                header += "#define FLATSHADE\n";
+            else if (opts.shading == "gouraud")
+                header += "#define GOURAUD\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -1024,6 +1032,18 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             // "varying float vDrop;",
+
+            "#ifdef GOURAUD",
+                "#if MAX_DIR_LIGHTS > 0",
+                    "uniform vec3 directionalLightColor[ MAX_DIR_LIGHTS ];",
+                    "uniform vec3 directionalLightDirection[ MAX_DIR_LIGHTS ];",
+                "#endif",
+                "uniform vec3 diffuse;",
+                "uniform vec3 specular;",
+                "uniform float shininess;",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
 
             utils.mixer(morphs),
 
@@ -1097,8 +1117,40 @@ var Shaderlib = (function() {
 
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
+            "#ifdef GOURAUD",
+                "vec3 gnorm = normalize(vNormal);",
+                "vec3 gview = normalize(vViewPosition);",
+                "vLightDiffuse = vec3(0.);",
+                "vLightSpecular = vec3(0.);",
+                "#if MAX_DIR_LIGHTS > 0",
+                "for (int i = 0; i < MAX_DIR_LIGHTS; i++) {",
+                    "vec4 lDirection = viewMatrix * vec4(directionalLightDirection[i], 0.);",
+                    "vec3 dirVector = normalize(lDirection.xyz);",
+                    "float dirDiffuseWeight = max(dot(gnorm, dirVector), 0.);",
+                    "vLightDiffuse += diffuse * directionalLightColor[i] * dirDiffuseWeight;",
+                    "vec3 dirHalfVector = normalize(dirVector + gview);",
+                    "float dirDotNormalHalf = max(dot(gnorm, dirHalfVector), 0.);",
+                    "float dirSpecularWeight = max(pow(dirDotNormalHalf, shininess), 0.);",
+                    "float specularNormalization = (shininess + 2.) / 8.;",
+                    "vec3 schlick = specular + vec3(1. - specular) * pow(max(1. - dot(dirVector, dirHalfVector), 0.), 5.);",
+                    "vLightSpecular += schlick * directionalLightColor[i] * dirSpecularWeight * dirDiffuseWeight * specularNormalization;",
+                "}",
+                "#endif",
+            "#endif",
             "}"
             ].join("\n");
+
+            //as in surface_pixel: the face's own normal, or the light its
+            //corners were given
+            var lighting = THREE.ShaderChunk[ "lights_phong_fragment" ];
+            if (opts.shading == "flat") {
+                lighting = lighting.replace("vec3 normal = normalize( vNormal );", [
+                    "vec3 normal = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));",
+                    "normal *= sign(dot(normal, normalize(vViewPosition)));"].join("\n"));
+            } else if (opts.shading == "gouraud") {
+                lighting = "gl_FragColor.xyz = gl_FragColor.xyz * (emissive + " +
+                           "vLightDiffuse + ambientLightColor * ambient) + vLightSpecular;";
+            }
 
             var fragShade = [
             "#extension GL_OES_standard_derivatives: enable",
@@ -1126,6 +1178,11 @@ var Shaderlib = (function() {
             "varying float vCurv;",
             "varying float vMedial;",
             "uniform float thickmix;",
+
+            "#ifdef GOURAUD",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
             // utils.thickmixer,
 
             utils.standard_frag_vars,
@@ -1175,7 +1232,7 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
-                THREE.ShaderChunk[ "lights_phong_fragment" ],
+                lighting,
             "}"
             ].join("\n");
 

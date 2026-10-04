@@ -828,7 +828,6 @@ var mriview = (function(module) {
     //How many faces are worth taking a vertex per corner over
     var facet_limit = 250000;
     module.Surface.prototype._setFacets = function(on) {
-        on = on && !(this._active !== undefined && this._active.vertex);
         var names = ["left", "right"], hemis = [], faces = 0;
         for (var i = 0; i < names.length; i++) {
             var hemi = this.hemis[names[i]];
@@ -881,17 +880,13 @@ var mriview = (function(module) {
         var faces = this._faceList(hemi.fullind);
         var welded = {attributes: {}, fullind: hemi.fullind, culled: hemi.culled};
         var wall = hemi.attributes.auxdat.array;
+        hemi._corners = faces;
         for (var key in hemi.attributes) {
             if (key == "index")
                 continue;
             welded.attributes[key] = hemi.attributes[key];
-            var from = hemi.attributes[key], size = from.itemSize;
-            var array = new from.array.constructor(faces.length * size);
-            for (var v = 0; v < faces.length; v++) {
-                for (var c = 0; c < size; c++)
-                    array[v * size + c] = from.array[faces[v] * size + c];
-            }
-            hemi.addAttribute(key, new THREE.BufferAttribute(array, size));
+            hemi.addAttribute(key, this._facetAttribute(hemi, hemi.attributes[key],
+                                                        module.facet_data.test(key)));
         }
 
         //the one position the whole face reads the volume at
@@ -930,6 +925,43 @@ var mriview = (function(module) {
         hemi.fullind = {index: new THREE.BufferAttribute(index, 3), offsets: []};
         hemi.culled = welded.culled === undefined ? undefined :
             {index: new THREE.BufferAttribute(kept.subarray(0, n), 3), offsets: []};
+    };
+    //The data a surface carries a vertex at a time, which is where the color
+    //of such a view comes from: a face takes what its first corner has, the
+    //way a face of a view of a volume takes what is read where its first
+    //corner is.
+    module.facet_data = /^(data[0-9]|nanmask)$/;
+    //One of a hemisphere's attributes written out for the corners of its
+    //faces, each corner taking what it carries, or all three taking what the
+    //first of them carries.
+    module.Surface.prototype._facetAttribute = function(hemi, attr, flatten) {
+        var corners = hemi._corners, size = attr.itemSize;
+        var array = new attr.array.constructor(corners.length * size);
+        for (var v = 0; v < corners.length; v++) {
+            var from = corners[flatten ? 3 * Math.floor(v / 3) : v];
+            for (var c = 0; c < size; c++)
+                array[v * size + c] = attr.array[from * size + c];
+        }
+        var out = new THREE.BufferAttribute(array, size);
+        out.needsUpdate = true;
+        return out;
+    };
+    //A frame of data, which arrives for the surface as it is held rather than
+    //as it is drawn, so it is kept and written out for the faces.
+    module.Surface.prototype.setDataAttribute = function(name, left, right) {
+        var values = {left: left, right: right};
+        for (var side in values) {
+            var hemi = this.hemis[side];
+            if (hemi === undefined)
+                continue;
+            if (hemi._welded === undefined) {
+                hemi.addAttribute(name, values[side]);
+            } else {
+                hemi._welded.attributes[name] = values[side];
+                hemi.addAttribute(name, this._facetAttribute(
+                    hemi, values[side], module.facet_data.test(name)));
+            }
+        }
     };
     //The vertices of a set of faces, counted from the start of the surface:
     //the ones the surface came with are held in blocks of 65535, each face
@@ -1282,10 +1314,9 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.setAttribute = function(event) {
         var name = event.name, left = event.value[0], right = event.value[1];
-        var hemis = this.surf.hemis;
-        this.surf.loaded.done(function() {
-            hemis.left.attributes[name] = left;
-            hemis.right.attributes[name] = right;
+        var surf = this.surf;
+        surf.loaded.done(function() {
+            surf.setDataAttribute(name, left, right);
         });
     }
     module.SurfDelegate.prototype.pick = function(renderer, camera, x, y) {
