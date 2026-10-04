@@ -3230,3 +3230,81 @@ def test_the_low_poly_slider_draws_fewer_faces():
             browser.close()
     finally:
         server.stop()
+
+
+@pytest.mark.timeout(400)
+def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
+    """`shading` colors a face at one of its corners and lights it from its
+    own normal, at its corners or at every pixel, which asks for a vertex per
+    corner of a face and so for a surface coarse enough to hold them.
+    `outline` draws the surface again, inside out and grown, which leaves a
+    line around it.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def surf(what):
+                return page.evaluate("window.viewer.surfs[0].surf." + what)
+
+            def faces():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.faces; }")
+
+            def shading(mode):
+                page.evaluate("window.viewer.ui.set('surface.%s.shading', %r)" % (subj, mode))
+                page.wait_for_timeout(2500)
+
+            whole = surf("hemis.left.attributes.position.array.length / 3")
+
+            #a surface of its own detail is too many faces to give each one a
+            #vertex per corner, so it keeps the color it interpolates
+            shading("flat")
+            assert surf("_facets") is False
+            assert surf("hemis.left.attributes.position.array.length / 3") == whole
+            assert faces() > 100000, "the surface stopped being drawn"
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 8)" % subj)
+            deadline = time.time() + 60
+            while time.time() < deadline and faces() > 100000:
+                page.wait_for_timeout(500)
+            coarse = faces()
+            assert coarse < 100000, "the coarse surface never arrived"
+
+            for mode in ["flat", "gouraud", "phong"]:
+                shading(mode)
+                assert surf("_facets") is True, "%s did not take a vertex per corner" % mode
+                assert surf("hemis.left.attributes.facepos") is not None
+                assert faces() == coarse, (
+                    "%s changed how many faces are drawn" % mode)
+                assert surf("setShading()") == mode
+
+            shading("smooth")
+            assert surf("_facets") is False
+            assert surf("hemis.left.attributes.position.array.length / 3") == whole
+
+            #the line is the surface drawn once more
+            page.evaluate("window.viewer.ui.set('surface.%s.outline', true)" % subj)
+            page.wait_for_timeout(2000)
+            assert surf("setOutline()") is True
+            assert faces() == 2 * coarse, "the outline is not drawn over the surface"
+            page.evaluate("window.viewer.ui.set('surface.%s.outline', false)" % subj)
+            page.wait_for_timeout(1500)
+            assert faces() == coarse
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

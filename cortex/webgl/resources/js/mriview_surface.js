@@ -117,6 +117,8 @@ var mriview = (function(module) {
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
             "low poly": {action:[this, "setLowPoly", 0, 32], step:2},
+            shading: {action:[this, "setShading", ["smooth", "flat", "gouraud", "phong"]]},
+            outline: {action:[this, "setOutline"], toggle:true},
             bumpy_flatmap: {action:[this, "setBumpyFlat"]},
             //The slider starts wherever the config file put it. Its range goes
             //to 5x true scale, or to twice the configured value if that is
@@ -415,6 +417,8 @@ var mriview = (function(module) {
                 var shade_cls = Shaders.surface_pixel;
             }
             var shaders = dataview.getShader(shade_cls, this.uniforms, {
+                shading: this._shading,
+                faceted: this._facets === true,
                 hasflat: this.flatlims !== undefined,
                 morphs: this.names.length, 
                 volume: this.volume, 
@@ -757,11 +761,201 @@ var mriview = (function(module) {
         }
         return {index: new THREE.BufferAttribute(kept.subarray(0, n), 3), offsets: []};
     };
+    //How a face is colored and lit. The surface is drawn with one color
+    //interpolated across each face and the light worked out at every pixel of
+    //it ("smooth", which is what it opens with); the others give a face one
+    //color of its own, read where its first corner is, and light it from its
+    //own normal ("flat"), from its corners ("gouraud"), or at every pixel
+    //("phong"). One color to a face asks for a vertex per corner of a face,
+    //which is only built where the surface is coarse enough to hold them, and
+    //only for data in a volume: data on the vertices is itself held a vertex
+    //at a time.
+    //A line drawn around the surface and around the folds that turn away from
+    //the eye, in the way a comic is inked. It is the surface drawn once more,
+    //turned inside out and grown by a width of the screen, so what shows of
+    //it is a band where the surface ends.
+    module.Surface.prototype.setOutline = function(on) {
+        if (on === undefined)
+            return this._outline === true;
+
+        this._outline = !!on;
+        if (this._inked === undefined && this._outline)
+            this._makeOutline();
+        for (var i = 0; this._inked !== undefined && i < this._inked.length; i++)
+            this._inked[i].visible = this._outline;
+        this.dispatchEvent({type:"update"});
+    };
+    module.Surface.prototype._makeOutline = function() {
+        var shaders = Shaders.outline({
+            morphs: this.names.length,
+            volume: this.volume,
+            hasflat: this.flatlims !== undefined,
+            equivolume: this._equivolume,
+        });
+        var material = new THREE.ShaderMaterial({
+            vertexShader: shaders.vertex,
+            fragmentShader: shaders.fragment,
+            attributes: shaders.attrs,
+            uniforms: THREE.UniformsUtils.merge([this.uniforms, {
+                outlineWidth: {type:'f', value:0.004},
+                outlineColor: {type:'v3', value:new THREE.Vector3(0, 0, 0)},
+            }]),
+            //the uniforms the surface is drawn with, rather than copies of
+            //them, so that unfolding and depth move the line with it
+            side: THREE.BackSide,
+        });
+        for (var name in this.uniforms)
+            material.uniforms[name] = this.uniforms[name];
+
+        this._inked = [];
+        var names = ["left", "right"];
+        for (var i = 0; i < names.length; i++) {
+            var mesh = this._makeMesh(this.hemis[names[i]], material);
+            mesh.visible = false;
+            this.pivots[names[i]].back.add(mesh);
+            this._inked.push(mesh);
+        }
+    };
+    module.Surface.prototype.setShading = function(mode) {
+        if (mode === undefined)
+            return this._shading === undefined ? "smooth" : this._shading;
+
+        this._shading = mode;
+        this._setFacets(mode !== "smooth");
+        this.resetShaders();
+        this.dispatchEvent({type:"update"});
+    };
+    //How many faces are worth taking a vertex per corner over
+    var facet_limit = 250000;
+    module.Surface.prototype._setFacets = function(on) {
+        on = on && !(this._active !== undefined && this._active.vertex);
+        var names = ["left", "right"], hemis = [], faces = 0;
+        for (var i = 0; i < names.length; i++) {
+            var hemi = this.hemis[names[i]];
+            if (hemi === undefined || hemi.fullind === undefined)
+                continue;
+            if (hemi._welded !== undefined) {
+                //back to the surface as it is held, so that what is built
+                //here is always built from that
+                for (var key in hemi._welded.attributes)
+                    hemi.addAttribute(key, hemi._welded.attributes[key]);
+                hemi.fullind = hemi._welded.fullind;
+                hemi.culled = hemi._welded.culled;
+                hemi._welded = undefined;
+            }
+            hemis.push(hemi);
+            faces += this._faceList(hemi.fullind).length / 3;
+        }
+
+        //Every attribute of the surface is written out again for each corner
+        //of each face, so a surface that is not coarse would take hundreds of
+        //megabytes. Past the limit a face is lit the way it was asked for and
+        //keeps its interpolated color, which at that many faces to a pixel is
+        //what it looks like anyway. The two hemispheres go together, since
+        //one shader draws them both.
+        if (on && faces > facet_limit) {
+            console.log("pycortex: " + faces + " faces are too many to give " +
+                        "each one a color of its own; the low poly control " +
+                        "makes a coarser surface");
+            on = false;
+        }
+        if (on) {
+            for (var i = 0; i < hemis.length; i++)
+                this._facetHemi(hemis[i]);
+        }
+        this._facets = on === true;
+        var now = this._flat > 0 && this.hemis.left.culled !== undefined;
+        for (var i = 0; i < names.length; i++) {
+            var hemi = this.hemis[names[i]];
+            if (hemi === undefined || hemi.fullind === undefined)
+                continue;
+            var use = now ? hemi.culled : hemi.fullind;
+            hemi.attributes.index = use.index;
+            hemi.offsets = use.offsets;
+        }
+    };
+    //The faces of one hemisphere written out with a vertex of their own per
+    //corner, each carrying what its corner carries, and the position its
+    //first corner reads the volume at.
+    module.Surface.prototype._facetHemi = function(hemi) {
+        var faces = this._faceList(hemi.fullind);
+        var welded = {attributes: {}, fullind: hemi.fullind, culled: hemi.culled};
+        var wall = hemi.attributes.auxdat.array;
+        for (var key in hemi.attributes) {
+            if (key == "index")
+                continue;
+            welded.attributes[key] = hemi.attributes[key];
+            var from = hemi.attributes[key], size = from.itemSize;
+            var array = new from.array.constructor(faces.length * size);
+            for (var v = 0; v < faces.length; v++) {
+                for (var c = 0; c < size; c++)
+                    array[v * size + c] = from.array[faces[v] * size + c];
+            }
+            hemi.addAttribute(key, new THREE.BufferAttribute(array, size));
+        }
+
+        //the one position the whole face reads the volume at
+        var pos = welded.attributes.position, wm = welded.attributes.wm;
+        var facepos = new Float32Array(faces.length * 3);
+        var facewm = wm === undefined ? undefined : new Float32Array(faces.length * 4);
+        for (var v = 0; v < faces.length; v++) {
+            var first = faces[3 * Math.floor(v / 3)];
+            for (var c = 0; c < 3; c++)
+                facepos[v * 3 + c] = pos.array[first * 3 + c];
+            if (facewm !== undefined) {
+                for (var c = 0; c < 4; c++)
+                    facewm[v * 4 + c] = wm.array[first * 4 + c];
+            }
+        }
+        hemi.addAttribute("facepos", new THREE.BufferAttribute(facepos, 3));
+        if (facewm !== undefined)
+            hemi.addAttribute("facewm", new THREE.BufferAttribute(facewm, 4));
+
+        //every corner is its own vertex now, so the faces are the vertices in
+        //the order they are written, and the flatmap leaves out the ones on
+        //the medial wall as it does at any detail
+        var index = new Uint32Array(faces.length);
+        var kept = new Uint32Array(faces.length), n = 0;
+        for (var v = 0; v < faces.length; v += 3) {
+            index[v] = v;
+            index[v + 1] = v + 1;
+            index[v + 2] = v + 2;
+            if (!wall[faces[v] * 4] && !wall[faces[v + 1] * 4] && !wall[faces[v + 2] * 4]) {
+                kept[n++] = v;
+                kept[n++] = v + 1;
+                kept[n++] = v + 2;
+            }
+        }
+        hemi._welded = welded;
+        hemi.fullind = {index: new THREE.BufferAttribute(index, 3), offsets: []};
+        hemi.culled = welded.culled === undefined ? undefined :
+            {index: new THREE.BufferAttribute(kept.subarray(0, n), 3), offsets: []};
+    };
+    //The vertices of a set of faces, counted from the start of the surface:
+    //the ones the surface came with are held in blocks of 65535, each face
+    //counted from the start of its own block.
+    module.Surface.prototype._faceList = function(entry) {
+        var indices = entry.index.array, offsets = entry.offsets;
+        if (offsets === undefined || offsets.length === 0)
+            return indices;
+        var out = new Uint32Array(indices.length), n = 0;
+        for (var j = 0; j < offsets.length; j++) {
+            var start = offsets[j].start, count = offsets[j].count, base = offsets[j].index;
+            for (var i = start; i < start + count; i++)
+                out[n++] = base + indices[i];
+        }
+        return out.subarray(0, n);
+    };
     //Puts a set of faces in place of the ones being drawn, keeping the ones
     //the surface came with to go back to. The flatmap draws the culled set,
     //as it does at any detail, and unfolding goes on swapping between them.
     module.Surface.prototype._applyLod = function(sets) {
         var names = ["left", "right"];
+        //the faces a vertex per corner is written out from are these ones,
+        //so they are put back first and written out again at the end
+        var facets = this._facets;
+        if (facets)
+            this._setFacets(false);
         for (var i = 0; i < names.length; i++) {
             var hemi = this.hemis[names[i]];
             if (hemi === undefined || hemi.fullind === undefined)
@@ -793,6 +987,8 @@ var mriview = (function(module) {
                 hemi.attributes[attr].needsUpdate = true;
             }
         }
+        if (facets)
+            this._setFacets(true);
         this.dispatchEvent({type:"update"});
     };
     //Which of a hemisphere's normals are worked out from which of its
