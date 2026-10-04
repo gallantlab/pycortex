@@ -734,7 +734,7 @@ def _served_metadata(handle):
     ``addData`` merges into, so this is how we check that a reload of the
     viewer would show everything that has been added so far.
     """
-    url = "http://localhost:%d/mixer.html" % handle.server.port
+    url = handle.server.url("mixer.html", host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         page = resp.read().decode("utf-8")
     marker = "dataset.fromJSON("
@@ -744,7 +744,7 @@ def _served_metadata(handle):
 
 def _fetch(handle, path):
     """GET ``path`` from the viewer's tornado server, returning the body."""
-    url = "http://localhost:%d%s" % (handle.server.port, path)
+    url = handle.server.url(path, host="localhost")
     with urllib.request.urlopen(url, timeout=30) as resp:
         return resp.read()
 
@@ -1380,9 +1380,10 @@ def test_the_server_accepts_no_frames():
     """
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        url = f"http://localhost:{handle.server.port}/movie"
-        # Refused either way: nothing routes /movie any more, and the server's
-        # catch-all file handler (serve.py) only answers GET, hence 405.
+        # with the session token, so that the refusal is the route's own:
+        # nothing routes /movie any more, and the server's catch-all file
+        # handler (serve.py) only answers GET, hence 405.
+        url = handle.server.url("movie", host="localhost")
         assert _post(url, name="f", frame=0, png="x") in (404, 405)
         assert "movie_post" not in _js_attrs(handle, "window.viewopts")
 
@@ -2805,3 +2806,858 @@ def test_changing_the_render_size_reframes_flat_keyframes():
         _js_run(handle, "window.viewer._animPanel.render", [])
         assert flat_radius() == pytest.approx(fitted(700, 700), rel=1e-6)
         handle._pw_thread.wait_for_download(timeout=120)
+
+# ---------------------------------------------------------------------------
+# Group 14: Three slice views beside the 3D one
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_ortho_views_split_the_canvas():
+    """`ortho_views` draws each slice plane straight down its own axis in a
+    quarter of the canvas, leaving the 3D view the last quarter, and the keys
+    that move the planes keep working.
+
+    Drives the page directly rather than through the websocket handle,
+    because what is being tested is what reaches the canvas.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def quadrants():
+                """How much of each quarter of the canvas was drawn on."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var lit = [0, 0, 0, 0], seen = [0, 0, 0, 0];
+                    for (var y = 0; y < s.height; y++) {
+                        for (var x = 0; x < s.width; x++) {
+                            var q = (x < s.width / 2 ? 0 : 1) + (y < s.height / 2 ? 0 : 2);
+                            var i = 4 * (y * s.width + x);
+                            seen[q]++;
+                            if (d[i] + d[i+1] + d[i+2] > 45) lit[q]++;
+                        }
+                    }
+                    return lit.map(function(n, q) { return n / seen[q]; });
+                }""")
+
+            assert page.evaluate("window.viewer.setSliceViews()") is False
+            page.keyboard.press("v")
+            page.wait_for_timeout(2500)
+            assert page.evaluate("window.viewer.setSliceViews()") is True, (
+                "the v key did not split the canvas")
+            assert page.evaluate("window.viewer.ui.sliceplanes['Show ortho views']") is True, (
+                "the control did not follow the key")
+
+            views = page.evaluate(
+                "window.viewer.views.map(v => [v.left, v.bottom, v.camera !== undefined])")
+            assert views == [[0, 0.5, True], [0, 0, True], [0.5, 0.5, True], [0.5, 0, False]], (
+                "the canvas is not split between three slice views and the 3D one")
+
+            filled = quadrants()
+            assert all(part > 0.05 for part in filled), (
+                "a quarter of the canvas was left empty: %s" % filled)
+
+            # the slice planes show in their own views whatever the checkboxes
+            # say, since that is what those views are for
+            assert page.evaluate(
+                "Object.keys(window.viewer.sliceplanes).every(k => !window.viewer.sliceplanes[k].setVisible())")
+
+            # the keys that step through the slices keep working
+            before = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            top_left = page.locator("#brain").screenshot()
+            for key in ["q", "a", "z"]:
+                page.keyboard.press(key)
+            page.wait_for_timeout(1000)
+            after = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in after] == [round(v) + 1 for v in before], (
+                "the slice keys did not move the planes")
+            assert page.locator("#brain").screenshot() != top_left, (
+                "the slice views did not redraw when the planes moved")
+
+            # a pick in the 3D view takes the slice views to that point and
+            # marks it in each of them
+            box = page.locator("#brain").bounding_box()
+            page.mouse.click(box["x"] + box["width"] * 0.76, box["y"] + box["height"] * 0.76)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursorAt === true"), "nothing was picked"
+            picked = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert picked != after, "the slice views did not go to the picked point"
+            # the crosshair stands where the slices were taken to, which is
+            # the point that was picked
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in picked], (
+                "the crosshair is not where the slices are")
+            assert page.evaluate("window.viewer._cursor.visible") is True, (
+                "the crosshair is not drawn in the 3D view")
+            # and it is the only mark on the point: the picker's own marker,
+            # which sits on the surface and is in the 3D view alone, stands
+            # down while the crosshair is in every view
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is False, (
+                "the picker's marker is up as well as the crosshair")
+
+            # a click that lands on nothing leaves the crosshair where it is:
+            # it marks a place, and clicking beside the brain does not unmark it
+            where = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.97, box["y"] + box["height"] * 0.97)
+            page.wait_for_timeout(1000)
+            assert page.evaluate("window.viewer._cursorAt") is True, (
+                "a click on nothing took the crosshair away")
+            assert page.evaluate("window.viewer._cursor.position.toArray()") == where
+
+            # a click in a slice view puts the crosshair under the pointer and
+            # takes the other two views to it, leaving its own slice alone
+            page.mouse.click(box["x"] + box["width"] * 0.2, box["y"] + box["height"] * 0.2)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != where, (
+                "a click in the coronal view did not move the crosshair")
+            moved = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            assert [round(v) for v in voxel] == [round(v) for v in moved], (
+                "the crosshair is not on the slices the click took the views to")
+            assert round(moved[1]) == round(picked[1]), (
+                "the coronal view moved the very slice the click was made on")
+            assert [round(v) for v in moved] != [round(v) for v in picked], (
+                "the click in the coronal view left the other views where they were")
+
+            # the help lists the key that splits the canvas
+            page.keyboard.press("h")
+            page.wait_for_timeout(500)
+            assert "Show ortho views along with 3D" in page.inner_text("#helpmenu"), (
+                "the key is not in the help")
+            page.keyboard.press("h")
+
+            # and the 3D view comes back on its own
+            page.evaluate("window.viewer.ui.set('sliceplanes.Show ortho views', false)")
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer.views.length") == 1
+            assert page.evaluate("window.viewer.root.visible") is True
+            # the point stays marked across the change of layout, by the
+            # picker's marker once the crosshair has no slices to be in
+            assert page.evaluate("window.viewer._cursorAt") is True
+            assert page.evaluate("window.viewer._cursor.visible") is False
+            assert page.evaluate(
+                "window.viewer.surfs[0].surf.picker.markers.left.visible") is True
+
+            # a point picked with the 3D view on its own leaves the planes
+            # where they are, and the slice views open on it
+            was = page.evaluate("window.viewer._cursor.position.toArray()")
+            page.mouse.click(box["x"] + box["width"] * 0.45, box["y"] + box["height"] * 0.45)
+            page.wait_for_timeout(1500)
+            assert page.evaluate("window.viewer._cursor.position.toArray()") != was, (
+                "the pick in the 3D view landed on nothing")
+            alone = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                  "window.viewer.sliceplanes.y.slice, "
+                                  "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in alone] == [round(v) for v in moved], (
+                "the 3D view on its own moved the slices")
+            page.keyboard.press("v")
+            page.wait_for_timeout(2000)
+            voxel = page.evaluate(
+                "() => { var xfm = window.viewer.active.uniforms.volxfm.value[0];"
+                " var p = window.viewer._cursor.position.clone().applyMatrix4(xfm);"
+                " return [p.x, p.y, p.z]; }")
+            opened = page.evaluate("[window.viewer.sliceplanes.x.slice, "
+                                   "window.viewer.sliceplanes.y.slice, "
+                                   "window.viewer.sliceplanes.z.slice]")
+            assert [round(v) for v in opened] == [round(v) for v in voxel], (
+                "the slice views opened on slices the crosshair is not on")
+            assert [round(v) for v in opened] != [round(v) for v in alone], (
+                "the planes were already there, so nothing was shown by this")
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+# ---------------------------------------------------------------------------
+# Group 8: The orthographic camera
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_the_camera_switches_to_orthographic():
+    """`orthographic` swaps the camera the controls move for one with no
+    vanishing point, where the radius is the zoom rather than the distance,
+    and offers the isometric view it is wanted for.
+
+    The camera carries the lights and stands in the scene, so the swap is
+    checked by what reaches the canvas as well as by the camera itself.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def camera():
+                return page.evaluate(
+                    "() => { var c = window.viewer.camera;"
+                    " return {type: c.type, top: c.top, right: c.right, aspect: c.aspect}; }")
+
+            def lit():
+                """How much of the canvas the brain is drawn on, lit."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i] + d[i+1] + d[i+2] > 150) n++;
+                    return n / (s.width * s.height);
+                }""")
+
+            def isometric_shown():
+                return page.evaluate(
+                    "window.viewer._cam_ui._controls.isometric.__li.style.display") != "none"
+
+            assert page.evaluate("window.viewer.setOrthographic()") is False
+            assert camera()["type"] == "PerspectiveCamera"
+            assert not isometric_shown(), (
+                "the isometric view is offered without the camera it is for")
+            perspective = lit()
+            assert perspective > 0.02, "the brain was not drawn to begin with"
+
+            page.evaluate("window.viewer.ui.set('camera.orthographic', true)")
+            page.wait_for_timeout(1500)
+            ortho = camera()
+            assert ortho["type"] == "OrthographicCamera"
+            assert isometric_shown()
+            # the camera sees what the perspective one saw at that radius, so
+            # the brain is the same size on screen and the radius goes on
+            # being the zoom
+            half = 400 * np.tan(np.radians(45) / 2)
+            assert abs(ortho["top"] - half) < 1
+            assert abs(ortho["right"] / ortho["top"] - 1000 / 700) < 0.01
+            # the lights hang off the camera, which the renderer only finds
+            # through the scene: a camera swapped in outside it draws the
+            # brain in its emissive color alone
+            assert lit() > perspective / 2, "the brain went dark under the new camera"
+
+            page.evaluate("window.viewer.ui.set('camera.radius', 200)")
+            page.wait_for_timeout(1500)
+            assert abs(camera()["top"] - half / 2) < 1, "the radius is not the zoom"
+
+            # the isometric view turns each axis away from the eye by the same
+            # angle, so the eye lies along a diagonal of the three
+            page.evaluate("window.viewer.setIsometric()")
+            page.wait_for_timeout(2500)
+            eye = page.evaluate(
+                "window.viewer.camera.position.clone().sub(window.viewer.controls.target)"
+                ".normalize().toArray()")
+            assert [round(abs(v), 2) for v in eye] == [round(1 / np.sqrt(3), 2)] * 3, (
+                "the isometric view is not down the diagonal: %s" % eye)
+
+            page.evaluate("window.viewer.ui.set('camera.orthographic', false)")
+            page.wait_for_timeout(1500)
+            assert camera()["type"] == "PerspectiveCamera"
+            assert not isometric_shown()
+            assert lit() > perspective / 2
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.timeout(300)
+def test_the_viewer_page_does_not_scroll():
+    """The viewer is laid out from the edges of the window, with the ends of
+    the colorbar off it on purpose, so a page that scrolls shows a band of
+    nothing and moves the brain out from under the pointer. Both the page and
+    the body are pinned against it."""
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1200, "height": 760})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            for width, height in [(1200, 760), (1920, 1080), (640, 480), (1600, 400)]:
+                page.set_viewport_size({"width": width, "height": height})
+                page.wait_for_timeout(700)
+                over = page.evaluate(
+                    "() => { var d = document.documentElement;"
+                    " return [d.scrollWidth - d.clientWidth, d.scrollHeight - d.clientHeight]; }")
+                assert over == [0, 0], (
+                    "the page scrolls at %dx%d, by %s" % (width, height, over))
+                assert page.evaluate(
+                    "getComputedStyle(document.documentElement).overflowY") == "hidden"
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+# ---------------------------------------------------------------------------
+# Group 9: Drawing the surface coarsely
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_the_low_poly_slider_draws_fewer_faces():
+    """`low poly` draws the surface from faces cut over groups of that many
+    mm, which the server cuts the first time they are asked for and keeps.
+
+    The vertices of the coarse surface are vertices of the one it was cut
+    from, so only the triangles change: the surface goes back to what it was
+    at 0, down to the picture it draws.
+    """
+    import glob
+
+    from playwright.sync_api import sync_playwright
+
+    #cut from nothing, which is what the first viewer on a subject does
+    for stale in glob.glob(os.path.join(cortex.db.get_cache(subj), "*_lod*.bin")):
+        os.remove(stale)
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def faces():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.faces; }")
+
+            def lit():
+                """How much of the canvas the surface is drawn on."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i] + d[i+1] + d[i+2] > 150) n++;
+                    return n / (s.width * s.height);
+                }""")
+
+            def wait_for_faces(fewer_than, seconds=60):
+                """The server cuts the faces when they are first asked for,
+                so a cold cache waits on the cut as well as the fetch."""
+                deadline = time.time() + seconds
+                while time.time() < deadline:
+                    if faces() < fewer_than:
+                        return faces()
+                    page.wait_for_timeout(500)
+                return faces()
+
+            whole, drawn = faces(), lit()
+            opened = page.locator("#brain").screenshot()
+            assert whole > 100000, "the surface was not drawn to begin with"
+            assert drawn > 0.02
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 8)" % subj)
+            coarse = wait_for_faces(whole / 10)
+            assert coarse < whole / 10, (
+                "8 mm groups left %d of %d faces" % (coarse, whole))
+            #the same brain, from fewer triangles: it covers the canvas as it
+            #did, rather than being left in pieces
+            assert abs(lit() - drawn) < drawn / 3, "the coarse surface is not the same shape"
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 32)" % subj)
+            assert wait_for_faces(coarse) < coarse, (
+                "32 mm groups left as many faces as 8 mm ones")
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 0)" % subj)
+            page.wait_for_timeout(2500)
+            assert faces() == whole
+            assert page.locator("#brain").screenshot() == opened, (
+                "the surface did not go back to what it was")
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.timeout(400)
+def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
+    """`shading` colors a face at one of its corners and lights it from its
+    own normal, at its corners or at every pixel, which asks for a vertex per
+    corner of a face and so for a surface coarse enough to hold them. The
+    light is worked out on the face that is drawn, so a coarse surface drawn
+    flat is solid patches. `outline` draws the surface again, inside out and
+    grown, which leaves a line around it.
+    """
+    from playwright.sync_api import sync_playwright
+
+    data = cortex.Dataset(
+        volume=cortex.Volume(np.random.randn(*volshape), subj, xfmname),
+        vertex=cortex.Vertex(np.random.randn(nverts), subj))
+    server = cortex.webgl.show(data, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 800, "height": 560})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def surf(what):
+                return page.evaluate("window.viewer.surfs[0].surf." + what)
+
+            def faces():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.faces; }")
+
+            def shading(mode):
+                page.evaluate("window.viewer.ui.set('surface.%s.shading', %r)" % (subj, mode))
+                page.wait_for_timeout(2500)
+
+            def solid():
+                """How much of the brain is drawn in patches of one color: a
+                face lit by its own normal is one shade all over, so the
+                pixels beside each other within it are the same."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var same = 0, pairs = 0;
+                    for (var y = 0; y < s.height; y++) {
+                        for (var x = 0; x + 1 < s.width; x++) {
+                            var i = 4 * (y * s.width + x), j = i + 4;
+                            if (d[i] + d[i+1] + d[i+2] < 45) continue;
+                            if (d[j] + d[j+1] + d[j+2] < 45) continue;
+                            pairs++;
+                            if (d[i] == d[j] && d[i+1] == d[j+1] && d[i+2] == d[j+2]) same++;
+                        }
+                    }
+                    return pairs ? same / pairs : 0;
+                }""")
+
+            whole = surf("hemis.left.attributes.position.array.length / 3")
+
+            #a surface of its own detail is too many faces to give each one a
+            #vertex per corner, so it keeps the color it interpolates
+            shading("flat")
+            assert surf("_facets") is False
+            assert surf("hemis.left.attributes.position.array.length / 3") == whole
+            assert faces() > 100000, "the surface stopped being drawn"
+            shading("smooth")
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 8)" % subj)
+            deadline = time.time() + 60
+            while time.time() < deadline and faces() > 100000:
+                page.wait_for_timeout(500)
+            coarse = faces()
+            assert coarse < 100000, "the coarse surface never arrived"
+
+            for name in ["volume", "vertex"]:
+                page.evaluate("window.viewer.setData(%r)" % name)
+                page.wait_for_timeout(3000)
+                shading("smooth")
+                smooth = solid()
+                for mode in ["flat", "gouraud", "phong"]:
+                    shading(mode)
+                    assert surf("_facets") is True, (
+                        "%s on %s data did not take a vertex per corner" % (mode, name))
+                    assert surf("setShading()") == mode
+                    assert faces() == coarse, (
+                        "%s changed how many faces are drawn" % mode)
+                    patches = solid()
+                    if mode == "flat":
+                        #the light comes from the face that is drawn, so the
+                        #coarse faces are solid patches
+                        assert patches > 0.25, (
+                            "%s data drawn flat is not in patches of one color: %.2f"
+                            % (name, patches))
+                    else:
+                        assert patches < smooth + 0.1, (
+                            "%s is shading a face as flat does" % mode)
+                shading("smooth")
+
+            assert surf("_facets") is False
+            assert surf("hemis.left.attributes.position.array.length / 3") == whole
+
+            #the line is the surface drawn once more
+            page.evaluate("window.viewer.ui.set('surface.%s.outline', true)" % subj)
+            page.wait_for_timeout(2000)
+            assert surf("setOutline()") is True
+            assert faces() == 2 * coarse, "the outline is not drawn over the surface"
+
+            #the line is black on a black page, so it is counted where the
+            #background is clear: in a saved image
+            def inked(black=False):
+                """How many pixels the surface and its line cover, or with
+                `black` how many of them are the line's own color."""
+                return page.evaluate("""(black) => {
+                    var c = window.viewer.getImage(256, 192);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var on = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i+3] > 0 && (!black || d[i] + d[i+1] + d[i+2] < 45)) on++;
+                    return on;
+                }""", black)
+
+            assert surf("setOutlineWidth()") == pytest.approx(0.004)
+            thin = inked()
+            assert thin > 1000, "the brain was not drawn"
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline width', 0.02)" % subj)
+            page.wait_for_timeout(1500)
+            assert surf("setOutlineWidth()") == pytest.approx(0.02)
+            wide = inked()
+            assert wide > thin * 1.02, "the wider line did not grow the surface"
+
+            #round corners put a dot of the line's width at each vertex of
+            #the faces being drawn, which fills the corners the line comes
+            #to a point at
+            def points():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.points; }")
+
+            #the labels are drawn as points of their own, so the dots are
+            #counted over them
+            assert surf("setOutlineCorners()") == "sharp"
+            labels = points()
+            pointed = inked(black=True)
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline corners', 'round')" % subj)
+            page.wait_for_timeout(1500)
+            assert surf("setOutlineCorners()") == "round"
+            drawn = points() - labels
+            assert 0 < drawn <= 2 * coarse * 3, "the dots are not on the vertices of the faces drawn"
+            assert inked(black=True) > pointed, "the round corners added nothing to the line"
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline corners', 'sharp')" % subj)
+            page.wait_for_timeout(1000)
+            assert points() == labels
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline width', 0.004)" % subj)
+            page.wait_for_timeout(1000)
+
+            page.evaluate("window.viewer.ui.set('surface.%s.outline', false)" % subj)
+            page.wait_for_timeout(1500)
+            assert faces() == coarse
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.timeout(400)
+def test_the_saved_image_can_be_antialiased():
+    """`Antialias` renders the image larger and averages it back down.
+
+    A webgl render target carries one sample a pixel whatever the canvas was
+    made with, so an image read out of one has hard edges. Rendering it
+    several samples across a pixel and averaging those back down leaves an
+    edge pixel the color of the surface and an alpha from how much of it the
+    surface covers, so the edge fades into the transparent background rather
+    than into black.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 800, "height": 560})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            #a buffer whose top left pixel is half on an opaque red surface and
+            #half off it, and whose bottom right one is all on a green surface
+            block = page.evaluate("""() => {
+                var w = 4, h = 4;
+                var raw = new Uint8Array(w * h * 4);
+                function put(x, y, r, g, b, a) {
+                    var i = 4 * (y * w + x);
+                    raw[i] = r; raw[i+1] = g; raw[i+2] = b; raw[i+3] = a;
+                }
+                //readPixels counts the rows from the bottom, so rows 2 and 3
+                //are the top of the image and rows 0 and 1 the bottom of it
+                put(0, 3, 255, 0, 0, 255);
+                put(1, 2, 255, 0, 0, 255);
+                for (var y = 0; y < 2; y++)
+                    for (var x = 2; x < 4; x++)
+                        put(x, y, 0, 255, 0, 255);
+                var gl = {FRAMEBUFFER:0, RGBA:1, UNSIGNED_BYTE:2,
+                          bindFramebuffer:function() {},
+                          readPixels:function(x, y, w, h, f, t, out) { out.set(raw); }};
+                var canvas = mriview.downsampleTexture(
+                    gl, {width:w, height:h, __webglFramebuffer:null}, 2);
+                var d = canvas.getContext('2d').getImageData(0, 0, 2, 2).data;
+                return [canvas.width, canvas.height].concat(
+                    Array.prototype.slice.call(d));
+            }""")
+            assert block[:2] == [2, 2], "the buffer was not averaged down"
+            #the half covered pixel keeps the color of the surface and takes
+            #its alpha from the half of it the surface is not on
+            assert block[2:5] == [255, 0, 0], "the edge was averaged into black"
+            assert abs(block[5] - 128) <= 2, "the edge did not take a part alpha"
+            assert block[6:10] == [0, 0, 0, 0] and block[10:14] == [0, 0, 0, 0]
+            #the covered pixel stays as it was, at the end it was read from
+            assert block[14:18] == [0, 255, 0, 255], "the image came back flipped"
+
+            def saved(mode):
+                """Save an image and count how the surface meets the page.
+
+                A pixel the surface does not cover is clear and one it covers
+                is solid; a hard edge is a clear pixel straight against a
+                solid one, which is the step antialiasing grades. Fractional
+                alpha on its own says nothing here, because the data layer
+                leaves some of the surface at an alpha of its own.
+                """
+                page.evaluate(
+                    "window.viewer.ui.set('camera.Save image.Antialias', %r)" % mode)
+                page.wait_for_timeout(500)
+                return page.evaluate("""() => {
+                    var c = window.viewer.getImage(256, 192);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var out = {width:c.width, height:c.height, solid:0, hard:0};
+                    for (var y = 0; y < c.height; y++) {
+                        for (var x = 0; x < c.width; x++) {
+                            var i = 4 * (y * c.width + x), j = i + 4;
+                            if (d[i+3] === 255) out.solid++;
+                            if (x + 1 === c.width) continue;
+                            if ((d[i+3] === 0 && d[j+3] > 200) ||
+                                (d[j+3] === 0 && d[i+3] > 200)) out.hard++;
+                        }
+                    }
+                    return out;
+                }""")
+
+            one = saved("none")
+            assert (one["width"], one["height"]) == (256, 192)
+            assert one["solid"] > 1000, "the brain was not drawn"
+            #one sample a pixel, so the surface stops where a pixel does
+            assert one["hard"] > 40, (
+                "the silhouette of %d pixels has only %d hard edges"
+                % (one["solid"], one["hard"]))
+
+            many = saved("4x")
+            assert (many["width"], many["height"]) == (256, 192), (
+                "antialiasing changed the size the image is saved at")
+            assert many["solid"] > 1000, "the brain was not drawn"
+            #averaged down from sixteen samples a pixel, the surface fades
+            #into the page instead of stopping against it
+            assert many["hard"] < one["hard"] / 2, (
+                "%d of the %d hard edges are still there"
+                % (many["hard"], one["hard"]))
+
+            #the buffer each image was read from is handed back, and the page
+            #goes on drawing
+            page.wait_for_timeout(1000)
+            assert page.evaluate(
+                "() => { window.viewer.draw();"
+                " return window.viewer.renderer.info.render.faces; }") > 100000
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.timeout(600)
+def test_ambient_occlusion_darkens_the_folded_surface_and_not_the_flat_one():
+    """`ambient occlusion` takes the sky a vertex misses out of the light on
+    it, worked out on each surface the viewer mixes between: the folded
+    surface is mostly sulcal wall and darkens, the inflated one has opened
+    its sulci and barely changes, and the flat one blocks none of its own sky
+    and does not change at all.
+    """
+    from playwright.sync_api import sync_playwright
+
+    data = cortex.Dataset(
+        volume=cortex.Volume(np.random.randn(*volshape), subj, xfmname),
+        vertex=cortex.Vertex(np.random.randn(nverts), subj))
+    server = cortex.webgl.show(data, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 800, "height": 560})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.on("console", lambda msg: errors.append(msg.text)
+                    if msg.type == "error" and "WebGL" in msg.text else None)
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def brightness(width=320):
+                """The mean brightness of the pixels the surface covers in
+                a saved image, where the page is clear behind it."""
+                return page.evaluate("""(width) => {
+                    var c = window.viewer.getImage(width, 3 * width / 4);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var sum = 0, n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i+3] > 200) { sum += d[i] + d[i+1] + d[i+2]; n++; }
+                    return sum / (3 * n);
+                }""", width)
+
+            def occlusion(on):
+                page.evaluate(
+                    "window.viewer.ui.set('surface.%s.lighting.ambient occlusion', %s)"
+                    % (subj, "true" if on else "false"))
+                if on:
+                    #the values are fetched, and worked out by the server
+                    #the first time, before the shaders switch over
+                    page.wait_for_function(
+                        "window.viewer.surfs[0].surf._occluded === true", timeout=300000)
+                page.wait_for_timeout(2000)
+
+            def unfold(mix):
+                page.evaluate("window.viewer.ui.set('surface.%s.unfold', %s)" % (subj, mix))
+                page.wait_for_timeout(1500)
+
+            lit = {}
+            for mix, name in [(0, "folded"), (0.5, "inflated"), (1, "flat")]:
+                unfold(mix)
+                occlusion(False)
+                before = brightness()
+                occlusion(True)
+                lit[name] = (before, brightness())
+                assert page.evaluate("window.viewer.surfs[0].surf.setOcclusion()") is True
+
+            folded = 1 - lit["folded"][1] / lit["folded"][0]
+            inflated = 1 - lit["inflated"][1] / lit["inflated"][0]
+            flat = abs(1 - lit["flat"][1] / lit["flat"][0])
+            #the data layer over it is noise, so the darkening of the picture
+            #as a whole is a fraction of what the curvature underlay shows
+            assert folded > 0.05, "the folded surface only darkened by %.0f%%" % (100 * folded)
+            assert inflated < folded / 4, (
+                "the inflated surface darkened by %.0f%%, the folded one by %.0f%%"
+                % (100 * inflated, 100 * folded))
+            assert flat < 0.005, "the flat surface changed by %.1f%%" % (100 * flat)
+
+            #the folded surface is occluded at each depth by its own
+            #surface, the pial one at 0 and the white matter at 1: shown on
+            #the curvature alone, with the data layer out of the way
+            def depth(value):
+                page.evaluate("window.viewer.ui.set('surface.%s.depth', %s)" % (subj, value))
+                page.wait_for_timeout(1500)
+
+            def strength(value):
+                page.evaluate(
+                    "window.viewer.ui.set('surface.%s.lighting.occlusion strength', %s)"
+                    % (subj, value))
+                page.wait_for_timeout(1500)
+
+            #close up and in a larger image, so that the labels drawn over
+            #the surface, which the occlusion leaves alone, are few of its pixels
+            unfold(0)
+            page.evaluate("window.viewer.ui.set('surface.%s.opacity', 0)" % subj)
+            page.evaluate("window.viewer.ui.set('camera.radius', 250)")
+            darkening = {}
+            for value in (0, 1):
+                depth(value)
+                occlusion(False)
+                before = brightness(640)
+                occlusion(True)
+                darkening[value] = 1 - brightness(640) / before
+                assert darkening[value] > 0.05, (
+                    "at depth %d the surface only darkened by %.0f%%"
+                    % (value, 100 * darkening[value]))
+            assert abs(darkening[0] - darkening[1]) > 0.03, (
+                "the two depths darkened alike, %.0f%% and %.0f%%"
+                % (100 * darkening[0], 100 * darkening[1]))
+
+            #the strength scales what is taken out: none at 0, more at 2
+            depth(0)
+            occlusion(False)
+            unlit = brightness(640)
+            occlusion(True)
+            full = brightness(640)
+            strength(0)
+            none = brightness(640)
+            strength(2)
+            twice = brightness(640)
+            strength(1)
+            assert abs(none - unlit) < unlit * 0.02, (
+                "at no strength the surface is lit as without occlusion: %.1f against %.1f"
+                % (none, unlit))
+            assert twice < full < none, "the strength does not scale the darkening"
+            page.evaluate("window.viewer.ui.set('surface.%s.opacity', 1)" % subj)
+            page.evaluate("window.viewer.ui.set('camera.radius', 400)")
+            depth(0.5)
+
+            #data held on the vertices is lit by the other shader
+            page.evaluate("window.viewer.setData('vertex')")
+            page.wait_for_timeout(3000)
+            with_ao = brightness()
+            occlusion(False)
+            assert brightness() > with_ao * 1.04, "the vertex shader did not darken"
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

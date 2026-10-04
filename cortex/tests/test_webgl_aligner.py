@@ -1,0 +1,1123 @@
+"""Tests for the browser-based manual aligner (cortex.webgl.aligner).
+
+The pure-python tests cover the world frame the aligner works in and the
+tornado endpoints of its server. The browser test drives the aligner in
+headless Chromium and is skipped without playwright.
+"""
+
+import base64
+import io
+import json
+import os
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+import numpy as np
+import pytest
+
+import cortex
+from cortex import align, database
+from cortex.webgl import aligner
+from cortex.tests.testing_utils import has_playwright
+
+subj = "S1"
+xfmname = "fullhead"
+
+
+def _reference():
+    return database.db.get_xfm(subj, xfmname).reference_nifti
+
+
+def _open(url, data=None, timeout=30):
+    """Fetch `url`; posting `data` (a dict) as a form when given."""
+    body = None if data is None else urllib.parse.urlencode(data).encode()
+    with urllib.request.urlopen(url, data=body, timeout=timeout) as resp:
+        return resp.read()
+
+
+def _url(srv, page="", host="localhost"):
+    """The address of a page of `srv`, carrying its session token."""
+    return srv.url(page, host=host)
+
+
+def _save_token(srv):
+    """The token the page is served with, which a save has to carry back."""
+    return _page_config(_open(_url(srv, "aligner.html")).decode())["save_token"]
+
+
+def _post_save(srv, **data):
+    """Post a save the way the page does, both tokens and all."""
+    data.setdefault("save_token", _save_token(srv))
+    return json.loads(_open(_url(srv, "save"), data).decode())
+
+
+class _SaveRecorder:
+    """Stands in for db.save_xfm, so tests never write into the filestore."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, subject, name, xfm, xfmtype="magnet", reference=None):
+        self.calls.append(dict(subject=subject, name=name, xfm=np.asarray(xfm, dtype=float),
+                               xfmtype=xfmtype, reference=reference))
+
+    def wait(self, count=1, timeout=20):
+        deadline = time.monotonic() + timeout
+        while len(self.calls) < count and time.monotonic() < deadline:
+            time.sleep(0.1)
+        return len(self.calls) >= count
+
+
+@pytest.fixture
+def recorder(monkeypatch):
+    rec = _SaveRecorder()
+    monkeypatch.setattr(database.db, "save_xfm", rec)
+    return rec
+
+
+@pytest.fixture(autouse=True)
+def mask_dir(tmp_path, monkeypatch):
+    """Point the transform's mask paths at an empty directory of this test's.
+
+    Saving deletes the masks cached for a transform, and `db.get_mask` writes
+    them on demand, so without this a test would delete or create masks in the
+    bundled filestore, and a mask another test file left there would decide
+    this one's results. Only the mask paths move; every other path stays as it
+    is.
+    """
+    real_get_paths = database.db.get_paths
+    masks = tmp_path / "masks"
+    (masks / xfmname).mkdir(parents=True)
+
+    def get_paths(subject):
+        paths = dict(real_get_paths(subject))
+        # a directory per transform, as the filestore has
+        paths["masks"] = str(masks / "{xfmname}" / "mask_{type}.nii.gz")
+        return paths
+
+    monkeypatch.setattr(database.db, "get_paths", get_paths)
+    return masks / xfmname
+
+
+@pytest.fixture
+def stale_masks(mask_dir):
+    """Two masks cached for the transform, as an earlier alignment left them."""
+    names = ["thick", "thin"]
+    for name in names:
+        (mask_dir / ("mask_%s.nii.gz" % name)).write_bytes(b"a stale mask")
+    return mask_dir, names
+
+
+def _page_config(html):
+    """The config object the page is generated with."""
+    marker = 'viewer = figure.add(aligner.Aligner, "main", true, '
+    start = html.index(marker) + len(marker)
+    return json.loads(html[start:html.index(");", start)])
+
+
+@pytest.fixture
+def server(request):
+    """A running aligner server for the bundled transform, stopped at teardown."""
+    kwargs = dict(open_browser=False, display_url=False)
+    kwargs.update(getattr(request, "param", {}))
+    srv = aligner.show(subj, xfmname, **kwargs)
+    yield srv
+    srv.stop()
+
+
+# ---------------------------------------------------------------------------
+# World frame and reference loading
+# ---------------------------------------------------------------------------
+
+
+def test_reference_frame_is_scaled_signed_permutation():
+    """Each voxel axis maps to one world axis, scaled by its voxel size."""
+    import nibabel
+
+    nii = _reference()
+    world = aligner.reference_frame(nii)
+    zooms = np.asarray(nii.header.get_zooms()[:3])
+
+    assert world.shape == (4, 4)
+    assert np.allclose(world[3], [0, 0, 0, 1])
+    assert np.allclose(world[:3, 3], 0)
+    linear = world[:3, :3]
+    # one nonzero entry per row and per column, of the voxel size
+    assert np.array_equal((linear != 0).sum(axis=0), [1, 1, 1])
+    assert np.array_equal((linear != 0).sum(axis=1), [1, 1, 1])
+    assert np.allclose(np.abs(linear).sum(axis=0), zooms)
+
+    # the bundled reference is stored L, P, S: x and y flip, z does not
+    assert nibabel.aff2axcodes(nii.affine) == ("L", "P", "S")
+    assert world[0, 0] < 0 and world[1, 1] < 0 and world[2, 2] > 0
+
+
+def test_reference_frame_follows_axis_permutation():
+    """A reference stored in a different axis order gets its axes permuted
+    so that world x, y, z point right, anterior and superior."""
+    import nibabel
+
+    # voxel axes are (superior, right, anterior) with 2, 3 and 4 mm voxels
+    affine = np.array([[0, 3.0, 0, 0],
+                       [0, 0, 4.0, 0],
+                       [2.0, 0, 0, 0],
+                       [0, 0, 0, 1]])
+    nii = nibabel.Nifti1Image(np.zeros((5, 6, 7), dtype=np.float32), affine)
+    world = aligner.reference_frame(nii)
+    expected = np.array([[0, 3.0, 0, 0],
+                         [0, 0, 4.0, 0],
+                         [2.0, 0, 0, 0],
+                         [0, 0, 0, 1]])
+    assert np.allclose(world, expected)
+
+
+def test_load_reference_takes_first_volume_and_drops_nans():
+    import nibabel
+
+    data = np.random.RandomState(0).rand(4, 5, 6, 3)
+    data[0, 0, 0, 0] = np.nan
+    nii = nibabel.Nifti1Image(data, np.eye(4))
+    epi = aligner.load_reference(nii)
+    assert epi.shape == (4, 5, 6)
+    assert epi.dtype == np.float32
+    assert epi[0, 0, 0] == 0
+    assert np.allclose(epi[1:], data[1:, :, :, 0])
+
+
+# ---------------------------------------------------------------------------
+# Argument checks
+# ---------------------------------------------------------------------------
+
+
+def test_new_transform_requires_reference():
+    with pytest.raises(ValueError, match="does not exist"):
+        aligner.show(subj, "aligner_test_missing_xfm", open_browser=False, display_url=False)
+
+
+def test_existing_transform_refuses_new_reference():
+    with pytest.raises(ValueError, match="Refusing to overwrite"):
+        aligner.show(subj, xfmname, reference=_reference().get_filename(),
+                     open_browser=False, display_url=False)
+
+
+def test_aligner_opens_with_cached_masks(stale_masks):
+    """Cached masks no longer keep a transform from being edited; the page
+    is told about them so it can warn that saving deletes them."""
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        config = _page_config(_open(_url(srv)).decode())
+    finally:
+        srv.stop()
+    assert config["view_only"] is False
+    assert config["masks"] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+def test_align_entry_point_names_every_option(monkeypatch):
+    """webgl_manual spells out every option the aligner takes, rather than
+    forwarding an opaque **kwargs, and passes them all on."""
+    import inspect
+
+    entry = inspect.signature(align.webgl_manual).parameters
+    shown = inspect.signature(aligner.show).parameters
+    assert not any(p.kind is inspect.Parameter.VAR_KEYWORD for p in entry.values())
+    assert list(entry) == list(shown), "the entry point and the aligner disagree"
+    for name, param in shown.items():
+        assert entry[name].default == param.default, "%s defaults differ" % name
+
+    seen = {}
+
+    def fake_show(subject, name, **kwargs):
+        seen.update(subject=subject, name=name, kwargs=kwargs)
+        return "handle"
+
+    monkeypatch.setattr(aligner, "show", fake_show)
+    assert align.webgl_manual(subj, xfmname, view_only=True, port=1234) == "handle"
+    assert seen["subject"] == subj and seen["name"] == xfmname
+    assert seen["kwargs"]["view_only"] is True and seen["kwargs"]["port"] == 1234
+    # everything after subject and xfmname is passed by name
+    assert set(seen["kwargs"]) == set(list(shown)[2:])
+
+
+# ---------------------------------------------------------------------------
+# Stale masks
+# ---------------------------------------------------------------------------
+
+
+def test_cached_masks_are_listed_and_cleared(stale_masks):
+    mask_dir, names = stale_masks
+    paths = aligner.cached_masks(subj, xfmname)
+    assert [os.path.basename(p) for p in paths] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+    # clear_masks reports the names db.get_mask takes, not the filenames
+    assert aligner.clear_masks(subj, xfmname) == names
+    assert aligner.cached_masks(subj, xfmname) == []
+    assert sorted(mask_dir.glob("mask_*")) == []
+
+
+def test_clearing_a_transform_without_masks_does_nothing(mask_dir):
+    assert aligner.cached_masks(subj, xfmname) == []
+    assert aligner.clear_masks(subj, xfmname) == []
+
+
+def test_save_deletes_the_stale_masks_first(stale_masks):
+    """Saving an edited alignment deletes the masks cut with the old one.
+
+    They have to be gone before the transform is written: db.save_xfm
+    refuses to write over a transform that still has masks.
+    """
+    mask_dir, names = stale_masks
+    seen = {}
+
+    def save_xfm(subject, name, xfm, xfmtype="magnet", reference=None):
+        seen["masks"] = sorted(p.name for p in mask_dir.glob("mask_*"))
+        seen["xfm"] = np.asarray(xfm, dtype=float)
+        seen["xfmtype"] = xfmtype
+
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    xfm = np.arange(16, dtype=float).reshape(4, 4)
+    try:
+        token = _save_token(srv)
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(database.db, "save_xfm", save_xfm)
+            resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), save_token=token)
+    finally:
+        srv.stop()
+
+    assert resp["status"] == "ok"
+    assert resp["masks_deleted"] == names
+    assert "deleted 2 stale masks (thick, thin)" in resp["message"]
+    assert seen["masks"] == [], "the masks were still there when the transform was written"
+    assert seen["xfmtype"] == "coord"
+    assert np.allclose(seen["xfm"], xfm)
+    assert sorted(mask_dir.glob("mask_*")) == []
+
+
+@pytest.mark.parametrize("name", ["other-xfm", "other_xfm", "Other.2", "x"])
+def test_usable_transform_names(name):
+    assert aligner.check_xfm_name(name) == name
+
+
+@pytest.mark.parametrize("name", ["", " ", "../escape", "a/b", "-leading", ".hidden", "with space", None])
+def test_unusable_transform_names(name):
+    with pytest.raises(ValueError, match="not a usable transform name"):
+        aligner.check_xfm_name(name)
+
+
+def test_save_under_a_new_name_leaves_the_loaded_transform_alone(stale_masks, recorder):
+    """The name field saves the alignment as another transform, so the masks
+    of the one that was loaded are not touched."""
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    xfm = np.arange(16, dtype=float).reshape(4, 4)
+    try:
+        resp = _post_save(srv, xfm=json.dumps(xfm.tolist()), name="aligner-copy")
+    finally:
+        srv.stop()
+
+    assert resp["status"] == "ok"
+    assert resp["name"] == "aligner-copy"
+    assert resp["masks_deleted"] == []
+    assert len(recorder.calls) == 1
+    call = recorder.calls[0]
+    assert call["name"] == "aligner-copy"
+    assert call["xfmtype"] == "coord"
+    assert call["reference"] is not None, "a new transform needs its reference copied"
+    assert np.allclose(call["xfm"], xfm)
+    # the masks belong to the transform that was loaded, which was not written
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+def test_save_refuses_a_name_that_is_not_one(stale_masks, recorder):
+    """A name that would escape the transform directory never reaches the
+    filesystem, and nothing is saved or deleted."""
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        resp = _post_save(srv, xfm=json.dumps(np.eye(4).tolist()), name="../elsewhere")
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert "not a usable transform name" in resp["message"]
+    assert recorder.calls == []
+    assert len(sorted(mask_dir.glob("mask_*"))) == 2
+
+
+def test_a_refused_save_keeps_the_masks(stale_masks):
+    """A save that does not go through leaves the masks alone."""
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    try:
+        resp = _post_save(srv, xfm=json.dumps([1, 2, 3]))
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+def test_view_only_keeps_the_masks(stale_masks):
+    mask_dir, names = stale_masks
+    srv = aligner.show(subj, xfmname, view_only=True, open_browser=False, display_url=False)
+    try:
+        resp = _post_save(srv, xfm=json.dumps(np.eye(4).tolist()))
+    finally:
+        srv.stop()
+    assert resp["status"] == "error"
+    assert [p.name for p in sorted(mask_dir.glob("mask_*"))] == ["mask_thick.nii.gz", "mask_thin.nii.gz"]
+
+
+# ---------------------------------------------------------------------------
+# Server endpoints (no browser)
+# ---------------------------------------------------------------------------
+
+
+def test_page_carries_config(server):
+    from PIL import Image
+
+    html = _open(_url(server, "aligner.html")).decode()
+    assert "aligner.Aligner" in html
+    config = _page_config(html)
+
+    xfm = database.db.get_xfm(subj, xfmname)
+    nii = xfm.reference_nifti
+    assert config["subject"] == subj
+    assert config["xfmname"] == xfmname
+    assert config["view_only"] is False
+    assert config["masks"] == []
+    assert np.allclose(config["xfm"], xfm.xfm)
+    assert np.allclose(config["world"], aligner.reference_frame(nii))
+    assert config["volume"]["shape"] == list(nii.shape[::-1])
+    assert config["cmap"] == "gray"
+    assert config["mesh_color"] == "#ffffff"
+    assert config["vmin"] < config["vmax"]
+
+    # the reference is served as the float mosaic the viewer expects
+    png = _open(_url(server, "data/reference.png"))
+    image = Image.open(io.BytesIO(png))
+    nwide, ntall = config["volume"]["mosaic"]
+    assert image.size == (nwide * (nii.shape[0] + 1) + 1, ntall * (nii.shape[1] + 1) + 1)
+
+    # the surfaces come from the viewer's CTM pack
+    ctm = json.loads(_open(_url(server, "ctm/%s/" % subj)).decode())
+    assert len(ctm["offsets"]) == 2
+    assert len(_open(_url(server, "ctm/%s/%s" % (subj, ctm["data"])))) > 0
+
+
+def test_save_endpoint_stores_coord_transform(server, recorder):
+    xfm = np.arange(16, dtype=float).reshape(4, 4)
+    resp = _post_save(server, xfm=json.dumps(xfm.tolist()))
+    assert resp["status"] == "ok"
+    assert len(recorder.calls) == 1
+    call = recorder.calls[0]
+    assert call["subject"] == subj
+    assert call["name"] == xfmname
+    assert call["xfmtype"] == "coord"
+    assert np.allclose(call["xfm"], xfm)
+
+    resp = _post_save(server, xfm=json.dumps([1, 2, 3]))
+    assert resp["status"] == "error"
+    assert len(recorder.calls) == 1
+
+
+@pytest.mark.parametrize("save_token", [None, "", "0" * 32])
+def test_save_needs_the_token_of_the_page(server, recorder, save_token):
+    """The save endpoint writes to the filestore, so it only answers the page
+    it served: a post from a site the browser is also on carries the session
+    cookie but no token of the page.
+    """
+    data = dict(xfm=json.dumps(np.eye(4).tolist()))
+    if save_token is not None:
+        data["save_token"] = save_token
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open(_url(server, "save"), data)
+    assert caught.value.code == 403
+    assert "not the aligner's own page" in json.loads(caught.value.read().decode())["message"]
+    assert recorder.calls == []
+
+    # and the page's own token is taken
+    assert _post_save(server, xfm=json.dumps(np.eye(4).tolist()))["status"] == "ok"
+    assert len(recorder.calls) == 1
+
+
+@pytest.mark.parametrize("page", ["aligner.html", "", "ctm/%s/" % subj, "data/reference.png"])
+def test_every_page_needs_the_session_token(server, page):
+    """Nothing is served to a request that does not carry the token from the
+    address the aligner was opened at."""
+    bare = "http://localhost:%d/%s" % (server.port, page)
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open(bare)
+    assert caught.value.code == 403
+
+    with pytest.raises(urllib.error.HTTPError) as caught:
+        _open(bare + "?token=" + "0" * 32)
+    assert caught.value.code == 403
+
+    assert len(_open(_url(server, page))) > 0
+
+
+def test_the_token_comes_back_as_a_cookie(server):
+    """The page hands the token over once and is given a cookie for it, so
+    that the addresses it asks for afterwards do not have to carry it."""
+    import http.cookiejar
+
+    from cortex.webgl import serve
+
+    jar = http.cookiejar.CookieJar()
+    browser = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    with browser.open(_url(server, "aligner.html"), timeout=30) as resp:
+        assert "aligner.Aligner" in resp.read().decode()
+    cookie = {c.name: c.value for c in jar}
+    assert cookie == {serve.token_cookie(server.port): server.token}
+
+    # the cookie is enough from here on
+    with browser.open("http://localhost:%d/ctm/%s/" % (server.port, subj), timeout=30) as resp:
+        assert len(resp.read()) > 0
+
+
+def test_a_server_without_a_token_answers_anything(recorder):
+    """The token can be turned off, for a script that talks to the server
+    itself rather than through the page."""
+    srv = aligner.show(subj, xfmname, open_browser=False, display_url=False, token="")
+    try:
+        assert srv.token == ""
+        assert srv.url("aligner.html") == "http://%s:%d/aligner.html" % (srv.host, srv.port)
+        assert "aligner.Aligner" in _open(
+            "http://localhost:%d/aligner.html" % srv.port).decode()
+    finally:
+        srv.stop()
+
+
+def test_server_answers_for_this_computer_only(server):
+    """The page opens as localhost, as 127.0.0.1 and under the name of the
+    machine, and the server listens for nothing else."""
+    import socket
+
+    from cortex.webgl import serve
+
+    names = [serve.LOOPBACK, "127.0.0.1", socket.gethostname()]
+    resolved = set()
+    for name in names:
+        try:
+            resolved.update(info[4][0] for info in
+                            socket.getaddrinfo(name, None, type=socket.SOCK_STREAM))
+        except socket.gaierror:
+            continue
+
+    bound = [sock.getsockname()[0] for sock in server._sockets]
+    assert len(bound) > 0
+    assert set(bound) <= resolved, "listening on %s" % sorted(set(bound) - resolved)
+    assert len({sock.getsockname()[1] for sock in server._sockets}) == 1, "one port for all of them"
+
+    for name in names:
+        try:
+            socket.getaddrinfo(name, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            continue  # a machine whose own name does not resolve
+        html = _open(_url(server, "aligner.html", host=name)).decode()
+        assert "aligner.Aligner" in html, "the page did not open as %s" % name
+
+
+def test_the_link_names_the_machine(server):
+    """The link names this computer, which is the name a port forward from
+    another machine is set up under, and falls back to the loopback name when
+    the server is not on an address that name leads to."""
+    import socket
+
+    from cortex.webgl import serve
+
+    assert server.host == socket.gethostname()
+    assert "aligner.Aligner" in _open(_url(server, "aligner.html", host=server.host)).decode()
+
+    try:
+        elsewhere = serve.WebApp([], 0, address="127.0.0.2")
+    except OSError:
+        return  # the spare loopback address is not routed here
+    try:
+        assert elsewhere.host == serve.LOOPBACK
+    finally:
+        elsewhere.stop()
+
+
+def test_every_name_of_the_computer_gets_a_socket_on_one_port():
+    """Each name is listened for, one that another name already covers is
+    bound once, and one that does not resolve is passed over."""
+    import socket
+
+    from cortex.webgl import serve
+
+    # 127.0.0.2 stands in for a machine whose hostname is not its loopback
+    # address, which is where two of these names would be the same one
+    spare = "127.0.0.2"
+    probe = socket.socket()
+    try:
+        probe.bind((spare, 0))
+        usable = True
+    except OSError:
+        usable = False  # the spare loopback address is not routed here
+    finally:
+        probe.close()
+
+    sockets = serve.bind_local_sockets(
+        0, ["localhost", "127.0.0.1", spare, "no-such-host.invalid"])
+    try:
+        bound = [sock.getsockname()[0] for sock in sockets]
+        assert bound.count("127.0.0.1") == 1, "the same address was bound twice"
+        assert len({sock.getsockname()[1] for sock in sockets}) == 1, "one port for all of them"
+        if usable:
+            assert spare in bound
+    finally:
+        for sock in sockets:
+            sock.close()
+
+    with pytest.raises(OSError, match="no address resolved"):
+        serve.bind_local_sockets(0, ["no-such-host.invalid"])
+
+
+@pytest.mark.parametrize("server", [dict(view_only=True)], indirect=True)
+def test_view_only_never_saves(server, recorder):
+    resp = _post_save(server, xfm=json.dumps(np.eye(4).tolist()))
+    assert resp["status"] == "error"
+    assert "view only" in resp["message"]
+    assert recorder.calls == []
+    assert '"view_only": true' in _open(_url(server)).decode()
+
+
+# ---------------------------------------------------------------------------
+# Headless browser
+# ---------------------------------------------------------------------------
+
+
+def _quadrants(png):
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(np.uint32)
+    h, w = rgb.shape[:2]
+    packed = (rgb[..., 0] << 16) | (rgb[..., 1] << 8) | rgb[..., 2]
+    return [packed[:h // 2, :w // 2], packed[h // 2:, :w // 2],
+            packed[:h // 2, w // 2:], packed[h // 2:, w // 2:]]
+
+
+def _translation(vector):
+    mat = np.eye(4)
+    mat[:3, 3] = vector
+    return mat
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_aligner_in_headless_browser(recorder):
+    """The aligner loads, edits the transform in world millimeters and saves it."""
+    from cortex.export.headless import _PlaywrightThread, _wait_for_viewer_loaded, filter_webgl_failures
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    pw = _PlaywrightThread()
+    handle = None
+    try:
+        pw.start(_url(server, "aligner.html"), timeout=120)
+        handle = server.get_client()
+        # the handle skips replies to earlier requests by draining the
+        # server's queue, which it can only do with the server in hand
+        assert vars(handle).get("server") is server
+        _wait_for_viewer_loaded(handle, timeout=240)
+        # software rendering is slow: the first frame follows the load
+        assert handle.wait_for_frame(timeout=120) >= 1
+
+        nii = _reference()
+        world = aligner.reference_frame(nii)
+        coord0 = np.asarray(database.db.get_xfm(subj, xfmname).xfm)
+        assert np.allclose(handle.get_xfm(), coord0, atol=1e-3)
+
+        # a translation in world millimeters is applied ahead of the transform
+        handle.translate([2.0, -3.0, 1.5])
+        coord1 = handle.get_xfm()
+        expected = np.linalg.inv(world) @ _translation([2.0, -3.0, 1.5]) @ world @ coord0
+        assert np.allclose(coord1, expected, atol=1e-3)
+
+        # a rotation about the cursor keeps the cursor fixed
+        cursor_voxel = np.asarray(handle._call("getCursor"), dtype=float)
+        cursor_world = (world @ np.append(cursor_voxel, 1))[:3]
+        handle.rotate([0, 0, 1], 10)
+        coord2 = handle.get_xfm()
+        anat = np.linalg.inv(world @ coord2) @ np.append(cursor_world, 1)
+        assert np.allclose((world @ coord1 @ anat)[:3], cursor_world, atol=1e-2)
+        assert not np.allclose(coord2, coord1, atol=1e-4)
+
+        handle.undo()
+        assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
+
+        # every view drew something, and the fourth panel differs between the
+        # two four-panel displays
+        # (snapshot waits for the frame that shows the last change)
+        outline = handle.snapshot()
+        for quadrant in _quadrants(outline):
+            assert len(np.unique(quadrant)) > 10
+        handle.set_control("display", aligner.DISPLAYS["brain"])
+        projected = handle.snapshot()
+        for quadrant in _quadrants(projected):
+            assert len(np.unique(quadrant)) > 10
+        assert outline != projected
+
+        # a colormap change and a new mesh color reach the shaders
+        handle.set_control("display", aligner.DISPLAYS["slices"])
+        handle.set_control("image.colormap", "hot")
+        handle.set_control("mesh.color", "#ff0000")
+        recolored = handle.snapshot()
+        assert recolored != outline
+        assert handle.get_control("mesh.color") == "#ff0000"
+        assert handle.get_control("image.colormap") == "hot"
+        assert handle.get_control("display") == aligner.DISPLAYS["slices"]
+
+        # the history holds one entry per edit, and going back to one puts
+        # that alignment back
+        history = handle._call("getHistory")
+        assert [entry["kind"] for entry in history] == ["loaded", "translate", "rotate"]
+        # each edit is named in the terms it was made in
+        assert history[1]["label"] == "2.00 mm right, 3.00 mm posterior, 1.50 mm superior"
+        assert history[2]["label"] == "10.00° CW in axial"
+        handle._call("selectHistory", 0)
+        assert np.allclose(handle.get_xfm(), coord0, atol=1e-3)
+        handle._call("selectHistory", 1)
+        assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
+        # and an edit made from there drops the entries that followed
+        handle.translate([1.0, 0.0, 0.0])
+        assert [entry["kind"] for entry in handle._call("getHistory")] == [
+            "loaded", "translate", "translate"]
+        handle.undo()
+        assert np.allclose(handle.get_xfm(), coord1, atol=1e-3)
+
+        # saving stores the current transform as a coord transform, and says
+        # so only once the transform has been written
+        message = handle.save()
+        assert len(recorder.calls) == 1, "save() came back before the save landed"
+        assert xfmname in message
+        call = recorder.calls[0]
+        assert call["subject"] == subj and call["name"] == xfmname
+        assert call["xfmtype"] == "coord"
+        assert np.allclose(call["xfm"], coord1, atol=1e-3)
+        assert not handle._call("isDirty"), "the saved alignment still counts as edited"
+
+        errors = pw.browser_errors
+        assert not [e for e in errors if "[pageerror]" in e], errors
+        assert not filter_webgl_failures(errors), errors
+    finally:
+        pw.shutdown()
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_displays_show_the_surface_and_follow_the_transform():
+    """`display` puts the surface in the corner or over the whole window,
+    what it draws there follows the transform as it is edited, and the
+    surface of the data view inflates and flattens."""
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def state():
+                return page.evaluate("""() => {
+                    var v = window.viewer;
+                    return {
+                        display: v.setDisplay(),
+                        rects: v.viewlist.map(w => [w.name, w.rect.width, w.rect.height]),
+                        modes: v.viewlist.map(w => [w.name, v._viewMode(w) == 0 ? "outline" : "surface"]),
+                        canvas: [v.width, v.height],
+                        shown: Array.from(document.querySelectorAll('.aligner-view'))
+                            .filter(e => getComputedStyle(e).display != 'none').map(e => e.id),
+                    };
+                }""")
+
+            def redraw(script):
+                """Run `script` and wait for the frame that shows its effect.
+
+                The page draws on demand, so the frame count has to be read
+                before the change: read afterwards, it might already have
+                been drawn and the wait would never end.
+                """
+                frames = page.evaluate("window.viewer.nframes")
+                page.evaluate(script)
+                page.wait_for_function("window.viewer.nframes > %d" % frames, timeout=120000)
+
+            # the three displays the one control offers, and no other
+            options = page.evaluate(
+                "Array.from(window.viewer.ui._controls.display.__select.options).map(o => o.value)")
+            assert options == [aligner.DISPLAYS[k] for k in ("slices", "brain", "surface")]
+
+            start = state()
+            assert start["display"] == aligner.DISPLAYS["slices"]
+            assert len(start["shown"]) == 4
+            assert all(w > 0 for _, w, _ in start["rects"])
+            assert all(m == "outline" for _, m in start["modes"]), "every view outlines the mesh"
+
+            # the surface in the corner, with the slices still showing slices
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["brain"])
+            split = state()
+            assert split["display"] == aligner.DISPLAYS["brain"]
+            assert len(split["shown"]) == 4, "the slice views stay"
+            assert dict(split["modes"])["3d"] == "surface", "the corner paints the data"
+            assert all(m == "outline" for name, m in split["modes"] if name != "3d")
+
+            # what the corner draws follows an edit to the transform, unsaved
+            before = page.locator("#view-3d").screenshot()
+            redraw("window.viewer.translate([0, 0, 6])")
+            page.wait_for_timeout(300)
+            assert page.locator("#view-3d").screenshot() != before, (
+                "the surface did not redraw when the transform moved")
+            assert page.evaluate("window.viewer.isDirty()")
+            redraw("window.viewer.undo()")
+
+            # the corner unfolds too, by the keys the viewer uses and by the
+            # control in the panel, which are the same ones the data view has
+            def press(key):
+                frames = page.evaluate("window.viewer.nframes")
+                page.keyboard.press(key)
+                page.wait_for_function("window.viewer.nframes > %d" % frames, timeout=120000)
+
+            folded = page.locator("#view-3d").screenshot()
+            press("i")
+            assert page.evaluate("window.viewer.setMix()") == 0.5, "i did not inflate the surface"
+            inflated = page.locator("#view-3d").screenshot()
+            assert inflated != folded, "the corner did not inflate"
+            press("f")
+            assert page.evaluate("window.viewer._flatness()") == 1, "f did not flatten the surface"
+            assert page.locator("#view-3d").screenshot() != inflated, "the corner did not flatten"
+            press("r")
+            assert page.evaluate("window.viewer.setMix()") == 0, "r did not fold the surface back"
+
+            # the depth of the surface between pial and white matter is the
+            # panel's own control, and moves the one in the corner
+            redraw("window.viewer.ui.set('mesh.depth', 1)")
+            page.wait_for_timeout(300)
+            assert page.locator("#view-3d").screenshot() != folded, (
+                "the corner did not follow the depth control")
+            redraw("window.viewer.ui.set('mesh.depth', 0.5)")
+
+            # the unfolding carries over to the data view, which draws the
+            # same surface
+            redraw("window.viewer.ui.set('mesh.unfold', 0.5)")
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["surface"])
+            assert page.evaluate("window.viewer.setMix()") == 0.5, (
+                "the data view did not open on the unfolding the corner was left at")
+            assert page.evaluate("window.viewer.ui.get('mesh.unfold')") == 0.5
+            redraw("window.viewer.ui.set('mesh.unfold', 0)")
+
+            # and the surface on its own, over the whole window
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["surface"])
+            single = state()
+            assert single["display"] == aligner.DISPLAYS["surface"]
+            assert single["shown"] == ["view-3d"], "only the surface is left"
+            assert dict((n, (w, h)) for n, w, h in single["rects"])["3d"] == tuple(single["canvas"])
+            assert all(w == 0 for n, w, _ in single["rects"] if n != "3d")
+            assert all(m == "surface" for _, m in single["modes"]), "the data view paints the data"
+
+            def filled():
+                """Fraction of the window the surface covers."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#aligner-canvas');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var lit = 0;
+                    for (var i = 0; i < d.length; i += 4) { if (d[i] + d[i+1] + d[i+2] > 45) lit++; }
+                    return lit / (s.width * s.height);
+                }""")
+
+            # the surface is framed for the window rather than left as it was
+            # drawn in a quarter of it
+            assert filled() > 0.2, "the surface covers only %.2f of the window" % filled()
+
+            # it inflates and flattens, as the viewer's does: the flatmap
+            # takes the whole window and drops the medial wall
+            folded = page.locator("#view-3d").screenshot()
+            redraw("window.viewer.ui.set('mesh.unfold', 0.5)")
+            inflated = page.locator("#view-3d").screenshot()
+            assert inflated != folded, "the surface did not inflate"
+            assert page.evaluate("window.viewer._flatness()") == 0
+            assert not page.evaluate("window.viewer._culled"), "the mesh is whole until it flattens"
+
+            redraw("window.viewer.ui.set('mesh.unfold', 1)")
+            assert page.evaluate("window.viewer._flatness()") == 1
+            assert page.evaluate("window.viewer._culled"), "the medial wall is still drawn"
+            assert page.evaluate("window.viewer.setPivot()") == 180
+            assert page.locator("#view-3d").screenshot() != inflated, "the surface did not flatten"
+            assert filled() > 0.1, "the flatmap covers only %.2f of the window" % filled()
+
+            # the surfaces of the other displays get the whole mesh back
+            redraw("window.viewer.ui.set('display', %r)" % aligner.DISPLAYS["slices"])
+            assert not page.evaluate("window.viewer._culled")
+
+            redraw("window.viewer.toggleDisplay()")
+            assert state()["display"] == aligner.DISPLAYS["brain"], "the toggle steps on"
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_history_panel_lists_the_edits_and_goes_back_to_one():
+    """The panel keeps a row per edit since the page opened, newest first,
+    each named in the terms the edit was made in, and clicking one puts that
+    alignment back. Closing the page with an edit on it asks the browser to
+    confirm, and a saved one does not.
+    """
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def rows():
+                return page.evaluate("""() => Array.from(
+                    document.querySelectorAll('#aligner-history-list li')).map(li => [
+                        li.firstChild.textContent, li.lastChild.textContent,
+                        li.className == 'current'])""")
+
+            def xfm():
+                return np.asarray(page.evaluate("window.viewer.getXfm()"), dtype=float)
+
+            # the page opens on the alignment it was loaded with, and nothing else
+            assert rows() == [["loaded", "", True]]
+            loaded = xfm()
+
+            page.evaluate("window.viewer.translate([4, 0, 0])")
+            page.evaluate("window.viewer.rotate([0, 0, 1], 5)")
+            listed = rows()
+            assert [row[0] for row in listed] == ["rotate", "translate", "loaded"], (
+                "the newest edit is not at the top")
+            # each edit is named the way it was made: along the anatomical
+            # axes, or in the plane of the view it turned in
+            assert listed[1][1] == "4.00 mm right"
+            assert listed[0][1] == "5.00° CW in axial"
+            assert [row[2] for row in listed] == [True, False, False], "the newest edit is marked"
+            moved = xfm()
+
+            # clicking a row puts that alignment back
+            page.click("#aligner-history-list li:last-child")
+            assert np.allclose(xfm(), loaded, atol=1e-3)
+            assert [row[2] for row in rows()] == [False, False, True]
+            page.click("#aligner-history-list li:first-child")
+            assert np.allclose(xfm(), moved, atol=1e-3)
+
+            # a drag over a view is one entry, however many frames it takes
+            page.click("#aligner-history-list li:last-child")
+            box = page.locator("#view-y").bounding_box()
+            page.mouse.move(box["x"] + 100, box["y"] + 100)
+            page.mouse.down(button="right")
+            for step in range(1, 5):
+                page.mouse.move(box["x"] + 100 + 10 * step, box["y"] + 100)
+            page.mouse.up(button="right")
+            dragged = rows()
+            assert [row[0] for row in dragged] == ["translate", "loaded"], (
+                "a drag left more than one entry, or dropped the ones it replaced")
+            # the coronal view is seen from the front, so dragging right on
+            # its screen moves the surfaces to the subject's left
+            assert dragged[0][1].endswith("mm left"), dragged[0][1]
+
+            # a right click that moved nothing leaves no entry behind
+            page.mouse.down(button="right")
+            page.mouse.up(button="right")
+            assert len(rows()) == 2, "a click that moved nothing left an entry"
+
+            # a history longer than its list scrolls inside it, leaving the
+            # panel where it stands
+            panel = "document.querySelector('#aligner-panel').scrollTop"
+            where = page.evaluate(panel)
+            for step in range(14):
+                page.evaluate("window.viewer.translate([1, 0, 0])")
+            assert page.evaluate(panel) == where, "the panel scrolled away from the controls"
+            assert page.evaluate("""() => {
+                var list = document.querySelector('#aligner-history-list');
+                var row = list.querySelector('li.current');
+                var r = row.getBoundingClientRect(), l = list.getBoundingClientRect();
+                return r.top >= l.top - 1 && r.bottom <= l.bottom + 1;
+            }"""), "the entry being edited scrolled out of sight"
+
+            # the browser is asked to confirm a close that would lose the edit
+            def asks():
+                return page.evaluate("""() => {
+                    var event = new Event('beforeunload', {cancelable: true});
+                    window.dispatchEvent(event);
+                    return event.defaultPrevented;
+                }""")
+
+            assert page.evaluate("window.viewer.isDirty()")
+            assert asks(), "closing an edited page asked nothing"
+            page.evaluate("window.viewer.selectHistory(0)")
+            assert not page.evaluate("window.viewer.isDirty()")
+            assert not asks(), "closing a page back at the saved alignment asked"
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_keyboard_moves_the_mesh_and_colormaps_have_previews():
+    """WASD moves the mesh like the arrows do, and every colormap in the
+    dropdown is drawn with a strip of itself.
+
+    Drives the page directly rather than through the websocket handle,
+    because both are about what the browser does with real events.
+    """
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            def xfm():
+                return np.asarray(page.evaluate("window.viewer.getXfm()"), dtype=float)
+
+            def press(key, shift=False):
+                """Press `key` over the coronal view and return the transform
+                it produced, leaving the mesh where it was."""
+                page.hover("#view-y")
+                page.keyboard.press(("Shift+" if shift else "") + key)
+                moved = xfm()
+                page.evaluate("window.viewer.undo()")
+                return moved
+
+            page.evaluate("window.viewer.setTranslateStep(2)")
+            start = xfm()
+            for key, arrow in [("w", "ArrowUp"), ("a", "ArrowLeft"),
+                               ("s", "ArrowDown"), ("d", "ArrowRight")]:
+                by_letter, by_arrow = press(key), press(arrow)
+                assert not np.allclose(by_letter, start), "%s did not move the mesh" % key
+                assert np.allclose(by_letter, by_arrow), "%s does not match %s" % (key, arrow)
+
+            # shift is the fine step, and shift+w reaches the handler as "W"
+            full = press("w")[:3, 3] - start[:3, 3]
+            fine = press("w", shift=True)[:3, 3] - start[:3, 3]
+            assert np.linalg.norm(full) == pytest.approx(10 * np.linalg.norm(fine), rel=0.01)
+
+            # a key pressed while typing in a control must not move the mesh
+            page.evaluate("() => document.querySelector('#figure_ui input').focus()")
+            page.keyboard.press("w")
+            assert np.allclose(xfm(), start), "typing in a control moved the mesh"
+            page.evaluate("() => document.activeElement.blur()")
+
+            # every colormap in the dropdown carries a strip of itself
+            before = page.evaluate(
+                "document.querySelector('#figure_ui').getBoundingClientRect().left")
+            page.click(".select2-selection")
+            page.wait_for_selector(".select2-results__option .aligner-cmap img", timeout=30000)
+
+            # the open list stays within the window: one that reaches past the
+            # right edge scrolls the page sideways, taking the views with it
+            assert page.evaluate(
+                "document.querySelector('#figure_ui').getBoundingClientRect().left"
+            ) == before, "opening the colormap list moved the page"
+            assert page.evaluate("document.documentElement.scrollLeft") == 0
+            box = page.evaluate("""() => {
+                var r = document.querySelector('.select2-dropdown').getBoundingClientRect();
+                return [r.left, r.right];
+            }""")
+            assert box[0] >= 0 and box[1] <= page.evaluate("window.innerWidth")
+
+            previews = page.evaluate("""() => {
+                var rows = document.querySelectorAll('.select2-results__option');
+                var imgs = document.querySelectorAll('.select2-results__option .aligner-cmap img');
+                var drawn = 0;
+                imgs.forEach(function(i) { if (i.complete && i.naturalWidth > 0) drawn++; });
+                return {rows: rows.length, imgs: imgs.length, drawn: drawn,
+                        options: window.viewer._cmapSelect.find('option').length};
+            }""")
+            assert previews["options"] > 100, "the dropdown lists few colormaps"
+            assert previews["imgs"] == previews["rows"], "a colormap is shown without its strip"
+            assert previews["drawn"] == previews["imgs"], "a colormap strip did not load"
+
+            # picking one from the list reaches the shader and the menu
+            page.fill(".select2-search__field", "hot")
+            page.click(".select2-results__option--highlighted")
+            page.wait_for_timeout(500)
+            picked = page.evaluate("""() => ({
+                name: window.viewer.setColormap(),
+                menu: window.viewer.ui.get('image.colormap'),
+                shader: window.viewer.volUniforms.colormap.value === window.viewer.colormaps[window.viewer.setColormap()],
+            })""")
+            assert picked["name"] != "gray" and picked["name"] == picked["menu"]
+            assert picked["shader"], "the picked colormap did not reach the shader"
+
+            # and a colormap set from the menu shows up in the closed control
+            page.evaluate("window.viewer.ui.set('image.colormap', 'viridis')")
+            page.wait_for_timeout(500)
+            assert page.evaluate(
+                "() => document.querySelector('.select2-selection__rendered .aligner-cmap-name').textContent"
+            ) == "viridis"
+            browser.close()
+    finally:
+        server.stop()
+
+
+@pytest.mark.skipif(not has_playwright, reason="playwright and chromium are required")
+@pytest.mark.timeout(400)
+def test_the_hue_bar_of_the_color_picker_is_within_reach():
+    """The mesh color picker shows only while the pointer is over it, so its
+    hue bar has to sit beside the saturation square and inside the picker.
+    Laid out below it, the pointer leaves the picker on the way and the
+    picker closes before the bar can be used."""
+    from playwright.sync_api import sync_playwright
+
+    server = aligner.show(subj, xfmname, open_browser=False, display_url=False)
+    server.disconnect_on_close = False
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            page.goto(_url(server, "aligner.html"), wait_until="load", timeout=120000)
+            page.wait_for_function("window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_function("window.viewer.nframes > 0", timeout=120000)
+
+            page.hover("#figure_ui .cr.color .c")
+            boxes = page.evaluate("""() => {
+                var picker = document.querySelector('#figure_ui .selector');
+                var box = function(el) {
+                    var r = el.getBoundingClientRect();
+                    return {left: r.left, right: r.right, top: r.top, bottom: r.bottom};
+                };
+                return {picker: box(picker),
+                        square: box(picker.querySelector('.saturation-field')),
+                        hue: box(picker.querySelector('.hue-field'))};
+            }""")
+            picker, square, hue = boxes["picker"], boxes["square"], boxes["hue"]
+            assert hue["left"] >= square["right"] - 1, "the hue bar is not beside the square"
+            assert hue["top"] < square["bottom"], "the hue bar is below the square"
+            assert hue["right"] <= picker["right"] + 1 and hue["bottom"] <= picker["bottom"] + 1, (
+                "the hue bar hangs out of the picker")
+
+            # and the picker is still there once the pointer is on the bar
+            page.mouse.move((hue["left"] + hue["right"]) / 2, (hue["top"] + hue["bottom"]) / 2)
+            page.wait_for_timeout(200)
+            assert page.evaluate(
+                "() => getComputedStyle(document.querySelector('#figure_ui .selector')).display"
+            ) != "none", "the picker closed on the way to the hue bar"
+            browser.close()
+    finally:
+        server.stop()

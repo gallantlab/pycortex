@@ -183,9 +183,55 @@ var Shaderlib = (function() {
             }
             glsl += [ "",
             "}",
+            //The ambient occlusion of a vertex, mixed between the surfaces as
+            //its position is: each surface's rides in the w of its position,
+            //the folded surface's in what the caller hands in.
+            "float mixfunc_occlusion(float baseocc) {",
+                "float smix = surfmix * "+(morphs-1)+".;",
+                "float factor = clamp(1. - smix, 0., 1.);",
+                "float occ = factor * baseocc;",
+            ].join("\n");
+            for (var i = 0; i < morphs-1; i++) {
+                glsl += "factor = clamp( 1. - abs(smix - "+(i+1)+".) , 0., 1.);\n";
+                glsl += "occ += factor * mixSurfs"+i+".w;\n";
+            }
+            glsl += [ "",
+                "return occ;",
+            "}",
             ].join("\n");
             return glsl;
         },
+
+        //The occlusion of this vertex on the folded surface. It rides in a
+        //spare component of an attribute that is already here, since these
+        //shaders use every one of the 16 attribute slots WebGL guarantees. A
+        //subject with a white matter surface has two values, one on the pial
+        //surface and one on the white matter, mixed by the depth the sheet
+        //is drawn at as its position is; they ride as two bytes in the w of
+        //the white matter position, the pial one low. Without one there is
+        //a single value, in auxdat.z, where the equivolume areas it is meant
+        //for are never read.
+        occlusion_main: [
+            "#ifdef OCCLUSION",
+                "#ifdef CORTSHEET",
+                    "float pialocc = mod(wm.w, 256.) / 255.;",
+                    "float wmocc = floor(wm.w / 256.) / 255.;",
+                    "vOcclusion = mixfunc_occlusion(mix(pialocc, wmocc, use_thickmix));",
+                "#else",
+                    "vOcclusion = mixfunc_occlusion(auxdat.z);",
+                "#endif",
+            "#endif",
+        ].join("\n"),
+        //Takes the sky a vertex misses out of the light that reaches it, once
+        //the fragment is lit. Squared, so that a crown with a little of its
+        //sky blocked by the gyri across from it stays nearly as bright as an
+        //open plane, while the floor of a sulcus goes dark; the strength
+        //scales how much is taken, past 1 for more than was worked out.
+        occlusion_fragment: [
+            "#ifdef OCCLUSION",
+                "gl_FragColor.rgb *= clamp(1. - occlusionStrength * vOcclusion * vOcclusion, 0., 1.);",
+            "#endif",
+        ].join("\n"),
 
         // thickmixer: header code that loads the uniforms needed to do
         // equivolume sampling, for vertex shaders. The white matter and pial
@@ -401,6 +447,21 @@ var Shaderlib = (function() {
                 header += "#define HASFLAT\n"
             if (opts.equivolume)
                 header += "#define EQUIVOLUME\n"
+            //One color to a face rather than one interpolated across it: the
+            //volume is read at a position the whole face carries, which a
+            //surface with a vertex per corner of a face can hold.
+            if (opts.faceted)
+                header += "#define FACECOLOR\n";
+            //and the light on a face is worked out from its own normal
+            //(flat) or at its corners (gouraud) rather than at every pixel
+            //of it, which is what the surface is drawn with otherwise
+            if (opts.shading == "flat")
+                header += "#define FLATSHADE\n";
+            else if (opts.shading == "gouraud")
+                header += "#define GOURAUD\n";
+            //and the sky each vertex misses is taken out of the light on it
+            if (opts.occlusion)
+                header += "#define OCCLUSION\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -417,6 +478,23 @@ var Shaderlib = (function() {
 
             utils.flatbump_attr,
 
+            "#ifdef FACECOLOR",
+                "attribute vec3 facepos;",
+                "attribute vec4 facewm;",
+            "#endif",
+
+            "#ifdef GOURAUD",
+                "#if MAX_DIR_LIGHTS > 0",
+                    "uniform vec3 directionalLightColor[ MAX_DIR_LIGHTS ];",
+                    "uniform vec3 directionalLightDirection[ MAX_DIR_LIGHTS ];",
+                "#endif",
+                "uniform vec3 diffuse;",
+                "uniform vec3 specular;",
+                "uniform float shininess;",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
+
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -424,6 +502,10 @@ var Shaderlib = (function() {
             "varying vec2 vUv;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
+            "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;",
             // "varying float vDrop;",
@@ -443,14 +525,21 @@ var Shaderlib = (function() {
                 "vViewPosition = -mvPosition.xyz;",
 
                 //Find voxel positions with both transforms (2D colormap x and y datasets)
-                "vPos_x[0] = (volxfm[0]*vec4(position,1.)).xyz;",
+            "#ifdef FACECOLOR",
+                "vec3 readpos = facepos;",
+                "vec3 readwm = facewm.xyz;",
+            "#else",
+                "vec3 readpos = position;",
+                "vec3 readwm = wm.xyz;",
+            "#endif",
+                "vPos_x[0] = (volxfm[0]*vec4(readpos,1.)).xyz;",
             "#ifdef TWOD",
-                "vPos_y[0] = (volxfm[1]*vec4(position,1.)).xyz;",
+                "vPos_y[0] = (volxfm[1]*vec4(readpos,1.)).xyz;",
             "#endif",
         "#ifdef CORTSHEET",
-                "vPos_x[1] = (volxfm[0]*vec4(wm.xyz,1.)).xyz;",
+                "vPos_x[1] = (volxfm[0]*vec4(readwm,1.)).xyz;",
             "#ifdef TWOD",
-                "vPos_y[1] = (volxfm[1]*vec4(wm.xyz,1.)).xyz;",
+                "vPos_y[1] = (volxfm[1]*vec4(readwm,1.)).xyz;",
             "#endif",
         "#endif",
 
@@ -470,6 +559,7 @@ var Shaderlib = (function() {
 
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
+                utils.occlusion_main,
 
             "#ifdef CORTSHEET",
                 // 
@@ -500,8 +590,44 @@ var Shaderlib = (function() {
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
                 "vWorldPosition = pos;",
+
+            "#ifdef GOURAUD",
+                //the directional lights worked out here rather than at every
+                //pixel, which is what tells gouraud from phong
+                "vec3 gnorm = normalize(vNormal);",
+                "vec3 gview = normalize(vViewPosition);",
+                "vLightDiffuse = vec3(0.);",
+                "vLightSpecular = vec3(0.);",
+                "#if MAX_DIR_LIGHTS > 0",
+                "for (int i = 0; i < MAX_DIR_LIGHTS; i++) {",
+                    "vec4 lDirection = viewMatrix * vec4(directionalLightDirection[i], 0.);",
+                    "vec3 dirVector = normalize(lDirection.xyz);",
+                    "float dirDiffuseWeight = max(dot(gnorm, dirVector), 0.);",
+                    "vLightDiffuse += diffuse * directionalLightColor[i] * dirDiffuseWeight;",
+                    "vec3 dirHalfVector = normalize(dirVector + gview);",
+                    "float dirDotNormalHalf = max(dot(gnorm, dirHalfVector), 0.);",
+                    "float dirSpecularWeight = max(pow(dirDotNormalHalf, shininess), 0.);",
+                    "float specularNormalization = (shininess + 2.) / 8.;",
+                    "vec3 schlick = specular + vec3(1. - specular) * pow(max(1. - dot(dirVector, dirHalfVector), 0.), 5.);",
+                    "vLightSpecular += schlick * directionalLightColor[i] * dirSpecularWeight * dirDiffuseWeight * specularNormalization;",
+                "}",
+                "#endif",
+            "#endif",
             "}"
             ].join("\n");
+
+            //The light on a face: from its own normal, which the view
+            //position's change across the screen gives, so that the face has
+            //one shade of its own; or from what its corners were lit with.
+            var lighting = THREE.ShaderChunk[ "lights_phong_fragment" ];
+            if (opts.shading == "flat") {
+                lighting = lighting.replace("vec3 normal = normalize( vNormal );", [
+                    "vec3 normal = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));",
+                    "normal *= sign(dot(normal, normalize(vViewPosition)));"].join("\n"));
+            } else if (opts.shading == "gouraud") {
+                lighting = "gl_FragColor.xyz = gl_FragColor.xyz * (emissive + " +
+                           "vLightDiffuse + ambientLightColor * ambient) + vLightSpecular;";
+            }
 
             var fragHead = [
             "#extension GL_OES_standard_derivatives: enable",
@@ -559,9 +685,18 @@ var Shaderlib = (function() {
 
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
+            "#endif",
             "varying float vThickmix;",
             "varying vec3 vWorldPosition;", // the x,y,z coordinates of this pixel
-            
+
+            "#ifdef GOURAUD",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
+
             utils.standard_frag_vars,
             utils.rand,
             utils.edge,
@@ -772,7 +907,8 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
-                THREE.ShaderChunk[ "lights_phong_fragment" ],
+                lighting,
+                utils.occlusion_fragment,
     "#endif",
             "}"
             ].join("\n");
@@ -785,12 +921,124 @@ var Shaderlib = (function() {
             if (opts.hasflat) {
                 attributes.flatbump = { type: 'v4', value:null };
             }
+            if (opts.faceted) {
+                attributes.facepos = { type: 'v3', value:null };
+                attributes.facewm = { type: 'v4', value:null };
+            }
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
                 attributes['mixNorms'+i] = { type:'v3', value:null};
             }
 
             return {vertex:header+vertShade, fragment:header+fragHead+fragMid+fragTail, attrs:attributes};
+        },
+
+        //A line around the surface, drawn as the surface again, turned inside
+        //out and grown by a width of the screen: what is left of it where the
+        //surface itself covers it is the band around its edge and around the
+        //folds that face away. It is moved by the same unfolding, depth and
+        //flattening as the surface, so it follows wherever that goes.
+        outline: function(opts) {
+            var header = "";
+            var morphs = opts.morphs;
+            if (opts.volume > 0)
+                header += "#define CORTSHEET\n";
+            if (opts.hasflat)
+                header += "#define HASFLAT\n";
+            if (opts.equivolume)
+                header += "#define EQUIVOLUME\n";
+            //a dot of the line's width at each vertex rather than the grown
+            //surface, which rounds the corners of the line
+            if (opts.dots)
+                header += "#define DOTS\n";
+
+            var vertShade = [
+            utils.thickmixer,
+            "uniform int bumpyflat;",
+            "uniform float bumpyflat_scale;",
+            "float f_bumpyflat = float(bumpyflat);",
+            "uniform float outlineWidth;",
+            //the canvas in pixels, so that the width is the same count of
+            //them up and across
+            "uniform vec2 viewport;",
+
+            "attribute vec4 wm;",
+            "attribute vec3 wmnorm;",
+            "attribute vec4 auxdat;",
+
+            utils.flatbump_attr,
+
+            utils.mixer(morphs),
+
+            "void main() {",
+                utils.thickmixer_main,
+            "#ifdef CORTSHEET",
+                "vec3 mpos = mix(position, wm.xyz, use_thickmix);",
+                "vec3 mnorm = mix(normal, wmnorm, use_thickmix);",
+            "#else",
+                "vec3 mpos = position;",
+                "vec3 mnorm = normal;",
+            "#endif",
+                "vec3 pos, norm;",
+                "mixfunc(mpos, mnorm, pos, norm);",
+            "#ifdef CORTSHEET",
+                "#ifdef HASFLAT",
+                    //the relief of the flatmap, the way the surface takes it
+                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
+                    "pos += clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpvector;",
+                "#else",
+                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
+                "#endif",
+            "#endif",
+
+            "#ifdef DOTS",
+                //only at the vertices that face away, as the line is only the
+                //faces that do: the surface in front covers such a dot except
+                //where it rounds off a corner of the silhouette
+                "vec4 eye = modelViewMatrix * vec4(pos, 1.0);",
+                "vec3 toEye = projectionMatrix[2][3] == 0. ? vec3(0., 0., 1.) : normalize(-eye.xyz);",
+                "float facing = dot(normalize(normalMatrix * normalize(norm)), toEye);",
+                "gl_Position = facing > 0. ? vec4(2., 2., 2., 1.) : projectionMatrix * eye;",
+                "gl_PointSize = facing > 0. ? 0. : outlineWidth * viewport.y;",
+            "#else",
+                //grown across the screen rather than in the world, so that
+                //the line is the same width however near the surface is,
+                //and by as many pixels up as across
+                "vec4 clip = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);",
+                "vec3 vnorm = normalize(normalMatrix * normalize(norm));",
+                "vec2 across = (projectionMatrix * vec4(vnorm, 0.)).xy * viewport;",
+                "if (length(across) > 0.0001)",
+                    "clip.xy += normalize(across) * outlineWidth * viewport.y / viewport * clip.w;",
+                "gl_Position = clip;",
+            "#endif",
+            "}"
+            ].join("\n");
+
+            var fragShade = [
+            "uniform vec3 outlineColor;",
+            "void main() {",
+            "#ifdef DOTS",
+                "if (length(gl_PointCoord - 0.5) > 0.5) discard;",
+            "#endif",
+                "gl_FragColor = vec4(outlineColor, 1.);",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                wm: { type: 'v4', value:null },
+                wmnorm: { type: 'v3', value:null },
+                auxdat: { type: 'v4', value:null },
+                wmarea: { type: 'f', value:null },
+                pialarea: { type: 'f', value:null },
+            };
+            if (opts.hasflat)
+                attributes.flatbump = { type: 'v4', value:null };
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type:'v4', value:null};
+                attributes['mixNorms'+i] = { type:'v3', value:null};
+            }
+
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
         },
 
         surface_vertex: function(opts) {
@@ -815,6 +1063,17 @@ var Shaderlib = (function() {
                 header += "#define HASFLAT\n"
             if (opts.equivolume)
                 header += "#define EQUIVOLUME\n"
+            //the light on a face worked out from its own normal (flat) or at
+            //its corners (gouraud) rather than at every pixel of it; the
+            //color is already one to a face where the surface is drawn with
+            //a vertex per corner, since it is read off the vertices
+            if (opts.shading == "flat")
+                header += "#define FLATSHADE\n";
+            else if (opts.shading == "gouraud")
+                header += "#define GOURAUD\n";
+            //and the sky each vertex misses is taken out of the light on it
+            if (opts.occlusion)
+                header += "#define OCCLUSION\n";
 
             var vertShade =  [
             THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
@@ -856,7 +1115,23 @@ var Shaderlib = (function() {
             "varying vec2 vUv;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
+            "#endif",
             // "varying float vDrop;",
+
+            "#ifdef GOURAUD",
+                "#if MAX_DIR_LIGHTS > 0",
+                    "uniform vec3 directionalLightColor[ MAX_DIR_LIGHTS ];",
+                    "uniform vec3 directionalLightDirection[ MAX_DIR_LIGHTS ];",
+                "#endif",
+                "uniform vec3 diffuse;",
+                "uniform vec3 specular;",
+                "uniform float shininess;",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
 
             utils.mixer(morphs),
 
@@ -902,6 +1177,7 @@ var Shaderlib = (function() {
 
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
+                utils.occlusion_main,
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
@@ -930,8 +1206,40 @@ var Shaderlib = (function() {
 
                 "gl_Position = projectionMatrix * modelViewMatrix * vec4( pos, 1.0 );",
 
+            "#ifdef GOURAUD",
+                "vec3 gnorm = normalize(vNormal);",
+                "vec3 gview = normalize(vViewPosition);",
+                "vLightDiffuse = vec3(0.);",
+                "vLightSpecular = vec3(0.);",
+                "#if MAX_DIR_LIGHTS > 0",
+                "for (int i = 0; i < MAX_DIR_LIGHTS; i++) {",
+                    "vec4 lDirection = viewMatrix * vec4(directionalLightDirection[i], 0.);",
+                    "vec3 dirVector = normalize(lDirection.xyz);",
+                    "float dirDiffuseWeight = max(dot(gnorm, dirVector), 0.);",
+                    "vLightDiffuse += diffuse * directionalLightColor[i] * dirDiffuseWeight;",
+                    "vec3 dirHalfVector = normalize(dirVector + gview);",
+                    "float dirDotNormalHalf = max(dot(gnorm, dirHalfVector), 0.);",
+                    "float dirSpecularWeight = max(pow(dirDotNormalHalf, shininess), 0.);",
+                    "float specularNormalization = (shininess + 2.) / 8.;",
+                    "vec3 schlick = specular + vec3(1. - specular) * pow(max(1. - dot(dirVector, dirHalfVector), 0.), 5.);",
+                    "vLightSpecular += schlick * directionalLightColor[i] * dirSpecularWeight * dirDiffuseWeight * specularNormalization;",
+                "}",
+                "#endif",
+            "#endif",
             "}"
             ].join("\n");
+
+            //as in surface_pixel: the face's own normal, or the light its
+            //corners were given
+            var lighting = THREE.ShaderChunk[ "lights_phong_fragment" ];
+            if (opts.shading == "flat") {
+                lighting = lighting.replace("vec3 normal = normalize( vNormal );", [
+                    "vec3 normal = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));",
+                    "normal *= sign(dot(normal, normalize(vViewPosition)));"].join("\n"));
+            } else if (opts.shading == "gouraud") {
+                lighting = "gl_FragColor.xyz = gl_FragColor.xyz * (emissive + " +
+                           "vLightDiffuse + ambientLightColor * ambient) + vLightSpecular;";
+            }
 
             var fragShade = [
             "#extension GL_OES_standard_derivatives: enable",
@@ -958,7 +1266,16 @@ var Shaderlib = (function() {
             // "varying float vDrop;",
             "varying float vCurv;",
             "varying float vMedial;",
+            "#ifdef OCCLUSION",
+                "varying float vOcclusion;",
+                "uniform float occlusionStrength;",
+            "#endif",
             "uniform float thickmix;",
+
+            "#ifdef GOURAUD",
+                "varying vec3 vLightDiffuse;",
+                "varying vec3 vLightSpecular;",
+            "#endif",
             // utils.thickmixer,
 
             utils.standard_frag_vars,
@@ -1008,7 +1325,8 @@ var Shaderlib = (function() {
             "#ifdef EXTRATEX",
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
-                THREE.ShaderChunk[ "lights_phong_fragment" ],
+                lighting,
+                utils.occlusion_fragment,
             "}"
             ].join("\n");
 
@@ -1034,6 +1352,185 @@ var Shaderlib = (function() {
             }
 
             return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
+        },
+
+        aligner_volume: function(opts) {
+            //Colors each fragment with the functional volume sampled at the
+            //fragment's world position. The aligner uses it for its slice
+            //planes (unlit) and for painting the volume onto the surface (lit).
+            //The world frame is the functional voxel grid in millimeters, so
+            //volxfm is a plain scaling and the planes show unresampled voxels.
+            //The lookup adds brightness, contrast, gamma and a flip to the
+            //vmin/vmax range of the colormap.
+            //sampler: nearest or trilinear
+            //lights: whether to apply phong lighting (false for the planes)
+            //depthmix: mix the position between the pial (position) and white
+            //          matter (wm) surfaces with the depth uniform
+            //morphs: number of surfaces to interpolate between (anatomical,
+            //        inflated, flat), as in surface_pixel. With more than one
+            //        the surface is drawn where the mixer puts it and stays
+            //        put as the alignment is edited, so the volume is sampled
+            //        at the anatomical position through volxfm alone rather
+            //        than at the world position.
+            var sampler = opts.sampler || "nearest";
+            var morphs = opts.morphs || 1;
+            var header = "";
+            if (opts.lights !== undefined && !opts.lights)
+                header += "#define NOLIGHTS\n";
+            if (opts.depthmix)
+                header += "#define DEPTHMIX\n";
+            if (morphs > 1)
+                header += "#define MORPHS\n";
+
+            var vertShade = [
+        "#ifndef NOLIGHTS",
+            THREE.ShaderChunk[ "lights_phong_pars_vertex" ],
+        "#endif",
+            "uniform mat4 volxfm;",
+        "#ifdef DEPTHMIX",
+            "uniform float depth;",
+            "attribute vec4 wm;",
+            "attribute vec3 wmnorm;",
+        "#endif",
+        "#ifdef MORPHS",
+            utils.mixer(morphs),
+        "#endif",
+
+            "varying vec3 vViewPosition;",
+            "varying vec3 vNormal;",
+            "varying vec3 vPos;",
+
+            "void main() {",
+                "vec3 mpos = position;",
+                "vec3 mnorm = normal;",
+            "#ifdef DEPTHMIX",
+                "mpos = mix(position, wm.xyz, depth);",
+                "mnorm = mix(normal, wmnorm, depth);",
+            "#endif",
+            "#ifdef MORPHS",
+                "vec3 dpos, dnorm;",
+                "mixfunc(mpos, mnorm, dpos, dnorm);",
+                "vec4 world = modelMatrix * vec4(dpos, 1.0);",
+                "vPos = (volxfm * vec4(mpos, 1.0)).xyz;",
+                "vNormal = normalMatrix * dnorm;",
+            "#else",
+                "vec4 world = modelMatrix * vec4(mpos, 1.0);",
+                "vPos = (volxfm * world).xyz;",
+                "vNormal = normalMatrix * mnorm;",
+            "#endif",
+                "vec4 mvPosition = viewMatrix * world;",
+                "vViewPosition = -mvPosition.xyz;",
+                "gl_Position = projectionMatrix * mvPosition;",
+            "}",
+            ].join("\n");
+
+            var fragShade = [
+            "uniform sampler2D colormap;",
+            "uniform float vmin;",
+            "uniform float vmax;",
+            "uniform float brightness;",
+            "uniform float contrast;",
+            "uniform float gamma;",
+            "uniform int flip;",
+            "uniform vec2 mosaic[2];",
+            "uniform vec2 dshape[2];",
+            "uniform float nslices;",
+            "uniform sampler2D data[4];",
+            "uniform vec3 outside;",
+
+            "varying vec3 vPos;",
+        "#ifndef NOLIGHTS",
+            THREE.ShaderChunk[ "lights_phong_pars_fragment" ],
+        "#endif",
+
+            utils.standard_frag_vars,
+            utils.samplers,
+
+            "void main() {",
+                //Fragments outside the volume, and the padding between the
+                //mosaic tiles (NaN), get a flat color instead of data
+                "vec3 lo = vec3(-0.5);",
+                "vec3 hi = vec3(dshape[0].x, dshape[0].y, nslices) - 0.5;",
+                "bool inside = all(greaterThanEqual(vPos, lo)) && all(lessThanEqual(vPos, hi));",
+                "float value = "+sampler+"_x(data[0], vPos).r;",
+                "bool valid = inside && (value <= 0. || 0. < value);",
+
+                //the range can be closed up from the menu, and a zero span
+                //would leave every fragment undefined
+                "float span = vmax - vmin;",
+                "span = span < 0. ? min(span, -1e-6) : max(span, 1e-6);",
+                "float norm = (value - vmin) / span;",
+                "norm = clamp(norm * contrast + brightness, 0., 1.);",
+                "norm = pow(norm, gamma);",
+                "if (flip == 1) norm = 1. - norm;",
+                "vec4 vColor = texture2D(colormap, vec2(norm, 0.));",
+
+                "gl_FragColor = valid ? vec4(vColor.rgb, 1.) : vec4(outside, 1.);",
+        "#ifndef NOLIGHTS",
+                THREE.ShaderChunk[ "lights_phong_fragment" ],
+        "#endif",
+            "}"
+            ].join("\n");
+
+            var attributes = {};
+            if (opts.depthmix) {
+                attributes.wm = { type: 'v4', value: null };
+                attributes.wmnorm = { type: 'v3', value: null };
+            }
+            for (var i = 0; i < morphs-1; i++) {
+                attributes['mixSurfs'+i] = { type: 'v4', value: null };
+                attributes['mixNorms'+i] = { type: 'v3', value: null };
+            }
+
+            return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
+        },
+
+        aligner_mesh: function(opts) {
+            //Flat colored surface for the aligner. The depth uniform picks the
+            //surface between pial (0) and white matter (1). With doClip set,
+            //only fragments within the slabs (one per world axis, enabled by
+            //slabMask) survive, which draws the intersection of the surface
+            //with the displayed slices; drawn as lines this gives the outline
+            //of the cortex on each slice.
+            var vertShade = [
+            "uniform float depth;",
+            "attribute vec4 wm;",
+            "varying vec3 vWorld;",
+
+            "void main() {",
+                "vec3 mpos = mix(position, wm.xyz, depth);",
+                "vec4 world = modelMatrix * vec4(mpos, 1.0);",
+                "vWorld = world.xyz;",
+                "gl_Position = projectionMatrix * viewMatrix * world;",
+            "}",
+            ].join("\n");
+
+            var fragShade = [
+            "uniform vec3 color;",
+            "uniform float opacity;",
+            "uniform int doClip;",
+            "uniform vec3 slabLo;",
+            "uniform vec3 slabHi;",
+            "uniform vec3 slabMask;",
+            "varying vec3 vWorld;",
+
+            "void main() {",
+                "if (doClip == 1) {",
+                    "bvec3 inside = bvec3(",
+                        "slabMask.x > .5 && vWorld.x >= slabLo.x && vWorld.x <= slabHi.x,",
+                        "slabMask.y > .5 && vWorld.y >= slabLo.y && vWorld.y <= slabHi.y,",
+                        "slabMask.z > .5 && vWorld.z >= slabLo.z && vWorld.z <= slabHi.z);",
+                    "if (!any(inside)) discard;",
+                "}",
+                "gl_FragColor = vec4(color, opacity);",
+            "}"
+            ].join("\n");
+
+            var attributes = {
+                wm: { type: 'v4', value: null },
+            };
+
+            return {vertex:vertShade, fragment:fragShade, attrs:attributes};
         },
 
         cmap_quad: function() {

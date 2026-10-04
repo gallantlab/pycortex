@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from .. import options
-from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB
+from .views import Dataview, Volume, Vertex, VolumeRGB, VertexRGB, json_attrs
 from .viewRGB import warn_alpha_range
 from .braindata import BrainData, VolumeData, VertexData
 
@@ -146,7 +146,7 @@ class Dataview2D(Dataview):
         """
         sdict = dict(data=[[self.dim1.name, self.dim2.name]],
             state=self.state, 
-            attrs=self.attrs, 
+            attrs=json_attrs(self.attrs), 
             desc=self.description,
             cmap=[self.cmap] )
 

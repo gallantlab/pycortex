@@ -297,6 +297,15 @@ def make_static(
             newfname = fname
         ctms[subj] = newfname + ".json"
 
+        #Nothing cuts a coarse surface for a viewer that is served as files,
+        #or works out the ambient occlusion of its vertices, so the ones its
+        #controls offer are made here.
+        lodfiles = []
+        if copy_ctmfiles:
+            lodfiles = [utils.get_lod(subj, cell, **dict(ctmargs, recache=False))
+                        for cell in utils.LOD_CELLS]
+            lodfiles.append(utils.get_occlusion(subj, **dict(ctmargs, recache=False)))
+
         for ext in ["json", "ctm", "svg"]:
             srcfile = os.path.join(oldpath, "%s.%s" % (fname, ext))
             newfile = os.path.join(outpath, "%s.%s" % (newfname, ext))
@@ -306,15 +315,24 @@ def make_static(
             if os.path.exists(srcfile) and copy_ctmfiles:
                 shutil.copy2(srcfile, newfile)
 
-            if ext == "json" and anonymize:
-                ## change filenames in json
-                nfh = open(newfile)
-                jsoncontents = nfh.read()
-                nfh.close()
+            if ext == "json" and os.path.exists(newfile):
+                with open(newfile) as nfh:
+                    jsoncontents = nfh.read()
+                if anonymize:
+                    ## change filenames in json
+                    jsoncontents = jsoncontents.replace(fname, newfname)
+                #the widths it has files for, which its control is held to
+                jsdict = json.loads(jsoncontents)
+                jsdict["lod_cells"] = list(utils.LOD_CELLS) if lodfiles else []
+                with open(newfile, "w") as ofh:
+                    json.dump(jsdict, ofh)
 
-                ofh = open(newfile, "w")
-                ofh.write(jsoncontents.replace(fname, newfname))
-                ofh.close()
+        for srcfile in lodfiles:
+            newfile = os.path.join(outpath, os.path.split(srcfile)[1].replace(
+                fname, newfname, 1))
+            if os.path.exists(newfile):
+                os.unlink(newfile)
+            shutil.copy2(srcfile, newfile)
     if anonymize:
         ctms = dict((anonymized[subj], ctms[subj]) for subj in sorted(ctms))
     if len(submap) == 0:
@@ -434,6 +452,7 @@ def show(
     title: str="Brain",
     layout: Optional[str]=None,
     display_url: bool=True,
+    token: Optional[str]=None,
     **kwargs,
 ):
     """
@@ -512,6 +531,10 @@ def show(
         link to access the viewer. Set to False to suppress this display message,
         which can be useful in contexts like Marimo notebooks or programmatic
         headless viewers. Default True
+    token : str, optional
+        The session token the server demands, which the URL it displays carries
+        and the page then keeps in a cookie. A new one is made for each viewer;
+        pass '' to answer anything that reaches the port.
     **kwargs
         All additional keyword arguments are passed to the template renderer.
 
@@ -554,6 +577,9 @@ def show(
     images: dict[str, list] = dict()
     subjects: list[str] = []
     ctms: dict[str, str] = dict()
+    # how the packs are built, which the handler cutting a coarse surface out
+    # of one needs as well
+    ctmargs: dict[str, Any] = dict()
     subjectjs = ""
     _ready = threading.Event()
     _prepare_failure: list[BaseException] = []
@@ -594,7 +620,7 @@ def show(
         my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
                                          for subj in subjects}
 
-        ctmargs = dict(method='mg2', level=9, recache=recache,
+        ctmargs.update(method='mg2', level=9, recache=recache,
             external_svg=overlay_file, overlays_available=overlays_available)
         ctms.update((subj, utils.get_ctmpack(subj, types, **ctmargs))
                     for subj in subjects)
@@ -647,7 +673,7 @@ def show(
         pickerfun = lambda *a: None
 
     class CTMHandler(_WaitUntilPrepared, web.RequestHandler):
-        def get(self, path: str):
+        async def get(self, path: str):
             self.set_header("Cache-Control", "public, max-age=86400")
             subj, path = path.split('/')
             if path == '':
@@ -655,6 +681,27 @@ def show(
                 self.write(open(ctms[subj]).read())
             else:
                 fpath = os.path.split(ctms[subj])[0]
+                #coarse faces, and the ambient occlusion of the vertices, are
+                #worked out the first time they are asked for and kept beside
+                #the pack from then on
+                build = None
+                coarse = re.match(r".+_lod(\d+)\.bin$", path)
+                if coarse is not None and not os.path.exists(os.path.join(fpath, path)):
+                    cell = int(coarse.group(1))
+                    if not 0 < cell <= utils.LOD_MAX:
+                        self.set_status(404)
+                        return self.write_error(404)
+                    build = functools.partial(utils.get_lod, subj, cell,
+                                              **dict(ctmargs, recache=False))
+                elif path.endswith("_ao.bin"):
+                    #asked for every time, since it also builds a file whose
+                    #layout is out of date again
+                    build = functools.partial(utils.get_occlusion, subj,
+                                              **dict(ctmargs, recache=False))
+                if build is not None:
+                    #on a thread, so that the server goes on answering while
+                    #it runs: the occlusion takes some seconds a surface
+                    await ioloop.IOLoop.current().run_in_executor(None, build)
                 mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
                 if mtype is None:
                     mtype = "application/octet-stream"
@@ -1622,6 +1669,11 @@ def show(
         # collisions that made headless/CI runs intermittently hang.
         port = 0
 
+    # The viewer hands out the filestore, so it listens for this computer's
+    # own names unless the config names a domain to reach it under, which is
+    # what that option is there for.
+    address = None if domain_name else serve.LOCAL
+
     server = WebApp([(r'/ctm/(.*)', CTMHandler),
                      (r'/data/(.*)', DataHandler),
                      (r'/stim/(.*)', StimHandler),
@@ -1630,24 +1682,22 @@ def show(
                      (r'/timeseries', TimeseriesHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
-                    port)
+                    port, address, token)
 
     server.start()
-    local_url, network_url = _viewer_urls(server.port)
+    # One link, under this computer's own name, which reaches the server from
+    # here and from another machine alike: the server listens for that name
+    # as well as for localhost. A machine whose name leads nowhere gets a
+    # localhost link, which is all that could reach it in any case. The link
+    # carries the session token, which the page keeps in a cookie from then on.
+    host = server.host
+    url = server.url("mixer.html", host=host + domain_name if host != serve.LOOPBACK else host)
     print("Started server on port %d"%server.port)
-    if network_url == local_url:
-        print("Open the viewer at %s"%local_url)
-    else:
-        print("Open the viewer at %s (from another machine: %s)"
-              %(local_url, network_url))
+    print("Open the viewer at %s"%url)
     if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
-            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
-            if network_url != local_url:
-                link += (' (from another machine: '
-                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
-            display(HTML(link))
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
         except:
             pass
 
@@ -1667,7 +1717,7 @@ def show(
     if open_browser:
         # This runs on the same machine as the server, so localhost is both
         # correct and the most reliable thing to hand the browser.
-        webbrowser.open(local_url)
+        webbrowser.open(server.url("mixer.html", host=serve.LOOPBACK))
         client = server.get_client()
         client.server = server
         return client

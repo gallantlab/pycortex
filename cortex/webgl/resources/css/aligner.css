@@ -1,0 +1,230 @@
+/*************************************************
+ * Manual aligner: a 2x2 grid of views on one canvas,
+ * with the controls in a panel on the right
+ *************************************************/
+.jsplot_axes {
+    position:relative;
+    width:100%;
+    height:100%;
+}
+#aligner {
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
+#aligner-canvas {
+    position:absolute;
+    left:0;
+    top:0;
+    z-index:2;
+    display:block;
+}
+/* Transparent overlays, one per view, that receive the mouse events */
+.aligner-view {
+    position:absolute;
+    width:50%;
+    height:50%;
+    z-index:3;
+    box-sizing:border-box;
+    border:1px solid #444;
+    cursor:crosshair;
+}
+#view-y { left:0; top:0; }
+#view-z { left:0; top:50%; }
+#view-x { left:50%; top:0; }
+#view-3d { left:50%; top:50%; cursor:default; }
+/* the surface on its own, the way the viewer shows one */
+#aligner.single .aligner-view { display:none; }
+#aligner.single #view-3d {
+    display:block;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+}
+.aligner-label {
+    position:absolute;
+    left:8px;
+    top:6px;
+    color:#ddd;
+    font-size:10pt;
+    text-shadow:0px 1px 2px #000;
+    pointer-events:none;
+}
+#aligner-load {
+    left:50%;
+    top:50%;
+    right:auto;
+    width:200px;
+    margin:-20px 0px 0px -120px;
+}
+#aligner-colormaps {
+    display:none;
+}
+
+/* Control panel */
+#aligner-panel {
+    height:100%;
+    overflow-y:auto;
+    background:#1a1a1a;
+    color:#ccc;
+    font-size:9pt;
+    text-align:left;
+}
+#aligner-panel #figure_ui {
+    position:static;
+    width:100% !important;
+    max-height:none;
+    overflow:visible;
+}
+#aligner-viewonly, #aligner-masks {
+    display:none;
+    padding:6px 8px;
+    color:#fc9;
+}
+#aligner-status {
+    min-height:1.5em;
+    padding:6px 8px;
+    color:#8fd;
+}
+#aligner-status.error {
+    color:#f88;
+}
+#aligner-legend {
+    padding:4px 8px 12px 8px;
+    line-height:1.4;
+}
+#aligner-legend h4, #aligner-history h4 {
+    margin:10px 0px 2px 0px;
+    color:#eee;
+    font-size:9pt;
+}
+/* Edit history: one row per edit, newest at the bottom */
+#aligner-history {
+    padding:0px 8px;
+}
+#aligner-history-list {
+    /* the rows are kept in view by their offset within this list */
+    position:relative;
+    margin:0px;
+    padding:0px;
+    list-style:none;
+    max-height:160px;
+    overflow-y:auto;
+    border:1px solid #333;
+    background:#141414;
+}
+#aligner-history-list li {
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:1px 6px;
+    cursor:pointer;
+}
+.aligner-history-kind {
+    flex:none;
+}
+#aligner-history-list li:hover {
+    background:#262626;
+}
+#aligner-history-list li.current {
+    background:#0a6;
+    color:#fff;
+}
+.aligner-history-size {
+    color:#9ab;
+    padding-left:8px;
+    text-align:right;
+}
+#aligner-history-list li.current .aligner-history-size {
+    color:#dfe;
+}
+#aligner-legend table {
+    width:100%;
+}
+#aligner-legend td {
+    padding:1px 4px;
+    vertical-align:top;
+}
+#aligner-legend td.key {
+    white-space:nowrap;
+    color:#fc9;
+}
+
+/* Colormap dropdown: a strip of the colormap beside its name.
+   mriview.css hides the select2 control and leaves only its dropdown
+   visible, which is how the viewer opens its picker from the colorbar. The
+   aligner uses the control itself, so this puts select2's own layout back
+   for it. Only for it: the open dropdown is attached beside the body, and
+   giving that one a place in the layout pushes the page sideways. */
+#figure_ui .select2-container {
+    visibility:visible;
+    position:relative;
+}
+/* The open dropdown is attached beside the body and placed over the control,
+   so a width of its own (mriview.css gives it 30vw for the viewer's picker)
+   reaches past the right edge of the window and scrolls the page sideways.
+   This one is as wide as its strips need and hangs from the right edge of
+   the control, which is a panel's width in from the edge of the window. */
+.select2-dropdown.aligner-cmap-dropdown {
+    width:240px !important;
+    margin-left:-80px;
+}
+
+.aligner-cmap {
+    display:flex;
+    align-items:center;
+}
+.aligner-cmap img {
+    flex:none;
+    width:64px;
+    height:11px;
+    margin-right:8px;
+    border:1px solid #555;
+}
+.aligner-cmap-name {
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+/* the closed control sits in a dat.GUI cell, so its strip is smaller */
+.select2-selection__rendered .aligner-cmap img {
+    width:40px;
+    height:9px;
+    margin-right:6px;
+}
+.select2-container--default .select2-selection--single {
+    background:#303030;
+    border:1px solid #555;
+    border-radius:0;
+    height:20px;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    color:#eee;
+    line-height:18px;
+    padding-left:4px;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height:18px;
+}
+.select2-dropdown {
+    background:#1a1a1a;
+    border-color:#555;
+    color:#ccc;
+}
+.select2-container--default .select2-results__option {
+    padding:2px 6px;
+}
+.select2-container--default .select2-results__option[aria-selected=true] {
+    background:#333;
+}
+.select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background:#0a6;
+}
+.select2-search--dropdown .select2-search__field {
+    background:#303030;
+    border:1px solid #555;
+    color:#eee;
+}

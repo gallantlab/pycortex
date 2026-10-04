@@ -155,6 +155,10 @@ PickPosition.prototype = {
         var clearColor = renderer.getClearColor().clone();
         renderer.setClearColor(0x0, 0);
 
+        //the markers are not part of the surface, so they are kept out of
+        //the passes that read a vertex off it; whether they are shown at all
+        //is for the viewer to say, so it is put back afterwards
+        var shown = {left:this.markers.left.visible, right:this.markers.right.visible};
         this.markers.left.visible = false;
         this.markers.right.visible = false;
 
@@ -167,8 +171,8 @@ PickPosition.prototype = {
         this.scene.overrideMaterial = this.shade_z;
         renderer.render(this.scene, camera, this.z);
 
-        this.markers.left.visible = true;
-        this.markers.right.visible = true;
+        this.markers.left.visible = shown.left;
+        this.markers.right.visible = shown.right;
 
         renderer.setClearColor(clearColor, clearAlpha);
     },

@@ -281,7 +281,8 @@ def test_rgb_multiframe_nan_reaches_webgl(cls: str) -> None:
     try:
 
         def fetch(path: str) -> bytes:
-            url = "http://localhost:%d/%s" % (server.port, path)
+            #the address carries the session token the server demands
+            url = server.url(path, host="localhost")
             with urlopen(url, timeout=30) as response:
                 return response.read()
 

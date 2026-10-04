@@ -138,6 +138,193 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     return ctmfile
 
 
+#The widths, in mm, that a viewer served as files rather than by a server is
+#given coarse surfaces for, and the widest one any viewer offers.
+LOD_CELLS = (2, 4, 8, 16, 32)
+LOD_MAX = 32
+
+
+def get_lod(subject, cell, recache=False, **kwargs):
+    """Faces for drawing this subject's surfaces coarsely, cached, built if missing.
+
+    The faces are cut from the surfaces of the subject's ctm pack, in its
+    numbering and in groups of `cell` mm (see `polyutils.decimate_faces`), and
+    written beside it as one file holding both hemispheres: the number of
+    faces of each as two little-endian uint32, then their vertices, three
+    uint32 to a face, the left hemisphere's first.
+
+    Parameters
+    ----------
+    subject : str
+        Name of subject in the pycortex store.
+    cell : int
+        How wide a group of vertices is taken over, in mm. The surfaces are
+        left whole at 0.
+    recache : bool, optional
+        Whether to build the file again when one is already there.
+    **kwargs
+        Forwarded to `get_ctmpack`, which says which pack these are cut from.
+
+    Returns
+    -------
+    lodfile : str
+        Path to the file.
+    """
+    from . import polyutils
+
+    jsfile = get_ctmpack(subject, **kwargs)
+    base = os.path.splitext(jsfile)[0]
+    lodfile = "%s_lod%d.bin" % (base, int(cell))
+    if os.path.exists(lodfile) and not recache:
+        return lodfile
+
+    from . import brainctm
+    hemis = brainctm.read_pack(base + ".ctm")
+    #The medial wall, which the flatmap is cut along, keeps its vertices out
+    #of the groups around it: a group that took in vertices from both sides
+    #of a cut would be drawn across the flatmap by the face that bridges it,
+    #which the viewer leaves out by the wall it touches.
+    walls = _medial_wall(subject, base, [len(pts) for pts, _ in hemis])
+    faces = [polyutils.decimate_faces(pts, polys, cell, split=wall)[1]
+             for (pts, polys), wall in zip(hemis, walls)]
+
+    #written whole, so that a reader never gets half a file
+    handle, temp = tempfile.mkstemp(dir=os.path.split(lodfile)[0], suffix=".bin")
+    with os.fdopen(handle, "wb") as fp:
+        np.array([len(f) for f in faces], dtype="<u4").tofile(fp)
+        for hemi in faces:
+            hemi.astype("<u4").tofile(fp)
+    os.replace(temp, lodfile)
+    return lodfile
+
+
+def get_occlusion(subject, recache=False, **kwargs):
+    """Ambient occlusion of the vertices of this subject's ctm pack, on each
+    surface the viewer mixes between, cached, built if missing.
+
+    Worked out with `polyutils.vertex_occlusion` on the surfaces as they are
+    in the pack, a hemisphere at a time, and written beside the pack as one
+    file: three little-endian uint32 giving how many blocks it holds and how
+    many vertices each hemisphere has, then the occlusion of every vertex as a
+    byte, 0 for one that sees the whole sky and 255 for one the surface closes
+    over, a block at a time with the left hemisphere's before the right's.
+    The blocks are the folded surface at depth 0 (the pial surface) and at
+    depth 1 (the white matter surface), which the viewer mixes by the depth
+    it draws the sheet at, then the pack's `names` and the flat surface when
+    there is one, in the order the viewer mixes them. A subject without a
+    white matter surface gets its fiducial surface at both depths. The flat
+    surface blocks none of its own sky, so its bytes are written as zeros.
+
+    Parameters
+    ----------
+    subject : str
+        Name of subject in the pycortex store.
+    recache : bool, optional
+        Whether to build the file again when one is already there.
+    **kwargs
+        Forwarded to `get_ctmpack`, which says which pack this is for.
+
+    Returns
+    -------
+    aofile : str
+        Path to the file.
+    """
+    import json
+
+    from . import polyutils
+
+    jsfile = get_ctmpack(subject, **kwargs)
+    base = os.path.splitext(jsfile)[0]
+    aofile = base + "_ao.bin"
+    with open(jsfile) as fp:
+        pack = json.load(fp)
+    hasflat = "flatlims" in pack
+    nblocks = 2 + len(pack["names"]) + (1 if hasflat else 0)
+    if os.path.exists(aofile) and not recache:
+        #a file written before the folded surface had both depths holds
+        #fewer blocks, and is built again
+        if np.fromfile(aofile, dtype="<u4", count=1)[0] == nblocks:
+            return aofile
+
+    from . import brainctm
+    counts = [len(pts) for pts, _ in brainctm.read_pack(base + ".ctm")]
+
+    #the surfaces the viewer mixes between, as the pack loads them: the
+    #folded one at both depths, then the others
+    try:
+        surfaces = [db.get_surf(subject, "pia", merge=False),
+                    db.get_surf(subject, "wm", merge=False)]
+    except IOError:
+        surfaces = [db.get_surf(subject, "fiducial", merge=False)] * 2
+    surfaces += [db.get_surf(subject, name, nudge=False, merge=False) for name in pack["names"]]
+
+    blocks = []
+    if os.path.exists(base + ".npz"):
+        #the pack's numbering of the vertices, both hemispheres end to end
+        index = np.load(base + ".npz")["index"]
+        done = {}
+        for hemis in surfaces:
+            at = 0
+            for hemi, ((pts, polys), count) in enumerate(zip(hemis, counts)):
+                #the fiducial surface standing in at both depths is worked
+                #out once
+                key = (id(pts), hemi)
+                if key not in done:
+                    done[key] = polyutils.vertex_occlusion(pts, polys)
+                occlusion = done[key]
+                blocks.append(occlusion[index[at:at + count] - (0 if hemi == 0 else counts[0])])
+                at += count
+    else:
+        #an older pack, saved before the map was kept beside it: the folded
+        #surface is worked out from the pack's own mesh at both depths, and
+        #nothing can be said about the others
+        folded = [polyutils.vertex_occlusion(pts, polys) for pts, polys in brainctm.read_pack(base + ".ctm")]
+        blocks += folded + folded
+        for name in pack["names"]:
+            blocks += [np.zeros(count, dtype=np.float32) for count in counts]
+    if hasflat:
+        blocks += [np.zeros(count, dtype=np.float32) for count in counts]
+    assert len(blocks) == nblocks * len(counts)
+
+    #written whole, so that a reader never gets half a file
+    handle, temp = tempfile.mkstemp(dir=os.path.split(aofile)[0], suffix=".bin")
+    with os.fdopen(handle, "wb") as fp:
+        np.array([nblocks] + counts, dtype="<u4").tofile(fp)
+        for block in blocks:
+            np.clip(np.round(block * 255), 0, 255).astype(np.uint8).tofile(fp)
+    os.replace(temp, aofile)
+    return aofile
+
+
+def _medial_wall(subject, base, counts):
+    """Which vertices of a ctm pack are on the medial wall, as the pack says.
+
+    These are the vertices the flatmap leaves out, which the pack marks for
+    the viewer; they are worked out here the way the pack works them out, and
+    carried into its numbering by the map it was saved with.
+    """
+    try:
+        flat = db.get_surf(subject, "flat", merge=False, nudge=True)
+    except IOError:
+        return [None] * len(counts)
+
+    if not os.path.exists(base + ".npz"):
+        #an older pack, saved before the map was kept beside it
+        return [None] * len(counts)
+
+    fiducial = db.get_surf(subject, "fiducial", merge=False)
+    index = np.load(base + ".npz")["index"]
+    walls, at = [], 0
+    for hemi, count in enumerate(counts):
+        wall = np.zeros(len(fiducial[hemi][0]), dtype=bool)
+        wall[list(set(fiducial[hemi][1].ravel()) - set(flat[hemi][1].ravel()))] = True
+        #the map holds the two hemispheres end to end, the second one's
+        #vertices counted on from the first one's
+        walls.append(wall[index[at:at + count] - (0 if hemi == 0 else counts[0])])
+        at += count
+    return walls
+
+
 def get_ctmmap(subject, **kwargs):
     """Return a mapping from the vertices in the CTM surface to the vertices
     in the freesurfer surface. 

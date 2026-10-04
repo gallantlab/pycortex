@@ -2,6 +2,13 @@ var jsplot = (function (module) {
 
     var retina_scale = window.devicePixelRatio || 1;
 
+    //The angle the perspective camera takes in, and the slab an orthographic
+    //one sees: it has no vanishing point, so near and far only say what is
+    //clipped, and the slab is deep enough to hold the scene wherever the
+    //controls put the camera.
+    var camera_fov = 45;
+    var camera_slab = 1000;
+
     //Fractional view options (top-left lighting, uniform illumination) used to
     //be plain booleans, so accept both spellings.
     module.parseFraction = function(val) {
@@ -21,7 +28,7 @@ var jsplot = (function (module) {
         }
 
         // scene and camera
-        this.camera = new THREE.PerspectiveCamera( 45, this.canvas.width()/this.canvas.height(), 1., 1000. );
+        this.camera = new THREE.PerspectiveCamera( camera_fov, this.canvas.width()/this.canvas.height(), 1., 1000. );
         this.camera.up.set(0,0,1);
         this.camera.position.set(0, -500, 0);
         this.camera.lookAt(new THREE.Vector3(0,0,0));
@@ -122,8 +129,7 @@ var jsplot = (function (module) {
         this.renderer.domElement.style.width = w + 'px'; 
         this.renderer.domElement.style.height = h + 'px'; 
 
-        this.camera.aspect = aspect;
-        this.camera.updateProjectionMatrix();
+        this.aimCamera(aspect);
 
         this.dispatchEvent({ type:"resize", width:w, height:h});
         this.schedule();
@@ -141,6 +147,60 @@ var jsplot = (function (module) {
         //guard against the initial call, which happens before _schedule exists
         if (this._schedule !== undefined)
             this.schedule();
+    };
+    //Whether the viewer looks through an orthographic camera rather than the
+    //perspective one it opens with. Both are aimed by the same azimuth,
+    //altitude and radius, and the two show the brain at the same size at the
+    //radius it is switched over at, so the view carries across.
+    module.Axes3D.prototype.setOrthographic = function(val) {
+        if (val === undefined)
+            return this._orthographic === true;
+        if (this._orthographic === !!val)
+            return;
+        this._orthographic = !!val;
+
+        var aspect = this.height ? this.width / this.height
+                                 : this.canvas.width() / this.canvas.height();
+        var was = this.camera;
+        var camera = this._orthographic
+            ? new THREE.OrthographicCamera(-1, 1, 1, -1, -camera_slab, camera_slab)
+            : new THREE.PerspectiveCamera(camera_fov, aspect, 1., 1000.);
+        camera.up.copy(was.up);
+        camera.position.copy(was.position);
+        camera.quaternion.copy(was.quaternion);
+        //the lights are children of the camera and are aimed at it, so they
+        //move over to whichever one is now looking
+        for (var i = 0; i < this.lights.length; i++) {
+            was.remove(this.lights[i]);
+            this.lights[i].target = camera;
+            camera.add(this.lights[i]);
+        }
+        //and the camera itself stands in the scene, because the renderer
+        //lights a scene with the lights it finds in it
+        if (was.parent !== undefined && was.parent !== null) {
+            var scene = was.parent;
+            scene.remove(was);
+            scene.add(camera);
+        }
+        this.camera = camera;
+        this.aimCamera(aspect);
+        this.schedule();
+    };
+    //What the camera takes in across a viewport of this shape. A perspective
+    //camera takes the aspect alone; an orthographic one is given the rectangle
+    //the perspective one covers at the distance the controls hold it at, which
+    //is what leaves the radius as the zoom.
+    module.Axes3D.prototype.aimCamera = function(aspect) {
+        if (this._orthographic) {
+            var half = this.controls.radius * Math.tan(camera_fov * Math.PI / 360);
+            this.camera.top = half;
+            this.camera.bottom = -half;
+            this.camera.right = half * aspect;
+            this.camera.left = -half * aspect;
+        } else {
+            this.camera.aspect = aspect;
+        }
+        this.camera.updateProjectionMatrix();
     };
     module.Axes3D.prototype.schedule = function() {
         if (!this._scheduled) {
@@ -160,8 +220,13 @@ var jsplot = (function (module) {
         }
 
         this.controls.update(this.camera);
+        //An orthographic camera sees everything at the size it is, however far
+        //off it stands, so the radius the controls hold is the zoom only once
+        //it is put into the frustum, which the controls have just moved.
+        if (this._orthographic)
+            this.aimCamera(this.width / this.height);
 
-        var view, left, bottom, width, height;
+        var view, left, bottom, width, height, camera;
         if (this.views.length > 1) {
             for (var i = 0; i < this.views.length; i++) {
                 view = this.views[i];
@@ -174,21 +239,34 @@ var jsplot = (function (module) {
                 this.renderer.setScissor( left, bottom, width, height );
                 this.renderer.enableScissorTest ( true );
 
-                this.camera.aspect = width / height;
-                this.camera.updateProjectionMatrix();
-                this.drawView(this.views[i].scene, i);
+                //A view can bring a camera of its own, and say what its
+                //scene is to show before it is drawn; the rest are drawn
+                //with the camera the controls move, one after another.
+                if (view.prepare !== undefined)
+                    view.prepare(width, height);
+                camera = view.camera === undefined ? this.camera : view.camera;
+                if (camera === this.camera)
+                    this.aimCamera(width / height);
+                this.drawView(view.scene, view.surf === undefined ? i : view.surf, camera);
+                //anything that belongs over the view rather than in it
+                if (view.overlay !== undefined)
+                    view.overlay(camera);
             }
+            //Anything drawn after this, the picker's own passes among them,
+            //covers the whole canvas: a scissor left on would cut it down to
+            //the last view of the loop.
+            this.renderer.enableScissorTest(false);
         } else if (this.views.length > 0) {
             this.renderer.enableScissorTest(false);
-            this.drawView(this.views[0].scene, 0);
+            this.drawView(this.views[0].scene, 0, this.camera);
         }
         this._scheduled = false;
         this.dispatchEvent({type:"draw"});
 
         //requestAnimationFrame( this._schedule );
     };
-    module.Axes3D.prototype.drawView = function(scene) {
-        this.renderer.render(scene, this.camera);
+    module.Axes3D.prototype.drawView = function(scene, idx, camera, target) {
+        this.renderer.render(scene, camera === undefined ? this.camera : camera, target);
     };
     module.Axes3D.prototype.animate = function(animation) {
         var state = {};
@@ -325,7 +403,21 @@ var jsplot = (function (module) {
             height = width * this.canvas.height() / this.canvas.width();
 
         console.log(width, height);
-        var renderbuf = new THREE.WebGLRenderTarget(width, height, {
+
+        //A render target carries one sample a pixel, whatever the canvas was
+        //made with, so an image is antialiased by rendering it larger and
+        //averaging it back down to the size asked for.
+        width = Math.round(width);
+        height = Math.round(height);
+        var gl = this.renderer.context;
+        var maxsize = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE),
+                               gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+        var samples = parseInt(this.imageAntialias, 10) || 1;
+        while (samples > 1 && (width * samples > maxsize || height * samples > maxsize))
+            samples--;
+        var bufwidth = width * samples, bufheight = height * samples;
+
+        var renderbuf = new THREE.WebGLRenderTarget(bufwidth, bufheight, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format:THREE.RGBAFormat,
@@ -335,17 +427,17 @@ var jsplot = (function (module) {
         var clearAlpha = this.renderer.getClearAlpha();
         var clearColor = this.renderer.getClearColor();
         var oldw = this.canvas.width(), oldh = this.canvas.height();
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(width, height);
+        this.aimCamera(width / height);
+        this.renderer.setSize(bufwidth, bufheight);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
-        this.renderer.render(this.views[0].scene, this.camera, renderbuf);
+        //drawn as a view is, so that whatever a view does before it is drawn
+        //is done for the image as well
+        this.drawView(this.views[0].scene, 0, this.camera, renderbuf);
         this.renderer.setSize(oldw, oldh);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
-        this.camera.aspect = oldw / oldh;
-        this.camera.updateProjectionMatrix();
+        this.aimCamera(oldw / oldh);
 
-        var img = mriview.getTexture(this.renderer.context, renderbuf)
+        var img = mriview.getTexture(this.renderer.context, renderbuf, samples);
         // Read back into `img` now, so free the target: left alone, every call
         // keeps its framebuffer and texture on the GPU, which over a rendered
         // movie adds up to a few megabytes a frame.

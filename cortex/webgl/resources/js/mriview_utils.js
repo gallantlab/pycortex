@@ -93,7 +93,10 @@ var mriview = (function(module) {
 
     var glcanvas = document.createElement("canvas");
     var glctx = glcanvas.getContext("2d");
-    module.getTexture = function(gl, renderbuf) {
+    module.getTexture = function(gl, renderbuf, samples) {
+        if (samples > 1)
+            return module.downsampleTexture(gl, renderbuf, samples);
+
         glcanvas.width = renderbuf.width;
         glcanvas.height = renderbuf.height;
         var img = glctx.createImageData(renderbuf.width, renderbuf.height);
@@ -110,6 +113,55 @@ var mriview = (function(module) {
         ctx.translate(0, renderbuf.height);
         ctx.scale(1,-1);
         ctx.drawImage(glcanvas, 0,0);
+        return canvas;
+    }
+
+    //A buffer rendered samples times wider and taller than the image asked for,
+    //averaged a block of samples by samples at a time down to one pixel. The
+    //color of a sample is weighted by its alpha, so an edge where only some of
+    //the samples are on the surface keeps the color of the surface and takes
+    //the rest of its alpha from the transparent background.
+    module.downsampleTexture = function(gl, renderbuf, samples) {
+        var width = Math.floor(renderbuf.width / samples);
+        var height = Math.floor(renderbuf.height / samples);
+        var raw = new Uint8Array(renderbuf.width * renderbuf.height * 4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, renderbuf.__webglFramebuffer);
+        gl.readPixels(0, 0, renderbuf.width, renderbuf.height, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        var canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        var ctx = canvas.getContext("2d");
+        var img = ctx.createImageData(width, height);
+        var out = img.data;
+        var n = samples * samples;
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var r = 0, g = 0, b = 0, a = 0;
+                for (var dy = 0; dy < samples; dy++) {
+                    //readPixels hands back the rows from the bottom up, so a row
+                    //of the image is read from the other end of the buffer
+                    var row = (renderbuf.height - 1 - y * samples - dy) * renderbuf.width;
+                    for (var dx = 0; dx < samples; dx++) {
+                        var i = (row + x * samples + dx) * 4;
+                        var alpha = raw[i+3];
+                        r += raw[i] * alpha;
+                        g += raw[i+1] * alpha;
+                        b += raw[i+2] * alpha;
+                        a += alpha;
+                    }
+                }
+                var o = (y * width + x) * 4;
+                if (a > 0) {
+                    out[o] = Math.round(r / a);
+                    out[o+1] = Math.round(g / a);
+                    out[o+2] = Math.round(b / a);
+                }
+                out[o+3] = Math.round(a / n);
+            }
+        }
+        ctx.putImageData(img, 0, 0);
         return canvas;
     }
 
