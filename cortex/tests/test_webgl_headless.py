@@ -3343,6 +3343,30 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
             page.wait_for_timeout(2000)
             assert surf("setOutline()") is True
             assert faces() == 2 * coarse, "the outline is not drawn over the surface"
+
+            #the line is black on a black page, so it is counted where the
+            #background is clear: in a saved image
+            def inked():
+                return page.evaluate("""() => {
+                    var c = window.viewer.getImage(256, 192);
+                    var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                    var on = 0;
+                    for (var i = 3; i < d.length; i += 4) if (d[i] > 0) on++;
+                    return on;
+                }""")
+
+            assert surf("setOutlineWidth()") == pytest.approx(0.004)
+            thin = inked()
+            assert thin > 1000, "the brain was not drawn"
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline width', 0.02)" % subj)
+            page.wait_for_timeout(1500)
+            assert surf("setOutlineWidth()") == pytest.approx(0.02)
+            assert inked() > thin * 1.02, "the wider line did not grow the surface"
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline width', 0.004)" % subj)
+            page.wait_for_timeout(1000)
+
             page.evaluate("window.viewer.ui.set('surface.%s.outline', false)" % subj)
             page.wait_for_timeout(1500)
             assert faces() == coarse

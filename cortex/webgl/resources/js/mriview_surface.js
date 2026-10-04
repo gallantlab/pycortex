@@ -119,6 +119,7 @@ var mriview = (function(module) {
             "low poly": {action:[this, "setLowPoly", 0, 32], step:2},
             shading: {action:[this, "setShading", ["smooth", "flat", "gouraud", "phong"]]},
             outline: {action:[this, "setOutline"], toggle:true},
+            "outline width": {action:[this, "setOutlineWidth", 0, .02], step:.0005},
             bumpy_flatmap: {action:[this, "setBumpyFlat"]},
             //The slider starts wherever the config file put it. Its range goes
             //to 5x true scale, or to twice the configured value if that is
@@ -785,6 +786,19 @@ var mriview = (function(module) {
             this._inked[i].visible = this._outline;
         this.dispatchEvent({type:"update"});
     };
+    //How wide the line is, across the screen rather than in the world: a
+    //width of a thousandth is about a pixel on a canvas a thousand across.
+    var default_outline_width = 0.004;
+    module.Surface.prototype.setOutlineWidth = function(width) {
+        if (width === undefined)
+            return this._outlineWidth === undefined ? default_outline_width : this._outlineWidth;
+
+        this._outlineWidth = width;
+        //the meshes of both hemispheres are drawn with the one material
+        if (this._inked !== undefined && this._inked.length > 0)
+            this._inked[0].material.uniforms.outlineWidth.value = width;
+        this.dispatchEvent({type:"update"});
+    };
     module.Surface.prototype._makeOutline = function() {
         var shaders = Shaders.outline({
             morphs: this.names.length,
@@ -797,7 +811,7 @@ var mriview = (function(module) {
             fragmentShader: shaders.fragment,
             attributes: shaders.attrs,
             uniforms: THREE.UniformsUtils.merge([this.uniforms, {
-                outlineWidth: {type:'f', value:0.004},
+                outlineWidth: {type:'f', value:this.setOutlineWidth()},
                 outlineColor: {type:'v3', value:new THREE.Vector3(0, 0, 0)},
             }]),
             //the uniforms the surface is drawn with, rather than copies of
