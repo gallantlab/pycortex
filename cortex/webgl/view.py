@@ -44,7 +44,7 @@ colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
 
 
-def _viewer_urls(port: int, token: str = "") -> tuple[str, str]:
+def _viewer_urls(port: int) -> tuple[str, str]:
     """Return the (local, network) URLs of a viewer running on `port`.
 
     The local URL is the one to open on the machine running the server. The
@@ -57,16 +57,9 @@ def _viewer_urls(port: int, token: str = "") -> tuple[str, str]:
     addresses -- link-local ones among them -- and only reaches the server if
     the local firewall lets this python process accept connections on a
     non-loopback interface. None of that applies to localhost.
-
-    Both URLs carry `token`, which is what the server takes as proof that a
-    request comes from whoever started it; the page keeps it in a cookie from
-    there on, so the addresses it asks for afterwards do not have to carry it.
     """
     local = "http://localhost:%d/mixer.html" % port
     network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
-    if token:
-        local += "?token=" + token
-        network += "?token=" + token
     return local, network
 
 
@@ -1690,21 +1683,19 @@ def show(
                     port, address, token)
 
     server.start()
-    local_url, network_url = _viewer_urls(server.port, server.token)
+    # One link, under this computer's own name, which reaches the server from
+    # here and from another machine alike: the server listens for that name
+    # as well as for localhost. A machine whose name leads nowhere gets a
+    # localhost link, which is all that could reach it in any case. The link
+    # carries the session token, which the page keeps in a cookie from then on.
+    host = server.host
+    url = server.url("mixer.html", host=host + domain_name if host != serve.LOOPBACK else host)
     print("Started server on port %d"%server.port)
-    if network_url == local_url:
-        print("Open the viewer at %s"%local_url)
-    else:
-        print("Open the viewer at %s (from another machine: %s)"
-              %(local_url, network_url))
+    print("Open the viewer at %s"%url)
     if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
-            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
-            if network_url != local_url:
-                link += (' (from another machine: '
-                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
-            display(HTML(link))
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
         except:
             pass
 
@@ -1724,7 +1715,7 @@ def show(
     if open_browser:
         # This runs on the same machine as the server, so localhost is both
         # correct and the most reliable thing to hand the browser.
-        webbrowser.open(local_url)
+        webbrowser.open(server.url("mixer.html", host=serve.LOOPBACK))
         client = server.get_client()
         client.server = server
         return client
