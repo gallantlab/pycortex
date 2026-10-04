@@ -947,6 +947,10 @@ var Shaderlib = (function() {
                 header += "#define HASFLAT\n";
             if (opts.equivolume)
                 header += "#define EQUIVOLUME\n";
+            //a dot of the line's width at each vertex rather than the grown
+            //surface, which rounds the corners of the line
+            if (opts.dots)
+                header += "#define DOTS\n";
 
             var vertShade = [
             utils.thickmixer,
@@ -954,6 +958,9 @@ var Shaderlib = (function() {
             "uniform float bumpyflat_scale;",
             "float f_bumpyflat = float(bumpyflat);",
             "uniform float outlineWidth;",
+            //the canvas in pixels, so that the width is the same count of
+            //them up and across
+            "uniform vec2 viewport;",
 
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
@@ -984,20 +991,35 @@ var Shaderlib = (function() {
                 "#endif",
             "#endif",
 
+            "#ifdef DOTS",
+                //only at the vertices that face away, as the line is only the
+                //faces that do: the surface in front covers such a dot except
+                //where it rounds off a corner of the silhouette
+                "vec4 eye = modelViewMatrix * vec4(pos, 1.0);",
+                "vec3 toEye = projectionMatrix[2][3] == 0. ? vec3(0., 0., 1.) : normalize(-eye.xyz);",
+                "float facing = dot(normalize(normalMatrix * normalize(norm)), toEye);",
+                "gl_Position = facing > 0. ? vec4(2., 2., 2., 1.) : projectionMatrix * eye;",
+                "gl_PointSize = facing > 0. ? 0. : outlineWidth * viewport.y;",
+            "#else",
                 //grown across the screen rather than in the world, so that
-                //the line is the same width however near the surface is
+                //the line is the same width however near the surface is,
+                //and by as many pixels up as across
                 "vec4 clip = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);",
                 "vec3 vnorm = normalize(normalMatrix * normalize(norm));",
-                "vec2 across = (projectionMatrix * vec4(vnorm, 0.)).xy;",
+                "vec2 across = (projectionMatrix * vec4(vnorm, 0.)).xy * viewport;",
                 "if (length(across) > 0.0001)",
-                    "clip.xy += normalize(across) * outlineWidth * clip.w;",
+                    "clip.xy += normalize(across) * outlineWidth * viewport.y / viewport * clip.w;",
                 "gl_Position = clip;",
+            "#endif",
             "}"
             ].join("\n");
 
             var fragShade = [
             "uniform vec3 outlineColor;",
             "void main() {",
+            "#ifdef DOTS",
+                "if (length(gl_PointCoord - 0.5) > 0.5) discard;",
+            "#endif",
                 "gl_FragColor = vec4(outlineColor, 1.);",
             "}"
             ].join("\n");

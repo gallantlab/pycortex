@@ -265,8 +265,8 @@ var jsplot = (function (module) {
 
         //requestAnimationFrame( this._schedule );
     };
-    module.Axes3D.prototype.drawView = function(scene, idx, camera) {
-        this.renderer.render(scene, camera === undefined ? this.camera : camera);
+    module.Axes3D.prototype.drawView = function(scene, idx, camera, target) {
+        this.renderer.render(scene, camera === undefined ? this.camera : camera, target);
     };
     module.Axes3D.prototype.animate = function(animation) {
         var state = {};
@@ -430,7 +430,9 @@ var jsplot = (function (module) {
         this.aimCamera(width / height);
         this.renderer.setSize(bufwidth, bufheight);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 0);
-        this.renderer.render(this.views[0].scene, this.camera, renderbuf);
+        //drawn as a view is, so that whatever a view does before it is drawn
+        //is done for the image as well
+        this.drawView(this.views[0].scene, 0, this.camera, renderbuf);
         this.renderer.setSize(oldw, oldh);
         this.renderer.setClearColor(new THREE.Color(0,0,0), 1);
         this.aimCamera(oldw / oldh);

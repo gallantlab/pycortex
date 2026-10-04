@@ -177,7 +177,7 @@ var mriview = (function(module) {
     THREE.EventDispatcher.prototype.apply(module.Viewer.prototype);
     module.Viewer.prototype.constructor = module.Viewer;
 
-    module.Viewer.prototype.drawView = function(scene, idx, camera) {
+    module.Viewer.prototype.drawView = function(scene, idx, camera, target) {
         camera = camera === undefined ? this.camera : camera;
         if (this.surfs[idx] !== undefined && this.surfs[idx].prerender !== undefined)
             this.surfs[idx].prerender(this.renderer, scene, camera);
@@ -187,7 +187,7 @@ var mriview = (function(module) {
         if (this.oculus)
             this.oculus.render(scene, camera);
         else
-            this.renderer.render(scene, camera);
+            this.renderer.render(scene, camera, target);
     }
 
     module.Viewer.prototype.setOculus = function() {

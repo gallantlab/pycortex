@@ -123,6 +123,7 @@ var mriview = (function(module) {
             shading: {action:[this, "setShading", ["smooth", "flat", "gouraud", "phong"]]},
             outline: {action:[this, "setOutline"], toggle:true},
             "outline width": {action:[this, "setOutlineWidth", 0, .02], step:.0005},
+            "outline corners": {action:[this, "setOutlineCorners", ["sharp", "round"]]},
             bumpy_flatmap: {action:[this, "setBumpyFlat"]},
             //The slider starts wherever the config file put it. Its range goes
             //to 5x true scale, or to twice the configured value if that is
@@ -464,9 +465,47 @@ var mriview = (function(module) {
     }
     module.Surface.prototype.prerender = function(renderer, scene, camera) {
         if (this.svg !== undefined) {
+            //the labels are hidden behind the surface by a depth image of it,
+            //which the dots of the outline are kept out of
+            var dots = [];
+            for (var i = 0; this._dots !== undefined && i < this._dots.length; i++) {
+                dots.push(this._dots[i].visible);
+                this._dots[i].visible = false;
+            }
             this.svg.prerender(renderer, scene, camera);
+            for (var i = 0; i < dots.length; i++)
+                this._dots[i].visible = dots[i];
+        }
+        if (this._outlineUniforms !== undefined) {
+            //the line is measured in pixels of whatever is being drawn to
+            this._outlineUniforms.viewport.value.set(
+                renderer.domElement.width, renderer.domElement.height);
+            //the dots follow the faces being drawn, which detail and
+            //flattening swap
+            for (var i = 0; this._dots !== undefined && i < this._dots.length; i++) {
+                var hemi = this.hemis[["left", "right"][i]];
+                if (this._dots[i].visible && hemi !== undefined &&
+                        (hemi._dotgeom === undefined || hemi._dotgeom.index !== hemi.attributes.index))
+                    this._dots[i] = this._makeDots(hemi, this._dots[i]);
+            }
         }
     }
+    //A point cloud over the vertices the dots belong at, in place of the one
+    //there was: the renderer sets an object up for the geometry it is made
+    //with, so a new geometry gets a new object.
+    module.Surface.prototype._makeDots = function(hemi, before) {
+        var pivot = this.pivots[hemi === this.hemis.left ? "left" : "right"].back;
+        var was = hemi._dotgeom === undefined ? undefined : hemi._dotgeom.geometry;
+        var dots = new THREE.PointCloud(this._dotGeometry(hemi), before.material);
+        dots.position.y = -this.flatoff[1];
+        dots.visible = before.visible;
+        pivot.remove(before);
+        pivot.add(dots);
+        //a set of vertices picked out for the dots is let go of with them
+        if (was !== undefined && was !== hemi && was !== dots.geometry)
+            was.dispose();
+        return dots;
+    };
 
     // var oldcolor, black = new THREE.Color(0,0,0);
     // module.Surface.prototype._prerender_halosurf = function(evt) {
@@ -791,9 +830,64 @@ var mriview = (function(module) {
         this._outline = !!on;
         if (this._inked === undefined && this._outline)
             this._makeOutline();
-        for (var i = 0; this._inked !== undefined && i < this._inked.length; i++)
-            this._inked[i].visible = this._outline;
+        this._showOutline();
         this.dispatchEvent({type:"update"});
+    };
+    //Where the line turns a corner of the silhouette, a dot of its width at
+    //the vertex rounds it off, the way a round join does in a drawing
+    //program; without the dots the line comes to a point there. The dots are
+    //drawn at the vertices that face away, as the line is drawn from the
+    //faces that do, so the surface in front covers them except at its edge.
+    module.Surface.prototype.setOutlineCorners = function(mode) {
+        if (mode === undefined)
+            return this._corners === undefined ? "sharp" : this._corners;
+
+        this._corners = mode;
+        this._showOutline();
+        this.dispatchEvent({type:"update"});
+    };
+    module.Surface.prototype._showOutline = function() {
+        for (var i = 0; this._inked !== undefined && i < this._inked.length; i++)
+            this._inked[i].visible = this._outline === true;
+        for (var i = 0; this._dots !== undefined && i < this._dots.length; i++)
+            this._dots[i].visible = this._outline === true && this.setOutlineCorners() === "round";
+    };
+    //The vertices the dots are drawn at are the ones in the faces being
+    //drawn: a vertex left out at a coarser detail, or on the medial wall of
+    //the flatmap, would put a dot off the line. The surface's own geometry
+    //serves while every vertex is in them.
+    module.Surface.prototype._dotGeometry = function(hemi) {
+        var index = hemi.attributes.index;
+        if (hemi._dotgeom !== undefined && hemi._dotgeom.index === index)
+            return hemi._dotgeom.geometry;
+        var geometry = hemi;
+        if (hemi._welded !== undefined || hemi.fullind === undefined || index !== hemi.fullind.index ||
+                (hemi._lodbase !== undefined && hemi.fullind !== hemi._lodbase.full)) {
+            var faces = this._faceList({index: index, offsets: hemi.offsets});
+            var count = hemi.attributes.position.array.length / 3;
+            var used = new Uint8Array(count), n = 0;
+            for (var i = 0; i < faces.length; i++)
+                used[faces[i]] = 1;
+            for (var v = 0; v < count; v++)
+                n += used[v];
+            var list = new Uint32Array(n);
+            for (var v = 0, j = 0; v < count; v++)
+                if (used[v]) list[j++] = v;
+            geometry = new THREE.BufferGeometry();
+            for (var key in hemi.attributes) {
+                var attr = hemi.attributes[key];
+                if (key === "index" || attr.array.length === 0)
+                    continue;
+                var size = attr.itemSize;
+                var array = new attr.array.constructor(n * size);
+                for (var j = 0; j < n; j++)
+                    for (var c = 0; c < size; c++)
+                        array[j * size + c] = attr.array[list[j] * size + c];
+                geometry.addAttribute(key, new THREE.BufferAttribute(array, size));
+            }
+        }
+        hemi._dotgeom = {index: index, geometry: geometry};
+        return geometry;
     };
     //How wide the line is, across the screen rather than in the world: a
     //width of a thousandth is about a pixel on a canvas a thousand across.
@@ -803,9 +897,8 @@ var mriview = (function(module) {
             return this._outlineWidth === undefined ? default_outline_width : this._outlineWidth;
 
         this._outlineWidth = width;
-        //the meshes of both hemispheres are drawn with the one material
-        if (this._inked !== undefined && this._inked.length > 0)
-            this._inked[0].material.uniforms.outlineWidth.value = width;
+        if (this._outlineUniforms !== undefined)
+            this._outlineUniforms.outlineWidth.value = width;
         this.dispatchEvent({type:"update"});
     };
     //Ambient occlusion: how much of the sky each vertex misses, worked out in
@@ -898,34 +991,52 @@ var mriview = (function(module) {
         }
     };
     module.Surface.prototype._makeOutline = function() {
-        var shaders = Shaders.outline({
+        //shared by the line and its dots, and with the surface, so that
+        //unfolding and depth move the line with it
+        this._outlineUniforms = {
+            outlineWidth: {type:'f', value:this.setOutlineWidth()},
+            outlineColor: {type:'v3', value:new THREE.Vector3(0, 0, 0)},
+            viewport: {type:'v2', value:new THREE.Vector2(1, 1)},
+        };
+        var opts = {
             morphs: this.names.length,
             volume: this.volume,
             hasflat: this.flatlims !== undefined,
             equivolume: this._equivolume,
-        });
-        var material = new THREE.ShaderMaterial({
-            vertexShader: shaders.vertex,
-            fragmentShader: shaders.fragment,
-            attributes: shaders.attrs,
-            uniforms: THREE.UniformsUtils.merge([this.uniforms, {
-                outlineWidth: {type:'f', value:this.setOutlineWidth()},
-                outlineColor: {type:'v3', value:new THREE.Vector3(0, 0, 0)},
-            }]),
-            //the uniforms the surface is drawn with, rather than copies of
-            //them, so that unfolding and depth move the line with it
-            side: THREE.BackSide,
-        });
-        for (var name in this.uniforms)
-            material.uniforms[name] = this.uniforms[name];
+        };
+        var material = function(shaders, side) {
+            var made = new THREE.ShaderMaterial({
+                vertexShader: shaders.vertex,
+                fragmentShader: shaders.fragment,
+                attributes: shaders.attrs,
+                uniforms: THREE.UniformsUtils.merge([this.uniforms, this._outlineUniforms]),
+                side: side,
+            });
+            //the uniforms themselves rather than copies of them
+            for (var name in this.uniforms)
+                made.uniforms[name] = this.uniforms[name];
+            for (var name in this._outlineUniforms)
+                made.uniforms[name] = this._outlineUniforms[name];
+            return made;
+        }.bind(this);
+        var inked = material(Shaders.outline(opts), THREE.BackSide);
+        var dotted = material(Shaders.outline(Object.assign({dots: true}, opts)), THREE.FrontSide);
 
         this._inked = [];
+        this._dots = [];
         var names = ["left", "right"];
         for (var i = 0; i < names.length; i++) {
-            var mesh = this._makeMesh(this.hemis[names[i]], material);
+            var hemi = this.hemis[names[i]];
+            var mesh = this._makeMesh(hemi, inked);
             mesh.visible = false;
             this.pivots[names[i]].back.add(mesh);
             this._inked.push(mesh);
+
+            var dots = new THREE.PointCloud(this._dotGeometry(hemi), dotted);
+            dots.position.y = -this.flatoff[1];
+            dots.visible = false;
+            this.pivots[names[i]].back.add(dots);
+            this._dots.push(dots);
         }
     };
     module.Surface.prototype.setShading = function(mode) {

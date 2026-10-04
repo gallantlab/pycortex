@@ -1380,9 +1380,10 @@ def test_the_server_accepts_no_frames():
     """
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        url = f"http://localhost:{handle.server.port}/movie"
-        # Refused either way: nothing routes /movie any more, and the server's
-        # catch-all file handler (serve.py) only answers GET, hence 405.
+        # with the session token, so that the refusal is the route's own:
+        # nothing routes /movie any more, and the server's catch-all file
+        # handler (serve.py) only answers GET, hence 405.
+        url = handle.server.url("movie", host="localhost")
         assert _post(url, name="f", frame=0, png="x") in (404, 405)
         assert "movie_post" not in _js_attrs(handle, "window.viewopts")
 
@@ -3346,14 +3347,17 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
 
             #the line is black on a black page, so it is counted where the
             #background is clear: in a saved image
-            def inked():
-                return page.evaluate("""() => {
+            def inked(black=False):
+                """How many pixels the surface and its line cover, or with
+                `black` how many of them are the line's own color."""
+                return page.evaluate("""(black) => {
                     var c = window.viewer.getImage(256, 192);
                     var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     var on = 0;
-                    for (var i = 3; i < d.length; i += 4) if (d[i] > 0) on++;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i+3] > 0 && (!black || d[i] + d[i+1] + d[i+2] < 45)) on++;
                     return on;
-                }""")
+                }""", black)
 
             assert surf("setOutlineWidth()") == pytest.approx(0.004)
             thin = inked()
@@ -3362,7 +3366,33 @@ def test_shading_gives_a_face_one_color_and_an_outline_rings_the_surface():
                 "window.viewer.ui.set('surface.%s.outline width', 0.02)" % subj)
             page.wait_for_timeout(1500)
             assert surf("setOutlineWidth()") == pytest.approx(0.02)
-            assert inked() > thin * 1.02, "the wider line did not grow the surface"
+            wide = inked()
+            assert wide > thin * 1.02, "the wider line did not grow the surface"
+
+            #round corners put a dot of the line's width at each vertex of
+            #the faces being drawn, which fills the corners the line comes
+            #to a point at
+            def points():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.points; }")
+
+            #the labels are drawn as points of their own, so the dots are
+            #counted over them
+            assert surf("setOutlineCorners()") == "sharp"
+            labels = points()
+            pointed = inked(black=True)
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline corners', 'round')" % subj)
+            page.wait_for_timeout(1500)
+            assert surf("setOutlineCorners()") == "round"
+            drawn = points() - labels
+            assert 0 < drawn <= 2 * coarse * 3, "the dots are not on the vertices of the faces drawn"
+            assert inked(black=True) > pointed, "the round corners added nothing to the line"
+            page.evaluate(
+                "window.viewer.ui.set('surface.%s.outline corners', 'sharp')" % subj)
+            page.wait_for_timeout(1000)
+            assert points() == labels
             page.evaluate(
                 "window.viewer.ui.set('surface.%s.outline width', 0.004)" % subj)
             page.wait_for_timeout(1000)
