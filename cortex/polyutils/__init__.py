@@ -13,6 +13,7 @@ from .misc import (
     face_area,
     face_volume,
     decimate,
+    decimate_faces,
     inside_convex_poly,
     make_cube,
     boundary_edges,

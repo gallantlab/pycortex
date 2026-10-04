@@ -1,6 +1,7 @@
 
 import io
 
+from scipy import sparse
 from scipy.spatial import Delaunay
 import numpy as np
 import functools
@@ -74,6 +75,88 @@ def decimate(pts, polys):
     dpts = dec.output.points.to_array()
     dpolys = dec.output.polys.to_array().reshape(-1, 4)[:,1:]
     return dpts, dpolys
+
+def decimate_faces(pts, polys, cell, split=None):
+    """Faces for drawing a surface coarsely, over a subset of its vertices.
+
+    The vertices that fall in one box of a grid of `cell` mm over `pts`, and
+    that are joined to one another across the mesh, stand for one vertex of
+    the coarse surface: the one of them nearest the middle of the group. A box
+    holding two pieces of surface that run past each other, the two banks of a
+    sulcus for one, has them as separate groups, since they are joined to each
+    other only around the fold and so outside the box.
+
+    The faces come back written in the numbering of `pts`, which is what lets
+    them be drawn from the arrays an existing surface is already held in: only
+    the triangles change, and every vertex of a triangle is a vertex of the
+    surface they were cut from.
+
+    Parameters
+    ----------
+    pts : array (n, 3)
+        The vertices of the surface the faces are cut from.
+    polys : array (m, 3)
+        Its triangles.
+    cell : float
+        The width of a box of the grid, in the units of `pts`. A surface is
+        left as it is when this is 0 or less.
+    split : array (n,), optional
+        A label per vertex that a group is never allowed to cross, such as
+        which side of a cut a vertex is on. Vertices of different labels are
+        put in different groups however close together they are.
+
+    Returns
+    -------
+    verts : array (k,)
+        The vertices of `pts` the coarse surface is drawn from.
+    faces : array (j, 3)
+        Its triangles, in the numbering of `pts`.
+    """
+    pts = np.asarray(pts, dtype=float)
+    polys = np.asarray(polys)
+    if cell is None or cell <= 0:
+        return np.arange(len(pts)), polys.astype(np.uint32)
+
+    grid = np.floor((pts - pts.min(0)) / cell).astype(np.int64)
+    span = grid.max(0) + 1
+    if np.prod(span, dtype=float) < 2 ** 62:
+        #one number per box, which sorts far faster than the rows do
+        boxes = np.unique((grid * [1, span[0], span[0] * span[1]]).sum(1),
+                          return_inverse=True)[1]
+    else:
+        boxes = np.unique(grid, axis=0, return_inverse=True)[1]
+
+    #a box holds as many groups as it has pieces of surface in it
+    edges = np.vstack([polys[:, [0, 1]], polys[:, [1, 2]], polys[:, [0, 2]]])
+    together = boxes[edges[:, 0]] == boxes[edges[:, 1]]
+    if split is not None:
+        split = np.asarray(split)
+        together &= split[edges[:, 0]] == split[edges[:, 1]]
+    joined = edges[together]
+    graph = sparse.coo_matrix(
+        (np.ones(len(joined), dtype=np.int8), (joined[:, 0], joined[:, 1])),
+        shape=(len(pts), len(pts)))
+    ngroups, groups = sparse.csgraph.connected_components(graph, directed=False)
+
+    #the vertex nearest the middle of a group stands for it: writing the
+    #groups' vertices in from the farthest leaves the nearest one written last
+    middles = np.zeros((ngroups, 3))
+    for axis in range(3):
+        middles[:, axis] = np.bincount(groups, weights=pts[:, axis], minlength=ngroups)
+    middles /= np.bincount(groups, minlength=ngroups)[:, None]
+    order = np.argsort(-((pts - middles[groups]) ** 2).sum(1))
+    verts = np.zeros(ngroups, dtype=np.int64)
+    verts[groups[order]] = order
+
+    faces = verts[groups[polys]]
+    #a face whose vertices are not three different groups has no area left,
+    #and several faces of the surface can come down to the same triangle
+    kept = ((faces[:, 0] != faces[:, 1]) & (faces[:, 1] != faces[:, 2]) &
+            (faces[:, 0] != faces[:, 2]))
+    faces = faces[kept]
+    first = np.unique(np.sort(faces, axis=1), axis=0, return_index=True)[1]
+    return np.sort(verts), faces[np.sort(first)].astype(np.uint32)
+
 
 def inside_convex_poly(pts):
     """Returns a function that checks if inputs are inside the convex hull of polyhedron defined by pts

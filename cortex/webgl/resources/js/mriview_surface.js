@@ -116,6 +116,7 @@ var mriview = (function(module) {
             "pial surface": {action: this.to_pial_surface.bind(this), key: 'p', help: "Pial surface"},
             "fiducial surface": {action: this.to_fiducial_surface.bind(this), key: 'u', help: "Fiducial surface"},
             "WM surface": {action: this.to_white_matter_surface.bind(this), key: 'y', help: "White matter surface"},
+            "low poly": {action:[this, "setLowPoly", 0, 32], step:2},
             bumpy_flatmap: {action:[this, "setBumpyFlat"]},
             //The slider starts wherever the config file put it. Its range goes
             //to 5x true scale, or to twice the configured value if that is
@@ -169,6 +170,17 @@ var mriview = (function(module) {
                 )];
 
             this.names = json.names;
+            //A coarse set of faces is named after the pack it is cut from,
+            //beside it, so the viewer asks for one by the name of the mesh.
+            //A viewer served as files has only the widths it was given, which
+            //it is told; one with a server behind it has any width it asks
+            //for, since the server cuts what it has not cut yet.
+            if (json.data !== undefined) {
+                this._lodurl = loader.extractUrlBase(ctminfo) +
+                               json.data.replace(/\.ctm$/, "_lod{cell}.bin");
+                this._lodcells = json.lod_cells;
+                this._lod = {};
+            }
             var gb0 = geometries[0].boundingBox, gb1 = geometries[1].boundingBox;
             var center = [
                 ((gb1.max.x - gb0.min.x) / 2) + gb0.min.x,
@@ -643,6 +655,162 @@ var mriview = (function(module) {
         this._topleft_lighting = val;
         //The lights themselves hang off the viewer's camera, not the surface
         this.dispatchEvent({type:'lighting', topleft:val});
+    };
+    //Draws the surface from fewer of its vertices. The faces come from a
+    //coarse surface cut over groups of `cell` mm, whose vertices are vertices
+    //of this one, so only the triangles change: the data, the morph targets,
+    //the flatmap and everything else held per vertex stay as they are. 0 is
+    //the surface as it was loaded.
+    module.Surface.prototype.setLowPoly = function(cell) {
+        if (cell === undefined)
+            return this._lowpoly === undefined ? 0 : this._lowpoly;
+
+        cell = this._lodCell(cell);
+        this._lowpoly = cell;
+        if (cell === 0)
+            return this._applyLod(undefined);
+        if (this._lod[cell] !== undefined)
+            return this._applyLod(this._lod[cell]);
+
+        var request = new XMLHttpRequest();
+        request.open("GET", this._lodurl.replace("{cell}", cell), true);
+        request.responseType = "arraybuffer";
+        request.onload = function() {
+            if (request.status !== 200)
+                return;
+            this._lod[cell] = this._readLod(request.response);
+            //the control may have moved on while the request was out
+            if (this._lowpoly === cell)
+                this._applyLod(this._lod[cell]);
+        }.bind(this);
+        request.send();
+    };
+    //The width this one is to be read as: a viewer served as files has only
+    //the widths it was given, since nothing is there to cut another.
+    module.Surface.prototype._lodCell = function(cell) {
+        cell = Math.round(cell);
+        if (cell <= 0 || this._lodurl === undefined)
+            return 0;
+        if (this._lodcells === undefined)
+            return cell;
+        if (this._lodcells.length === 0)
+            return 0;
+        var nearest = this._lodcells[0];
+        for (var i = 1; i < this._lodcells.length; i++) {
+            if (Math.abs(this._lodcells[i] - cell) < Math.abs(nearest - cell))
+                nearest = this._lodcells[i];
+        }
+        return nearest;
+    };
+    //The faces of each hemisphere, as they are sent: the number of faces of
+    //the two as uint32, then their vertices, three uint32 to a face.
+    module.Surface.prototype._readLod = function(buffer) {
+        var raw = new Uint32Array(buffer);
+        var names = ["left", "right"], sets = {}, at = names.length;
+        for (var i = 0; i < names.length; i++) {
+            var hemi = this.hemis[names[i]];
+            var map = this._lodMap(hemi);
+            var faces = new Uint32Array(3 * raw[i]);
+            for (var j = 0; j < faces.length; j++)
+                faces[j] = map[raw[at + j]];
+            at += faces.length;
+            sets[names[i]] = {
+                full: {index: new THREE.BufferAttribute(faces, 3), offsets: []},
+                culled: hemi.culled === undefined ? undefined : this._cullLod(hemi, faces),
+            };
+        }
+        return sets;
+    };
+    //The faces are cut in the numbering of the ctm pack, which the loader
+    //renumbers as it reads it so that the vertices of a face are within one
+    //block of 65535. Its own map says where each of them went.
+    module.Surface.prototype._lodMap = function(hemi) {
+        if (hemi._lodmap === undefined) {
+            if (hemi.indexMap === undefined) {
+                //nothing was renumbered, so the pack's numbering is this one
+                var n = hemi.attributes.position.array.length / 3;
+                hemi._lodmap = new Uint32Array(n);
+                for (var i = 0; i < n; i++)
+                    hemi._lodmap[i] = i;
+            } else {
+                var keys = Object.keys(hemi.indexMap), last = 0;
+                for (var i = 0; i < keys.length; i++)
+                    last = Math.max(last, keys[i] | 0);
+                hemi._lodmap = new Uint32Array(last + 1);
+                for (var i = 0; i < keys.length; i++)
+                    hemi._lodmap[keys[i] | 0] = hemi.indexMap[keys[i]];
+            }
+        }
+        return hemi._lodmap;
+    };
+    //The same faces without the ones on the medial wall, which is what the
+    //flatmap is drawn from
+    module.Surface.prototype._cullLod = function(hemi, faces) {
+        var aux = hemi.attributes.auxdat.array;
+        var kept = new Uint32Array(faces.length), n = 0;
+        for (var i = 0; i < faces.length; i += 3) {
+            if (!aux[faces[i] * 4] && !aux[faces[i + 1] * 4] && !aux[faces[i + 2] * 4]) {
+                kept[n++] = faces[i];
+                kept[n++] = faces[i + 1];
+                kept[n++] = faces[i + 2];
+            }
+        }
+        return {index: new THREE.BufferAttribute(kept.subarray(0, n), 3), offsets: []};
+    };
+    //Puts a set of faces in place of the ones being drawn, keeping the ones
+    //the surface came with to go back to. The flatmap draws the culled set,
+    //as it does at any detail, and unfolding goes on swapping between them.
+    module.Surface.prototype._applyLod = function(sets) {
+        var names = ["left", "right"];
+        for (var i = 0; i < names.length; i++) {
+            var hemi = this.hemis[names[i]];
+            if (hemi === undefined || hemi.fullind === undefined)
+                continue;
+            if (hemi._lodbase === undefined) {
+                hemi._lodbase = {full: hemi.fullind, culled: hemi.culled, normals: {}};
+                var sources = this._lodNormals(hemi);
+                for (var attr in sources)
+                    hemi._lodbase.normals[attr] = hemi.attributes[attr].array;
+            }
+            var use = sets === undefined ? hemi._lodbase : sets[names[i]];
+            hemi.fullind = use.full;
+            hemi.culled = use.culled;
+            var now = this._flat > 0 && hemi.culled !== undefined ? hemi.culled : hemi.fullind;
+            hemi.attributes.index = now.index;
+            hemi.offsets = now.offsets;
+
+            //A coarse surface shaded with the normals of the fine one it was
+            //cut from reads as the fine one, so the normals are taken from
+            //the faces being drawn. The flatmap's are the same at any
+            //detail, since they all point the same way.
+            var sources = this._lodNormals(hemi);
+            var span = [{start:0, count:now.index.array.length, index:0}];
+            for (var attr in sources) {
+                hemi.attributes[attr].array = sets === undefined
+                    ? hemi._lodbase.normals[attr]
+                    : module.computeNormal(hemi.attributes[sources[attr]],
+                                           now.index, span).array;
+                hemi.attributes[attr].needsUpdate = true;
+            }
+        }
+        this.dispatchEvent({type:"update"});
+    };
+    //Which of a hemisphere's normals are worked out from which of its
+    //surfaces. The flatmap is left out: its normals are a constant.
+    module.Surface.prototype._lodNormals = function(hemi) {
+        if (hemi._lodnormals === undefined) {
+            var sources = {normal: "position"};
+            if (hemi.attributes.wmnorm !== undefined)
+                sources.wmnorm = "wm";
+            var last = 0;
+            while (hemi.attributes["mixNorms" + last] !== undefined)
+                last++;
+            //the last pair is the flatmap, where they are a constant
+            for (var i = 0; i < last - (this.flatlims !== undefined ? 1 : 0); i++)
+                sources["mixNorms" + i] = "mixSurfs" + i;
+            hemi._lodnormals = sources;
+        }
+        return hemi._lodnormals;
     };
     module.Surface.prototype.setBumpyFlat = function(val) {
         if (val === undefined)
