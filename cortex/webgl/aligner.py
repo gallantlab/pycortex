@@ -186,6 +186,19 @@ def clear_masks(subject: str, xfmname: str) -> list[str]:
     return names
 
 
+def _reply_of(message: Any) -> Any:
+    """What the page answered, out of the envelope the websocket wraps it in.
+
+    Every answer carries the id of the request it belongs to (see
+    ``serve.WebApp.send``), which `send` itself unwraps. A reply read straight
+    off the server's queue, because it arrived after `send` stopped waiting,
+    still has it around.
+    """
+    if isinstance(message, dict) and "id" in message and "result" in message:
+        return message["result"]
+    return message
+
+
 class JSAligner(serve.JSProxy[P]):
     """Handle to an aligner running in the browser.
 
@@ -227,7 +240,7 @@ class JSAligner(serve.JSProxy[P]):
             if time.monotonic() > deadline:
                 raise TimeoutError("No reply to %s within %.0f s" % (name, self.call_timeout))
             try:
-                reply = json.loads(server.response.get(timeout=1))
+                reply = _reply_of(json.loads(server.response.get(timeout=1)))
             except queue.Empty:
                 reply = None
 

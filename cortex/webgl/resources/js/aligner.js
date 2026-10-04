@@ -1235,10 +1235,9 @@ var aligner = (function(module) {
         return this.nframes;
     };
     //Runs a method for the python side and tags the result with the token
-    //of the request. The websocket protocol pairs replies with requests by
-    //their order and gives up on a reply after two seconds, so replies held
-    //up by a busy page (parsing the surfaces, a slow frame) would otherwise
-    //be taken for those of later requests.
+    //of the request. The websocket gives up on a reply after two seconds, so
+    //one held up by a busy page (parsing the surfaces, a slow frame) is left
+    //in the server's queue; the token is how the python side finds it there.
     //The reply also carries the number of frames drawn so far and whether a
     //redraw is pending, so that the python side can wait for the frame that
     //shows the effect of the call before taking a snapshot.
