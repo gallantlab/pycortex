@@ -1235,3 +1235,90 @@ def test_the_viewer_page_does_not_scroll():
             browser.close()
     finally:
         server.stop()
+
+
+# ---------------------------------------------------------------------------
+# Group 9: Drawing the surface coarsely
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(400)
+def test_the_low_poly_slider_draws_fewer_faces():
+    """`low poly` draws the surface from faces cut over groups of that many
+    mm, which the server cuts the first time they are asked for and keeps.
+
+    The vertices of the coarse surface are vertices of the one it was cut
+    from, so only the triangles change: the surface goes back to what it was
+    at 0, down to the picture it draws.
+    """
+    from playwright.sync_api import sync_playwright
+
+    vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    server = cortex.webgl.show(vol, open_browser=False, display_url=False, autoclose=False)
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True, args=[
+                "--enable-webgl", "--use-gl=swiftshader", "--no-sandbox", "--disable-dev-shm-usage"])
+            page = browser.new_page(viewport={"width": 1000, "height": 700})
+            errors = []
+            page.on("pageerror", lambda exc: errors.append(str(exc)))
+            page.goto(server.url("mixer.html", host="localhost"), wait_until="load", timeout=120000)
+            page.wait_for_function(
+                "window.viewer && window.viewer.loaded.state() == 'resolved'", timeout=240000)
+            page.wait_for_timeout(3000)
+
+            def faces():
+                return page.evaluate(
+                    "() => { window.viewer.draw();"
+                    " return window.viewer.renderer.info.render.faces; }")
+
+            def lit():
+                """How much of the canvas the surface is drawn on."""
+                return page.evaluate("""() => {
+                    var c = document.querySelector('#brain');
+                    var s = document.createElement('canvas');
+                    s.width = c.width; s.height = c.height;
+                    s.getContext('2d').drawImage(c, 0, 0);
+                    var d = s.getContext('2d').getImageData(0, 0, s.width, s.height).data;
+                    var n = 0;
+                    for (var i = 0; i < d.length; i += 4)
+                        if (d[i] + d[i+1] + d[i+2] > 150) n++;
+                    return n / (s.width * s.height);
+                }""")
+
+            def wait_for_faces(fewer_than, seconds=60):
+                """The server cuts the faces when they are first asked for,
+                so a cold cache waits on the cut as well as the fetch."""
+                deadline = time.time() + seconds
+                while time.time() < deadline:
+                    if faces() < fewer_than:
+                        return faces()
+                    page.wait_for_timeout(500)
+                return faces()
+
+            whole, drawn = faces(), lit()
+            opened = page.locator("#brain").screenshot()
+            assert whole > 100000, "the surface was not drawn to begin with"
+            assert drawn > 0.02
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 8)" % subj)
+            coarse = wait_for_faces(whole / 10)
+            assert coarse < whole / 10, (
+                "8 mm groups left %d of %d faces" % (coarse, whole))
+            #the same brain, from fewer triangles: it covers the canvas as it
+            #did, rather than being left in pieces
+            assert abs(lit() - drawn) < drawn / 3, "the coarse surface is not the same shape"
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 32)" % subj)
+            assert wait_for_faces(coarse) < coarse, (
+                "32 mm groups left as many faces as 8 mm ones")
+
+            page.evaluate("window.viewer.ui.set('surface.%s.low poly', 0)" % subj)
+            page.wait_for_timeout(2500)
+            assert faces() == whole
+            assert page.locator("#brain").screenshot() == opened, (
+                "the surface did not go back to what it was")
+            assert not errors, errors
+            browser.close()
+    finally:
+        server.stop()

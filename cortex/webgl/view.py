@@ -5,6 +5,7 @@ import glob
 import json
 import mimetypes
 import os
+import re
 import shutil
 import sys
 import threading
@@ -177,6 +178,13 @@ def make_static(
             newfname = fname
         ctms[subj] = newfname + ".json"
 
+        #Nothing cuts a coarse surface for a viewer that is served as files,
+        #so the ones its control offers are cut here.
+        lodfiles = []
+        if copy_ctmfiles:
+            lodfiles = [utils.get_lod(subj, cell, **dict(ctmargs, recache=False))
+                        for cell in utils.LOD_CELLS]
+
         for ext in ["json", "ctm", "svg"]:
             srcfile = os.path.join(oldpath, "%s.%s" % (fname, ext))
             newfile = os.path.join(outpath, "%s.%s" % (newfname, ext))
@@ -186,15 +194,24 @@ def make_static(
             if os.path.exists(srcfile) and copy_ctmfiles:
                 shutil.copy2(srcfile, newfile)
 
-            if ext == "json" and anonymize:
-                ## change filenames in json
-                nfh = open(newfile)
-                jsoncontents = nfh.read()
-                nfh.close()
+            if ext == "json" and os.path.exists(newfile):
+                with open(newfile) as nfh:
+                    jsoncontents = nfh.read()
+                if anonymize:
+                    ## change filenames in json
+                    jsoncontents = jsoncontents.replace(fname, newfname)
+                #the widths it has files for, which its control is held to
+                jsdict = json.loads(jsoncontents)
+                jsdict["lod_cells"] = list(utils.LOD_CELLS) if lodfiles else []
+                with open(newfile, "w") as ofh:
+                    json.dump(jsdict, ofh)
 
-                ofh = open(newfile, "w")
-                ofh.write(jsoncontents.replace(fname, newfname))
-                ofh.close()
+        for srcfile in lodfiles:
+            newfile = os.path.join(outpath, os.path.split(srcfile)[1].replace(
+                fname, newfname, 1))
+            if os.path.exists(newfile):
+                os.unlink(newfile)
+            shutil.copy2(srcfile, newfile)
     if anonymize:
         old_subjects = sorted(list(ctms.keys()))
         ctms = dict(("S%d" % i, ctms[k]) for i, k in enumerate(old_subjects))
@@ -476,6 +493,15 @@ def show(
                 self.write(open(ctms[subj]).read())
             else:
                 fpath = os.path.split(ctms[subj])[0]
+                #coarse faces are cut the first time they are asked for and
+                #kept beside the pack from then on
+                coarse = re.match(r".+_lod(\d+)\.bin$", path)
+                if coarse is not None and not os.path.exists(os.path.join(fpath, path)):
+                    cell = int(coarse.group(1))
+                    if not 0 < cell <= utils.LOD_MAX:
+                        self.set_status(404)
+                        return self.write_error(404)
+                    utils.get_lod(subj, cell, **dict(ctmargs, recache=False))
                 mtype = mimetypes.guess_type(os.path.join(fpath, path))[0]
                 if mtype is None:
                     mtype = "application/octet-stream"

@@ -135,6 +135,95 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     return ctmfile
 
 
+#The widths, in mm, that a viewer served as files rather than by a server is
+#given coarse surfaces for, and the widest one any viewer offers.
+LOD_CELLS = (2, 4, 8, 16, 32)
+LOD_MAX = 32
+
+
+def get_lod(subject, cell, recache=False, **kwargs):
+    """Faces for drawing this subject's surfaces coarsely, cached, built if missing.
+
+    The faces are cut from the surfaces of the subject's ctm pack, in its
+    numbering and in groups of `cell` mm (see `polyutils.decimate_faces`), and
+    written beside it as one file holding both hemispheres: the number of
+    faces of each as two little-endian uint32, then their vertices, three
+    uint32 to a face, the left hemisphere's first.
+
+    Parameters
+    ----------
+    subject : str
+        Name of subject in the pycortex store.
+    cell : int
+        How wide a group of vertices is taken over, in mm. The surfaces are
+        left whole at 0.
+    recache : bool, optional
+        Whether to build the file again when one is already there.
+    **kwargs
+        Forwarded to `get_ctmpack`, which says which pack these are cut from.
+
+    Returns
+    -------
+    lodfile : str
+        Path to the file.
+    """
+    from . import polyutils
+
+    jsfile = get_ctmpack(subject, **kwargs)
+    base = os.path.splitext(jsfile)[0]
+    lodfile = "%s_lod%d.bin" % (base, int(cell))
+    if os.path.exists(lodfile) and not recache:
+        return lodfile
+
+    from . import brainctm
+    hemis = brainctm.read_pack(base + ".ctm")
+    #The medial wall, which the flatmap is cut along, keeps its vertices out
+    #of the groups around it: a group that took in vertices from both sides
+    #of a cut would be drawn across the flatmap by the face that bridges it,
+    #which the viewer leaves out by the wall it touches.
+    walls = _medial_wall(subject, base, [len(pts) for pts, _ in hemis])
+    faces = [polyutils.decimate_faces(pts, polys, cell, split=wall)[1]
+             for (pts, polys), wall in zip(hemis, walls)]
+
+    #written whole, so that a reader never gets half a file
+    handle, temp = tempfile.mkstemp(dir=os.path.split(lodfile)[0], suffix=".bin")
+    with os.fdopen(handle, "wb") as fp:
+        np.array([len(f) for f in faces], dtype="<u4").tofile(fp)
+        for hemi in faces:
+            hemi.astype("<u4").tofile(fp)
+    os.replace(temp, lodfile)
+    return lodfile
+
+
+def _medial_wall(subject, base, counts):
+    """Which vertices of a ctm pack are on the medial wall, as the pack says.
+
+    These are the vertices the flatmap leaves out, which the pack marks for
+    the viewer; they are worked out here the way the pack works them out, and
+    carried into its numbering by the map it was saved with.
+    """
+    try:
+        flat = db.get_surf(subject, "flat", merge=False, nudge=True)
+    except IOError:
+        return [None] * len(counts)
+
+    if not os.path.exists(base + ".npz"):
+        #an older pack, saved before the map was kept beside it
+        return [None] * len(counts)
+
+    fiducial = db.get_surf(subject, "fiducial", merge=False)
+    index = np.load(base + ".npz")["index"]
+    walls, at = [], 0
+    for hemi, count in enumerate(counts):
+        wall = np.zeros(len(fiducial[hemi][0]), dtype=bool)
+        wall[list(set(fiducial[hemi][1].ravel()) - set(flat[hemi][1].ravel()))] = True
+        #the map holds the two hemispheres end to end, the second one's
+        #vertices counted on from the first one's
+        walls.append(wall[index[at:at + count] - (0 if hemi == 0 else counts[0])])
+        at += count
+    return walls
+
+
 def get_ctmmap(subject, **kwargs):
     """Return a mapping from the vertices in the CTM surface to the vertices
     in the freesurfer surface. 

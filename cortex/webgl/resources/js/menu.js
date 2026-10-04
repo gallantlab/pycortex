@@ -170,6 +170,10 @@ var jsplot = (function (module) {
         if (desc.toggle && ctrl !== undefined && ctrl.__li !== undefined)
             ctrl.__li.className += " toggle";
 
+        //a slider that moves in steps rather than smoothly
+        if (desc.step !== undefined && ctrl !== undefined && ctrl.step !== undefined)
+            ctrl.step(desc.step);
+
         //a control that belongs to the menu only in some state of the page is
         //built with the rest, so that it keeps its place among them, and hidden
         //until whatever shows it does
