@@ -13,13 +13,18 @@ test enables.
 
 import itertools
 import os
-from typing import Any, Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator, TypedDict
 
 import pytest
 
 import cortex.webgl
 from cortex.export.headless import SWIFTSHADER_CHROMIUM_ARGS
 from cortex.tests.testing_utils import has_playwright
+
+if TYPE_CHECKING:
+    # What pytest.param returns; pytest does not export it publicly.
+    from _pytest.mark.structures import ParameterSet
+    from playwright.sync_api import Page
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -73,9 +78,10 @@ window.linkShader = function(shadername, opts) {
     // only makes THREE.WebGLRenderer refresh built-in light uniforms against
     // the material's uniforms object -- which needs the viewer's full merged
     // uniform set to exist. None of these shaders reference THREE's light
-    // uniforms (they compute shading themselves), and the MAX_*_LIGHTS
-    // defines this test cares about come from the renderer's light count
-    // regardless of this flag, so leaving it out avoids that crash for free.
+    // uniforms (they compute shading themselves) except ``main``, whose
+    // lights_phong chunks loop over MAX_*_LIGHTS. Those defines come from the
+    // renderer's light count regardless of this flag (zero here, so the loops
+    // compile away), so leaving it out avoids that crash for free.
     var material = new THREE.ShaderMaterial({
         vertexShader: code.vertex,
         fragmentShader: frag,
@@ -121,6 +127,19 @@ window.linkRawShader = function(vertexShader, fragmentShader) {
 </script></body></html>
 """
 
+
+class LinkResult(TypedDict):
+    """What the page's ``linkShader``/``linkRawShader`` hooks return."""
+
+    linked: bool
+    log: str
+
+
+# Link one Shaders[name](opts) variant / raw (vertex, fragment) GLSL source.
+LinkShader = Callable[[str, dict[str, object]], LinkResult]
+LinkRawShader = Callable[[str, str], LinkResult]
+
+
 # The options the viewer generates surface shaders with. ``morphs`` is the
 # number of surfaces to mix between (anatomical, inflated and flat), ``volume``
 # says the subject has a white matter surface; the rest come from the dataview
@@ -129,7 +148,7 @@ SURFACE_OPTS = dict(morphs=3, volume=1, layers=1, rois=True, extratex=False,
                     halo=False, dither=False, voxline=False, sampler="nearest")
 
 
-def _surface_variants() -> Iterator[Any]:
+def _surface_variants() -> Iterator["ParameterSet"]:
     """Every (shader, opts) pair the viewer can ask for a surface shader.
 
     On top of the dataview and surface options, gh-695 added three that
@@ -137,6 +156,11 @@ def _surface_variants() -> Iterator[Any]:
     ``dataalpha`` adds a second pair of samplers and the alpha-map arithmetic,
     ``nanmean`` changes how layer samples are combined, and ``layers`` decides
     how many of those sampling blocks are emitted.
+
+    ``voxline`` (the ``[webgl_viewopts] voxlines`` debug grid) only appends a
+    fixed blend to ``surface_pixel`` that reads the cortical sheet position and
+    the final color -- no attributes or samplers -- so it is checked once per
+    color type on the largest variant instead of doubling the whole product.
     """
     bools = (False, True)
     for shader, rgb, twod, hasflat, equivolume, dataalpha, nanmean, layers in itertools.product(
@@ -169,9 +193,32 @@ def _surface_variants() -> Iterator[Any]:
         )
         yield pytest.param(shader, opts, id=name)
 
+    # `voxline`
+    for rgb, twod in ((False, False), (False, True), (True, False)):
+        opts = dict(SURFACE_OPTS, rgb=rgb, twod=twod, hasflat=True,
+                    equivolume=True, dataalpha=not rgb, nanmean=True,
+                    layers=32, voxline=True)
+        name = "surface_pixel-%s%s-voxline" % ("rgb" if rgb else "cmap",
+                                              "-2d" if twod else "")
+        yield pytest.param("surface_pixel", opts, id=name)
 
-def _variants() -> Iterator[Any]:
+
+def _main_variants() -> Iterator["ParameterSet"]:
+    """Every (shader, opts) pair the slice planes ask ``main`` for.
+
+    The slice planes (sliceplane.js) are the only live users of ``main``; they
+    only show volume data and fix every option except ``raw`` and ``twod``.
+    """
+    for raw, twod in ((False, False), (False, True), (True, False)):
+        opts = dict(sampler="nearest", raw=raw, twod=twod, voxline=False,
+                    viewspace=True)
+        name = "main-%s%s" % ("rgb" if raw else "cmap", "-2d" if twod else "")
+        yield pytest.param("main", opts, id=name)
+
+
+def _variants() -> Iterator["ParameterSet"]:
     yield from _surface_variants()
+    yield from _main_variants()
     # The shaders the picker renders with; they morph the same geometry but
     # carry no data.
     yield pytest.param("pick", dict(morphs=3, volume=1), id="pick")
@@ -179,7 +226,7 @@ def _variants() -> Iterator[Any]:
 
 
 @pytest.fixture(scope="module")
-def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
+def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
     """Load the shader-linking page into a real GL context, shared by both hooks."""
     from playwright.sync_api import sync_playwright
 
@@ -200,7 +247,7 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
 
 
 @pytest.fixture(scope="module")
-def link_shader(webgl_page: Any) -> Callable[[str, dict], Any]:
+def link_shader(webgl_page: "Page") -> LinkShader:
     """Return a function linking one shader variant in a real GL context."""
     return lambda shader, opts: webgl_page.evaluate(
         "args => window.linkShader(args[0], args[1])", [shader, opts]
@@ -208,7 +255,7 @@ def link_shader(webgl_page: Any) -> Callable[[str, dict], Any]:
 
 
 @pytest.fixture(scope="module")
-def link_raw_shader(webgl_page: Any) -> Callable[[str, str], Any]:
+def link_raw_shader(webgl_page: "Page") -> LinkRawShader:
     """Return a function linking raw GLSL source in the same GL context."""
     return lambda vertex, fragment: webgl_page.evaluate(
         "args => window.linkRawShader(args[0], args[1])", [vertex, fragment]
@@ -217,7 +264,7 @@ def link_raw_shader(webgl_page: Any) -> Callable[[str, str], Any]:
 
 @pytest.mark.parametrize("shader,opts", list(_variants()))
 def test_shader_links(
-    shader: str, opts: dict, link_shader: Callable[[str, dict], Any]
+    shader: str, opts: dict[str, object], link_shader: LinkShader
 ) -> None:
     """Each shader variant has to compile *and* link.
 
@@ -233,7 +280,7 @@ def test_shader_links(
 
 
 def test_shader_link_catches_compile_error(
-    link_raw_shader: Callable[[str, str], Any]
+    link_raw_shader: LinkRawShader
 ) -> None:
     """A shader that fails to *compile* must fail ``linked`` too.
 
