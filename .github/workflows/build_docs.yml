@@ -3,11 +3,13 @@ name: Build docs
 on:
   push:
     branches:
+      - dev
       - main
     tags:
       - '*'
   pull_request:
     branches:
+      - dev
       - main
   workflow_dispatch:  # Manual trigger for publishing docs
 
