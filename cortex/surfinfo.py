@@ -153,6 +153,22 @@ def tissots_indicatrix(outfile, sub, radius=10, spacing=50):
     np.savez(outfile, left=tissots[0], right=tissots[1], centers=allcenters)
 
 def flat_border(outfile, subject):
+    """
+    Compute the boundary of the flatmap as a set of line segments, split into
+    segments that lie along the medial wall and segments that don't, and
+    save the result to `outfile`.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the border map will be saved as an npz file, with `lines`
+        (a list of boundary line segments, each an array of 2D points) and
+        `ismwalls` (a boolean flag for each segment indicating whether it
+        lies along the medial wall) arrays.
+    subject : str
+        Subject in the pycortex database for whom the flatmap border will be
+        computed.
+    """
     flatpts, flatpolys = db.get_surf(subject, "flat", merge=True, nudge=True)
     flatpolyset = set([tuple(x) for x in flatpolys])
     
@@ -200,7 +216,11 @@ def flat_border(outfile, subject):
         splitbounds.append(sb)
     
     ismwall = [[s.mean()>0.5 for s in np.split(mwb, c)] for mwb,c in zip(mwallbounds, changes)]
-    
+
+    # FIXME: `height` is undefined -- this raises NameError as written.
+    # It was presumably meant to be a parameter (see the commented-out
+    # Image.new(...) call below, which used it as the output image height
+    # in pixels). Needs a reviewer decision on the right fix/default.
     aspect = (height / (flatpts.max(0) - flatpts.min(0))[1])
     lpts = (flatpts - flatpts.min(0)) * aspect
     rpts = (flatpts - flatpts.min(0)) * aspect
@@ -219,3 +239,90 @@ def flat_border(outfile, subject):
             lines.append(pts[pbnd,:2])
     
     np.savez(outfile, lines=lines, ismwalls=ismwalls)
+
+def bumpy_flatmap(outfile, subject, **kwargs):
+    """Give the flatmap the relief of the cortical slab, and cache it.
+
+    Hemispheres with no flat surface get an array of zeros rather than an error.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the offsets will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database whose flatmap gets the relief.
+    **kwargs
+        Passed to `cortex.polyutils.FlatSlab`.
+
+    Notes
+    -----
+    Stored under ``bump_left`` and ``bump_right`` rather than ``left`` and
+    ``right`` on purpose: `get_surfinfo` turns a file with the latter into a
+    `Vertex` by concatenating them, which assumes one value per vertex and
+    would mangle these three-component offsets.
+    """
+    offsets = []
+    for hemi in ("lh", "rh"):
+        wm, _ = db.get_surf(subject, "wm", hemi)
+        pia, _ = db.get_surf(subject, "pia", hemi)
+        try:
+            flat, flatpolys = db.get_surf(subject, "flat", hemi)
+        except IOError:
+            offsets.append(np.zeros_like(wm))
+            continue
+        offsets.append(polyutils.FlatSlab(flat, wm, pia, flatpolys,
+                                          **kwargs).relaxed)
+
+    # Compressed, and single precision: these are millimetre offsets that end
+    # up in a float32 vertex attribute anyway, so the extra digits are only
+    # taking up room in the filestore.
+    np.savez_compressed(outfile,
+                        bump_left=offsets[0].astype(np.float32),
+                        bump_right=offsets[1].astype(np.float32))
+
+
+def equivolume_areas(outfile, subject, smooth=1.0):
+    """
+    Compute smoothed vertex areas on the white matter and pial surfaces.
+
+    These are what the webgl viewer's equivolume depth sampling needs in order to
+    turn a requested volume fraction through the cortical sheet into a position
+    between the two surfaces. They used to be recomputed in javascript on every
+    viewer load with a uniform "umbrella" smoothing; computing them here instead
+    means they are cached, and lets them be smoothed with the cotangent-weighted
+    operator in `cortex.polyutils.Surface.smooth`, which respects the varying
+    size of the triangles rather than treating every neighbour equally.
+
+    Parameters
+    ----------
+    outfile : str
+        Path where the areas will be saved as an npz file.
+    subject : str
+        Subject in the pycortex database for whom the areas will be computed.
+    smooth : float, optional
+        Amount of smoothing to apply. Default 1.0. Pass 0 for the raw
+        barycentric vertex areas.
+
+    Notes
+    -----
+    Stored under ``wm_left`` / ``wm_right`` / ``pia_left`` / ``pia_right``; see
+    the note in `bumpy_flatmap` for why ``left`` and ``right`` are avoided.
+
+    Changing the smoothing operator does move the depths the viewer samples at,
+    slightly: against the five umbrella iterations the javascript used, the
+    depth equivolume sampling picks for a requested fraction of 0.5 shifts by
+    about 0.01 of the cortical thickness at the median on S1. The tail is larger,
+    but it is concentrated where the two areas are nearly equal and the depth is
+    poorly determined either way.
+    """
+    areas = dict()
+    for hemi, side in zip(["lh", "rh"], ["left", "right"]):
+        for name in ["wm", "pia"]:
+            pts, polys = db.get_surf(subject, name, hemi)
+            surf = polyutils.Surface(pts, polys)
+            # The lumped mass matrix of the Laplace-Beltrami operator is exactly
+            # the barycentric vertex area, i.e. a third of each incident face.
+            _, vertex_area, _, _ = surf.laplace_operator
+            areas["%s_%s" % (name, side)] = surf.smooth(vertex_area, smooth)
+
+    np.savez(outfile, **areas)

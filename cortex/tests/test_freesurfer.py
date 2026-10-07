@@ -4,6 +4,7 @@ import shutil
 import numpy as np
 import pytest
 
+import cortex._autoflatten as af
 import cortex.freesurfer as fs
 from cortex.freesurfer import (
     _remove_disconnected_polys,
@@ -207,3 +208,101 @@ def test_surf2surf_matches_freesurfer_downsample():
 
     corr = np.corrcoef(reference.ravel(), got.ravel())[0, 1]
     assert corr > 0.99
+
+
+# ---------------------------------------------------------------------------
+# freesurfer subjects directory
+# ---------------------------------------------------------------------------
+
+def test_get_freesurfer_subject_dir_prefers_explicit_argument(monkeypatch):
+    monkeypatch.setenv("SUBJECTS_DIR", "/from/env")
+    assert fs._get_freesurfer_subject_dir("/explicit") == "/explicit"
+
+
+def test_get_freesurfer_subject_dir_falls_back_to_env(monkeypatch):
+    monkeypatch.setenv("SUBJECTS_DIR", "/from/env")
+    assert fs._get_freesurfer_subject_dir() == "/from/env"
+
+
+def test_get_freesurfer_subject_dir_raises_without_env(monkeypatch):
+    monkeypatch.delenv("SUBJECTS_DIR", raising=False)
+    with pytest.raises(ValueError):
+        fs._get_freesurfer_subject_dir()
+
+
+
+# ---------------------------------------------------------------------------
+# autoflatten step of import_subj (see test_autoflatten.py for the step itself)
+# ---------------------------------------------------------------------------
+
+def _stub_import_subj(tmp_path, monkeypatch, subject="S1"):
+    """Stub out everything `import_subj` shells out to, and the filestore."""
+    filestore = tmp_path / "filestore"
+    for folder in ("anatomicals", "surfaces", "surface-info"):
+        (filestore / subject / folder).mkdir(parents=True)
+
+    class _FakeDatabase(object):
+        def make_subj(self, subject):
+            pass
+
+    monkeypatch.setattr(fs.database, "default_filestore", str(filestore))
+    monkeypatch.setattr(fs.database, "db", _FakeDatabase(), raising=False)
+    monkeypatch.setattr(fs.database, "Database", _FakeDatabase)
+    monkeypatch.setattr(fs.sp, "check_output", lambda *args, **kwargs: b"")
+    monkeypatch.setattr(fs, "make_fiducial", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fs, "parse_curv", lambda path: np.zeros(3))
+
+    calls = []
+    # import_subj calls the name re-exported into cortex.freesurfer, so that is
+    # what has to be patched
+    monkeypatch.setattr(
+        fs, "autoflatten_subject",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    return calls
+
+
+def test_import_subj_runs_autoflatten_by_default(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"))
+
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    assert args == ("S1",)
+    assert kwargs["pycortex_subject"] == "S1"
+    assert kwargs["freesurfer_subject_dir"] == str(tmp_path / "fs_subjects")
+    assert kwargs["autoflatten_args"] is None
+
+
+def test_import_subj_passes_autoflatten_args(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"),
+                   autoflatten_args=["--n-cores", "4"])
+
+    _, kwargs = calls[0]
+    assert kwargs["autoflatten_args"] == ["--n-cores", "4"]
+
+
+def test_import_subj_can_disable_autoflatten(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    # even when autoflatten is available, it must not run when disabled
+    monkeypatch.setattr(af, "is_available", lambda: True)
+
+    fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"),
+                   autoflatten=False)
+
+    assert calls == []
+
+
+def test_import_subj_warns_and_skips_when_autoflatten_missing(tmp_path, monkeypatch):
+    calls = _stub_import_subj(tmp_path, monkeypatch)
+    monkeypatch.setattr(af, "is_available", lambda: False)
+
+    with pytest.warns(UserWarning, match="not installed"):
+        fs.import_subj("S1", freesurfer_subject_dir=str(tmp_path / "fs_subjects"))
+
+    assert calls == []

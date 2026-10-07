@@ -23,6 +23,10 @@ pip install -U setuptools wheel numpy cython
 pip install -U pycortex
 # or, with headless rendering support:
 pip install -U 'pycortex[headless]'
+# or, with automatic surface flattening support (see autoflatten):
+pip install -U 'pycortex[autoflatten]'
+# or, with all optional features:
+pip install -U 'pycortex[all]'
 ```
 
 If you wish to install the development version of pycortex, you can install it directly from Github.

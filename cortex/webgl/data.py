@@ -11,6 +11,8 @@ dict(
 import os
 import json
 from io import BytesIO
+from typing import Optional, Union
+
 import numpy as np
 
 from .. import dataset
@@ -21,13 +23,38 @@ from .. import volume
 class Package(object):
     """Package the data into a form usable by javascript"""
 
-    def __init__(self, data):
+    def __init__(self, data, lazy=False):
+        # lazy=True defers volume mosaic/PNG packing to get_image(). Only the first frame is packed up front.
         self.dataset = dataset.normalize(data)
-        self.uniques = list(data.uniques(collapse=True))
+        # Dataset.uniques() is a set of BrainData objects, but equality is
+        # identity: two distinct objects with byte-identical data (e.g.
+        # Vertex2D(x, x) or VertexRGB(r, r, r)) share the same content-hash
+        # name and would be packaged -- and reordered -- twice. Keep one per
+        # name.
+        # The name only hashes the data bytes, so also check that same-name
+        # brains are interchangeable for the viewer; otherwise fail loudly
+        # instead of serving one brain's data with another's metadata.
+        seen = {}
+        self.uniques = []
+        for brain in data.uniques(collapse=True):
+            sig = _brain_signature(brain)
+            if brain.name in seen:
+                if seen[brain.name] != sig:
+                    raise ValueError(
+                        "Two dataviews contain data with identical bytes but "
+                        "different metadata (%s vs %s); pycortex identifies "
+                        "data by its content hash and cannot serve both in one "
+                        "viewer. Make the data differ (e.g. add a tiny offset)."
+                        % (seen[brain.name], sig)
+                    )
+                continue
+            seen[brain.name] = sig
+            self.uniques.append(brain)
         self.subjects = set()
 
         self.brains = dict()
         self.images = dict()
+        self._pending = dict()
         for brain in self.uniques:
             name = brain.name
             self.subjects.add(brain.subject)
@@ -62,12 +89,21 @@ class Package(object):
                     )
                 self.brains[name]["raw"] = True
             else:
-                encdata = encdata.astype(np.float32)
                 self.brains[name]["raw"] = False
+                if isinstance(brain, dataset.Vertex) or not lazy:
+                    encdata = encdata.astype(np.float32, copy=False)
 
             # VertexData requires reordering, only save normalized version for now
             if isinstance(brain, (dataset.Vertex, dataset.VertexRGB)):
                 self.images[name] = [encdata]
+            elif lazy:
+                # The mosaic grid depends only on the volume shape, 
+                # so the first frame determines the metadata for every frame.
+                mosaic0, shape = volume.mosaic(self._pack_dtype(name, encdata[0]),
+                                               show=False)
+                self.brains[name]["mosaic"] = shape
+                self._pending[name] = encdata
+                self.images[name] = [_pack_png(mosaic0)] + [None] * (len(encdata) - 1)
             else:
                 self.images[name] = [volume.mosaic(vol, show=False) for vol in encdata]
                 if len(set([shape for m, shape in self.images[name]])) != 1:
@@ -112,11 +148,47 @@ class Package(object):
             views=self.views, data=self.brains, images=self.image_names(**kwargs)
         )
 
+    def _pack_dtype(self, name, framedata):
+        """One frame in the dtype _pack_png accepts: raw data stays uint8,
+        everything else becomes float32 (a per-frame no-op-sized copy)."""
+        if self.brains[name]["raw"]:
+            return framedata
+        return np.asarray(framedata, dtype=np.float32)
+
+    def get_image(self, name, frame):
+        """Return the packed PNG (or npy blob) for one frame, packing it on
+        first request when the package was built with lazy=True."""
+        img = self.images[name][frame]
+        if img is None:
+            mosaic, _ = volume.mosaic(
+                self._pack_dtype(name, self._pending[name][frame]), show=False)
+            img = self.images[name][frame] = _pack_png(mosaic)
+        return img
+
     def image_names(self, fmt="/data/{name}/{frame}/"):
         names = dict()
         for name, imgs in self.images.items():
             names[name] = [fmt.format(name=name, frame=i) for i in range(len(imgs))]
         return names
+
+
+def _brain_signature(brain: Union[dataset.braindata.BrainData, dataset.viewRGB.DataviewRGB]) -> tuple[
+        str, str, Optional[str], Optional[tuple[int, ...]], Optional[str], Optional[str]]:
+    """Metadata that must match for two same-name brains to be interchangeable."""
+    import hashlib
+
+    mask = getattr(brain, "_mask", None)
+    if mask is not None and not isinstance(mask, str):
+        mask = hashlib.sha1(np.ascontiguousarray(mask).tobytes()).hexdigest()
+    data = getattr(brain, "data", None)  # RGB dataviews have channels instead
+    return (
+        type(brain).__name__,
+        brain.subject,
+        getattr(brain, "xfmname", None),
+        None if data is None else tuple(np.shape(data)),
+        None if data is None else str(np.asarray(data).dtype),
+        mask,
+    )
 
 
 def _pack_png(mosaic):

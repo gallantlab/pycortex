@@ -5,6 +5,7 @@ import glob
 import json
 import mimetypes
 import os
+import re
 import shutil
 import sys
 import threading
@@ -18,13 +19,14 @@ from configparser import NoOptionError
 from queue import Queue
 
 import numpy as np
-from tornado import web
+from tornado import ioloop, web
 
 from .. import dataset, options, utils, volume
 from ..database import db
 from . import serve
 from .data import Package
 from .FallbackLoader import FallbackLoader
+from .interpolation import Interpolation, build_channels, evaluate
 
 try:
     cmapdir = options.config.get('webgl', 'colormaps')
@@ -40,6 +42,118 @@ domain_name = options.config.get("webgl", "domain_name")
 colormaps = glob.glob(os.path.join(cmapdir, "*.png"))
 colormaps = [(os.path.splitext(os.path.split(cm)[1])[0], serve.make_base64(cm))
              for cm in sorted(colormaps)]
+
+
+def _viewer_urls(port: int) -> tuple[str, str]:
+    """Return the (local, network) URLs of a viewer running on `port`.
+
+    The local URL is the one to open on the machine running the server. The
+    network URL is built from the machine's hostname plus the configured
+    ``webgl.domain_name``, and is the one to hand to someone else.
+
+    They have to be kept apart, because the hostname is not a dependable way
+    for this machine to reach itself. ``socket.gethostname()`` returns the mDNS
+    name on macOS (``mymac.local``), which resolves to a whole list of
+    addresses -- link-local ones among them -- and only reaches the server if
+    the local firewall lets this python process accept connections on a
+    non-loopback interface. None of that applies to localhost.
+    """
+    local = "http://localhost:%d/mixer.html" % port
+    network = "http://%s%s:%d/mixer.html" % (serve.hostname, domain_name, port)
+    return local, network
+
+
+def _has_flatmap(subject: str) -> bool:
+    """Whether `subject` has a flat surface, without raising if it does not."""
+    try:
+        return hasattr(getattr(db, subject).surfaces, "flat")
+    except Exception:
+        return False
+
+
+def _quickflat_size(subject: str, height: int = 1024) -> Optional[list[int]]:
+    """The pixel size ``cortex.quickflat.make_png`` writes by default.
+
+    ``make_png`` resizes the figure to the flatmap image and saves it at `dpi`,
+    so the png comes out exactly as many pixels as that image. The width follows
+    from the flat surface's bounding box, which is the one thing here that
+    varies by subject.
+
+    Reproduces the arithmetic of ``quickflat.utils._make_flatmask`` rather than
+    calling it, because that function rasterizes the surface outline with PIL to
+    build a mask this does not need -- and would cache a mask the viewer may
+    never use.
+
+    Returns
+    -------
+    list of int or None
+        ``[width, height]``, or None if the subject has no flat surface or it
+        could not be read.
+    """
+    if not _has_flatmap(subject):
+        return None
+    try:
+        pts, _ = db.get_surf(subject, "flat", merge=True, nudge=True)
+        span = pts.max(0) - pts.min(0)
+        if span[1] <= 0:
+            return None
+        return [int((height / span[1]) * span[0]), int(height)]
+    except Exception as err:
+        warnings.warn("Could not work out the quickflat size for %s: %s"
+                      % (subject, err))
+        return None
+
+
+def _load_saved_views(subjects: list[str]) -> dict[str, dict[str, dict[str, Any]]]:
+    """The views each of `subjects` offers, defaults overlaid with saved ones.
+
+    Every subject gets the standard anatomical views from
+    ``cortex.export.save_views.default_subject_views`` -- dorsal, ventral, the
+    two lateral views, their inflated counterparts, and flat -- so that a
+    subject with an empty (or missing) views/ directory still has them. All but
+    flat are framed for that subject's brain: aimed at its middle, from a
+    distance that fills most of the frame (``default_view_framing``), so a view
+    always returns the same scene. A view
+    stored in the filestore under one of those names replaces the default,
+    which is how a subject whose anatomy needs a different angle, or who wants
+    a different framing, overrides one.
+
+    `subjects` is the list of subjects the viewer is actually displaying, so a
+    viewer never reads (nor ships to the browser) views belonging to unrelated
+    subjects in the filestore.
+
+    Returns
+    -------
+    dict
+        ``{subject: {view_name: {prop: value}}}``. The keys within each view keep
+        the literal ``{subject}`` placeholder that ``JSMixer._capture_view``
+        writes; the javascript side substitutes it per subject when the view is
+        applied, so one saved view still works in a multi-subject viewer.
+    """
+    from ..export.save_views import default_subject_views
+
+    saved: dict[str, dict[str, dict[str, Any]]] = {}
+    for subj in subjects:
+        saved[subj] = dict(default_subject_views(_has_flatmap(subj), subj))
+        viewdir = os.path.join(db.filestore, subj, "views")
+        # Glob *.json rather than using db.get_paths()['views'], which strips any
+        # extension off any file in the directory (so notes.tar.gz would show up
+        # as a view named "notes.tar").
+        for path in sorted(glob.glob(os.path.join(viewdir, "*.json"))):
+            name = os.path.splitext(os.path.basename(path))[0]
+            try:
+                with open(path) as fp:
+                    view = json.load(fp)
+            except (ValueError, OSError) as err:
+                warnings.warn("Skipping unreadable view %s: %s" % (path, err))
+                continue
+            if not isinstance(view, dict):
+                warnings.warn("Skipping view %s: expected a dict of view "
+                              "parameters, got %s" % (path, type(view).__name__))
+                continue
+            saved[subj][name] = view
+    return saved
+
 
 def make_static(
     outpath,
@@ -166,12 +280,18 @@ def make_static(
     db.auxfile = None
 
     ## Rename files to anonymize
+    # One anonymized name per subject, used for the surface files, the dataset
+    # metadata and the viewer options alike. Numbered in sorted order: the
+    # subjects come from a set, whose order changes from one process to the
+    # next, and numbering the files by that order while renaming `ctms` by the
+    # sorted one could give a subject two different names in the same export.
+    anonymized = {subj: "S%d" % i for i, subj in enumerate(sorted(ctms))}
     submap = dict()
-    for i, (subj, ctmfile) in enumerate(ctms.items()):
+    for subj, ctmfile in ctms.items():
         oldpath, fname = os.path.split(ctmfile)
         fname, ext = os.path.splitext(fname)
         if anonymize:
-            newfname = "S%d" % i
+            newfname = anonymized[subj]
             submap[subj] = newfname
         else:
             newfname = fname
@@ -196,8 +316,7 @@ def make_static(
                 ofh.write(jsoncontents.replace(fname, newfname))
                 ofh.close()
     if anonymize:
-        old_subjects = sorted(list(ctms.keys()))
-        ctms = dict(("S%d" % i, ctms[k]) for i, k in enumerate(old_subjects))
+        ctms = dict((anonymized[subj], ctms[subj]) for subj in sorted(ctms))
     if len(submap) == 0:
         submap = None
 
@@ -262,6 +381,18 @@ def make_static(
         if "paths" in sec or "labels" in sec:
             my_viewopts[sec] = dict(options.config.items(sec))
 
+    # Views saved in the filestore, for the "camera > views" menu. Only the
+    # subjects this viewer displays are read.
+    # Keyed by the names the browser knows the subjects by, which in an
+    # anonymized export are not their real ones -- anything else would put the
+    # real IDs back into the page, and leave the viewer unable to find them.
+    subject_names = submap or {subj: subj for subj in subjects}
+    my_viewopts["saved_views"] = {
+        subject_names[subj]: views
+        for subj, views in _load_saved_views(subjects).items()}
+    my_viewopts["quickflat_size"] = {subject_names[subj]: _quickflat_size(subj)
+                                     for subj in subjects}
+
     html = tpl.generate(
         data=json.dumps(metadata),
         colormaps=colormaps,
@@ -278,7 +409,8 @@ def make_static(
     if html_embed:
         htmlembed.embed(html, desthtml, rootdirs)
     else:
-        with open(desthtml, "w") as htmlfile:
+        # tpl.generate returns bytes, like everything tornado templates render.
+        with open(desthtml, "wb") as htmlfile:
             htmlfile.write(html)
 
 
@@ -382,6 +514,14 @@ def show(
         headless viewers. Default True
     **kwargs
         All additional keyword arguments are passed to the template renderer.
+
+    Returns
+    -------
+    client : JSMixer or WebApp
+        If `open_browser` is True, a `JSMixer` client connected to the
+        opened browser tab, which can be used to control the viewer
+        programmatically (e.g. `client.getImage()`, `client.animate()`).
+        If `open_browser` is False, returns the `WebApp` server object.
     """
 
     # populate default webshow args
@@ -390,36 +530,79 @@ def show(
     if open_browser is None:
         open_browser = options.config.get('webshow', 'open_browser', fallback='true') == 'true'
 
+    # Plain 1D numeric arrays in a data dict (e.g. design-matrix regressors)
+    ref_traces: dict[str, list[float]] = {}
+    if isinstance(data, dict):
+        data = dict(data)
+        for key in list(data.keys()):
+            val = data[key]
+            if (isinstance(val, np.ndarray) and val.ndim == 1
+                    and np.issubdtype(val.dtype, np.number)):
+                ref_traces[key] = np.nan_to_num(
+                    val.astype(np.float64)).tolist()
+                del data[key]
+
     data = dataset.normalize(data)
     if not isinstance(data, dataset.Dataset):
         data = dataset.Dataset(data=data)
 
     html = FallbackLoader([os.path.split(os.path.abspath(template))[0], serve.cwd]).load(template)
-    db.auxfile = data
 
-    #Extract the list of stimuli, for special-casing
     stims: dict[str, str] = dict()
-    for name, view in data:
-        if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
-            sname = os.path.split(view.attrs['stim'])[1]
-            stims[sname] = view.attrs['stim']
+    package = None
+    metadata: dict[str, Any] = {}
+    images: dict[str, list] = dict()
+    subjects: list[str] = []
+    ctms: dict[str, str] = dict()
+    subjectjs = ""
+    _ready = threading.Event()
+    _prepare_failure: list[BaseException] = []
 
-    package = Package(data)
-    # Keep the metadata as a plain dict (rather than a JSON string) so that
-    # JSMixer.addData can merge newly added dataviews into it at runtime. It
-    # is serialized to JSON on demand, when the mixer page is generated.
-    metadata = package.metadata()
-    images = package.images
-    subjects = list(package.subjects)
+    class _WaitUntilPrepared:
+        """Mixin for request handlers that need the packaged data.
 
-    ctmargs = dict(method='mg2', level=9, recache=recache,
-        external_svg=overlay_file, overlays_available=overlays_available)
-    ctms = dict((subj, utils.get_ctmpack(subj, types, **ctmargs))
-                for subj in subjects)
-    package.reorder(ctms)
+        show() starts the server and prints the URL before it packages the
+        data, so a request can arrive early; it waits here until packaging
+        is done. The wait runs on a worker thread, because blocking the
+        server's event-loop thread would stall every other request too.
+        """
+        async def prepare(self):
+            if not _ready.is_set():
+                await ioloop.IOLoop.current().run_in_executor(None, _ready.wait)
+            if _prepare_failure:
+                raise web.HTTPError(503, reason="The viewer failed to start")
 
-    subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
-    db.auxfile = None
+    def _prepare():
+        nonlocal package, metadata, subjects, subjectjs
+        db.auxfile = data
+
+        #Extract the list of stimuli, for special-casing
+        for name, view in data:
+            if 'stim' in view.attrs and os.path.exists(view.attrs['stim']):
+                sname = os.path.split(view.attrs['stim'])[1]
+                stims[sname] = view.attrs['stim']
+
+        package = Package(data, lazy=True)
+        metadata = package.metadata()
+        subjects = list(package.subjects)
+        # Views saved in the filestore, for the "camera > views" menu. Only the
+        # subjects this viewer displays are read. Set here rather than with the
+        # other view options, because subjects is only known once packaged.
+        my_viewopts['saved_views'] = _load_saved_views(subjects)
+        # So the animation panel can say what render size reproduces the png
+        # quickflat.make_png writes by default, for animations using the flat view.
+        my_viewopts['quickflat_size'] = {subj: _quickflat_size(subj)
+                                         for subj in subjects}
+
+        ctmargs = dict(method='mg2', level=9, recache=recache,
+            external_svg=overlay_file, overlays_available=overlays_available)
+        ctms.update((subj, utils.get_ctmpack(subj, types, **ctmargs))
+                    for subj in subjects)
+        package.reorder(ctms)
+        images.update(package.images)
+
+        subjectjs = json.dumps(dict((subj, "ctm/%s/"%subj) for subj in subjects))
+        db.auxfile = None
 
 
     linear = lambda x, y, m: (1.-m)*x + m*y
@@ -463,8 +646,9 @@ def show(
     if pickerfun is None:
         pickerfun = lambda *a: None
 
-    class CTMHandler(web.RequestHandler):
+    class CTMHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
+            self.set_header("Cache-Control", "public, max-age=86400")
             subj, path = path.split('/')
             if path == '':
                 self.set_header("Content-Type", "application/json")
@@ -477,7 +661,7 @@ def show(
                 self.set_header("Content-Type", mtype)
                 self.write(open(os.path.join(fpath, path), 'rb').read())
 
-    class DataHandler(web.RequestHandler):
+    class DataHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self, path: str):
             path = path.strip("/")
             frame: Union[int, str]
@@ -488,7 +672,10 @@ def show(
                 frame = 0
 
             if dataname in images:
+                self.set_header("Cache-Control", "public, max-age=86400")
                 dataimg = images[dataname][int(frame)]
+                if dataimg is None:
+                    dataimg = package.get_image(dataname, int(frame))
                 if dataimg[1:6] == "NUMPY":
                     self.set_header("Content-Type", "application/octet-stream")
                 else:
@@ -509,7 +696,7 @@ def show(
                 self.set_status(404)
                 self.write_error(404)
 
-    class StimHandler(web.StaticFileHandler):
+    class StimHandler(_WaitUntilPrepared, web.StaticFileHandler):
         def initialize(self):
             pass
 
@@ -525,7 +712,7 @@ def show(
         def initialize(self):
             self.root = ''
 
-    class MixerHandler(web.RequestHandler):
+    class MixerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
             self.set_header("Content-Type", "text/html")
             generated = html.generate(data=json.dumps(metadata),
@@ -614,6 +801,16 @@ def show(
             for old_key, new_key in self._legacy_props.items():
                 if old_key in kwargs and new_key not in kwargs:
                     kwargs[new_key] = kwargs.pop(old_key)
+            # A flat view saved before camera.flat_target existed stores its
+            # flat target as camera.target -- that is where it went once the
+            # surface was flat -- so read it as one. Mirrors vt.applyView in
+            # resources/js/viewtools.js; save_3d_views relies on it for the
+            # target it passes along with its flatmap, which is what keeps
+            # that function's flatmaps exactly as they were.
+            if (kwargs.get('surface.{subject}.unfold', 0) >= 0.999
+                    and 'camera.target' in kwargs
+                    and 'camera.flat_target' not in kwargs):
+                kwargs['camera.flat_target'] = kwargs.pop('camera.target')
             for subject in subject_list:
                 if 'surface.{subject}.unfold' in kwargs:
                     unfold = kwargs.pop('surface.{subject}.unfold')
@@ -626,6 +823,43 @@ def show(
                         self.ui.set(k.format(subject=subject) if '{subject}' in k else k, v)
                         # Wait for webgl. Wait for it. .... WAAAAAIIIT.
                         time.sleep(0.03)
+
+        def fit_flat_view(self) -> Optional[dict[str, Any]]:
+            """Frame the flattened surface the way ``quickflat`` frames it.
+
+            Points the camera at the middle of the flat surface and backs it off
+            until the flatmap is as large as fits, which is what
+            ``cortex.quickflat.make_png`` does with the bounds of the image it
+            writes. The framing follows the shape of the frame, so it fills one
+            exactly at the flatmap's own aspect ratio -- the subject's quickflat
+            size (``cortex.webgl.view._quickflat_size``, which the viewer's
+            animation panel fills into its render form) -- and fits inside any
+            other shape rather than being cropped to it. ``getImage`` re-frames
+            for the image it writes, so rendering a flat view at the quickflat
+            size reproduces ``make_png``'s png whatever the window's shape.
+
+            Only meaningful once the surface is flat and square-on to the
+            camera, which is the pose the ``flat`` view sets.
+
+            Returns
+            -------
+            dict or None
+                The framing that was applied, as ``{"target": [x, y, z],
+                "radius": r}``, or None if the subject has no flat surface.
+
+            See Also
+            --------
+            getImage : re-frames what this framed for the image it writes.
+
+            Notes
+            -----
+            Applied on request rather than by ``_set_view``, so that setting the
+            flat view from python -- as :func:`cortex.export.save_3d_views` does
+            -- keeps whatever framing the caller asked for.
+            """
+            resp = self.send(method="run",
+                             params=["window.viewer.fitFlatView", []])
+            return resp[0] if isinstance(resp, list) and len(resp) > 0 else None
 
         def _capture_view(self, frame_time=None):
             """Low-level command: returns a dict of current view parameters
@@ -656,6 +890,19 @@ def show(
                     print(err) #msg = "Cannot read property 'undefined'"
                     #if err.message[:len(msg)] != msg:
                     #    raise err
+            # A flat pose records no camera angle, since a flattened surface
+            # ignores it (see FLAT_INERT_PROPS). An animation would otherwise
+            # have something spurious to interpolate towards on the way in,
+            # spinning the brain as it flattens and leaving the folded angle
+            # overwritten on the way out. Mirrors vt.captureView in
+            # resources/js/viewtools.js, so the two still interchange.
+            from ..export.save_views import FLAT_INERT_PROPS
+
+            if (view.get('surface.{subject}.unfold', 0) >= 0.999
+                    and not view.get('surface.{subject}.allow_tilt')):
+                for prop in FLAT_INERT_PROPS:
+                    view.pop(prop, None)
+
             if frame_time is not None:
                 view['time'] = frame_time
             return view
@@ -698,6 +945,144 @@ def show(
             For a list of the view parameters set, see viewer._capture_view
             """
             view = db.get_view(self, subject, name)
+
+        def retrieve_new_views(self) -> dict[str, dict[str, Any]]:
+            """Get views saved through the viewer's GUI.
+
+            Returns the views created with the "save view" button in the viewer's
+            camera menu. These live only in the browser until they are retrieved,
+            which keeps them separate from the views that were loaded out of the
+            filestore when the viewer started.
+
+            Returns
+            -------
+            dict of str to dict
+                Maps the name typed into the viewer to a dict of view parameters,
+                in the same format as ``_capture_view``, so they can be passed
+                straight to ``_set_view``. Use ``save_new_views`` to make them
+                permanent.
+
+            See Also
+            --------
+            save_new_views : write these views into the pycortex filestore.
+
+            Notes
+            -----
+            If several subjects are displayed, only the first one's viewer is
+            queried, mirroring the behavior of ``_capture_view``.
+            """
+            # One round trip, rather than the three that walking the proxy
+            # attribute by attribute would cost (each level is a `query`).
+            resp = self.send(method="run",
+                             params=["window.viewer.getNewViews", []])
+            val = resp[0] if isinstance(resp, list) and len(resp) > 0 else None
+            if isinstance(val, dict) and "error" in val:
+                raise Exception(val["error"])
+            # `send` returns [None] when the browser does not answer in time.
+            return cast(dict[str, dict[str, Any]], val) if isinstance(val, dict) else {}
+
+        def save_new_views(self, subject: Optional[str]=None,
+                           names: Optional[list[str]]=None,
+                           is_overwrite: bool=False) -> dict[str, str]:
+            """Store views saved through the viewer's GUI in the filestore.
+
+            Writes each view created with the viewer's "save view" button to
+            ``<filestore>/<subject>/views/<name>.json``, where the rest of
+            pycortex looks for saved views: they show up in the camera > views
+            menu of every viewer opened for that subject from then on, and can
+            be applied with ``get_view``.
+
+            A view that has been written is no longer "new". It moves into the
+            running viewer's views menu and out of ``retrieve_new_views``, so
+            calling this twice does not rewrite the same files.
+
+            Parameters
+            ----------
+            subject : str or None, optional
+                pycortex subject id to save the views under. Default None,
+                meaning the first subject the viewer is displaying.
+            names : list of str or None, optional
+                Save only these views. Default None, meaning every view
+                currently held in the viewer.
+            is_overwrite : bool, optional
+                Whether to replace views of the same name that are already in
+                the filestore (default False).
+
+            Returns
+            -------
+            dict of str to str
+                Maps each saved view's name to the file it was written to.
+
+            Raises
+            ------
+            KeyError
+                If `names` mentions a view the viewer does not have.
+            ValueError
+                If a view name cannot be used as a filename.
+            IOError
+                If a view is already stored under that name and `is_overwrite`
+                is False.
+
+            See Also
+            --------
+            retrieve_new_views : get the same views without storing them.
+
+            Examples
+            --------
+            >>> handle = cortex.webgl.show(volume)   # doctest: +SKIP
+            >>> # ... position the brain and press "save view" in the viewer
+            >>> handle.save_new_views()             # doctest: +SKIP
+            {'lateral': '/path/to/filestore/S1/views/lateral.json'}
+            """
+            if subject is None:
+                subject = subjects[0]
+
+            new_views = self.retrieve_new_views()
+            if names is None:
+                names = sorted(new_views)
+            else:
+                missing = [n for n in names if n not in new_views]
+                if len(missing) > 0:
+                    raise KeyError(
+                        "The viewer has no view named %s. Views already stored "
+                        "in the filestore cannot be re-saved; the viewer holds "
+                        "%s." % (", ".join(repr(n) for n in missing),
+                                 ", ".join(repr(n) for n in sorted(new_views))
+                                 or "nothing"))
+
+            viewdir = os.path.join(db.filestore, subject, "views")
+            # db.save_view leaves this to get_paths, which makes it a latent
+            # FileNotFoundError for a subject imported without a views dir.
+            os.makedirs(viewdir, exist_ok=True)
+
+            # Check everything before writing anything, so that a name clash
+            # partway through does not leave some views stored and some not.
+            # The names come from a text field in the browser, so they also
+            # have to be prevented from escaping the views directory.
+            paths = {}
+            for name in names:
+                # A leading '.' is what makes '..' (and hidden files) possible,
+                # so only that is kept out of the first position.
+                if re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9 _.-]*", name) is None:
+                    raise ValueError(
+                        "Cannot save the view named %r: a view name must start "
+                        "with a letter, digit or '_' and contain only letters, "
+                        "digits, spaces, '_', '-' and '.'" % name)
+                path = os.path.join(viewdir, name + ".json")
+                if os.path.exists(path) and not is_overwrite:
+                    raise IOError(
+                        "Refusing to over-write the extant view %s. If you want "
+                        "to do this, set is_overwrite=True!" % path)
+                paths[name] = path
+
+            for name in names:
+                with open(paths[name], "w") as fp:
+                    json.dump(new_views[name], fp)
+                # Now that it is on disk it belongs with the loaded views.
+                self.send(method="run",
+                          params=["window.viewer.promoteNewView", [name]])
+
+            return paths
 
         def addData(self, **kwargs):
             """Add (or replace) dataviews in the running viewer.
@@ -784,7 +1169,20 @@ def show(
                 duh.
             size : tuple (x, y)
                 size (in pixels) of image to save.
+
+            Notes
+            -----
+            A flatmap that ``fit_flat_view`` (or the viewer's own ``flat`` view)
+            has framed is re-framed for the image being written, since the
+            framing follows the shape of the frame and `size` need not have the
+            shape of the window. That is what makes a framed flat view rendered
+            at the subject's quickflat size come out as the png
+            ``cortex.quickflat.make_png`` writes. A camera that is sitting
+            anywhere else -- which is every camera this method has not been
+            asked to frame -- is left exactly where it is.
             """
+            self.send(method="run", params=["window.viewer.refitFlatView",
+                                            [size[0] / size[1]]])
             post_name.put(filename)
             Proxy = serve.JSProxy(self.send, "window.viewer.getImage")
             return Proxy(size[0], size[1], "mixer.html")
@@ -880,7 +1278,43 @@ def show(
             frames of an animation can be re-rendered, or for more control over the
             animation process in general.
 
+            Parameters
+            ----------
+            keyframes : list of dicts
+                Each holds a 'time' in seconds plus view properties, in the form
+                ``_capture_view`` returns. A keyframe may also carry an
+                'interpolation' key naming its own
+                :class:`~cortex.webgl.interpolation.Interpolation` mode, which
+                is how the browser's animation panel stores per-keyframe
+                smoothing.
+            fps : int, optional
+                Frame rate the times are quantized to. Default 30.
+            interpolation : str, optional
+                Either one of the three whole-animation easings, 'linear',
+                'smoothstep' or 'smootherstep', or the name of one of the eight
+                per-keyframe modes in
+                :class:`~cortex.webgl.interpolation.Interpolation` -- in which
+                case it supplies the mode for keyframes that do not name one of
+                their own. Default 'linear'.
+
+            Returns
+            -------
+            list of dicts
+                One view dict per frame of the animation.
+
+            Notes
+            -----
+            The per-keyframe modes interpolate each property across the whole
+            keyframe list rather than between neighbouring pairs, because the
+            tangent at a keyframe depends on the keyframes on both sides of it.
+            The arithmetic is shared with the browser through
+            ``cortex/webgl/interpolation.py`` and its javascript twin, so an
+            animation built in the viewer renders the same way here.
             """
+            if interpolation not in mixes or any(
+                    'interpolation' in frame for frame in keyframes):
+                return self._get_smoothed_anim_seq(keyframes, fps, interpolation)
+
             # Misc. setup
             fr = 0
             a = np.array
@@ -908,10 +1342,19 @@ def show(
                 # Interpolate between values
                 for t in fr_time:
                     frame = {}
-                    for prop in start.keys():
+                    # The union of the two: a property only one of them carries
+                    # is the one keyframe of the pair that constrains it, so it
+                    # holds that value across the segment. Flat keyframes carry
+                    # no camera angle (see FLAT_INERT_PROPS), which is what this
+                    # is for.
+                    for prop in list(start.keys()) + [
+                            p for p in end.keys() if p not in start]:
                         if prop=='time':
                             continue
-                        if (start[prop] is None) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
+                        if prop not in start:
+                            frame[prop] = end[prop]
+                            continue
+                        if (start[prop] is None) or (prop not in end) or (start[prop] == end[prop]) or isinstance(start[prop], (bool, str)):
                             frame[prop] = start[prop]
                             continue
                         val = func(a(start[prop]), a(end[prop]), t)
@@ -922,7 +1365,74 @@ def show(
                     allframes.append(frame)
             return allframes
 
-        def make_movie_views(self, animation, filename="brainmovie%07d.png", 
+        def _get_smoothed_anim_seq(self, keyframes, fps=30,
+                                   interpolation='Bezier'):
+            """``_get_anim_seq`` for the per-keyframe interpolation modes.
+
+            Kept separate from the pairwise path above rather than replacing
+            it: 'smoothstep' and 'smootherstep' ease a whole segment and have
+            no per-keyframe equivalent, and leaving that code untouched is the
+            cheapest guarantee that existing animations still render frame for
+            frame as they did.
+
+            The frame times are generated exactly as the pairwise path
+            generates them, so the two produce the same number of frames for
+            the same keyframes; only the values differ.
+
+            One value differs in kind rather than degree: 'camera.azimuth' is
+            unwrapped before it is interpolated, so a spin takes the short way
+            around and 350 -> 10 degrees crosses zero instead of running all
+            the way back. That matches the viewer, whose own playback has always
+            done this (Viewer._animInterp in resources/js/mriview.js), and it is
+            what makes an animation laid out in the panel render the same way
+            here. The pairwise path is left alone and still runs the long way.
+            """
+            if not keyframes:
+                return []
+            if interpolation in mixes:
+                # 'linear' reaches here when a keyframe names its own mode. The
+                # two spellings mean the same curve, so map it across; the other
+                # two legacy easings have no per-keyframe form and are rejected.
+                if interpolation != 'linear':
+                    raise ValueError(
+                        "interpolation=%r eases a whole segment and cannot be "
+                        "combined with per-keyframe modes; use one of %s"
+                        % (interpolation,
+                           ", ".join(m.value for m in Interpolation)))
+                interpolation = Interpolation.Linear
+            try:
+                default_mode = Interpolation(interpolation)
+            except ValueError:
+                raise ValueError(
+                    "Unknown interpolation %r; expected one of %s, or one of "
+                    "the whole-animation easings %s"
+                    % (interpolation,
+                       ", ".join(m.value for m in Interpolation),
+                       ", ".join(sorted(mixes)))) from None
+
+            # Quantize to the frame grid on copies. The pairwise path rewrites
+            # the caller's dicts in place; there is no reason to inherit that.
+            fs = 1. / fps
+            frames = [dict(frame) for frame in keyframes]
+            for frame in frames:
+                frame['time'] = np.round(frame['time'] / fs) * fs
+            frames.sort(key=lambda frame: frame['time'])
+
+            channels = build_channels(frames, time_key='time',
+                                      default_mode=default_mode)
+
+            allframes = []
+            for start, end in zip(frames[:-1], frames[1:]):
+                t0, t1 = start['time'], end['time']
+                use_endpoint = end is frames[-1]
+                nvalues = np.round((t1 - t0) / fs).astype(int)
+                if use_endpoint:
+                    nvalues += 1
+                for t in np.linspace(0, 1, nvalues, endpoint=use_endpoint):
+                    allframes.append(evaluate(channels, t0 + t * (t1 - t0)))
+            return allframes
+
+        def make_movie_views(self, animation, filename="brainmovie%07d.png",
             offset=0, fps=30, size=(1920, 1080), alpha=1, frame_sleep=0.05,
             frame_start=0, interpolation="linear"):
             """Renders movie frames for animation of mesh movement
@@ -955,14 +1465,29 @@ def show(
                 Frame rate of resultant movie
             size : tuple (x, y)
                 Size (in pixels) of resulting movie
-            interpolation : {"linear", "smoothstep", "smootherstep"}
-                Interpolation method for values between keyframes.
+            interpolation : str
+                How values between keyframes are found. Either one of the
+                whole-animation easings "linear", "smoothstep" or
+                "smootherstep", which blend each pair of neighbouring
+                keyframes, or one of the per-keyframe modes named by
+                :class:`~cortex.webgl.interpolation.Interpolation` -- "Bezier",
+                "CubicHermite", "Linear", "BezierInHoldOut",
+                "CubicHermiteInHoldOut", "LinearInHoldOut",
+                "LinearInBezierOut", "LinearInCubicHermiteOut" -- which fit a
+                curve through the whole keyframe list and so carry velocity
+                smoothly through the interior keyframes. Default "linear".
 
             Notes
             -----
             Make sure that all values that will be modified over the course
             of the animation are initialized (have some starting value) in the first
             frame.
+
+            An individual keyframe may override `interpolation` by carrying its
+            own "interpolation" key, which is how animations built in the
+            viewer's animation panel store per-keyframe smoothing. The two
+            implementations share their arithmetic, so such an animation renders
+            here exactly as it played in the browser.
 
             Example
             -------
@@ -984,7 +1509,7 @@ def show(
                 self.getImage(filename%(fr+offset+1), size=size)
                 time.sleep(frame_sleep)
 
-    class PickerHandler(web.RequestHandler):
+    class PickerHandler(_WaitUntilPrepared, web.RequestHandler):
         def get(self):
             voxel_arg = self.get_argument("voxel", None)
             if voxel_arg is None:
@@ -1005,6 +1530,81 @@ def show(
                 return
             hemi: str = self.get_argument("hemi")
             pickerfun(voxel, vertex, hemi)
+
+    # The browser's pick reports vertices in CTM order.
+    # The ctmpack's index array maps a concatenated (left-then-right) 
+    # CTM position back to the original vertex numbering that Vertex data uses.
+    ctm_vertex_index: dict[str, np.ndarray] = {}
+    def _get_ctm_index(subj):
+        if subj not in ctm_vertex_index:
+            npz = np.load(os.path.splitext(ctms[subj])[0] + ".npz")
+            ctm_vertex_index[subj] = npz["index"]
+        return ctm_vertex_index[subj]
+
+    class TimeseriesHandler(_WaitUntilPrepared, web.RequestHandler):
+        """Return one voxel's (or vertex's) timecourse as JSON, on demand.
+        """
+        def get(self):
+            views = dict(data)
+            name = self.get_argument("name", None)
+            if name is None:
+                name = next(iter(views), None)
+            view = views.get(name)
+            if view is None:
+                self.set_status(404)
+                self.finish({"error": "no dataview named %r" % name})
+                return
+            if not getattr(view, "movie", False):
+                self.set_status(422)
+                self.finish({"error": "dataview %r has no time axis" % name})
+                return
+
+            vertex = None
+            try:
+                if isinstance(view, (dataset.Vertex, dataset.VertexRGB)):
+                    base = view.red if isinstance(view, dataset.VertexRGB) else view
+                    vertex = int(self.get_argument("vertex"))
+                    if self.get_argument("hemi") == "right":
+                        vertex += base.llen
+                    vertex = int(_get_ctm_index(base.subject)[vertex])
+                    if isinstance(view, dataset.VertexRGB):
+                        # slice each channel view directly: assembling the
+                        # full RGBA array via .vertices copies the whole
+                        # movie per request
+                        chans = [c.vertices[:, vertex]
+                                 for c in (view.red, view.green, view.blue)]
+                    else:
+                        chans = [view.vertices[:, vertex]]
+                elif isinstance(view, (dataset.Volume, dataset.VolumeRGB)):
+                    x, y, z = (int(i) for i in
+                               self.get_argument("voxel").split(","))
+                    if isinstance(view, dataset.VolumeRGB):
+                        chans = [c.volume[:, z, y, x]
+                                 for c in (view.red, view.green, view.blue)]
+                    else:
+                        chans = [view.volume[:, z, y, x]]
+                else:
+                    self.set_status(422)
+                    self.finish({"error": "unsupported dataview type %s"
+                                 % type(view).__name__})
+                    return
+            except (ValueError, IndexError, web.MissingArgumentError) as exc:
+                self.set_status(400)
+                self.finish({"error": str(exc)})
+                return
+
+            def norm(ts):
+                ts = np.asarray(ts)
+                if ts.dtype == np.uint8:  # RGB channels: bytes -> [0, 1]
+                    ts = ts / 255.0
+                return np.nan_to_num(ts.astype(np.float64))
+            chans = [norm(ts) for ts in chans]
+            channels = ["R", "G", "B"] if len(chans) == 3 else ["bold"]
+            resp = dict(name=name, channels=channels,
+                        data=[ts.tolist() for ts in chans],
+                        vertex=vertex, refs=ref_traces or None)
+            self.set_header("Content-Type", "application/json")
+            self.finish(json.dumps(resp))
 
     class WebApp(serve.WebApp):
         disconnect_on_close = autoclose
@@ -1027,23 +1627,48 @@ def show(
                      (r'/stim/(.*)', StimHandler),
                      (r'/mixer.html', MixerHandler),
                      (r'/picker', PickerHandler),
+                     (r'/timeseries', TimeseriesHandler),
                      (r'/', MixerHandler),
                      (r'/static/(.*)', StaticHandler)],
                     port)
 
     server.start()
+    local_url, network_url = _viewer_urls(server.port)
     print("Started server on port %d"%server.port)
-    url = "http://%s%s:%d/mixer.html"%(serve.hostname, domain_name, server.port)
-    if open_browser:
-        webbrowser.open(url)
-        client = server.get_client()
-        client.server = server
-        return client
-    elif display_url:
+    if network_url == local_url:
+        print("Open the viewer at %s"%local_url)
+    else:
+        print("Open the viewer at %s (from another machine: %s)"
+              %(local_url, network_url))
+    if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
-            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(url)))
+            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
+            if network_url != local_url:
+                link += (' (from another machine: '
+                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
+            display(HTML(link))
         except:
             pass
 
+    # The server is up and the URL is shown; now package the data. Requests
+    # that arrive meanwhile wait for it without blocking the server (see
+    # _WaitUntilPrepared). If packaging fails, release them with an error and
+    # stop the server, so the port is free for another attempt.
+    try:
+        _prepare()
+    except BaseException as exc:
+        _prepare_failure.append(exc)
+        _ready.set()
+        server.stop()
+        raise
+    _ready.set()
+
+    if open_browser:
+        # This runs on the same machine as the server, so localhost is both
+        # correct and the most reliable thing to hand the browser.
+        webbrowser.open(local_url)
+        client = server.get_client()
+        client.server = server
+        return client
     return server

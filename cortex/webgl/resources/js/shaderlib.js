@@ -16,6 +16,20 @@ var Shaderlib = (function() {
         ].join("\n"),
 
         colormap: [
+            // NaN compares false against everything, so a component is NaN
+            // exactly when it is neither <= 0 nor > 0.
+            "bvec2 notnan(vec2 x) {",
+                "return notEqual(lessThanEqual(x, vec2(0.)), lessThan(vec2(0.), x));",
+            "}",
+            "bvec4 notnan(vec4 x) {",
+                "return notEqual(lessThanEqual(x, vec4(0.)), lessThan(vec4(0.), x));",
+            "}",
+            // Alpha map (DATAALPHA), this frame and the next: NaN -> transparent,
+            // else scale all four (premultiplied) channels by the alpha value.
+            "vec4 apply_dataalpha(vec4 color, vec2 avals) {",
+                "float aval = clamp(mix(avals.x, avals.y, framemix), 0., 1.);",
+                "return all(notnan(avals)) ? color * aval : vec4(0.);",
+            "}",
             "vec2 vnorm(vec4 values) {",
                 "float range = vmax[0] - vmin[0];",
                 "float norm0 = (values.x - vmin[0]) / range;",
@@ -35,8 +49,7 @@ var Shaderlib = (function() {
             "vec4 colorlut(vec4 values) {",
                 "vec2 cuv = vnorm(values);",
                 "vec4 vColor = texture2D(colormap, cuv);",
-                "bvec4 valid = notEqual(lessThanEqual(values, vec4(0.)), lessThan(vec4(0.), values));",
-                "return all(valid) ? vColor : vec4(0.);",
+                "return all(notnan(values)) ? vColor : vec4(0.);",
             "}",
         ].join("\n"),
 
@@ -174,22 +187,37 @@ var Shaderlib = (function() {
             return glsl;
         },
 
-        // thickmixer: header code that loads the uniforms and attributes needed to
-        // do equivolume sampling, for vertex shaders
+        // thickmixer: header code that loads the uniforms needed to do
+        // equivolume sampling, for vertex shaders. The white matter and pial
+        // vertex areas it needs ride along in auxdat.zw, which mriview_surface
+        // fills in when the surfaces load, rather than in attributes of their
+        // own: WebGL only guarantees 16 vertex attribute slots and these
+        // shaders are right up against that limit, so whatever fits in the
+        // spare components of an attribute that is already there goes there.
         thickmixer: [
             "uniform float thickmix;",
             "uniform int equivolume;",
-            "attribute float wmarea;",
-            "attribute float pialarea;",
         ].join("\n"),
 
         // thickmixer_main: translates a desired volume fraction into linear mixing
-        // parameter.
+        // parameter. Requires auxdat to be declared by the including shader.
         thickmixer_main: [
             "#ifdef EQUIVOLUME",
+                "float wmarea = auxdat.z;",
+                "float pialarea = auxdat.w;",
                 "float use_thickmix = 1. - (1. / (pialarea - wmarea) * (-1. * wmarea + sqrt((1. - thickmix) * pialarea * pialarea + thickmix * wmarea * wmarea)));",
             "#else",
                 "float use_thickmix = thickmix;",
+            "#endif",
+        ].join("\n"),
+
+        // flatbump_attr: the bumpy-flatmap displacement attribute, for vertex
+        // shaders that declare HASFLAT.
+        flatbump_attr: [
+            "#ifdef HASFLAT",
+                //xyz: normal of the bump-displaced flatmap, w: bump height.
+                //Packed into one attribute to stay under the 16 slot limit.
+                "attribute vec4 flatbump;",
             "#endif",
         ].join("\n"),
     }
@@ -213,6 +241,8 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            if (opts.dataalpha)
+                header += "#define DATAALPHA\n";
             if (!opts.viewspace)
                 header += "#define SAMPLE_WORLD\n";
             if (opts.lights !== undefined && !opts.lights)
@@ -270,6 +300,9 @@ var Shaderlib = (function() {
             "uniform vec2 mosaic[2];",
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
+        "#ifdef DATAALPHA",
+            "uniform sampler2D dataalpha[2];",
+        "#endif",
 
             "varying vec3 vPos_x;",
             "varying vec3 vPos_y;",
@@ -289,6 +322,9 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 values = vec4(0.);",
             "#endif",
+            "#ifdef DATAALPHA",
+                "vec2 avals = vec2(0.);",
+            "#endif",
         
         "#ifdef RGBCOLORS",
                 "color[0] += "+sampler+"_x(data[0], vPos_x);",
@@ -301,10 +337,17 @@ var Shaderlib = (function() {
                 "values.w += "+sampler+"_y(data[3], vPos_y).r;",
             "#endif",
         "#endif",
+            "#ifdef DATAALPHA",
+                "avals.x += "+sampler+"_x(dataalpha[0], vPos_x).r;",
+                "avals.y += "+sampler+"_x(dataalpha[1], vPos_x).r;",
+            "#endif",
             "#ifdef RGBCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
                 "vec4 vColor = colorlut(values);",
+            "#endif",
+            "#ifdef DATAALPHA",
+                "vColor = apply_dataalpha(vColor, avals);",
             "#endif",
                 "vColor *= dataAlpha;",
 
@@ -333,6 +376,10 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            if (opts.dataalpha)
+                header += "#define DATAALPHA\n";
+            if (opts.nanmean === undefined || opts.nanmean)
+                header += "#define NANMEAN\n";
 
             var sampler = opts.sampler || "nearest";
             var morphs = opts.morphs;
@@ -361,16 +408,15 @@ var Shaderlib = (function() {
             // "uniform float thickmix;",
             utils.thickmixer,
             "uniform int bumpyflat;",
+            "uniform float bumpyflat_scale;",
             "float f_bumpyflat = float(bumpyflat);",
 
             "attribute vec4 wm;",
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
 
-            "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
-            "#endif",
+            utils.flatbump_attr,
+
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -425,20 +471,28 @@ var Shaderlib = (function() {
                 "vec3 pos, norm;",
                 "mixfunc(mpos, mnorm, pos, norm);",
 
-                // "norm = mix(flatBumpNorms, normalize(onorm), thickmix);",
-                // "norm = normalize(flatBumpNorms);",
-
             "#ifdef CORTSHEET",
                 // 
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    //The relief is purely vertical and the flatmap's
+                    //out-of-plane axis is x, so the scale setting is vertical
+                    //exaggeration, as on a topographic map. Javascript bakes
+                    //the per-hemisphere mirroring and the flatmap scale in.
+                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
+                    //Only over inflated-to-flat: a height in flatmap
+                    //coordinates means nothing on a folded surface.
+                    "pos += clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    //Scaling a height field by s scales the normal's in-plane
+                    //components by s and leaves the out-of-plane one alone --
+                    //exact, and at scale 0 it gives back the flat normal.
+                    "vec3 bumpnorm = normalize(vec3(flatbump.x, bumpyflat_scale * flatbump.y, bumpyflat_scale * flatbump.z));",
+                    "vNormal = normalMatrix * mix(norm, bumpnorm, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -478,6 +532,9 @@ var Shaderlib = (function() {
             "uniform vec2 mosaic[2];",
             "uniform vec2 dshape[2];",
             "uniform sampler2D data[4];",
+        "#ifdef DATAALPHA",
+            "uniform sampler2D dataalpha[2];",
+        "#endif",
 
             "uniform vec3 slicexn;", // normal vector for the x sliceplane
             "uniform vec3 sliceyn;",
@@ -538,23 +595,68 @@ var Shaderlib = (function() {
             "#else",
                 "vec4 values = vec4(0.);",
             "#endif",
+                "float nvalid = 0.;", // number of layer samples averaged in
+            "#ifdef DATAALPHA",
+                "vec2 avals = vec2(0.);",
+            "#endif",
                 "",
             ].join("\n");
 
             //Create samplers for texture volume sampling
             var fragMid = "";      
-            var factor = layers > 1 ? (1/layers).toFixed(6) : "1.";
             var sampling = [
         "#ifdef RGBCOLORS",
-                "color[0] += "+factor+"*"+sampler+"_x(data[0], coord_x);",
-                "color[1] += "+factor+"*"+sampler+"_x(data[1], coord_x);",
-        "#else",
-                "values.x += "+factor+"*"+sampler+"_x(data[0], coord_x).r;",
-                "values.y += "+factor+"*"+sampler+"_x(data[1], coord_x).r;",
-            "#ifdef TWOD",
-                "values.z += "+factor+"*"+sampler+"_y(data[2], coord_y).r;",
-                "values.w += "+factor+"*"+sampler+"_y(data[3], coord_y).r;",
+                // RGBA textures: NaN already became alpha 0 on the Python side,
+                // so with NANMEAN a fully transparent sample counts as missing
+                // and is left out of the (premultiplied) average.
+                "{",
+                "vec4 c0 = "+sampler+"_x(data[0], coord_x);",
+                "vec4 c1 = "+sampler+"_x(data[1], coord_x);",
+            "#ifdef NANMEAN",
+                // current frame only: for single-frame data, data[1] is an
+                // unbound sampler, which reads as opaque black (alpha 1).
+                "if (c0.a > 0.) {",
+            "#else",
+                "{",
             "#endif",
+                    "color[0] += c0;",
+                    "color[1] += c1;",
+                    "nvalid += 1.;",
+                "}",
+                "}",
+        "#else",
+                // One layer sample. With NANMEAN (default, matching quickflat's
+                // nanmean=True) a sample containing NaN in any frame/dimension
+                // (or in the alpha map) is left out of the average and the
+                // fragment is transparent only if no layer was valid. Without
+                // it, one NaN at any depth makes the whole fragment transparent.
+                "{",
+                "vec4 s = vec4(0.);",
+                "s.x = "+sampler+"_x(data[0], coord_x).r;",
+                "s.y = "+sampler+"_x(data[1], coord_x).r;",
+            "#ifdef TWOD",
+                "s.z = "+sampler+"_y(data[2], coord_y).r;",
+                "s.w = "+sampler+"_y(data[3], coord_y).r;",
+            "#endif",
+            "#ifdef DATAALPHA",
+                "vec2 sa = vec2("+sampler+"_x(dataalpha[0], coord_x).r, "+sampler+"_x(dataalpha[1], coord_x).r);",
+            "#endif",
+            "#ifdef NANMEAN",
+                "bool ok = all(notnan(s));",
+                "#ifdef DATAALPHA",
+                "ok = ok && all(notnan(sa));",
+                "#endif",
+            "#else",
+                "bool ok = true;",
+            "#endif",
+                "if (ok) {",
+                    "values += s;",
+                    "nvalid += 1.;",
+                "#ifdef DATAALPHA",
+                    "avals += sa;",
+                "#endif",
+                "}",
+                "}",
         "#endif",
             ].join("\n");
 
@@ -604,6 +706,17 @@ var Shaderlib = (function() {
             }
 
             var fragTail = [
+                "if (nvalid > 0.) {",
+        "#ifdef RGBCOLORS",
+                    "color[0] /= nvalid;",
+                    "color[1] /= nvalid;",
+        "#else",
+                    "values /= nvalid;",
+            "#ifdef DATAALPHA",
+                    "avals /= nvalid;",
+            "#endif",
+        "#endif",
+                "}",
     "#ifdef HALO_RENDER",
                 "if (vMedial < .999) {",
                     "float dweight = gl_FragCoord.w;",
@@ -620,7 +733,10 @@ var Shaderlib = (function() {
             "#ifdef RGBCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
-                "vec4 vColor = colorlut(values);",
+                "vec4 vColor = nvalid > 0. ? colorlut(values) : vec4(0.);",
+            "#endif",
+            "#ifdef DATAALPHA",
+                "vColor = apply_dataalpha(vColor, avals);",
             "#endif",
                 "vColor *= dataAlpha;",
                 //"vColor.a = (values.x - vmin[0]) / (vmax[0] - vmin[0]);",
@@ -665,14 +781,9 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
-                wmarea: { type: 'f', value:null },
-                pialarea: { type: 'f', value:null },
-                // flatBumpNorms: { type: 'v3', value:null },
-                // flatheight: { type: 'f', value:null },
             };
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatbump = { type: 'v4', value:null };
             }
             for (var i = 0; i < morphs-1; i++) {
                 attributes['mixSurfs'+i] = { type:'v4', value:null};
@@ -688,6 +799,9 @@ var Shaderlib = (function() {
                 header += "#define RGBCOLORS\n";
             if (opts.twod)
                 header += "#define TWOD\n";
+            // Note: no DATAALPHA define here. For vertex data the alpha map
+            // is folded into the nanmask attribute by dataset.js (adding
+            // attributes would exceed MAX_VERTEX_ATTRIBS for 2D views).
 
             var morphs = opts.morphs;
             var volume = opts.volume || 0;
@@ -711,6 +825,7 @@ var Shaderlib = (function() {
             // "uniform float thickmix;",
             utils.thickmixer,
             "uniform int bumpyflat;",
+            "uniform float bumpyflat_scale;",
             "float f_bumpyflat = float(bumpyflat);",
 
             "varying vec4 vColor;",
@@ -722,6 +837,9 @@ var Shaderlib = (function() {
             "attribute float data1;",
             "attribute float data2;",
             "attribute float data3;",
+            // Soft 0-1 opacity for colormapped vertex data, built by
+            // DataView.setFrame (dataset.js) from each dim's nanmasks and the
+            // Vertex2D alpha map: 0 = NaN, else alpha (1 without an alpha map).
             "attribute float nanmask;",
     "#endif",
 
@@ -729,10 +847,8 @@ var Shaderlib = (function() {
             "attribute vec3 wmnorm;",
             "attribute vec4 auxdat;",
 
-            "#ifdef HASFLAT",
-                "attribute vec3 flatBumpNorms;",
-                "attribute float flatheight;",
-            "#endif",
+            utils.flatbump_attr,
+
             // "attribute float dropout;",
             
             "varying vec3 vViewPosition;",
@@ -762,11 +878,12 @@ var Shaderlib = (function() {
                 "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
-                // NaN mask: WebGL drivers sanitize NaN in vertex attributes,
-                // so we detect NaN in JavaScript and pass a mask (0=NaN, 1=valid).
-                // For 2D vertex views the JS layer combines per-dim masks
-                // before dispatch, so a single shared attribute is enough.
-                "if (nanmask < 0.5) vColor = vec4(0.);",
+                // Data mask: WebGL drivers sanitize NaN in vertex attributes,
+                // so dataset.js detects NaN in JavaScript and passes a mask
+                // (0 = NaN in any dim or in the alpha map, otherwise the
+                // per-vertex alpha, 1 when there is no alpha map). Scaling
+                // all four channels keeps the premultiplied convention.
+                "vColor *= clamp(nanmask, 0., 1.);",
         "#endif",
 
         "#ifdef CORTSHEET",
@@ -788,14 +905,25 @@ var Shaderlib = (function() {
 
             "#ifdef CORTSHEET",
                 "#ifdef HASFLAT",
-                    "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * mix(1., 0., use_thickmix) * flatheight * f_bumpyflat;",
+                    //The relief is purely vertical and the flatmap's
+                    //out-of-plane axis is x, so the scale setting is vertical
+                    //exaggeration, as on a topographic map. Javascript bakes
+                    //the per-hemisphere mirroring and the flatmap scale in.
+                    "vec3 bumpvector = vec3(flatbump.w * bumpyflat_scale, 0., 0.);",
+                    //Only over inflated-to-flat: a height in flatmap
+                    //coordinates means nothing on a folded surface.
+                    "pos += clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * mix(1., 0., use_thickmix) * f_bumpyflat * bumpvector;",
                 "#else",
                     "pos += clamp(surfmix*"+(morphs-1)+"., 0., 1.) * normalize(norm) * .62 * distance(position, wm.xyz) * mix(1., 0., use_thickmix);",
                 "#endif",
             "#endif",
 
                 "#ifdef HASFLAT",
-                    "vNormal = normalMatrix * mix(norm, flatBumpNorms, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - 1.0, 0., 1.) * f_bumpyflat);",
+                    //Scaling a height field by s scales the normal's in-plane
+                    //components by s and leaves the out-of-plane one alone --
+                    //exact, and at scale 0 it gives back the flat normal.
+                    "vec3 bumpnorm = normalize(vec3(flatbump.x, bumpyflat_scale * flatbump.y, bumpyflat_scale * flatbump.z));",
+                    "vNormal = normalMatrix * mix(norm, bumpnorm, (1.0 - use_thickmix) * clamp(surfmix*"+(morphs-1)+". - "+(morphs-2)+"., 0., 1.) * f_bumpyflat);",
                 "#else",
                     "vNormal = normalMatrix * norm;",
                 "#endif",
@@ -888,13 +1016,10 @@ var Shaderlib = (function() {
                 wm: { type: 'v4', value:null },
                 wmnorm: { type: 'v3', value:null },
                 auxdat: { type: 'v4', value:null },
-                wmarea: { type: 'f', value:null },
-                pialarea: { type: 'f', value:null },
             };
 
             if (opts.hasflat) {
-                attributes.flatBumpNorms = { type: 'v3', value:null };
-                attributes.flatheight = { type: 'f', value:null };
+                attributes.flatbump = { type: 'v4', value:null };
             }
 
             for (var i = 0; i < 4; i++)

@@ -45,7 +45,9 @@ def init_subject(subject, filenames, do_import_subject=False, **kwargs):
         editing) into pycortex. False by default, since we recommend editing
         (or at least inspecting) the brain mask and white matter segmentations
         prior to importing into pycortex.
-    kwargs : keyword arguments passed to cortex.freesurfer.autorecon()
+    **kwargs
+        Additional keyword arguments are forwarded to
+        `cortex.freesurfer.autorecon`.
         useful ones: parallel=True, n_cores=4 (or more, if you have them)
     """
     if "run_all" in kwargs:
@@ -193,6 +195,11 @@ def cut_surface(
     auto_overwrite : bool
         Whether to overwrite existing flatmaps. If True, the flatmap will be
         overwritten without asking for confirmation.
+    **kwargs
+        Additional keyword arguments are forwarded to the flattening backend
+        selected by `flatten_with`: cortex.freesurfer.flatten() for
+        'freesurfer', or cortex.segment.flatten_slim() for 'SLIM'.
+        useful ones: save_every=10 (freesurfer), n_iterations=20 (SLIM)
     """
 
     if fs_subject is None:
@@ -337,11 +344,16 @@ def flatten_slim(
     patch : str
         name of patch, often "flatten" (obj file used here is {hemi}_{patch}.obj
         in the subject's freesurfer directory)
+    n_iterations : int
+        number of iterations of the SLIM flattening algorithm. Defaults to 20.
     freesurfer_subject_dir : str
         path to freesurfer subejct dir. Defaults to environment variable
         SUBJECTS_DIR
     slim_path : str
         path to SLIM flattening. Defaults to path specified in config file.
+    do_flatten : bool | None
+        whether to proceed with flattening. None (default) prompts for
+        confirmation interactively.
     """
     if slim_path == "None":
         slim_url = (

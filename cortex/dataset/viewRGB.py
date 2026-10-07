@@ -73,6 +73,86 @@ def HSV2RGB(color: Color[float] | npt.NDArray) -> Color[int]:
     return (int(r * 255), int(g * 255), int(b * 255))
 
 
+def warn_alpha_range(alpha: npt.ArrayLike) -> None:
+    """Warn when a raw (non-uint8) alpha array lies outside [0, 1]."""
+    alpha = np.asarray(alpha)
+    if alpha.dtype == np.uint8 or alpha.size == 0:
+        return
+    finite = alpha[np.isfinite(alpha)]
+    if finite.size and (finite.min() < 0 or finite.max() > 1):
+        warnings.warn(
+            "Some alpha values are outside the range of [0, 1]. "
+            "Consider passing a Volume/Vertex object as alpha with explicit "
+            "vmin, vmax keyword arguments.",
+            Warning,
+        )
+
+
+ScalarType = TypeVar("ScalarType", bound=np.generic)
+def _broadcast_fill(
+    arr: npt.NDArray[ScalarType], mask: npt.NDArray[np.bool_], fill: float, ntrail: int
+) -> Optional[npt.NDArray[ScalarType]]:
+    """Copy of ``arr`` broadcast against ``mask``, with ``fill`` written wherever
+    ``mask`` is True, keeping ``arr``'s dtype. Leading axes may be added or grown
+    (frames), but ``arr``'s last ``ntrail`` axes must come through unchanged;
+    otherwise ``mask`` doesn't fit ``arr`` and None is returned.
+    """
+    try:
+        shape = np.broadcast_shapes(mask.shape, arr.shape)
+    except ValueError:
+        return None
+    if shape[-ntrail:] != arr.shape[-ntrail:]:
+        return None
+    new = np.array(np.broadcast_to(arr, shape))  # copy, keep dtype
+    new[np.broadcast_to(mask, shape)] = fill
+    return new
+
+
+DataviewType = TypeVar("DataviewType", bound=Dataview)
+def _mask_alpha(alpha: DataviewType, mask: npt.ArrayLike) -> DataviewType:
+    """Return a copy of ``alpha`` (Volume or Vertex) with ``alpha.vmin`` written
+    wherever ``mask`` is True.
+
+    ``mask`` may live either in the same space as ``alpha.data`` (masked/linear
+    or full) or, for volumes, in full ``(z, y, x)`` / ``(t, z, y, x)`` space.
+    Leading (time) axes are broadcast, so a single-frame alpha combined with a
+    multi-frame NaN mask yields a multi-frame alpha (#629).
+
+    The masked values are never written into a temporary: ``VolumeData.volume``
+    returns a freshly unmasked array for linear volumes, so the previous
+    ``alpha.volume[mask] = vmin`` silently did nothing for those.
+    """
+    mask = np.asarray(mask, dtype=bool)
+    if not mask.any():
+        return alpha
+    data = np.asarray(alpha.data)
+    if data.dtype == np.uint8:
+        # uint8 alpha bypasses the vmin/vmax normalization later on, and its
+        # inferred vmin is a percentile of the bytes (255 for a constant map):
+        # transparent is byte 0.
+        fill = 0
+    else:
+        fill = 0.0 if alpha.vmin is None else alpha.vmin
+    new = _broadcast_fill(data, mask, fill, data.ndim)
+    if new is not None:
+        return alpha.copy(new)
+
+    if isinstance(alpha, VolumeData):
+        vol = np.asarray(alpha.volume)  # (t, z, y, x), fresh copy if linear
+        new = _broadcast_fill(vol, mask, fill, 3)
+        if new is not None:
+            if new.shape[0] == 1 and not alpha.movie:
+                new = new[0]
+            return Volume(
+                new, alpha.subject, alpha.xfmname, vmin=alpha.vmin, vmax=alpha.vmax
+            )
+
+    raise ValueError(
+        "alpha of shape %s is incompatible with data NaN mask of shape %s"
+        % (data.shape, mask.shape)
+    )
+
+
 class DataviewRGB(Dataview):
     """Abstract base class for RGB data views."""
 
@@ -103,6 +183,20 @@ class DataviewRGB(Dataview):
                 )
 
     def uniques(self, collapse=False):
+        """Yield the underlying Dataview channels that make up this RGB view.
+
+        Parameters
+        ----------
+        collapse : bool, optional
+            If True, yield this RGB view itself as a single unit instead of
+            its individual channels. Default False.
+
+        Returns
+        -------
+        generator
+            Yields `self` if `collapse`, otherwise `self.red`, `self.green`,
+            `self.blue`, and `self.alpha` (if set).
+        """
         if collapse:
             yield self
         else:
@@ -112,18 +206,15 @@ class DataviewRGB(Dataview):
             if self.alpha is not None:
                 yield self.alpha
 
-    def _apply_nan_mask(self, alpha: BrainData):
+    def _apply_nan_mask(self, alpha: Dataview) -> Dataview:
         """Apply stored NaN mask to alpha, enforcing transparency for NaN
         positions even when the user overrides the alpha channel. uint8 RGB
         channels cannot hold NaN, so the mask is captured before conversion
         in Dataview.raw and stored as ``_nan_mask``."""
         nan_mask = getattr(self, "_nan_mask", None)
         if nan_mask is None:
-            return
-        if nan_mask.shape == alpha.data.shape:
-            alpha.data[nan_mask] = alpha.vmin
-        elif hasattr(alpha, "volume") and nan_mask.shape == alpha.volume.shape:
-            alpha.volume[nan_mask] = alpha.vmin
+            return alpha
+        return _mask_alpha(alpha, nan_mask)
 
     def _write_hdf(self, h5, name="data", xfmname=None):
         self._cls._write_hdf(self.red, h5)
@@ -345,10 +436,16 @@ class DataviewRGB(Dataview):
             green.flat[i] = this_color[1]
             blue.flat[i] = this_color[2]
 
-        # Now make an alpha volume
+        # Now make an alpha volume. NaN in any channel forces alpha to its
+        # minimum. Never write into the caller's array.
         if alpha is None:
             alpha = np.ones_like(red, np.uint8) * 255
-        alpha[mask] = 0 # TODO: this seems like an actual issue
+            alpha[mask] = 0
+        elif isinstance(alpha, (VolumeData, VertexData)):
+            alpha = _mask_alpha(alpha, mask)
+        else:
+            alpha = np.array(alpha, copy=True)
+            alpha[mask] = 0
 
         return red, green, blue, alpha
 
@@ -570,27 +667,36 @@ class VolumeRGB(DataviewRGB):
             alpha = np.ones(self.red.volume.shape)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
         if not isinstance(alpha, Volume):
-            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
-                warnings.warn(
-                    "Some alpha values are outside the range of [0, 1]. "
-                    "Consider passing a Volume object as alpha with explicit vmin, vmax "
-                    "keyword arguments.",
-                    Warning,
-                )
+            warn_alpha_range(alpha)
             alpha = Volume(alpha, self.red.subject, self.red.xfmname, vmin=0, vmax=1)
 
+        # NaN in any color channel -> alpha at its minimum (transparent)
         rgb = np.array([self.red.volume, self.green.volume, self.blue.volume])
         mask = np.isnan(rgb).any(axis=0)
-        alpha.volume[mask] = alpha.vmin
+        alpha = _mask_alpha(alpha, mask)
 
-        self._apply_nan_mask(alpha)
-        return alpha
+        return self._apply_nan_mask(alpha)
 
     @alpha.setter
     def alpha(self, alpha: Optional[Union[npt.NDArray, Volume]]):
         self._alpha = alpha
 
     def to_json(self, simple=False):
+        """Serialize this RGB volume to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary suitable for a quick
+            listing rather than the full webgl payload. Default False.
+
+        Returns
+        -------
+        dict
+            Serialized view data, including the transform matrix (when not
+            `simple`) needed to place the RGB volume in the correct space.
+        """
         sdict = super().to_json(simple=simple)
         if simple:
             sdict["shape"] = self.red.shape
@@ -626,6 +732,8 @@ class VolumeRGB(DataviewRGB):
                 else:
                     vol /= dv.vmax - dv.vmin
 
+                # NaN (e.g. in a user-supplied alpha map) -> 0, never UB cast
+                vol = np.nan_to_num(vol, nan=0.0)
                 vol = (np.clip(vol, 0, 1) * 255).astype(np.uint8)
             else:
                 vol = dv.volume.copy()
@@ -846,21 +954,15 @@ class VertexRGB(DataviewRGB):
             alpha = np.ones(self.red.vertices.shape[1])
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
         if not isinstance(alpha, Vertex):
-            if alpha.dtype != np.uint8 and (alpha.min() < 0 or alpha.max() > 1):
-                warnings.warn(
-                    "Some alpha values are outside the range of [0, 1]. "
-                    "Consider passing a Vertex object as alpha with explicit vmin, vmax "
-                    "keyword arguments.",
-                    Warning,
-                )
+            warn_alpha_range(alpha)
             alpha = Vertex(alpha, self.red.subject, vmin=0, vmax=1)
 
+        # NaN in any color channel -> alpha at its minimum (transparent)
         rgb = np.array([self.red.data, self.green.data, self.blue.data])
         mask = np.isnan(rgb).any(axis=0)
-        alpha.data[mask] = alpha.vmin
+        alpha = _mask_alpha(alpha, mask)
 
-        self._apply_nan_mask(alpha)
-        return alpha
+        return self._apply_nan_mask(alpha)
 
     @alpha.setter
     def alpha(self, alpha: Optional[Union[npt.NDArray, Vertex]]):
@@ -887,6 +989,8 @@ class VertexRGB(DataviewRGB):
                 else:
                     vert /= dv.vmax - dv.vmin
 
+                # NaN (e.g. in a user-supplied alpha map) -> 0, never UB cast
+                vert = np.nan_to_num(vert, nan=0.0)
                 vert = (np.clip(vert, 0, 1) * 255).astype(np.uint8)
             else:
                 vert = dv.vertices.copy()
@@ -894,6 +998,21 @@ class VertexRGB(DataviewRGB):
         return np.array(verts).transpose([1, 2, 0])
 
     def to_json(self, simple=False):
+        """Serialize this RGB vertex view to a JSON-compatible dict, for the
+        webgl viewer / HDF5 export.
+
+        Parameters
+        ----------
+        simple : bool, optional
+            If True, return an abbreviated summary (hemisphere split point
+            and frame count) rather than the full webgl payload. Default
+            False.
+
+        Returns
+        -------
+        dict
+            Serialized view data.
+        """
         sdict = super().to_json(simple=simple)
 
         if simple:

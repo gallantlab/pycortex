@@ -1,3 +1,10 @@
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+
+from cortex.export.save_views import ViewParams
+
 # Skip any test that relies on playwright if it's not available.
 try:
     from playwright.sync_api import sync_playwright
@@ -34,3 +41,136 @@ def wait_for_file(path, timeout=30):
             return
         time.sleep(0.1)
     raise RuntimeError(f"File {path!r} not written within {timeout}s")
+
+
+# --------------------------------------------------------------------------- #
+# Driving a headless viewer (cortex.export.headless_viewer) without sleeps.   #
+# Software WebGL makes every redraw slow, so fixed sleeps sized for the worst #
+# case dominated the runtime of the tests that switch data or view state.     #
+# --------------------------------------------------------------------------- #
+
+
+def js_eval(handle: Any, expr: str) -> Any:
+    """Evaluate a javascript expression in the viewer page; one roundtrip."""
+    result = handle.send(method="run", params=["window.eval", [expr]])
+    return result[0] if isinstance(result, list) and result else result
+
+
+def wait_js(handle: Any, expr: str, what: str, timeout: float = 60.0) -> None:
+    """Poll until the javascript expression `expr` evaluates to ``true``."""
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if js_eval(handle, expr) is True:
+            return
+        time.sleep(0.05)
+    raise RuntimeError("timed out after %.0fs waiting for %s" % (timeout, what))
+
+
+def settle(handle: Any) -> None:
+    """Wait until the viewer has drawn at least one frame since this call.
+
+    ``getImage`` renders synchronously, but some state only takes effect in
+    the viewer's own draw loop (e.g. camera changes reach the camera through
+    ``controls.update``), so a change is complete once a frame was drawn.
+    """
+    js_eval(handle, "window._settled = false; requestAnimationFrame(function() "
+                    "{ requestAnimationFrame(function() { window._settled = true; }); })")
+    wait_js(handle, "window._settled === true", "a redraw")
+
+
+def wait_active(handle: Any, name: str) -> None:
+    """Wait until dataview `name` is shown with all of its data loaded.
+
+    Call after ``setData``/``addData``: the dataview's ``loaded`` deferred
+    resolves once its data arrived, and ``mriview.dataBuffersReady`` covers
+    the tick in which its textures/vertex buffers are not populated yet.
+    """
+    wait_js(
+        handle,
+        "(function() { var v = window.viewer, d = v.dataviews[%r];"
+        " return d !== undefined && v.active === d"
+        " && d.loaded.state() === 'resolved'"
+        " && mriview.dataBuffersReady(d.data); })()" % name,
+        "dataview %s to load" % name,
+    )
+    settle(handle)
+
+
+
+def set_view(handle: Any, view: ViewParams, subject: str = "S1") -> None:
+    """``handle._set_view(**view)`` in a single javascript task.
+
+    Every ``ui.set`` redraws the viewer and under software WebGL a redraw
+    costs about half a second; setting all keys in one task costs one. Only
+    for keys ``_set_view`` accepts as they are (no legacy names). Unfolding
+    goes first, as in ``_set_view``.
+    """
+    import json
+
+    items = sorted(view.items(), key=lambda kv: not kv[0].endswith(".unfold"))
+    js_eval(handle, "".join(
+        "viewer.ui.set(%s, %s);"
+        % (json.dumps(k.format(subject=subject)), json.dumps(v))
+        for k, v in items
+    ))
+    settle(handle)
+
+
+def render(
+    handle: Any, path: str, size: tuple[int, int] = (512, 384), timeout: float = 30
+) -> None:
+    """``handle.getImage(path, size)`` and wait until the PNG is complete.
+
+    The server writes the posted image in place, so a file that merely exists
+    may still be partial: wait until it decodes instead.
+    """
+    import time
+
+    from PIL import Image
+
+    handle.getImage(path, size)
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            with Image.open(path) as im:
+                im.load()
+            return
+        except (OSError, SyntaxError):
+            if time.monotonic() > deadline:
+                raise RuntimeError("image not written: %s" % path)
+            time.sleep(0.05)
+
+
+
+def redness(path: str) -> npt.NDArray[np.int_]:
+    """R - max(G, B) for each pixel of the image at `path`, alpha ignored.
+
+    Positive where a pixel is red-dominant. Viewer tests render their data in
+    red and measure it with this, so curvature gray (R = G = B) counts as 0.
+    """
+    from PIL import Image
+
+    rgb = np.asarray(Image.open(path).convert("RGB")).astype(int)
+    return rgb[..., 0] - np.maximum(rgb[..., 1], rgb[..., 2])
+
+
+def count_red_pixels(path: str, threshold: int = 50) -> int:
+    """Number of strongly red-dominant pixels, R - max(G, B) > `threshold`."""
+    return int((redness(path) > threshold).sum())
+
+
+def page_errors(handle: Any) -> list[str]:
+    """Uncaught javascript exceptions the viewer page raised so far.
+
+    Browser events reach Python only on the headless worker's next poll, so
+    first wait out two poll intervals.
+    """
+    import time
+
+    from cortex.export.headless import EVENT_POLL_INTERVAL
+
+    time.sleep(2 * EVENT_POLL_INTERVAL)
+    # TODO: use cortex.export.headless_viewer.filter_browser_errors() ?
+    return [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]

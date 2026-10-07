@@ -38,6 +38,28 @@ var mriview = (function(module) {
         return true;
     };
 
+    // Values of every channel of a vertex dataview (1 for 1D, 2 for 2D) at the
+    // picked vertex `coords`, as returned by Viewer.getCoords. Shared by the
+    // hover and click readouts.
+    module.vertexValues = function (dataview, coords) {
+        var hemiIdx = (coords.hemi == 'left') ? 0 : 1;
+        // Map the picked vertex through the subject's indexMap.
+        // dim1 and dim2 share subject for 2D views (server-side).
+        var subject = dataview.data[0].subject;
+        var indexMap = subjects[subject].hemis[coords.hemi].indexMap;
+        var vertex = indexMap[coords.vertex];
+        // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
+        return module.frameValues(dataview, function (d, frame) {
+            if (d.verts[frame] === undefined) return undefined;
+            // NaN was replaced by 0 in the GPU buffer (dataset.js); report
+            // NaN from the mask instead of a fake 0.
+            if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
+                d.nanmasks[frame.mod(d.nanmasks.length)][hemiIdx].array[vertex] < 0.5)
+                return NaN;
+            return d.verts[frame][hemiIdx].array[vertex];
+        });
+    };
+
     // Returns true iff every entry in `data` has the per-frame buffers the
     // hover/click handlers need (verts for vertex data, textures for
     // volume data). Loading is async — the dataview's `loaded` deferred
@@ -48,7 +70,9 @@ var mriview = (function(module) {
         for (var i = 0; i < data.length; i++) {
             var d = data[i];
             if (d.mosaic !== undefined) {
-                if (!d.textures || d.textures.length === 0) return false;
+                // textures is a sparse Array(frames): length is fixed, so
+                // check that frame 0 (what hover/click read) has arrived
+                if (!d.textures || d.textures[0] === undefined) return false;
             } else {
                 if (!d.verts || d.verts.length === 0) return false;
             }
@@ -123,6 +147,15 @@ var mriview = (function(module) {
         this.loaded = $.Deferred().done(function() {
             //this.schedule();
             this.resize();
+            // Start the flat target at the middle of the flatmap, where
+            // quickflat centres it, rather than at the controls' built-in
+            // guess (y = -60: close for S1, wrong for other subjects). Kept as
+            // the fallback when there is no flatmap to measure.
+            // Measured in the flat view's pose, since the surface is not flat
+            // yet.
+            var framing = this.flatFraming(undefined, this.flatViewBBox());
+            if (framing !== null)
+                this.controls.setFlatTarget(framing.target);
             $(this.object).find("#ctmload").hide();
             this.canvas.css("opacity", 1);
             this.object.appendChild(this.controls.twodbutton[0]);
@@ -381,6 +414,7 @@ var mriview = (function(module) {
         for (var i = 0; i < this.surfs.length; i++) {
             this.active.removeEventListener("update", this.surfs[i]._update);
             this.active.removeEventListener("attribute", this.surfs[i]._attrib);
+            this.active.removeEventListener("frameloaded", this._schedule_frame);
         }
         //set the new active data and update shaders for all surfaces
         this.active = this.dataviews[name];
@@ -397,6 +431,9 @@ var mriview = (function(module) {
                 this.surfs[i].update(this.active);
                 this.active.addEventListener("update", this.surfs[i]._update);
                 this.active.addEventListener("attribute", this.surfs[i]._attrib);
+                if (!this._schedule_frame)
+                    this._schedule_frame = this.schedule.bind(this);
+                this.active.addEventListener("frameloaded", this._schedule_frame);
             }
         }
         this.active.loaded.done(function() {
@@ -804,16 +841,7 @@ var mriview = (function(module) {
                 if (this.active.vertex) {
                     let coords = this.getCoords(event)
                     if (coords !== -1) {
-                        let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                        // Map the picked vertex through the subject's indexMap.
-                        // dim1 and dim2 share subject for 2D views (server-side).
-                        let subject = this.active.data[0].subject
-                        let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                        let vertex = indexMap[coords.vertex]
-                        // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
-                        values = module.frameValues(this.active, function (d, frame) {
-                            return d.verts[frame] && d.verts[frame][hemiIdx].array[vertex]
-                        })
+                        values = module.vertexValues(this.active, coords)
                     }
                 } else {
                     // Volume branch. For 2D views we reuse data[0]'s mouse_index
@@ -980,6 +1008,140 @@ var mriview = (function(module) {
                 this.surfs[i].setMix(mix);
     }
 
+    // The world-space extent of the flattened surface, from the first surface
+    // that has a flatmap, or null if none does.
+    module.Viewer.prototype.flatBBox = function() {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].flatBBox === undefined)
+                continue;
+            var box = this.surfs[i].flatBBox();
+            if (box !== null)
+                return box;
+        }
+        return null;
+    };
+
+    // flatBBox as it will be in the flat view's pose, whatever the pose now
+    // (see Surface.flatViewBBox).
+    module.Viewer.prototype.flatViewBBox = function() {
+        for (var i = 0; i < this.surfs.length; i++) {
+            if (this.surfs[i].flatViewBBox === undefined)
+                continue;
+            var box = this.surfs[i].flatViewBBox();
+            if (box !== null)
+                return box;
+        }
+        return null;
+    };
+
+    // The framing cortex.quickflat.make_png would use for a frame of the given
+    // shape, as {target, radius, aspect}, or null if there is no flatmap.
+    // Works the framing out without moving anything, which is what the
+    // animation panel needs to re-frame a keyframe it is not looking at.
+    //
+    // quickflat has no camera at all -- it maps the flat surface's bounding box
+    // onto the bounds of the image -- and the viewer can reproduce that because
+    // a plane square-on to a perspective camera projects as a uniform scaling.
+    // So the camera only has to look at the middle of that bounding box from
+    // the distance at which the field of view spans it.
+    //
+    // `aspect` is the width/height of the frame being framed for, defaulting to
+    // the one on screen. The flatmap fills the frame exactly -- and the render
+    // is then make_png's png -- when that is the flatmap's own aspect ratio,
+    // which is what viewopts.quickflat_size has. At any other shape of frame
+    // the flatmap is fitted inside it rather than cropped to it.
+    //
+    // `box` is the extent to frame, defaulting to the flatmap as it is now.
+    module.Viewer.prototype.flatFraming = function(aspect, box) {
+        if (box === undefined)
+            box = this.flatBBox();
+        if (box === null)
+            return null;
+
+        if (!(typeof aspect === "number" && isFinite(aspect) && aspect > 0))
+            aspect = this.camera.aspect;
+
+        var halfheight = (box.max[1] - box.min[1]) / 2;
+        var halfwidth = (box.max[0] - box.min[0]) / 2;
+
+        return {
+            target: [(box.min[0] + box.max[0]) / 2,
+                     (box.min[1] + box.max[1]) / 2,
+                     0],
+            radius: Math.max(halfheight, halfwidth / aspect) /
+                    Math.tan(this.camera.fov * Math.PI / 360),
+            aspect: aspect,
+        };
+    };
+
+    // Point the camera at that framing.
+    //
+    // Assumes the square-on camera of the flat view -- azimuth 180, altitude 0,
+    // which is where the controls clamp to once flattened. Returns the framing
+    // it applied, or null if there is no flatmap to frame.
+    module.Viewer.prototype.fitFlatView = function(aspect) {
+        var framing = this.flatFraming(aspect);
+        if (framing === null)
+            return null;
+
+        this.controls.setFlatTarget(framing.target);
+        this.controls.setRadius(framing.radius);
+        this._flatFitAspect = framing.aspect;   // so isFlatFitted knows this framing
+        // Move the camera now rather than on the next animation frame: this is
+        // called from getImage, which renders straight away.
+        this.controls.update(this.camera);
+        this.controls.dispatchEvent({type:"change"});   // schedules a redraw
+
+        // What setTarget and setRadius actually took, which is not what was
+        // asked for if a subject's flatmap is small enough to hit the zoom
+        // clamp (radius is held at 10 or more, and at 101 or more while flat).
+        return {target: this.controls.setFlatTarget(),
+                radius: this.controls.setRadius()};
+    };
+
+    // Whether the camera is currently framing the flatmap, i.e. sitting where
+    // fitFlatView put it -- for the frame on screen, or for the frame it was
+    // last framed for, which is not the same thing once something has rendered
+    // an image of another shape.
+    module.Viewer.prototype.isFlatFitted = function() {
+        if (this.setMix() < 0.999)
+            return false;
+
+        var framing = this.flatFraming();
+        if (framing === null)
+            return false;
+
+        var close = function(a, b) {
+            return Math.abs(a - b) <= 1e-3 * Math.max(1, Math.abs(b));
+        };
+        var target = this.controls.setTarget();
+        if (!close(target[0], framing.target[0]) ||
+                !close(target[1], framing.target[1]))
+            return false;
+
+        var radii = [framing.radius];
+        if (this._flatFitAspect !== undefined)
+            radii.push(this.flatFraming(this._flatFitAspect).radius);
+
+        for (var i = 0; i < radii.length; i++)
+            if (close(this.controls.setRadius(), radii[i]))
+                return true;
+        return false;
+    };
+
+    // Re-frame the flatmap for a frame of a different shape, but only if it is
+    // framed right now -- a camera someone has moved is left where they put it.
+    //
+    // What keeps the framing right when the image being rendered is not the
+    // shape of the window it was set up in: JSMixer.getImage calls this with
+    // the aspect ratio of the image it is about to write. Returns the framing
+    // in effect afterwards, or null if there was nothing to re-frame.
+    module.Viewer.prototype.refitFlatView = function(aspect) {
+        if (!this.isFlatFitted())
+            return null;
+        return this.fitFlatView(aspect);
+    };
+
     module.Viewer.prototype.pick = function(evt) {
         // Cache last pick position so setData() can refresh the picked
         // indicator for the newly-active dataset at the same screen point.
@@ -988,6 +1150,12 @@ var mriview = (function(module) {
         for (var i = 0; i < this.surfs.length; i++) {
             if (this.surfs[i].pick)
                 coords = this.surfs[i].pick(this.renderer, this.camera, evt.x, evt.y);
+        }
+        // On-demand timeseries fetch. 
+        if (coords && coords !== -1) {
+            this._lastPickCoords = coords;
+            if (this.tsplot && this.tsplot_visible)
+                this.fetchTimeseries(coords);
         }
         // set the picked value display
         // Length check first so we don't index data[0] on an empty array.
@@ -1003,16 +1171,7 @@ var mriview = (function(module) {
         let values = null;
         if (this.active.vertex) {
             if (coords !== -1) {
-                let hemiIdx = (coords.hemi == 'left') ? 0 : 1
-                // Map the picked vertex through the subject's indexMap.
-                // dim1 and dim2 share subject for 2D views (server-side).
-                let subject = this.active.data[0].subject
-                let indexMap = subjects[subject].hemis[coords.hemi].indexMap
-                let vertex = indexMap[coords.vertex]
-                // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
-                values = module.frameValues(this.active, function (d, frame) {
-                    return d.verts[frame] && d.verts[frame][hemiIdx].array[vertex]
-                })
+                values = module.vertexValues(this.active, coords)
             }
         } else {
             if (coords !== -1) {
@@ -1044,16 +1203,113 @@ var mriview = (function(module) {
         }
     }
 
+    module.Viewer.prototype.toggleTimeseries = function() {
+        if (this.tsplot_visible) {
+            this.figure.hide("bottom");
+            this.tsplot_visible = false;
+        } else {
+            if (!this.tsplot) {
+                // pixel size: setSize's "%" form is relative to figure width,
+                // which oversizes a bottom (height) panel
+                this.figure.setSize("bottom", 280);
+                this.tsplot = this.figure.add(jsplot.TimeseriesAxes, "bottom", true, this);
+            } else {
+                this.figure.show("bottom");
+            }
+            this.tsplot_visible = true;
+            // a voxel picked before the panel was opened: plot it right away
+            if (this._lastPickCoords)
+                this.fetchTimeseries(this._lastPickCoords);
+        }
+        setTimeout(this.resize.bind(this), 500);
+    }
+
+    module.Viewer.prototype.fetchTimeseries = function(coords) {
+        this._tsCoords = coords;
+        var tsplot = this.tsplot;
+        var voxel = null, label = "";
+        if (coords.voxel) {
+            voxel = Math.round(coords.voxel.x) + "," +
+                    Math.round(coords.voxel.y) + "," +
+                    Math.round(coords.voxel.z);
+            label = "voxel (" + voxel.split(",").join(", ") + ")";
+        }
+        // fetch every dataset with at least one checked channel
+        var names = [];
+        for (var i = 0; i < tsplot.order.length; i++) {
+            var t = tsplot.traces[tsplot.order[i]];
+            if (t.type === "data" && tsplot._anyOn(t))
+                names.push(tsplot.order[i]);
+        }
+        if (names.length === 0)
+            return;
+        names.forEach(function(name) {
+            // Send the raw CTM-order pick index; the server maps it back to
+            // the original vertex numbering via the ctmpack index array.
+            var params = {name: name, hemi: coords.hemi || "",
+                          vertex: coords.vertex};
+            if (voxel !== null)
+                params.voxel = voxel;
+            $.getJSON("/timeseries", params)
+                .done(function(resp) {
+                    var lbl = label;
+                    if (resp.vertex !== undefined && resp.vertex !== null)
+                        lbl = "vertex " + resp.vertex +
+                              (params.hemi ? " (" + params.hemi + ")" : "");
+                    tsplot.update(name, resp, lbl);
+                })
+                .fail(function(xhr) {
+                    var msg = "timeseries unavailable";
+                    try { msg = JSON.parse(xhr.responseText).error || msg; }
+                    catch (e) {}
+                    tsplot.setMessage(name + ": " + msg);
+                });
+        });
+    }
+
+    // Jump the brain to one timepoint
+    module.Viewer.prototype.seekFrame = function(dataIdx) {
+        for (var i = 0; i < this.active.data.length; i++)
+            if (this.active.data[i].setPriority)
+                this.active.data[i].setPriority(dataIdx);
+        var alpha = this.active.alphaData;
+        if (alpha && alpha.setPriority)
+            alpha.setPriority(dataIdx);
+        if (this.tsplot && this.tsplot_visible)
+            this.tsplot.setFrame(dataIdx);
+        if (!this.active.data[0].movie)
+            return;
+        var t = dataIdx / this.active.rate - this.active.delay;
+        if (this.state == "play")
+            this.playpause();
+        this.frame = t;
+        this.active.setFrame(t);
+        if (this.movie)
+            this.movie.setFrame(t);
+        // The movie folder keeps its frame slider in sync by wrapping
+        // setFrame (menu.js), and this bypasses setFrame, so update the
+        // slider the same way the wrapper would.
+        if (movie_ui && movie_ui._controls && movie_ui._controls.frame) {
+            movie_ui.frame = t;
+            movie_ui._controls.frame.updateDisplay();
+        }
+        this.schedule();
+    }
+
     var movie_ui;
     module.Viewer.prototype.setupStim = function() {
+        // controls for a movie view
+        if ("movie" in this.ui._folders)
+            this.ui.remove("movie");
+        var anyMovie = false;
+        for (var dname in this.dataviews)
+            if (this.dataviews[dname].frames > 1)
+                anyMovie = true;
         if (this.active.data[0].movie) {
-            if ("movie" in this.ui._folders) {
-                // nothing?
-            } else {
-                movie_ui = this.ui.addFolder("movie", true);
-                movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
-                movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
-            }
+            movie_ui = this.ui.addFolder("movie", true);
+            movie_ui.add({play_pause: {action: this.playpause.bind(this), key:' '}});
+            movie_ui.add({frame: {action:[this, "setFrame", 0, this.active.frames-1]}});
+            movie_ui.add({timeseries: {action: this.toggleTimeseries.bind(this)}});
 
             if (this.movie) {
                 this.movie.destroy();
@@ -1070,7 +1326,10 @@ var mriview = (function(module) {
             if (this.state == "play") {
                 this.playpause();
             }
-            this.ui.remove("movie");
+            if (anyMovie) {
+                movie_ui = this.ui.addFolder("movie", true);
+                movie_ui.add({timeseries: {action: this.toggleTimeseries.bind(this)}});
+            }
         }
         this.schedule();
         if (this.movie) {
@@ -1153,6 +1412,11 @@ var mriview = (function(module) {
     module.Viewer.prototype.setFrame = function(frame) {
         if (frame === undefined)
             return this.frame;
+        // First playback / slider interaction resumes the deferred movie
+        // frame download (movies only load frame 0 up front — see
+        // VolumeData in dataset.js).
+        if (this.active.loadRest)
+            this.active.loadRest();
         if (frame >= this.active.frames) {
             frame %= this.active.frames;
             this._startplay += this.active.frames;
@@ -1167,6 +1431,12 @@ var mriview = (function(module) {
         this.active.setFrame(frame);
         if (this.movie) {
             this.movie.setFrame(frame);
+        }
+        if (this.tsplot && this.tsplot_visible) {
+            // convert playback-clock frame to a data-frame index, matching
+            // DataView.setFrame's (time + delay) * rate convention
+            this.tsplot.setFrame(
+                ((frame + this.active.delay) * this.active.rate).mod(this.active.frames));
         }
         // $(this.object).find("#movieprogress div").slider("value", frame);
         // $(this.object).find("#movieframe").attr("value", frame);
@@ -1191,7 +1461,11 @@ var mriview = (function(module) {
             azimuth: {action:[this.controls, 'setAzimuth', 0, 360]},
             altitude: {action:[this.controls, 'setAltitude', 0, 180]},
             radius: {action:[this.controls, 'setRadius', 10, 1000]},
-            target: {action:[this.controls, 'setTarget'], hidden:true},
+            // The folded and the flat target, stored apart so that neither
+            // absorbs values meant for the other (see setFoldedTarget in
+            // movement.js).
+            target: {action:[this.controls, 'setFoldedTarget'], hidden:true},
+            flat_target: {action:[this.controls, 'setFlatTarget'], hidden:true},
         });
 
         var fold_brain = function() {
@@ -1244,6 +1518,14 @@ var mriview = (function(module) {
             "Width": {action:[this, 'imageWidth', 500, 4000]},
             "Height": {action:[this, 'imageHeight', 500, 4000]}
         });
+
+        // Saved views and the keyframe animation panel (resources/js/viewtools.js).
+        // These go in sub-folders/buttons rather than into cam_ui.add directly, so
+        // they do not show up in JSMixer.view_props as capturable properties.
+        // A template that shadows template.html from before viewtools.js existed
+        // does not load it; the viewer has to open without it.
+        if (jsplot.viewtools !== undefined)
+            jsplot.viewtools.installCameraUI(this, cam_ui);
 
         // keyboard shortcut menu
         var _show_help = false;

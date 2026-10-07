@@ -113,7 +113,10 @@ def get_ctmpack(subject, types=("inflated",), method="raw", level=0, recache=Fal
     """
     lvlstr = ("%dd" if decimate else "%d")%level
     # Generates different cache files for each combination of disp_layers
-    ctmcache = "%s_[{types}]_{method}_{level}_v3.json"%subject
+    # v4: the ctm now also carries the equivolume vertex areas and the bumpy
+    # flatmap offsets, so packs cached by an older version are missing data the
+    # shaders expect.
+    ctmcache = "%s_[{types}]_{method}_{level}_v4.json"%subject
     ctmcache = ctmcache.format(types=','.join(types),
                                method=method,
                                level=lvlstr)

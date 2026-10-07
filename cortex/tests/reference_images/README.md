@@ -6,29 +6,38 @@ Stored renders that `cortex/tests/test_visual_regression.py` asserts against.
 
 | directory | images | contents |
 | --- | --- | --- |
-| `alpha_dataviews/` | 10 | five of the six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `VolumeRGB`, `VertexRGB`), both renderers |
-| `nan_dataviews/` | 10 | the same five, with NaNs over roughly half the primary data channel |
-| `nan_alpha_dataviews/` | 4 | `VolumeRGB`/`VertexRGB` only, with the NaNs in the `alpha=` map |
+| `alpha_dataviews/` | 12 | all six public dataview classes (`Volume`, `Vertex`, `Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), both renderers |
+| `nan_dataviews/` | 12 | the same six, with NaNs over roughly half the primary data channel |
+| `nan_alpha_dataviews/` | 8 | the four classes taking an explicit `alpha=` (`Volume2D`, `Vertex2D`, `VolumeRGB`, `VertexRGB`), with the NaNs in that map |
+| `multilayer_nan_dataviews/` | 12 | the three volumetric classes with NaNs falling between depth samples, at both values of `nanmean` |
 | `nonflat_views/` | 4 | `Volume`/`Vertex` on the inflated and fiducial surfaces at `lateral_pivot`, webgl only |
 
-Filenames are `quickflat_<Class>` and `webgl_<Class>`, except `nonflat_views/`,
-which uses `webgl_<surface>_<angle>_<Class>`.
+Filenames are `quickflat_<Class>` and `webgl_<Class>`, except
+`multilayer_nan_dataviews/`, which appends `_nanmean` or `_no_nanmean`, and
+`nonflat_views/`, which uses `webgl_<surface>_<angle>_<Class>`.
 
-`Vertex2D` is the sixth class and has no images: its webgl flatmap renders
-blank (gh-714) and `save_3d_views` raises, so it cannot be tested through the
-webgl path at all. The two `Vertex2D` tests are **xfailed** on that
-`RuntimeError`, strictly — if the render ever succeeds the XPASS says so rather
-than passing silently.
+`nan_alpha_dataviews/` covered only the two RGB classes until gh-695.
+
+`multilayer_nan_dataviews/` is the only group that changes the depth sampling.
+Everywhere else quickflat averages 32 samples across the cortical thickness and
+the viewer takes 1, and the NaN regions are broad enough that a surface point
+is either NaN at every depth or at none — so nothing else depends on how a
+column of samples is combined. This group sets both renderers to 32 and NaNs
+diagonal slabs two voxels thick, so most surface points have both NaN and valid
+samples beneath them.
 
 ## Render settings
 
-The three flatmap directories render `quickflat_*` with
+The four flatmap directories render `quickflat_*` with
 `cortex.quickflat.make_png` and `webgl_*` with `save_3d_views`, both with
 curvature **un-thresholded** (`curvature_threshold=False` and
 `surface.{subject}.curvature.smoothness=1.0`). (This is to avoid failures from
 differences in the renderers' anti-aliasing implementations.)
 Everything else is at its default.
 
+`multilayer_nan_dataviews/` intentionally also passes `thick=32` to quickflat and
+`layers=32` to the viewer, and sets `nanmean` explicitly on both. The other three
+flatmap groups leave all of that at each renderer's default.
 `nonflat_views/` keeps pycortex's default thresholded curvature, unlike the
 flatmap groups.
 
@@ -38,7 +47,7 @@ regenerated.
 
 ## Checks
 
-The three flatmap tests check each render twice: against its own stored
+The four flatmap tests check each render twice: against its own stored
 reference at a tight tolerance (`MAX_MEAN_ABS_DIFF`, `MAX_FRACTION_DIFFERING`,
 `MAX_FRACTION_GROSSLY_DIFFERING`, `MAX_SSIM_LOSS`, all four of which must pass),
 and against the other renderer's render of the same dataview at a loose one
@@ -53,7 +62,24 @@ and matplotlib leaves white where the browser leaves black.
 ## Provenance
 
 Generated on `main` (`3779f7ca`), from the demo subject `S1` in the filestore
-bundled with pycortex, which is pinned by `cortex/tests/conftest.py`.
+bundled with pycortex, which is pinned by `cortex/tests/conftest.py`. The four
+`Vertex2D` images were added later, once gh-714 was fixed, with the same
+pinned chromium/playwright/matplotlib versions below.
+
+gh-695 added and regenerated references, with the pins below unchanged:
+
+- It added `multilayer_nan_dataviews/` (12 images) and the `Volume2D`/`Vertex2D`
+  images in `nan_alpha_dataviews/` (4).
+- It regenerated every `quickflat_*` image in `alpha_dataviews/`,
+  `nan_dataviews/` and `nan_alpha_dataviews/` (14): quickflat now defaults to
+  `nanmean=True` and averages RGBA in premultiplied space.
+- It regenerated `webgl_{Vertex,Vertex2D,VertexRGB,Volume2D}` in
+  `nan_dataviews/` and `webgl_fiducial_lateral_pivot_{Vertex,Volume}` in
+  `nonflat_views/`.
+
+The other 12 images, all `webgl_*`, are unchanged by gh-695.
+
+**TODO: update the reference above with the squashed commit from gh-695**
 
 | | |
 | --- | --- |
@@ -61,16 +87,16 @@ bundled with pycortex, which is pinned by `cortex/tests/conftest.py`.
 | playwright | 1.62.0 (fixes the chromium build above) |
 | matplotlib | 3.10.9 |
 
-Both are pinned in the `test` dependency group, and re-pinning is part of
-regenerating. playwright fixes the chromium build, which determines the 16 webgl
-references; matplotlib rasterizes the 12 quickflat ones.
+playwright and matplotlib are pinned in the `test` dependency group, and
+re-pinning is part of regenerating. playwright fixes the chromium build, which
+determines the webgl references; matplotlib rasterizes the quickflat ones.
 
 Update matplotlib beyond 3.10.9 once Python 3.10 is dropped.
 
 ## Format
 
 Lossless WebP (`method=6`, `quality=100`, `exact=True`): bit-exact after decode,
-and 59% the size of optimized PNG (1229 KiB versus 2061 KiB for the set of 28).
+and roughly 59% the size of optimized PNG (measured on `3779f7ca`).
 
 ## Storage
 
@@ -103,5 +129,5 @@ change is cosmetic, then:
 REGENERATE_REFERENCE_IMAGES=1 pytest cortex/tests/test_visual_regression.py
 ```
 
-That rewrites all four directories in one run. Review the resulting diff before
+That rewrites all five directories in one run. Review the resulting diff before
 committing.

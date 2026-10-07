@@ -1,4 +1,9 @@
 
+from .bumpy import (
+    FlatSlab,
+    folding_height,
+    naive_prism_height,
+)
 from .distortion import Distortion
 from .misc import (
     _memo,

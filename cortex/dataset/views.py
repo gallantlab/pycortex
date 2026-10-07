@@ -132,9 +132,16 @@ def _from_hdf_view(
             h5, data, xfmname=xfmname, vmin=vmin, vmax=vmax, subject=subject, **kwargs
         )
 
-    if len(data) == 2:
+    if len(data) in (2, 3):
         dim1 = _from_hdf_data(h5, data[0], xfmname=xfmname[0], subject=subject)
         dim2 = _from_hdf_data(h5, data[1], xfmname=xfmname[1], subject=subject)
+        # Optional third entry: the alpha map of a 2D view (same xfm as dim1)
+        alpha = None
+        if len(data) == 3 and data[2] is not None:
+            # stored normalized to [0, 1] by Dataview2D._write_hdf
+            alpha = _from_hdf_data(
+                h5, data[2], xfmname=xfmname[0], subject=subject, vmin=0, vmax=1
+            )
         cls = Vertex2D if isinstance(dim1, Vertex) else Volume2D
         return cls(
             dim1,
@@ -144,6 +151,7 @@ def _from_hdf_view(
             vmax=vmax[0],
             vmax2=vmax[1],
             subject=subject,
+            alpha=alpha,
             **kwargs,
         )
     elif len(data) == 4:
@@ -180,6 +188,7 @@ class DataviewJSON(TypedDict):
     raw: NotRequired[bool]
     mosaic: NotRequired[tuple[int, int]]
     subject: NotRequired[str] # is this actually from BrainData?
+    alpha: NotRequired[list[str]] # Volume2D/Vertex2D with alpha=: [name of the alpha brain]
 
 
 class Dataview:
@@ -207,6 +216,25 @@ class Dataview:
         self.description = description
 
     def copy(self, *args, **kwargs):
+        """Create a new instance of this Dataview's class, reusing its
+        display settings (cmap, vmin, vmax, description, state, attrs).
+
+        Parameters
+        ----------
+        *args
+            Positional arguments passed to the subclass constructor (e.g.
+            new `red`/`green`/`blue` data for a VolumeRGB).
+        **kwargs
+            Additional keyword arguments; merged with this Dataview's own
+            `attrs`. Existing `attrs` take precedence, so only new keys are
+            added.
+            Dataview's own `attrs`.
+
+        Returns
+        -------
+        Dataview
+            A new instance of `self.__class__`.
+        """
         kwargs.update(self.attrs)
         return self.__class__(
             *args,
@@ -256,6 +284,23 @@ class Dataview:
 
     @staticmethod
     def from_hdf(node, subject=None):
+        """Reconstruct a Dataview from a `/views/<name>` node in an HDF5
+        file previously written by `Dataview._write_hdf`.
+
+        Parameters
+        ----------
+        node : h5py.Dataset
+            The view node to decode.
+        subject : str, optional
+            Subject to use instead of the one stored in the file (e.g. if
+            the subject has been renamed since the file was written).
+
+        Returns
+        -------
+        Dataview
+            The decoded Volume, Vertex, VolumeRGB, VertexRGB, Volume2D, or
+            Vertex2D object.
+        """
         data = json.loads(u(node[0]))
         desc = node[1]
         try:
@@ -411,7 +456,21 @@ class Volume(VolumeData, Dataview):
     description : str, optional
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
-        All additional arguments in kwargs are passed to the VolumeData and Dataview
+        All additional arguments in kwargs are passed to the VolumeData and Dataview.
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str 
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
+
+
 
     """
 
@@ -459,6 +518,14 @@ class Volume(VolumeData, Dataview):
 
     @property
     def raw(self) -> VolumeRGB:
+        """Colormap this Volume's data into an RGBA VolumeRGB.
+
+        Returns
+        -------
+        VolumeRGB
+            This Volume's data, mapped through `cmap`/`vmin`/`vmax` into
+            per-voxel RGB colors, with alpha set to 0 for NaN voxels.
+        """
         (r, g, b, a), nan_mask = super().raw
         result = VolumeRGB(
             r,
@@ -502,6 +569,18 @@ class Vertex(VertexData, Dataview):
         String describing this dataset. Displayed in webgl viewer.
     **kwargs
         All additional arguments in kwargs are passed to the VolumeData and Dataview
+            state : untyped
+                role unclear
+            priority : int (default  = 1)
+                controls the order in which datasets are viewed in webgl
+            stim : str
+                path to stimulus file
+            rate : numeric (default 1)
+                frame rate for movie/time series playback in webgl
+            delay : numeric (default 0)
+                delay for movie/time series playback in webgl
+            filter : str
+                interpolation filter for volumetric rendering in webgl (nearest/trilinear/nearlin/debug)
 
     """
 
@@ -543,6 +622,14 @@ class Vertex(VertexData, Dataview):
 
     @property
     def raw(self) -> VertexRGB:
+        """Colormap this Vertex's data into an RGBA VertexRGB.
+
+        Returns
+        -------
+        VertexRGB
+            This Vertex's data, mapped through `cmap`/`vmin`/`vmax` into
+            per-vertex RGB colors, with alpha set to 0 for NaN vertices.
+        """
         (r, g, b, a), nan_mask = super().raw
         result = VertexRGB(
             r,
@@ -567,12 +654,15 @@ class Vertex(VertexData, Dataview):
     ) -> Vertex:
         """Map this data from this surface to another surface
 
-        Calls `cortex.freesurfer.vertex_to_vertex()`  with this
-        vertex object as the first argument.
+        Builds a source-to-target vertex mapping matrix via
+        `cortex.freesurfer.get_mri_surf2surf_matrix()` and applies it to
+        this Vertex's data.
 
-        NOTE: Requires either previous computation of mapping matrices
-        (with `cortex.db.get_mri_surf2surf_matrix`) or active
-        freesurfer environment.
+        NOTE: Requires the source and target subjects' registered sphere
+        surfaces (`?h.sphere.reg`), produced by Freesurfer's `recon-all`
+        pipeline. No active Freesurfer installation is needed at call
+        time -- the mapping is computed directly from those files in
+        pure Python.
 
         Parameters
         ----------
@@ -581,7 +671,13 @@ class Vertex(VertexData, Dataview):
 
         Other Parameters
         ----------------
-        kwargs map to `cortex.freesurfer.vertex_to_vertex()`
+        kwargs map to `cortex.freesurfer.get_mri_surf2surf_matrix()`
+
+        Returns
+        -------
+        Vertex
+            This data, resampled onto `target_subj`'s vertices, with the
+            same `cmap`, `vmin`, and `vmax` as this Vertex.
         """
         # Input check
         if hemi not in ["lh", "rh", "both"]:
