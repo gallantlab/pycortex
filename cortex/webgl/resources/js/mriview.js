@@ -48,13 +48,15 @@ var mriview = (function(module) {
         var subject = dataview.data[0].subject;
         var indexMap = subjects[subject].hemis[coords.hemi].indexMap;
         var vertex = indexMap[coords.vertex];
-        return dataview.data.map(function (d) {
+        // One value per channel (1 for 1D, 2 for 2D), at the frame on screen
+        return module.frameValues(dataview, function (d, frame) {
+            if (d.verts[frame] === undefined) return undefined;
             // NaN was replaced by 0 in the GPU buffer (dataset.js); report
             // NaN from the mask instead of a fake 0.
             if (d.nanmasks !== undefined && d.nanmasks.length > 0 &&
-                d.nanmasks[0][hemiIdx].array[vertex] < 0.5)
+                d.nanmasks[frame.mod(d.nanmasks.length)][hemiIdx].array[vertex] < 0.5)
                 return NaN;
-            return d.verts[0][hemiIdx].array[vertex];
+            return d.verts[frame][hemiIdx].array[vertex];
         });
     };
 
@@ -76,6 +78,20 @@ var mriview = (function(module) {
             }
         }
         return true;
+    };
+
+    // Values at the frame the viewer is showing, one per dim, read from each
+    // data object by `read(data, frame)`. Returns null while that frame's
+    // buffer is still loading: movie mosaics arrive one frame at a time.
+    module.frameValues = function (dataview, read) {
+        var frame = dataview.frameIndex();
+        var values = [];
+        for (var i = 0; i < dataview.data.length; i++) {
+            var v = read(dataview.data[i], frame);
+            if (v === undefined) return null;
+            values.push(v);
+        }
+        return values;
     };
 
     module.Viewer = function(figure) {
@@ -841,8 +857,8 @@ var mriview = (function(module) {
                     }
                     let mouse_index = this.getMouseIndex(event)
                     if (mouse_index !== -1) {
-                        values = this.active.data.map(function (d) {
-                            return d.textures[0].image.data[mouse_index]
+                        values = module.frameValues(this.active, function (d, frame) {
+                            return d.textures[frame] && d.textures[frame].image.data[mouse_index]
                         })
                     }
                 }
@@ -1167,8 +1183,8 @@ var mriview = (function(module) {
                 }
                 let mouse_index = this.xyxToI(coords.voxel.x, coords.voxel.y, coords.voxel.z)
                 if (mouse_index !== -1) {
-                    values = this.active.data.map(function (d) {
-                        return d.textures[0].image.data[mouse_index]
+                    values = module.frameValues(this.active, function (d, frame) {
+                        return d.textures[frame] && d.textures[frame].image.data[mouse_index]
                     })
                 }
             }
