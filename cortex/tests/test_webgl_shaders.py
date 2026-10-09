@@ -57,23 +57,6 @@ jsplot.Axes3D.call(axes, axes.figure);
 var renderer = axes.renderer, camera = axes.camera;
 var scene = axes.setGrid(1, 1, 0);
 
-function linkResult(material) {
-    var gl = renderer.context;
-    var program = material.program;
-    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    var linked = !!gl.getProgramParameter(gp, gl.LINK_STATUS);
-    var uniforms = [];
-    var nuniforms = linked ? gl.getProgramParameter(gp, gl.ACTIVE_UNIFORMS) : 0;
-    for (var i = 0; i < nuniforms; i++)
-        uniforms.push(gl.getActiveUniform(gp, i).name);
-    return {
-        linked: linked,
-        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
-              gl.getProgramInfoLog(gp)].join("\\n"),
-        uniforms: uniforms,
-    };
-}
-
 var ITEM_SIZE = {f: 1, v2: 2, v3: 3, v4: 4};
 
 // Link one {vertex, fragment, attrs} object, as Shaders[name](opts) returns.
@@ -109,7 +92,23 @@ window.linkCode = function(code) {
     renderer.render(scene, camera);
     scene.remove(mesh);
 
-    return linkResult(material);
+    var gl = renderer.context;
+    var program = material.program;
+    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
+    var linked = !!gl.getProgramParameter(gp, gl.LINK_STATUS);
+    var uniforms = [];
+    var nuniforms = linked ? gl.getProgramParameter(gp, gl.ACTIVE_UNIFORMS) : 0;
+    for (var i = 0; i < nuniforms; i++)
+        uniforms.push(gl.getActiveUniform(gp, i).name);
+    var result = {
+        linked: linked,
+        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
+              gl.getProgramInfoLog(gp)].join("\\n"),
+        uniforms: uniforms,
+    };
+    material.dispose();
+    geometry.dispose();
+    return result;
 };
 </script></body></html>
 """
@@ -190,6 +189,16 @@ def _surface_variants() -> Iterator["ParameterSet"]:
                                               "-2d" if twod else "")
         yield pytest.param("surface_pixel", opts, id=name)
 
+    # Subjects without a white matter surface (``volume=0``) skip the cortical
+    # sheet code, voxline's included; check that once per shader.
+    for shader in ("surface_vertex", "surface_pixel"):
+        pixel = shader == "surface_pixel"
+        opts = dict(SURFACE_OPTS, rgb=False, twod=False, hasflat=True,
+                    equivolume=True, dataalpha=pixel, nanmean=True,
+                    layers=32 if pixel else 1, volume=0, voxline=pixel)
+        name = "%s-cmap-novolume%s" % (shader, "-voxline" if pixel else "")
+        yield pytest.param(shader, opts, id=name)
+
 
 def _main_variants() -> Iterator["ParameterSet"]:
     """Every (shader, opts) pair the slice planes ask ``main`` for.
@@ -214,7 +223,15 @@ def _variants() -> Iterator["ParameterSet"]:
 
 
 @pytest.fixture(scope="module")
-def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
+def page_errors() -> list[str]:
+    """Script errors the shader-linking page has thrown so far."""
+    return []
+
+
+@pytest.fixture(scope="module")
+def webgl_page(
+    tmp_path_factory: pytest.TempPathFactory, page_errors: list[str]
+) -> Iterator["Page"]:
     """Load the shader-linking page into a real GL context, shared by both hooks.
 
     Skips without WebGL, but fails on any page script error.
@@ -230,38 +247,48 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
         )
         try:
             page = browser.new_page()
-            errors: list[str] = []
             page.on("pageerror",
-                    lambda error: errors.append(error.stack or str(error)))
+                    lambda error: page_errors.append(error.stack or str(error)))
             page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
             if not page.evaluate(
                 "() => !!document.createElement('canvas').getContext('webgl')"
             ):
                 pytest.skip("no WebGL context available in this browser")
-            if errors or not page.evaluate("() => !!window.linkCode"):
+            if page_errors or not page.evaluate("() => !!window.linkCode"):
                 pytest.fail(
                     "the shader-linking page failed to load:\n%s"
-                    % "\n".join(errors or ["window.linkCode is not defined"])
+                    % "\n".join(page_errors or ["window.linkCode is not defined"])
                 )
             yield page
         finally:
             browser.close()
 
 
+def _linker(
+    page: "Page", page_errors: list[str], expression: str
+) -> Callable[..., LinkResult]:
+    """Call ``expression`` in the page with the arguments, failing on page errors."""
+    def link(*args: object) -> LinkResult:
+        result: LinkResult = page.evaluate(expression, list(args))
+        if page_errors:
+            pytest.fail("the shader-linking page threw:\n%s" % "\n".join(page_errors))
+        return result
+    return link
+
+
 @pytest.fixture(scope="module")
-def link_shader(webgl_page: "Page") -> LinkShader:
+def link_shader(webgl_page: "Page", page_errors: list[str]) -> LinkShader:
     """Return a function linking one shader variant in a real GL context."""
-    return lambda shader, opts: webgl_page.evaluate(
-        "args => window.linkCode(Shaders[args[0]](args[1]))", [shader, opts]
-    )
+    return _linker(webgl_page, page_errors,
+                   "args => window.linkCode(Shaders[args[0]](args[1]))")
 
 
 @pytest.fixture(scope="module")
-def link_raw_shader(webgl_page: "Page") -> LinkRawShader:
+def link_raw_shader(webgl_page: "Page", page_errors: list[str]) -> LinkRawShader:
     """Return a function linking raw GLSL source in the same GL context."""
-    return lambda vertex, fragment: webgl_page.evaluate(
+    return _linker(
+        webgl_page, page_errors,
         "args => window.linkCode({vertex: args[0], fragment: args[1], attrs: {}})",
-        [vertex, fragment],
     )
 
 
