@@ -76,8 +76,8 @@ function linkResult(material) {
 
 var ITEM_SIZE = {f: 1, v2: 2, v3: 3, v4: 4};
 
-window.linkShader = function(shadername, opts) {
-    var code = Shaders[shadername](opts);
+// Link one {vertex, fragment, attrs} object, as Shaders[name](opts) returns.
+window.linkCode = function(code) {
     // The pick shader returns one fragment shader per axis; any of them will
     // do, they all go with the vertex shader that holds the attributes.
     var frag = code.fragment instanceof Array ? code.fragment[0] : code.fragment;
@@ -111,27 +111,12 @@ window.linkShader = function(shadername, opts) {
 
     return linkResult(material);
 };
-
-// Same path as linkShader, but from raw GLSL source instead of a Shaders[]
-// lookup, so a test can hand it deliberately invalid GLSL.
-window.linkRawShader = function(vertexShader, fragmentShader) {
-    var geometry = new THREE.BufferGeometry();
-    geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
-    var material = new THREE.ShaderMaterial({vertexShader: vertexShader, fragmentShader: fragmentShader});
-    var mesh = new THREE.Mesh(geometry, material);
-    mesh.frustumCulled = false;
-    scene.add(mesh);
-    renderer.render(scene, camera);
-    scene.remove(mesh);
-
-    return linkResult(material);
-};
 </script></body></html>
 """
 
 
 class LinkResult(TypedDict):
-    """What the page's ``linkShader``/``linkRawShader`` hooks return."""
+    """What the page's ``linkCode`` hook returns."""
 
     linked: bool
     log: str
@@ -253,10 +238,10 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
                 "() => !!document.createElement('canvas').getContext('webgl')"
             ):
                 pytest.skip("no WebGL context available in this browser")
-            if errors or not page.evaluate("() => !!window.linkShader"):
+            if errors or not page.evaluate("() => !!window.linkCode"):
                 pytest.fail(
                     "the shader-linking page failed to load:\n%s"
-                    % "\n".join(errors or ["window.linkShader is not defined"])
+                    % "\n".join(errors or ["window.linkCode is not defined"])
                 )
             yield page
         finally:
@@ -267,7 +252,7 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
 def link_shader(webgl_page: "Page") -> LinkShader:
     """Return a function linking one shader variant in a real GL context."""
     return lambda shader, opts: webgl_page.evaluate(
-        "args => window.linkShader(args[0], args[1])", [shader, opts]
+        "args => window.linkCode(Shaders[args[0]](args[1]))", [shader, opts]
     )
 
 
@@ -275,7 +260,8 @@ def link_shader(webgl_page: "Page") -> LinkShader:
 def link_raw_shader(webgl_page: "Page") -> LinkRawShader:
     """Return a function linking raw GLSL source in the same GL context."""
     return lambda vertex, fragment: webgl_page.evaluate(
-        "args => window.linkRawShader(args[0], args[1])", [vertex, fragment]
+        "args => window.linkCode({vertex: args[0], fragment: args[1], attrs: {}})",
+        [vertex, fragment],
     )
 
 
