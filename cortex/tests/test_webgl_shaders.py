@@ -13,13 +13,18 @@ test enables.
 
 import itertools
 import os
-from typing import Any, Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator, TypedDict
 
 import pytest
 
 import cortex.webgl
 from cortex.export.headless import SWIFTSHADER_CHROMIUM_ARGS
 from cortex.tests.testing_utils import has_playwright
+
+if TYPE_CHECKING:
+    # What pytest.param returns; pytest does not export it publicly.
+    from _pytest.mark.structures import ParameterSet
+    from playwright.sync_api import Page
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -34,23 +39,28 @@ JS_PATH = os.path.join(os.path.dirname(cortex.webgl.__file__), "resources", "js"
 # attribute declarations) itself instead of a copy hand-kept here going stale.
 PAGE = """
 <html><body><canvas id="c" width="32" height="32"></canvas>
+<script src="file://__JSDIR__/jquery-2.1.1.min.js"></script>
+<script src="file://__JSDIR__/dat.gui.min.js"></script>
 <script src="file://__JSDIR__/three.js"></script>
 <script src="file://__JSDIR__/shaderlib.js"></script>
+<script src="file://__JSDIR__/movement.js"></script>
+<script src="file://__JSDIR__/figure.js"></script>
+<script src="file://__JSDIR__/axes3d.js"></script>
 <script>
-var renderer = new THREE.WebGLRenderer({
-    canvas: document.getElementById('c'), antialias: false
-});
-// THREE.WebGLRenderer asks for these too; the fragment shaders use fwidth
-// (derivatives) and float textures.
-renderer.context.getExtension('OES_standard_derivatives');
-renderer.context.getExtension('OES_texture_float');
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+// Use the viewer's own renderer, camera, lights and scene. The stubs stand in
+// for what mriview.js's Viewer provides.
+var axes = Object.create(jsplot.Axes3D.prototype);
+axes.canvas = $('#c');
+axes.figure = {register: function() {}};
+axes.setFrame = function() {};
+jsplot.Axes3D.call(axes, axes.figure);
+var renderer = axes.renderer, camera = axes.camera;
+var scene = axes.setGrid(1, 1, 0);
 
 var ITEM_SIZE = {f: 1, v2: 2, v3: 3, v4: 4};
 
-window.linkShader = function(shadername, opts) {
-    var code = Shaders[shadername](opts);
+// Link one {vertex, fragment, attrs} object, as Shaders[name](opts) returns.
+window.linkCode = function(code) {
     // The pick shader returns one fragment shader per axis; any of them will
     // do, they all go with the vertex shader that holds the attributes.
     var frag = code.fragment instanceof Array ? code.fragment[0] : code.fragment;
@@ -69,13 +79,8 @@ window.linkShader = function(shadername, opts) {
         geometry.addAttribute(name, new THREE.BufferAttribute(new Float32Array(nverts * itemSize), itemSize));
     }
 
-    // The real viewer passes lights:true (dataset.js's getShader), but that
-    // only makes THREE.WebGLRenderer refresh built-in light uniforms against
-    // the material's uniforms object -- which needs the viewer's full merged
-    // uniform set to exist. None of these shaders reference THREE's light
-    // uniforms (they compute shading themselves), and the MAX_*_LIGHTS
-    // defines this test cares about come from the renderer's light count
-    // regardless of this flag, so leaving it out avoids that crash for free.
+    // The viewer also passes lights:true, which needs its full uniform set.
+    // Linking doesn't: the light count comes from the scene either way.
     var material = new THREE.ShaderMaterial({
         vertexShader: code.vertex,
         fragmentShader: frag,
@@ -90,36 +95,37 @@ window.linkShader = function(shadername, opts) {
     var gl = renderer.context;
     var program = material.program;
     var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    return {
-        linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
+    var linked = !!gl.getProgramParameter(gp, gl.LINK_STATUS);
+    var uniforms = [];
+    var nuniforms = linked ? gl.getProgramParameter(gp, gl.ACTIVE_UNIFORMS) : 0;
+    for (var i = 0; i < nuniforms; i++)
+        uniforms.push(gl.getActiveUniform(gp, i).name);
+    var result = {
+        linked: linked,
         log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
               gl.getProgramInfoLog(gp)].join("\\n"),
+        uniforms: uniforms,
     };
-};
-
-// Same path as linkShader, but from raw GLSL source instead of a Shaders[]
-// lookup, so a test can hand it deliberately invalid GLSL.
-window.linkRawShader = function(vertexShader, fragmentShader) {
-    var geometry = new THREE.BufferGeometry();
-    geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
-    var material = new THREE.ShaderMaterial({vertexShader: vertexShader, fragmentShader: fragmentShader});
-    var mesh = new THREE.Mesh(geometry, material);
-    mesh.frustumCulled = false;
-    scene.add(mesh);
-    renderer.render(scene, camera);
-    scene.remove(mesh);
-
-    var gl = renderer.context;
-    var program = material.program;
-    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    return {
-        linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
-        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
-              gl.getProgramInfoLog(gp)].join("\\n"),
-    };
+    material.dispose();
+    geometry.dispose();
+    return result;
 };
 </script></body></html>
 """
+
+
+class LinkResult(TypedDict):
+    """What the page's ``linkCode`` hook returns."""
+
+    linked: bool
+    log: str
+    uniforms: list[str]
+
+
+# Link one Shaders[name](opts) variant / raw (vertex, fragment) GLSL source.
+LinkShader = Callable[[str, dict[str, object]], LinkResult]
+LinkRawShader = Callable[[str, str], LinkResult]
+
 
 # The options the viewer generates surface shaders with. ``morphs`` is the
 # number of surfaces to mix between (anatomical, inflated and flat), ``volume``
@@ -129,7 +135,7 @@ SURFACE_OPTS = dict(morphs=3, volume=1, layers=1, rois=True, extratex=False,
                     halo=False, dither=False, voxline=False, sampler="nearest")
 
 
-def _surface_variants() -> Iterator[Any]:
+def _surface_variants() -> Iterator["ParameterSet"]:
     """Every (shader, opts) pair the viewer can ask for a surface shader.
 
     On top of the dataview and surface options, gh-695 added three that
@@ -137,6 +143,11 @@ def _surface_variants() -> Iterator[Any]:
     ``dataalpha`` adds a second pair of samplers and the alpha-map arithmetic,
     ``nanmean`` changes how layer samples are combined, and ``layers`` decides
     how many of those sampling blocks are emitted.
+
+    ``voxline`` (the ``[webgl_viewopts] voxlines`` debug grid) only appends a
+    fixed blend to ``surface_pixel`` that reads the cortical sheet position and
+    the final color -- no attributes or samplers -- so it is checked once per
+    color type on the largest variant instead of doubling the whole product.
     """
     bools = (False, True)
     for shader, rgb, twod, hasflat, equivolume, dataalpha, nanmean, layers in itertools.product(
@@ -169,9 +180,42 @@ def _surface_variants() -> Iterator[Any]:
         )
         yield pytest.param(shader, opts, id=name)
 
+    # `voxline`
+    for rgb, twod in ((False, False), (False, True), (True, False)):
+        opts = dict(SURFACE_OPTS, rgb=rgb, twod=twod, hasflat=True,
+                    equivolume=True, dataalpha=not rgb, nanmean=True,
+                    layers=32, voxline=True)
+        name = "surface_pixel-%s%s-voxline" % ("rgb" if rgb else "cmap",
+                                              "-2d" if twod else "")
+        yield pytest.param("surface_pixel", opts, id=name)
 
-def _variants() -> Iterator[Any]:
+    # Subjects without a white matter surface (``volume=0``) skip the cortical
+    # sheet code, voxline's included; check that once per shader.
+    for shader in ("surface_vertex", "surface_pixel"):
+        pixel = shader == "surface_pixel"
+        opts = dict(SURFACE_OPTS, rgb=False, twod=False, hasflat=True,
+                    equivolume=True, dataalpha=pixel, nanmean=True,
+                    layers=32 if pixel else 1, volume=0, voxline=pixel)
+        name = "%s-cmap-novolume%s" % (shader, "-voxline" if pixel else "")
+        yield pytest.param(shader, opts, id=name)
+
+
+def _main_variants() -> Iterator["ParameterSet"]:
+    """Every (shader, opts) pair the slice planes ask ``main`` for.
+
+    The slice planes (sliceplane.js) are the only live users of ``main``; they
+    only show volume data and fix every option except ``raw`` and ``twod``.
+    """
+    for raw, twod in ((False, False), (False, True), (True, False)):
+        opts = dict(sampler="nearest", raw=raw, twod=twod, voxline=False,
+                    viewspace=True)
+        name = "main-%s%s" % ("rgb" if raw else "cmap", "-2d" if twod else "")
+        yield pytest.param("main", opts, id=name)
+
+
+def _variants() -> Iterator["ParameterSet"]:
     yield from _surface_variants()
+    yield from _main_variants()
     # The shaders the picker renders with; they morph the same geometry but
     # carry no data.
     yield pytest.param("pick", dict(morphs=3, volume=1), id="pick")
@@ -179,8 +223,19 @@ def _variants() -> Iterator[Any]:
 
 
 @pytest.fixture(scope="module")
-def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
-    """Load the shader-linking page into a real GL context, shared by both hooks."""
+def page_errors() -> list[str]:
+    """Script errors the shader-linking page has thrown so far."""
+    return []
+
+
+@pytest.fixture(scope="module")
+def webgl_page(
+    tmp_path_factory: pytest.TempPathFactory, page_errors: list[str]
+) -> Iterator["Page"]:
+    """Load the shader-linking page into a real GL context, shared by both hooks.
+
+    Skips without WebGL, but fails on any page script error.
+    """
     from playwright.sync_api import sync_playwright
 
     page_path = tmp_path_factory.mktemp("shaders") / "shaders.html"
@@ -190,34 +245,56 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
         browser = playwright.chromium.launch(
             headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
         )
-        page = browser.new_page()
-        page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
-        if not page.evaluate("() => !!window.linkShader"):
+        try:
+            page = browser.new_page()
+            page.on("pageerror",
+                    lambda error: page_errors.append(error.stack or str(error)))
+            page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
+            if not page.evaluate(
+                "() => !!document.createElement('canvas').getContext('webgl')"
+            ):
+                pytest.skip("no WebGL context available in this browser")
+            if page_errors or not page.evaluate("() => !!window.linkCode"):
+                pytest.fail(
+                    "the shader-linking page failed to load:\n%s"
+                    % "\n".join(page_errors or ["window.linkCode is not defined"])
+                )
+            yield page
+        finally:
             browser.close()
-            pytest.skip("no WebGL context available in this browser")
-        yield page
-        browser.close()
+
+
+def _linker(
+    page: "Page", page_errors: list[str], expression: str
+) -> Callable[..., LinkResult]:
+    """Call ``expression`` in the page with the arguments, failing on page errors."""
+    def link(*args: object) -> LinkResult:
+        result: LinkResult = page.evaluate(expression, list(args))
+        if page_errors:
+            pytest.fail("the shader-linking page threw:\n%s" % "\n".join(page_errors))
+        return result
+    return link
 
 
 @pytest.fixture(scope="module")
-def link_shader(webgl_page: Any) -> Callable[[str, dict], Any]:
+def link_shader(webgl_page: "Page", page_errors: list[str]) -> LinkShader:
     """Return a function linking one shader variant in a real GL context."""
-    return lambda shader, opts: webgl_page.evaluate(
-        "args => window.linkShader(args[0], args[1])", [shader, opts]
-    )
+    return _linker(webgl_page, page_errors,
+                   "args => window.linkCode(Shaders[args[0]](args[1]))")
 
 
 @pytest.fixture(scope="module")
-def link_raw_shader(webgl_page: Any) -> Callable[[str, str], Any]:
+def link_raw_shader(webgl_page: "Page", page_errors: list[str]) -> LinkRawShader:
     """Return a function linking raw GLSL source in the same GL context."""
-    return lambda vertex, fragment: webgl_page.evaluate(
-        "args => window.linkRawShader(args[0], args[1])", [vertex, fragment]
+    return _linker(
+        webgl_page, page_errors,
+        "args => window.linkCode({vertex: args[0], fragment: args[1], attrs: {}})",
     )
 
 
 @pytest.mark.parametrize("shader,opts", list(_variants()))
 def test_shader_links(
-    shader: str, opts: dict, link_shader: Callable[[str, dict], Any]
+    shader: str, opts: dict[str, object], link_shader: LinkShader
 ) -> None:
     """Each shader variant has to compile *and* link.
 
@@ -230,10 +307,14 @@ def test_shader_links(
     assert result["linked"], "%s failed to compile or link:\n%s" % (
         shader, result["log"]
     )
+    if shader not in ("pick", "depth"):
+        assert "directionalLightColor[0]" in result["uniforms"], (
+            "%s compiled without its lighting code" % shader
+        )
 
 
 def test_shader_link_catches_compile_error(
-    link_raw_shader: Callable[[str, str], Any]
+    link_raw_shader: LinkRawShader
 ) -> None:
     """A shader that fails to *compile* must fail ``linked`` too.
 
