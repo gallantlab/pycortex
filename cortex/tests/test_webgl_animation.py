@@ -1,7 +1,16 @@
-"""Tests for the WebGL viewer's animation panel: keyframes, smoothing, flat keyframes, and movie output.
+"""Tests for the WebGL animation panel: keyframes, smoothing and movies.
 
-Everything here drives the animation panel or renders what it produces. The
-rest of the headless WebGL tests live in test_webgl_headless.py.
+Everything here drives the animation panel or renders what it produces:
+keyframe interpolation in the browser and in python, flat keyframes and the
+quickflat render size, the keyframe dots under the slider, and movies
+downloaded as a zip of PNGs or an MP4. The camera while animating into the
+flat view is tested here because it needs the panel.
+
+Related tests live elsewhere:
+
+- test_webgl_headless.py: what the viewer draws.
+- test_webgl_camera_views.py: saved and default views, and the camera outside
+  the animation panel.
 
 All tests are skipped if playwright is not installed.
 """
