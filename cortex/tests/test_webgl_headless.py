@@ -13,6 +13,7 @@ import struct
 import time
 import urllib.request
 import zipfile
+from typing import Any
 
 import numpy as np
 import pytest
@@ -25,6 +26,7 @@ from cortex.export.save_views import (
     unfold_view_params,
 )
 from cortex.tests.testing_utils import count_red_pixels, has_playwright, wait_for_file
+from cortex.webgl.serve import JSON, JSProxy
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -1195,7 +1197,7 @@ def _js_attrs(handle, path):
     return resp[0]
 
 
-def _js_run(handle, path, args):
+def _js_run(handle: JSProxy, path: str, args: list[Any]) -> JSON:
     """Call a javascript function and return what it gave back.
 
     ``send`` answers with one entry per connected client, so the value of
@@ -1204,6 +1206,19 @@ def _js_run(handle, path, args):
     resp = handle.send(method="run", params=[path, args])
     assert isinstance(resp, list) and len(resp) == 1, resp
     return resp[0]
+
+
+def _js_query(
+    handle: JSProxy, path: str, args: list[Any], timeout: float = 60
+) -> JSON:
+    """Like _js_run for a read, retried while ``send`` times out (None) on a busy page."""
+    deadline = time.monotonic() + timeout
+    while True:
+        value = _js_run(handle, path, args)
+        if value is not None:
+            return value
+        assert time.monotonic() < deadline, \
+            f"{path} went unanswered for {timeout} s"
 
 
 def _js_value(handle, path):
@@ -2775,12 +2790,12 @@ def test_changing_the_render_size_reframes_flat_keyframes():
         time.sleep(0.5)
 
         def flat_radius():
-            return _js_run(handle, "window.viewer._anim.keyframes.slice",
-                           [])[0]["camera.radius"]
+            return _js_query(handle, "window.viewer._anim.keyframes.slice",
+                             [])[0]["camera.radius"]
 
         def fitted(width, height):
-            return _js_run(handle, "window.viewer.flatFraming",
-                           [width / height])["radius"]
+            return _js_query(handle, "window.viewer.flatFraming",
+                             [width / height])["radius"]
 
         # Set from code.
         _js_run(handle, "window.viewer._animPanel.setRenderSize", [600, 1000])
@@ -2803,5 +2818,6 @@ def test_changing_the_render_size_reframes_flat_keyframes():
             "        document.querySelector('.anim-height').value = 700; }"))
         handle.send(method="set", params=["window.viewer._anim.last", 0])
         _js_run(handle, "window.viewer._animPanel.render", [])
-        assert flat_radius() == pytest.approx(fitted(700, 700), rel=1e-6)
+        # Read back after the render: while it draws, a slow page can't answer in time.
         handle._pw_thread.wait_for_download(timeout=120)
+        assert flat_radius() == pytest.approx(fitted(700, 700), rel=1e-6)
