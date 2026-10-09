@@ -39,18 +39,40 @@ JS_PATH = os.path.join(os.path.dirname(cortex.webgl.__file__), "resources", "js"
 # attribute declarations) itself instead of a copy hand-kept here going stale.
 PAGE = """
 <html><body><canvas id="c" width="32" height="32"></canvas>
+<script src="file://__JSDIR__/jquery-2.1.1.min.js"></script>
+<script src="file://__JSDIR__/dat.gui.min.js"></script>
 <script src="file://__JSDIR__/three.js"></script>
 <script src="file://__JSDIR__/shaderlib.js"></script>
+<script src="file://__JSDIR__/movement.js"></script>
+<script src="file://__JSDIR__/figure.js"></script>
+<script src="file://__JSDIR__/axes3d.js"></script>
 <script>
-var renderer = new THREE.WebGLRenderer({
-    canvas: document.getElementById('c'), antialias: false
-});
-// THREE.WebGLRenderer asks for these too; the fragment shaders use fwidth
-// (derivatives) and float textures.
-renderer.context.getExtension('OES_standard_derivatives');
-renderer.context.getExtension('OES_texture_float');
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+// Use the viewer's own renderer, camera, lights and scene. The stubs stand in
+// for what mriview.js's Viewer provides.
+var axes = Object.create(jsplot.Axes3D.prototype);
+axes.canvas = $('#c');
+axes.figure = {register: function() {}};
+axes.setFrame = function() {};
+jsplot.Axes3D.call(axes, axes.figure);
+var renderer = axes.renderer, camera = axes.camera;
+var scene = axes.setGrid(1, 1, 0);
+
+function linkResult(material) {
+    var gl = renderer.context;
+    var program = material.program;
+    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
+    var linked = !!gl.getProgramParameter(gp, gl.LINK_STATUS);
+    var uniforms = [];
+    var nuniforms = linked ? gl.getProgramParameter(gp, gl.ACTIVE_UNIFORMS) : 0;
+    for (var i = 0; i < nuniforms; i++)
+        uniforms.push(gl.getActiveUniform(gp, i).name);
+    return {
+        linked: linked,
+        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
+              gl.getProgramInfoLog(gp)].join("\\n"),
+        uniforms: uniforms,
+    };
+}
 
 var ITEM_SIZE = {f: 1, v2: 2, v3: 3, v4: 4};
 
@@ -74,14 +96,8 @@ window.linkShader = function(shadername, opts) {
         geometry.addAttribute(name, new THREE.BufferAttribute(new Float32Array(nverts * itemSize), itemSize));
     }
 
-    // The real viewer passes lights:true (dataset.js's getShader), but that
-    // only makes THREE.WebGLRenderer refresh built-in light uniforms against
-    // the material's uniforms object -- which needs the viewer's full merged
-    // uniform set to exist. None of these shaders reference THREE's light
-    // uniforms (they compute shading themselves) except ``main``, whose
-    // lights_phong chunks loop over MAX_*_LIGHTS. Those defines come from the
-    // renderer's light count regardless of this flag (zero here, so the loops
-    // compile away), so leaving it out avoids that crash for free.
+    // The viewer also passes lights:true, which needs its full uniform set.
+    // Linking doesn't: the light count comes from the scene either way.
     var material = new THREE.ShaderMaterial({
         vertexShader: code.vertex,
         fragmentShader: frag,
@@ -93,14 +109,7 @@ window.linkShader = function(shadername, opts) {
     renderer.render(scene, camera);
     scene.remove(mesh);
 
-    var gl = renderer.context;
-    var program = material.program;
-    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    return {
-        linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
-        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
-              gl.getProgramInfoLog(gp)].join("\\n"),
-    };
+    return linkResult(material);
 };
 
 // Same path as linkShader, but from raw GLSL source instead of a Shaders[]
@@ -115,14 +124,7 @@ window.linkRawShader = function(vertexShader, fragmentShader) {
     renderer.render(scene, camera);
     scene.remove(mesh);
 
-    var gl = renderer.context;
-    var program = material.program;
-    var vs = program.vertexShader, fs = program.fragmentShader, gp = program.program;
-    return {
-        linked: !!gl.getProgramParameter(gp, gl.LINK_STATUS),
-        log: [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs),
-              gl.getProgramInfoLog(gp)].join("\\n"),
-    };
+    return linkResult(material);
 };
 </script></body></html>
 """
@@ -133,6 +135,7 @@ class LinkResult(TypedDict):
 
     linked: bool
     log: str
+    uniforms: list[str]
 
 
 # Link one Shaders[name](opts) variant / raw (vertex, fragment) GLSL source.
@@ -227,7 +230,10 @@ def _variants() -> Iterator["ParameterSet"]:
 
 @pytest.fixture(scope="module")
 def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
-    """Load the shader-linking page into a real GL context, shared by both hooks."""
+    """Load the shader-linking page into a real GL context, shared by both hooks.
+
+    Skips without WebGL, but fails on any page script error.
+    """
     from playwright.sync_api import sync_playwright
 
     page_path = tmp_path_factory.mktemp("shaders") / "shaders.html"
@@ -237,13 +243,24 @@ def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator["Page"]:
         browser = playwright.chromium.launch(
             headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
         )
-        page = browser.new_page()
-        page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
-        if not page.evaluate("() => !!window.linkShader"):
+        try:
+            page = browser.new_page()
+            errors: list[str] = []
+            page.on("pageerror",
+                    lambda error: errors.append(error.stack or str(error)))
+            page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
+            if not page.evaluate(
+                "() => !!document.createElement('canvas').getContext('webgl')"
+            ):
+                pytest.skip("no WebGL context available in this browser")
+            if errors or not page.evaluate("() => !!window.linkShader"):
+                pytest.fail(
+                    "the shader-linking page failed to load:\n%s"
+                    % "\n".join(errors or ["window.linkShader is not defined"])
+                )
+            yield page
+        finally:
             browser.close()
-            pytest.skip("no WebGL context available in this browser")
-        yield page
-        browser.close()
 
 
 @pytest.fixture(scope="module")
@@ -277,6 +294,10 @@ def test_shader_links(
     assert result["linked"], "%s failed to compile or link:\n%s" % (
         shader, result["log"]
     )
+    if shader not in ("pick", "depth"):
+        assert "directionalLightColor[0]" in result["uniforms"], (
+            "%s compiled without its lighting code" % shader
+        )
 
 
 def test_shader_link_catches_compile_error(
