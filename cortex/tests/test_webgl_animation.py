@@ -1,10 +1,4 @@
-"""Tests for the WebGL viewer's animation panel: keyframes, smoothing, flat keyframes, and movie output.
-
-Everything here drives the animation panel or renders what it produces. The
-rest of the headless WebGL tests live in test_webgl_headless.py.
-
-All tests are skipped if playwright is not installed.
-"""
+"""Tests for the WebGL animation panel: keyframes, smoothing and movies."""
 
 import os
 import struct
