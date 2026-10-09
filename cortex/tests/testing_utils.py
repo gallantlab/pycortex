@@ -1,9 +1,13 @@
-from typing import Any
+import time
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
 
 from cortex.export.save_views import ViewParams
+
+if TYPE_CHECKING:
+    from cortex.webgl.serve import JSON, JSProxy
 
 # Skip any test that relies on playwright if it's not available.
 try:
@@ -34,7 +38,6 @@ def wait_for_file(path, timeout=30):
     line depends on. Re-label it rather than removing it.
     """
     import os
-    import time
 
     for _ in range(int(timeout / 0.1)):
         if os.path.exists(path) and os.path.getsize(path) > 0:
@@ -58,8 +61,6 @@ def js_eval(handle: Any, expr: str) -> Any:
 
 def wait_js(handle: Any, expr: str, what: str, timeout: float = 60.0) -> None:
     """Poll until the javascript expression `expr` evaluates to ``true``."""
-    import time
-
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if js_eval(handle, expr) is True:
@@ -126,8 +127,6 @@ def render(
     The server writes the posted image in place, so a file that merely exists
     may still be partial: wait until it decodes instead.
     """
-    import time
-
     from PIL import Image
 
     handle.getImage(path, size)
@@ -167,10 +166,78 @@ def page_errors(handle: Any) -> list[str]:
     Browser events reach Python only on the headless worker's next poll, so
     first wait out two poll intervals.
     """
-    import time
-
     from cortex.export.headless import EVENT_POLL_INTERVAL
 
     time.sleep(2 * EVENT_POLL_INTERVAL)
     # TODO: use cortex.export.headless_viewer.filter_browser_errors() ?
     return [e for e in handle._pw_thread.browser_errors if "[pageerror]" in e]
+
+
+# --------------------------------------------------------------------------- #
+# Javascript reads and png masks shared by the headless WebGL test modules.   #
+# --------------------------------------------------------------------------- #
+
+
+def js_attrs(handle, path):
+    """Read a javascript object's properties, with values for the scalar ones.
+
+    ``send(method="get", ...)`` cannot be used for this: for a non-object
+    property, ``Websock.prototype.get`` returns the property *name* rather than
+    its value (that is what makes the "set" method work). ``query`` is the
+    accessor that carries values, and is what ``JSProxy.attrs`` uses.
+    """
+    resp = handle.send(method="query", params=[path])
+    assert isinstance(resp, list) and resp and isinstance(resp[0], dict), resp
+    return resp[0]
+
+
+def js_run(handle: "JSProxy", path: str, args: list[Any]) -> "JSON":
+    """Call a javascript function and return what it gave back.
+
+    ``send`` answers with one entry per connected client, so the value of
+    interest is the first (and, in a headless viewer, only) element.
+    """
+    resp = handle.send(method="run", params=[path, args])
+    assert isinstance(resp, list) and len(resp) == 1, resp
+    return resp[0]
+
+
+def js_query(
+    handle: "JSProxy", path: str, args: list[Any], timeout: float = 60
+) -> "JSON":
+    """Like js_run for a read, retried while ``send`` times out (None) on a busy page."""
+    deadline = time.monotonic() + timeout
+    while True:
+        value = js_run(handle, path, args)
+        if value is not None:
+            return value
+        assert time.monotonic() < deadline, \
+            f"{path} went unanswered for {timeout} s"
+
+
+def js_value(handle, path):
+    """Read one scalar javascript property, e.g. viewer.camera.fov."""
+    parent, _, name = path.rpartition(".")
+    entry = js_attrs(handle, parent)[name]
+    assert len(entry) > 1, f"{path} is not a scalar: {entry}"
+    return entry[1]
+
+
+def alpha_mask(path):
+    """Boolean mask of the pixels a png actually drew on."""
+    from PIL import Image
+
+    return np.array(Image.open(path).convert("RGBA"))[..., 3] > 0
+
+
+def mask_bbox(mask):
+    rows, cols = np.where(mask.any(axis=1))[0], np.where(mask.any(axis=0))[0]
+    assert len(rows) and len(cols), "nothing was drawn"
+    return int(cols[0]), int(rows[0]), int(cols[-1]) + 1, int(rows[-1]) + 1
+
+
+def flatmap_centre(handle):
+    """The middle of the flatmap, measured while the surface is flat."""
+    box = js_run(handle, "window.viewer.flatBBox", [])
+    return [(box["min"][0] + box["max"][0]) / 2,
+            (box["min"][1] + box["max"][1]) / 2, 0]
