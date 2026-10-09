@@ -99,9 +99,6 @@ var mriview = (function(module) {
                 smoothness:  { type:'f', value:parseFloat(viewopts.smoothness)},
                 contrast:    { type:'f', value:parseFloat(viewopts.contrast)},
                 extratex:   { type:'t', value:null},
-
-                // screen:     { type:'t', value:this.volumebuf},
-                // screen_size:{ type:'v2', value:new THREE.Vector2(100, 100)},
             }
         ]);
 
@@ -346,14 +343,6 @@ var mriview = (function(module) {
     };
     THREE.EventDispatcher.prototype.apply(module.Surface.prototype);
     module.Surface.prototype.resize = function(evt) {
-    //     this.volumebuf = new THREE.WebGLRenderTarget(width, height, {
-    //         minFilter: THREE.LinearFilter,
-    //         magFilter: THREE.LinearFilter,
-    //         format:THREE.RGBAFormat,
-    //         stencilBuffer:false,
-    //     });
-    //     this.uniforms.screen.value = this.volumebuf;
-    //     this.uniforms.screen_size.value.set(width, height);
         this.width = evt.width;
         this.height = evt.height;
         this.loaded.done(function() {
@@ -366,37 +355,6 @@ var mriview = (function(module) {
         this._active = dataview;
 
         this.loaded.done(function() {
-            var shaders = [];
-            // Halo rendering code, ignore for now
-            // if (this.sheets.length > 1) { //setup meshes for halo rendering
-            //     for (var i = 0; i < this.sheets.length; i++) {
-            //         var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
-            //             morphs:this.names.length, volume:1, rois: false, halo: true });
-            //         for (var j = 0; j < shaders.length; j++) {
-            //             shaders[j].transparent = i != 0;
-            //             shaders[j].depthTest = true;
-            //             shaders[j].depthWrite = i == 0;
-            //             shaders[j].uniforms.thickmix = {type:'f', value: 1 - i / (this.sheets.length-1)};
-            //             shaders[j].blending = THREE.CustomBlending;
-            //             shaders[j].blendSrc = THREE.OneFactor;
-            //             shaders[j].blendDst = THREE.OneFactor;
-            //         }
-            //         this.preshaders.push(shaders);
-            //     }
-            //     var shaders = dataview.getShader(Shaders.surface, this.uniforms, {
-            //         morphs:this.names.length, volume:1, rois:false, halo:false });
-            //     for (var j = 0; j < shaders.length; j++) {
-            //         shaders[j].uniforms.thickmix = {type:'f', value:1};
-            //         shaders[j].uniforms.dataAlpha = {type:'f', value:0};
-            //     }
-
-            //     this.quadshade = dataview.getShader(Shaders.cmap_quad, this.uniforms);
-            //     this.quadshade.transparent = true;
-            //     this.quadshade.blending = THREE.CustomBlending
-            //     this.quadshade.blendSrc = THREE.OneFactor
-            //     this.quadshade.blendDst = THREE.OneMinusSrcAlphaFactor
-            //     this.quadshade.depthWrite = false;
-            // } else {
             if (dataview.vertex) {
                 var shade_cls = Shaders.surface_vertex;
             } else {
@@ -409,7 +367,6 @@ var mriview = (function(module) {
                 layers: this._layers,
                 rois: this.svg instanceof svgoverlay.SVGOverlay,
                 extratex: this.uniforms.extratex.value !== null,
-                halo: false,
                 dither: this._dither,
                 nanmean: this._nanmean,
                 equivolume: this._equivolume,
@@ -441,30 +398,6 @@ var mriview = (function(module) {
             this.svg.prerender(renderer, scene, camera);
         }
     }
-
-    // var oldcolor, black = new THREE.Color(0,0,0);
-    // module.Surface.prototype._prerender_halosurf = function(evt) {
-    //     var idx = evt.idx, renderer = evt.renderer, scene = evt.scene, camera = evt.camera;
-    //     camera.add(scene.fsquad);
-    //     scene.fsquad.material = this.quadshade[idx];
-    //     scene.fsquad.visible = false;
-    //     for (var i = 0; i < this.sheets.length; i++) {
-    //         this.sheets[i].left.material = this.preshaders[i][idx];
-    //         this.sheets[i].right.material = this.preshaders[i][idx];
-    //         this.sheets[i].left.visible = true;
-    //         this.sheets[i].right.visible = true;
-    //     }
-    //     oldcolor = renderer.getClearColor()
-    //     renderer.setClearColor(black, 0);
-    //     //renderer.render(scene, camera);
-    //     renderer.render(scene, camera, this.volumebuf);
-    //     renderer.setClearColor(oldcolor, 1);
-    //     for (var i = 1; i < this.sheets.length; i++) {
-    //         this.sheets[i].left.visible = false;
-    //         this.sheets[i].right.visible = false;
-    //     }
-    //     scene.fsquad.visible = true;
-    // };
 
     module.Surface.prototype.apply = function(dataview) {
         this.loaded.done(function() {
@@ -958,94 +891,6 @@ var mriview = (function(module) {
     }
     module.SurfDelegate.prototype.prerender = function(renderer, scene, camera) {
         this.surf.prerender(renderer, scene, camera);
-    }
-
-
-    module.VolumeSheets = function(dataview) {
-        if (dataview.vertex)
-            throw "Cannot show volume integration for vertex dataview"
-
-        this.shaders = {};
-        this.uniforms = THREE.UniformsUtils.merge( [
-            THREE.UniformsLib[ "lights" ],
-            {
-                diffuse:    { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                specular:   { type:'v3', value:new THREE.Vector3( 0,0,0 )},
-                emissive:   { type:'v3', value:new THREE.Vector3( 1,1,1 )},
-                shininess:  { type:'f',  value:0},
-                specularStrength:{ type:'f',  value:0},
-                dataAlpha:  { type:'f', value:.1},
-            }]);
-
-        this.object = new THREE.Group();
-        this.object.name = 'VolumeSheets'
-        this.setSheets(30);
-        this.update(dataview);
-    }
-    THREE.EventDispatcher.prototype.apply(module.VolumeSheets.prototype);
-    module.VolumeSheets.prototype.update = function(dataview) {
-        var shaders = dataview.getShader(Shaders.main, this.uniforms, {
-            viewspace:true,
-            depthTest:true,
-            depthWrite:false,
-            blending:THREE.AdditiveBlending,
-            transparent:true,
-            lights:false,
-        });
-        this.shaders[dataview.uuid] = shaders[0];
-
-        //compute dataview extents to scale the sheets
-        var xfm = new THREE.Matrix4();
-        xfm.set.apply(xfm, dataview.xfm);
-        var ixfm = (new THREE.Matrix4()).getInverse(xfm);
-        var zsize = dataview.data[0].mosaic;
-        var shape = dataview.data[0].shape;
-        var near = (new THREE.Vector3(0,0,0)).applyMatrix4(ixfm);
-        var far = (new THREE.Vector3(shape[0], shape[1], zsize[0]*zsize[1])).applyMatrix4(ixfm);
-        var mid = near.clone().multiplyScalar(0.5).add(far.clone().multiplyScalar(.5));
-
-        var scale = near.distanceTo(far);
-        this.object.scale.set(scale/2, scale/2, scale/2);
-        this.object.position.set(mid.x, mid.y, mid.z);
-    }
-    module.VolumeSheets.prototype.apply = function(dataview) {
-        this.mesh.material = this.shaders[dataview.uuid];
-        //this.sheets.material = this.debug_shade;
-    }
-    module.VolumeSheets.prototype.setSheets = function(n) {
-        this.n_sheets = n;
-        this.uniforms.dataAlpha.value = 1 / n;
-        var position = new THREE.BufferAttribute(new Float32Array(4*3*n), 3);
-        var index = new THREE.BufferAttribute(new Uint16Array(2*3*n), 3);
-        var normal = new THREE.BufferAttribute(new Float32Array(4*3*n), 3);
-        for (var i = 0; i < n; i++) {
-            var z = ((2*i+1) / (2*n))*2 - 1;
-            position.setXYZ(i*4  , -1, -1, z);
-            position.setXYZ(i*4+1,  1, -1, z);
-            position.setXYZ(i*4+2,  1,  1, z);
-            position.setXYZ(i*4+3, -1,  1, z);
-            normal.setXYZ(i*4  , 0, 0, 1);
-            normal.setXYZ(i*4+1, 0, 0, 1);
-            normal.setXYZ(i*4+2, 0, 0, 1);
-            normal.setXYZ(i*4+3, 0, 0, 1);
-            index.setXYZ(i*2  , i*4, i*4+1, i*4+2);
-            index.setXYZ(i*2+1, i*4, i*4+2, i*4+3);
-        }
-        this.sheets = new THREE.BufferGeometry();
-        this.sheets.addAttribute("position", position);
-        this.sheets.addAttribute("index", index);
-        this.sheets.addAttribute("normal", normal);
-
-        this.debug_shade = new THREE.MeshBasicMaterial({color:0xffcccc, 
-            side:THREE.DoubleSide,
-            transparent:true,
-            opacity:.1,
-            blending:THREE.AdditiveBlending,
-            depthTest:true,
-            depthWrite:false,
-        });
-        this.mesh = new THREE.Mesh(this.sheets, null);
-        this.object.add(this.mesh);
     }
 
     return module;
