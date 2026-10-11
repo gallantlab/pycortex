@@ -1,8 +1,10 @@
-from typing import Any
+from typing import Any, get_args
 
 import numpy as np
 import numpy.typing as npt
+import pytest
 
+from cortex.export.headless import BrowserName
 from cortex.export.save_views import ViewParams
 
 # Skip any test that relies on playwright if it's not available.
@@ -18,6 +20,35 @@ try:
     has_playwright = True
 except Exception:
     has_playwright = False
+
+# Separately check for a working Playwright Firefox install, since it may not
+# be present even when Chromium is (e.g. `playwright install chromium` only).
+try:
+    from playwright.sync_api import sync_playwright
+
+    _pw = sync_playwright().start()
+    try:
+        _b = _pw.firefox.launch(headless=True)
+        _b.close()
+    finally:
+        _pw.stop()
+    has_playwright_firefox = True
+except Exception:
+    has_playwright_firefox = False
+
+# CI installs only Chromium, so the Firefox tests skip there; say how to run them.
+FIREFOX_MISSING = pytest.mark.skipif(
+    not has_playwright_firefox,
+    reason="Playwright Firefox not available; install it with "
+    "`playwright install firefox`; it also needs Xvfb unless DISPLAY is set",
+)
+
+# Every browser headless_viewer supports; parametrize browser tests over these
+# so the Firefox cases skip when it is not installed.
+BROWSERS = [
+    pytest.param(name, marks=FIREFOX_MISSING if name == "firefox" else ())
+    for name in get_args(BrowserName)
+]
 
 
 def wait_for_file(path, timeout=30):

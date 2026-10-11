@@ -11,6 +11,7 @@ import numpy as np
 import cortex
 
 from ..dataset import Dataview
+from .headless import BrowserName
 
 file_pattern = "{base}_{view}_{surface}.png"
 
@@ -46,12 +47,13 @@ def save_3d_views(
     trim: bool = True,
     sleep: float = 10,
     headless: bool = False,
+    browser: BrowserName = "chromium",
 ) -> list[str]:
     """Saves 3D views of `volume` under multiple specifications.
 
     By default (``headless=False``), a webgl viewer is launched and a display
-    server is required.  With ``headless=True``, a headless Chromium browser
-    is used instead, so no display server or GPU is needed.
+    server is required.  With ``headless=True``, a headless browser (Chromium
+    or Firefox) is used instead, so no display server or GPU is needed.
 
     Parameters
     ----------
@@ -96,13 +98,22 @@ def save_3d_views(
         Time in seconds, to let the viewer open.
 
     headless: bool
-        If True, render using a headless Chromium browser via Playwright instead
+        If True, render using a headless browser via Playwright instead
         of requiring the user to manually open a browser window.  This allows
         the function to run fully autonomously without any user interaction.
         Requires ``playwright`` to be installed (``pip install playwright``) and
-        Chromium to be available (``playwright install chromium``).
-        Software WebGL (SwiftShader) is used, so no GPU or display server is
-        needed.  (Default: False)
+        the chosen ``browser`` to be installed: ``playwright install
+        chromium`` for the default, or ``playwright install firefox`` for
+        ``browser="firefox"`` (only that one is needed).
+        Software WebGL rendering is used, so no GPU is needed, and with the
+        default Chromium no display server either (``browser="firefox"``
+        needs one, see below).  (Default: False)
+
+    browser: str
+        Which Playwright browser to use when ``headless=True``: ``"chromium"``
+        (default) or ``"firefox"``. Ignored when ``headless=False``.
+        ``"firefox"`` additionally requires ``Xvfb`` to be installed unless
+        ``DISPLAY`` is already set (see ``cortex.export.headless``).
 
     Returns
     -------
@@ -117,7 +128,7 @@ def save_3d_views(
     if headless:
         from cortex.export.headless import headless_viewer as _headless_viewer
 
-        cm = _headless_viewer(volume, viewer_params)
+        cm = _headless_viewer(volume, viewer_params, browser=browser)
     else:
         cm = contextlib.nullcontext(cortex.webshow(volume, **viewer_params))
 
