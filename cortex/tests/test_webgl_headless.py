@@ -128,25 +128,15 @@ def _assert_not_blank(path):
 # ---------------------------------------------------------------------------
 
 
-# Firefox's Mesa counts declared-but-unused vertex attributes against the
-# limit of 16, which the colormapped surface_vertex shader exceeds.
-_FIREFOX_ATTRIB_LIMIT = pytest.mark.xfail(
-    strict=True,
-    reason="surface_vertex exceeds Firefox's 16 vertex-attribute limit",
-)
-
-
 @pytest.mark.parametrize("browser", BROWSERS)
 @pytest.mark.parametrize("dtype_name", DTYPE_NAMES)
-def test_datatype_renders(dtype_name, browser, tmp_path, request):
+def test_datatype_renders(dtype_name, browser, tmp_path):
     """Each data type should render in the headless viewer without errors.
 
     Run in Firefox too: its Mesa rasterizer counts declared-but-unused vertex
     attributes against the limit of 16, which Chromium's ANGLE does not, so a
     shader that only fits after pruning fails to link there and renders blank.
     """
-    if browser == "firefox" and dtype_name in ("Vertex", "Vertex2D"):
-        request.applymarker(_FIREFOX_ATTRIB_LIMIT)
     vol = make_dataview(dtype_name)
     with cortex.export.headless_viewer(
         vol, viewer_params={}, browser=browser
@@ -161,7 +151,7 @@ def test_datatype_renders(dtype_name, browser, tmp_path, request):
 
 @FIREFOX_MISSING
 @pytest.mark.parametrize("dtype_name", DTYPE_NAMES)
-def test_chromium_matches_firefox(dtype_name, tmp_path, request):
+def test_chromium_matches_firefox(dtype_name, tmp_path):
     """Each data type should look the same in both browsers.
 
     Software WebGL rasterizers differ slightly in anti-aliasing and float
@@ -171,8 +161,6 @@ def test_chromium_matches_firefox(dtype_name, tmp_path, request):
     """
     from PIL import Image
 
-    if dtype_name in ("Vertex", "Vertex2D"):
-        request.applymarker(_FIREFOX_ATTRIB_LIMIT)
     images = {}
     for browser in ("chromium", "firefox"):
         outfile = str(tmp_path / f"{browser}.png")

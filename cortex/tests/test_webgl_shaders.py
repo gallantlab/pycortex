@@ -222,10 +222,7 @@ def link_raw_shader(webgl_page: Any) -> Callable[[str, str], Any]:
 
 @pytest.mark.parametrize("shader,opts", list(_variants()))
 def test_shader_links(
-    shader: str,
-    opts: dict,
-    link_shader: Callable[[str, dict], Any],
-    request: pytest.FixtureRequest,
+    shader: str, opts: dict, link_shader: Callable[[str, dict], Any]
 ) -> None:
     """Each shader variant has to compile *and* link.
 
@@ -234,17 +231,6 @@ def test_shader_links(
     all. Checking ``linked`` alone covers both, since a compile failure also
     fails to link.
     """
-    if (
-        request.node.callspec.params["webgl_page"] == "firefox"
-        and shader == "surface_vertex"
-        and not opts["rgb"]
-        and opts["hasflat"]
-    ):
-        request.applymarker(pytest.mark.xfail(
-            strict=True,
-            reason="colormapped surface_vertex on a flatmap subject declares "
-            "more than 16 vertex attributes, which Firefox's Mesa rejects",
-        ))
     result = link_shader(shader, opts)
     assert result["linked"], "%s failed to compile or link:\n%s" % (
         shader, result["log"]
