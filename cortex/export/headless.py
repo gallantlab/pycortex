@@ -1,6 +1,6 @@
 """headless.py - context manager that runs the pycortex WebGL viewer inside a
-headless Chromium browser via Playwright, allowing ``save_3d_views`` to
-produce screenshots without any manual browser interaction.
+headless Chromium or Firefox browser via Playwright, allowing ``save_3d_views``
+to produce screenshots without any manual browser interaction.
 
 The approach:
 1. Start the Tornado WebGL server with ``open_browser=False`` so that it does
@@ -34,8 +34,16 @@ plain Python scripts and in Jupyter notebooks.
 
 Requirements
 ------------
+Playwright, plus the one browser you render with; you do not need both::
+
     pip install playwright
-    playwright install chromium
+    playwright install chromium   # for browser="chromium" (the default)
+    playwright install firefox    # only for browser="firefox"
+
+``browser="firefox"`` additionally requires the ``Xvfb`` binary to be on
+``PATH`` (e.g. ``apt-get install xvfb``) unless a ``DISPLAY`` is already set,
+since Firefox (unlike Chromium's bundled SwiftShader) needs a real or virtual
+X server to create a software WebGL context.
 """
 
 import concurrent.futures
@@ -43,11 +51,14 @@ import contextlib
 import logging
 import os
 import queue
+import select
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
-from typing import Any, Callable, Mapping, Optional, TypeVar
+from collections.abc import Generator
+from typing import Any, Callable, Literal, Mapping, Optional, TypeVar, get_args
 
 T = TypeVar("T")
 
@@ -64,6 +75,102 @@ SWIFTSHADER_CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-dev-shm-usage",
 ]
+
+BrowserName = Literal["chromium", "firefox"]
+
+
+@contextlib.contextmanager
+def _xvfb_display() -> Generator[str]:
+    """Run a private Xvfb server for the duration of the context.
+
+    Yields its ``DISPLAY`` string (e.g. ``":99"``). Xvfb picks a free display
+    number itself and reports it via ``-displayfd`` once it accepts
+    connections.
+
+    Raises
+    ------
+    RuntimeError
+        If the ``Xvfb`` binary is not installed, or it fails to start.
+    """
+    read_fd, write_fd = os.pipe()
+    try:
+        try:
+            proc = subprocess.Popen(
+                ["Xvfb", "-displayfd", str(write_fd),
+                 "-screen", "0", "1280x1024x24", "-nolisten", "tcp"],
+                pass_fds=(write_fd,),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        finally:
+            os.close(write_fd)
+    except FileNotFoundError as exc:
+        os.close(read_fd)
+        raise RuntimeError(
+            "Firefox headless WebGL rendering requires Xvfb, which was not "
+            "found on PATH. Install it with e.g. `apt-get install xvfb`, or "
+            "set the DISPLAY environment variable to an existing X server."
+        ) from exc
+
+    try:
+        with os.fdopen(read_fd) as displayfd:
+            if not select.select([displayfd], [], [], 10.0)[0]:
+                raise RuntimeError("Timed out waiting for Xvfb to start.")
+            display_num = displayfd.readline().strip()
+        if not display_num:
+            raise RuntimeError("Xvfb exited unexpectedly during startup.")
+        yield f":{display_num}"
+    finally:
+        try:
+            proc.terminate()
+            proc.wait(timeout=10)
+        except Exception:
+            logger.warning("Failed to terminate Xvfb process", exc_info=True)
+
+
+@contextlib.contextmanager
+def webgl_browser(
+    playwright: Any, browser: BrowserName = "chromium"
+) -> Generator[Any]:
+    """Launch a headless Playwright browser with software WebGL enabled.
+
+    Yields the browser, and closes it (and the private Xvfb server started for
+    Firefox when no ``DISPLAY`` is set) on exit.
+
+    Raises
+    ------
+    ValueError
+        If ``browser`` is not one of the supported browsers.
+    """
+    with contextlib.ExitStack() as stack:
+        if browser == "firefox":
+            # Unlike Chromium (which bundles SwiftShader and can create a
+            # software WebGL context with no display server at all),
+            # Firefox creates its GL context via GLX and needs a real (or
+            # virtual) X display to do so, even when launched "headless".
+            # If the caller hasn't already provided one, start a private
+            # Xvfb so WebGL still works with no GPU and no visible display.
+            launch_env = None
+            if not os.environ.get("DISPLAY"):
+                display = stack.enter_context(_xvfb_display())
+                launch_env = {**os.environ, "DISPLAY": display}
+            instance = playwright.firefox.launch(
+                headless=True,
+                env=launch_env,
+                # Bypasses Firefox's GPU driver blocklist, which could refuse WebGL when
+                # DISPLAY is backed by a blocklisted driver (not applicable for Xvfb).
+                firefox_user_prefs={"webgl.force-enabled": True},
+            )
+        elif browser == "chromium":
+            instance = playwright.chromium.launch(
+                headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
+            )
+        else:
+            raise ValueError(
+                f"Unknown browser {browser!r}; expected one of {get_args(BrowserName)}"
+            )
+        stack.callback(instance.close)
+        yield instance
 
 
 def _wait_for_viewer_loaded(handle, timeout: float = 60.0) -> None:
@@ -182,7 +289,7 @@ class _PlaywrightThread:
         self._thread: Optional[threading.Thread] = None
         # Set during worker startup; only touched by the worker thread.
         self._playwright: Any = None
-        self._browser: Any = None
+        self._browser_stack = contextlib.ExitStack()
         self._page: Any = None
         # Browser-side errors collected by Playwright event listeners.
         # Written by the worker thread, read by the main thread via
@@ -192,10 +299,18 @@ class _PlaywrightThread:
 
     # -- public API -------------------------------------------------------- #
 
-    def start(self, url: str, *, timeout: float = 60.0) -> None:
-        """Launch the worker thread, open Chromium, and navigate to *url*.
+    def start(
+        self, url: str, *, timeout: float = 60.0, browser: BrowserName = "chromium"
+    ) -> None:
+        """Launch the worker thread, open the browser, and navigate to *url*.
 
         Blocks until the page has finished loading (or raises on failure).
+
+        Parameters
+        ----------
+        browser : str
+            Which Playwright browser type to launch: ``"chromium"`` (default)
+            or ``"firefox"``.
 
         Raises
         ------
@@ -206,6 +321,7 @@ class _PlaywrightThread:
         """
         self._url = url
         self._nav_timeout = timeout
+        self._browser_type = browser
         self._thread = threading.Thread(
             target=self._worker, name="PlaywrightThread", daemon=True
         )
@@ -296,7 +412,7 @@ class _PlaywrightThread:
         except ImportError as exc:
             self._error = ImportError(
                 "playwright is required for headless rendering. Install it with:\n"
-                "    pip install playwright && playwright install chromium"
+                f"    pip install playwright && playwright install {self._browser_type}"
             )
             self._error.__cause__ = exc
             self._ready_future.set_result(None)  # unblock caller
@@ -304,10 +420,10 @@ class _PlaywrightThread:
 
         try:
             self._playwright = sync_playwright().start()
-            self._browser = self._playwright.chromium.launch(
-                headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
+            browser = self._browser_stack.enter_context(
+                webgl_browser(self._playwright, self._browser_type)
             )
-            self._page = self._browser.new_page()
+            self._page = browser.new_page()
 
             # Register listeners *before* navigation so we capture
             # errors that fire during page load (e.g. WebGL failures).
@@ -410,7 +526,7 @@ class _PlaywrightThread:
         individually guarded so a failure in one does not prevent the rest."""
         for obj, method in [
             (self._page, "close"),
-            (self._browser, "close"),
+            (self._browser_stack, "close"),
             (self._playwright, "stop"),
         ]:
             if obj is not None:
@@ -437,9 +553,10 @@ def headless_viewer(
     *,
     timeout: float = 60.0,
     download_dir: Optional[str] = None,
+    browser: BrowserName = "chromium",
 ):
     """Context manager that yields a connected ``JSMixer`` handle rendered in a
-    headless Chromium browser.
+    headless browser.
 
     Parameters
     ----------
@@ -458,6 +575,11 @@ def headless_viewer(
         ``handle._pw_thread.downloads``; ``handle._pw_thread.wait_for_download()``
         waits for one. Default None, meaning a temporary directory removed when
         the viewer closes.
+    browser : str
+        Which Playwright browser to use: ``"chromium"`` (default) or
+        ``"firefox"``. The ``"firefox"`` browser requires the ``Xvfb``
+        binary to be installed unless ``DISPLAY`` is already set (see
+        module docstring).
 
     Yields
     ------
@@ -543,7 +665,7 @@ def headless_viewer(
             # Launch the browser and navigate.  python_interface.js runs on
             # load and sends "connect" over WebSocket, which unblocks
             # server.get_client().
-            pw_thread.start(url, timeout=timeout)
+            pw_thread.start(url, timeout=timeout, browser=browser)
 
             # Wait (bounded) for the getter to return; the timeout guard
             # surfaces hung state clearly instead of blocking indefinitely.
