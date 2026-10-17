@@ -126,7 +126,7 @@ window.linkRawShader = function(vertexShader, fragmentShader) {
 # says the subject has a white matter surface; the rest come from the dataview
 # and from the surface menu.
 SURFACE_OPTS = dict(morphs=3, volume=1, layers=1, rois=True, extratex=False,
-                    halo=False, dither=False, voxline=False, sampler="nearest")
+                    dither=False, voxline=False, sampler="nearest")
 
 
 def _surface_variants() -> Iterator[Any]:
