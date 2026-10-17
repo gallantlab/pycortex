@@ -2352,7 +2352,13 @@ _PLAYBACK_PAGE = """<html><body><video id=v muted playsinline></video><canvas id
 window.result = new Promise(function(resolve) {
   var v = document.getElementById('v');
   v.onerror = function() { resolve({error: v.error ? v.error.message : 'error'}); };
-  v.onloadeddata = function() {
+  var timer = setTimeout(function() {
+    resolve({error: 'no frame was presented within 10 s'});
+  }, 10000);
+  // Draw once the first frame is presented. loadeddata can fire before it is
+  // ready to draw, and drawImage then paints nothing.
+  v.requestVideoFrameCallback(function() {
+    clearTimeout(timer);
     var c = document.getElementById('c');
     c.width = v.videoWidth; c.height = v.videoHeight;
     var ctx = c.getContext('2d');
@@ -2362,7 +2368,7 @@ window.result = new Promise(function(resolve) {
       if (px[i] + px[i + 1] + px[i + 2] > 30) lit++;
     resolve({width: v.videoWidth, height: v.videoHeight, duration: v.duration,
              lit: lit / (px.length / 4)});
-  };
+  });
   v.src = '/movie.mp4';
 });
 </script></body></html>"""
