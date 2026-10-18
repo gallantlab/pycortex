@@ -305,8 +305,13 @@ var dataset = (function(module) {
                     return;
         }
         this.uniforms.framemix.value = frame - fframe;
-        for (var i = 0; i < this.data.length; i++) {
-            this.data[i].set(this.uniforms, i, fframe, this._dispatch);
+
+        if (this.vertex && this.data.length > 1 && !this.data[0].raw) {
+            this._setPacked2D(fframe);
+        } else {
+            for (var i = 0; i < this.data.length; i++) {
+                this.data[i].set(this.uniforms, i, fframe, this._dispatch);
+            }
         }
         // Optional alpha map (volumes): bind the alpha textures for this
         // frame and the next. A single-frame alpha is reused for every frame
@@ -326,13 +331,15 @@ var dataset = (function(module) {
                 this.uniforms.dataalpha.value[1] = (a1 !== undefined) ? a1 : a0;
             }
         }
+
         // Vertex data: build the single shared "nanmask" attribute, which the
         // shader multiplies into the color. It is 0 wherever any dim (or the
         // alpha map) is NaN, otherwise the frame-mixed alpha value (1 when
         // there is no alpha map). Folding alpha into this attribute instead
-        // of adding attributes matters: a 2D vertex view already uses 15 of
-        // the 16 guaranteed vertex attributes, and exceeding the limit makes
-        // the program fail to link silently.
+        // of adding attributes matters: some drivers count every declared
+        // attribute against the 16 guaranteed ones (see surface_vertex in
+        // shaderlib.js), and exceeding the limit makes the program fail to
+        // link silently.
         if (this.vertex && !this.data[0].raw && this.data[0].nanmasks.length > 0) {
             // The shader mixes frame fframe with the next one (framemix), and
             // NaN was replaced by 0 in the buffers, so both adjacent frames
@@ -378,6 +385,36 @@ var dataset = (function(module) {
             }
             this._dispatch({type:"attribute", name:"nanmask", value:combined});
         }
+    }
+    // 2D vertex data: the shader reads both dims from the .x/.y of two vec2
+    // attributes (see surface_vertex in shaderlib.js), so interleave dim 0
+    // with dim 1 for this frame and the next. setFrame runs on every animation
+    // frame during playback, so the packed attributes of the current frame
+    // pair are kept: an unchanged frame costs nothing and a one-frame step
+    // reuses the previous "next" frame. (Kept here, not on the VertexData,
+    // because brains are shared between dataviews.)
+    module.DataView.prototype._setPacked2D = function(fframe) {
+        var d0 = this.data[0], d1 = this.data[1];
+        var f0 = d0.framePair(fframe), f1 = d1.framePair(fframe);
+        var prev = this._packed || {}, cache = {};
+        [0, 1].forEach(function(which) {
+            var key = f0[which] + "," + f1[which];
+            if (!(key in cache))
+                cache[key] = prev[key] || [0, 1].map(function(side) {
+                    var a = d0.verts[f0[which]][side].array;
+                    var b = d1.verts[f1[which]][side].array;
+                    var out = new Float32Array(a.length * 2);
+                    for (var i = 0; i < a.length; i++) {
+                        out[2 * i] = a[i];
+                        out[2 * i + 1] = b[i];
+                    }
+                    var attr = new THREE.BufferAttribute(out, 2);
+                    attr.needsUpdate = true;
+                    return attr;
+                });
+            this._dispatch({type:"attribute", name:"data"+which, value:cache[key]});
+        }, this);
+        this._packed = cache;
     }
     // A streamed movie frame just arrived. If it is the frame on screen (or
     // its blend partner), re-apply the textures: a seek to a not-yet-loaded
@@ -648,15 +685,19 @@ var dataset = (function(module) {
     module.VertexData.prototype.setFilter = function(interp) {
         //nothing to do...
     }
+    // Indices into this.verts of frame fframe and the one it blends into.
+    // The next frame may not have streamed in yet: blend with the current
+    // one rather than wrapping (by the loaded count) round to frame 0.
+    module.VertexData.prototype.framePair = function(fframe) {
+        var cur = fframe.mod(this.frames), next = (fframe+1).mod(this.frames);
+        return [cur, this.verts[next] !== undefined ? next : cur];
+    }
+    // Single-dim vertex data only; 2D data is interleaved by
+    // DataView._setPacked2D.
     module.VertexData.prototype.set = function(uniforms, dim, fframe, dispatch) {
-        var name = dim == 0 ? "data0":"data2";
-        // The next frame may not have streamed in yet: blend with the current
-        // one rather than wrapping (by the loaded count) round to frame 0.
-        var next = this.verts[(fframe+1).mod(this.frames)];
-        if (next === undefined)
-            next = this.verts[fframe];
-        dispatch({type:"attribute", name:"data"+(2*dim), value:this.verts[fframe]});
-        dispatch({type:"attribute", name:"data"+(2*dim+1), value:next});
+        var f = this.framePair(fframe);
+        dispatch({type:"attribute", name:"data0", value:this.verts[f[0]]});
+        dispatch({type:"attribute", name:"data1", value:this.verts[f[1]]});
         // The combined nanmask is dispatched by DataView.setFrame after
         // every dim's data has been set, so we don't dispatch it here.
     }

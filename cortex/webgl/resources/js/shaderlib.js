@@ -833,10 +833,20 @@ var Shaderlib = (function() {
             "attribute vec4 data0;",
             "attribute vec4 data1;",
     "#else",
+        // 2D vertex data packs both dimensions into the .x/.y of two vec2
+        // attributes (one per interpolated frame) rather than using four
+        // separate float attributes.  Drivers that do not eliminate unused
+        // attribute declarations before enforcing GL_MAX_VERTEX_ATTRIBS
+        // (e.g. Mesa/llvmpipe, used by headless Firefox) count every declared
+        // attribute, and four floats push this shader past the 16-attribute
+        // limit.  dataset.js interleaves the two dimensions to match.
+        "#ifdef TWOD",
+            "attribute vec2 data0;",
+            "attribute vec2 data1;",
+        "#else",
             "attribute float data0;",
             "attribute float data1;",
-            "attribute float data2;",
-            "attribute float data3;",
+        "#endif",
             // Soft 0-1 opacity for colormapped vertex data, built by
             // DataView.setFrame (dataset.js) from each dim's nanmasks and the
             // Vertex2D alpha map: 0 = NaN, else alpha (1 without an alpha map).
@@ -850,7 +860,7 @@ var Shaderlib = (function() {
             utils.flatbump_attr,
 
             // "attribute float dropout;",
-            
+
             "varying vec3 vViewPosition;",
             "varying vec3 vNormal;",
             "varying vec2 vUv;",
@@ -871,11 +881,12 @@ var Shaderlib = (function() {
                 "vColor = mix(data0, data1, framemix);",
         "#else",
                 "vec2 cuv;",
+            "#ifdef TWOD",
+                "cuv.x = (mix(data0.x, data1.x, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
+                "cuv.y = (mix(data0.y, data1.y, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
+            "#else",
         //         "vValue.x = (mix(data0, data1, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
                 "cuv.x = (mix(data0, data1, framemix) - vmin[0]) / (vmax[0] - vmin[0]);",
-            "#ifdef TWOD",
-        //         "vValue.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
-                "cuv.y = (mix(data2, data3, framemix) - vmin[1]) / (vmax[1] - vmin[1]);",
             "#endif",
                 "vColor = texture2D(colormap, cuv);",
                 // Data mask: WebGL drivers sanitize NaN in vertex attributes,
@@ -1022,8 +1033,15 @@ var Shaderlib = (function() {
                 attributes.flatbump = { type: 'v4', value:null };
             }
 
-            for (var i = 0; i < 4; i++)
-                attributes['data'+i] = {type:opts.rgb ? 'v4':'f', value:null};
+            // Declare only the data attributes the shader actually reads: two
+            // vec4s for RGB, two vec2s for 2D (both dims interleaved), else two
+            // floats.  See the attribute declarations above for why unused
+            // declarations are not harmless on all drivers.
+            for (var i = 0; i < 2; i++)
+                attributes['data'+i] = {
+                    type: opts.rgb ? 'v4' : (opts.twod ? 'v2' : 'f'),
+                    value: null,
+                };
 
             if (!opts.rgb)
                 attributes['nanmask'] = {type:'f', value:null};

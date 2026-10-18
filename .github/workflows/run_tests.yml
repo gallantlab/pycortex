@@ -60,6 +60,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-playwright-
 
+    # Firefox is left out on purpose, to keep CI runs short: its tests
+    # skip here and are run locally instead (see "Tests" in AGENTS.md).
     - name: Install Playwright Chromium
       run: playwright install --with-deps --only-shell chromium
 
