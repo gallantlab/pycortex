@@ -13,7 +13,8 @@ import struct
 import time
 import urllib.request
 import zipfile
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
 import pytest
@@ -1184,7 +1185,7 @@ def test_visual_comparison_alpha_dataviews(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _js_attrs(handle, path):
+def _js_attrs(handle: JSProxy, path: str) -> dict[str, JSON]:
     """Read a javascript object's properties, with values for the scalar ones.
 
     ``send(method="get", ...)`` cannot be used for this: for a non-object
@@ -1221,11 +1222,11 @@ def _js_query(
             f"{path} went unanswered for {timeout} s"
 
 
-def _js_value(handle, path):
+def _js_value(handle: JSProxy, path: str) -> JSON:
     """Read one scalar javascript property, e.g. viewer.camera.fov."""
     parent, _, name = path.rpartition(".")
     entry = _js_attrs(handle, parent)[name]
-    assert len(entry) > 1, f"{path} is not a scalar: {entry}"
+    assert isinstance(entry, list) and len(entry) > 1, f"{path} is not a scalar: {entry}"
     return entry[1]
 
 
@@ -2287,7 +2288,9 @@ def test_rendering_an_animation_reproduces_the_quickflat_png(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _render_setup(handle, last=2, size=(320, 240)):
+def _render_setup(
+    handle: JSProxy, last: int = 2, size: tuple[int, int] = (320, 240)
+) -> None:
     """An animation of `last` + 1 frames, turning the brain, at a small size."""
     handle.send(method="run", params=[
         "window.viewer.ui._desc.camera._desc.create animation.action", []])
@@ -2309,11 +2312,17 @@ def _panel_status(handle):
     return _js_run(handle, "window.viewer._animPanel._statusText", [])
 
 
-def _mp4_boxes(data, start=0, end=None):
+# An MP4 box as (type, payload); a container box's payload is its child boxes.
+_Box = tuple[bytes, Union[bytes, list["_Box"]]]
+
+
+def _mp4_boxes(
+    data: bytes, start: int = 0, end: Optional[int] = None
+) -> list[_Box]:
     """The box tree of an MP4, as a list of (type, payload) with containers expanded."""
     containers = {b"moov", b"trak", b"mdia", b"minf", b"stbl", b"dinf"}
     end = len(data) if end is None else end
-    boxes = []
+    boxes: list[_Box] = []
     while start < end:
         size, kind = struct.unpack(">I4s", data[start:start + 8])
         assert size >= 8, "bad box size %d at %d" % (size, start)
@@ -2327,10 +2336,14 @@ def _mp4_boxes(data, start=0, end=None):
     return boxes
 
 
-def _find_box(boxes, *path):
+def _find_box(boxes: list[_Box], *path: bytes) -> bytes:
     for kind, payload in boxes:
         if kind == path[0]:
-            return payload if len(path) == 1 else _find_box(payload, *path[1:])
+            if len(path) == 1:
+                assert isinstance(payload, bytes), f"{kind!r} is a container box"
+                return payload
+            assert isinstance(payload, list), f"{kind!r} is not a container box"
+            return _find_box(payload, *path[1:])
     raise KeyError(b"/".join(path))
 
 
@@ -2339,7 +2352,13 @@ _PLAYBACK_PAGE = """<html><body><video id=v muted playsinline></video><canvas id
 window.result = new Promise(function(resolve) {
   var v = document.getElementById('v');
   v.onerror = function() { resolve({error: v.error ? v.error.message : 'error'}); };
-  v.onloadeddata = function() {
+  var timer = setTimeout(function() {
+    resolve({error: 'no frame was presented within 10 s'});
+  }, 10000);
+  // Draw once the first frame is presented. loadeddata can fire before it is
+  // ready to draw, and drawImage then paints nothing.
+  v.requestVideoFrameCallback(function() {
+    clearTimeout(timer);
     var c = document.getElementById('c');
     c.width = v.videoWidth; c.height = v.videoHeight;
     var ctx = c.getContext('2d');
@@ -2349,13 +2368,13 @@ window.result = new Promise(function(resolve) {
       if (px[i] + px[i + 1] + px[i + 2] > 30) lit++;
     resolve({width: v.videoWidth, height: v.videoHeight, duration: v.duration,
              lit: lit / (px.length / 4)});
-  };
+  });
   v.src = '/movie.mp4';
 });
 </script></body></html>"""
 
 
-def _play_mp4(path):
+def _play_mp4(path: str) -> dict[str, Any]:
     """Load an MP4 into a <video> in a fresh browser and report what it decodes.
 
     Run once the viewer's own browser has shut down: sync Playwright objects
@@ -2428,7 +2447,7 @@ def test_rendering_downloads_a_zip_of_pngs(tmp_path):
     assert not np.array_equal(frames[0], frames[-1])
 
 
-def test_rendering_downloads_an_mp4(tmp_path):
+def test_rendering_downloads_an_mp4(tmp_path: Path) -> None:
     """MP4 arrives as one well-formed H.264 file that a browser plays."""
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
     with cortex.export.headless_viewer(
@@ -2442,6 +2461,7 @@ def test_rendering_downloads_an_mp4(tmp_path):
         _js_run(handle, "window.viewer._animPanel.render", [])
         movie = handle._pw_thread.wait_for_download(timeout=120)
         fps = _js_value(handle, "window.viewer._anim.fps")
+        assert isinstance(fps, (int, float)), fps
 
         pageerrors = [e for e in handle._pw_thread.browser_errors
                       if "[pageerror]" in e]
