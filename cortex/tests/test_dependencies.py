@@ -8,6 +8,7 @@ from cortex.dependencies import (
     _query_inkscape_version,
     inkscape_path,
     inkscape_version,
+    require_inkscape,
 )
 
 
@@ -121,3 +122,20 @@ def test_inkscape_lookup_retries_until_found(mock_config, mock_which, mock_run):
     mock_run.reset_mock()
     assert inkscape_version() == '1.2.2'
     mock_run.assert_not_called()
+
+
+@mock.patch('cortex.dependencies.inkscape_path', return_value=None)
+def test_require_inkscape_missing(mock_path):
+    """Raises an error that points at the config option when inkscape is missing."""
+    with pytest.raises(RuntimeError, match=r'\[dependency_paths\]'):
+        require_inkscape()
+
+
+@mock.patch('cortex.dependencies.inkscape_path', return_value='/usr/bin/inkscape')
+@mock.patch('cortex.dependencies.sp.run')
+def test_require_inkscape_found(mock_run, mock_path):
+    """Returns the path and version together when inkscape is available."""
+    mock_run.return_value = _make_run_result(
+        stdout=b'Inkscape 1.2.2 (b0a8486, 2022-12-01)\n'
+    )
+    assert require_inkscape() == ('/usr/bin/inkscape', '1.2.2')

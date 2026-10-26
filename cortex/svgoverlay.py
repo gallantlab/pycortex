@@ -16,7 +16,7 @@ from lxml import etree
 from lxml.builder import E
 
 from .options import config
-from .dependencies import inkscape_path, inkscape_version
+from .dependencies import require_inkscape
 
 svgns = "http://www.w3.org/2000/svg"
 inkns = "http://www.inkscape.org/namespaces/inkscape"
@@ -229,12 +229,7 @@ class SVGOverlay:
         """
         # Give a more informative error in case we don't have inkscape
         # installed
-        if inkscape_version() is None:
-            raise RuntimeError(
-                "Inkscape doesn't seem to be installed on this system."
-                "SVGOverlay.get_texture requires inkscape."
-                "Please make sure that inkscape is installed and that is "
-                "accessible from the terminal.")
+        inkscape_cmd, inkscape_ver = require_inkscape()
 
         if shadow is not None:
             for blur in self.svg.findall(".//{%s}feGaussianBlur"%svgns):
@@ -293,11 +288,10 @@ class SVGOverlay:
         svgtemp.close()
         svgfile = svgtemp.name
 
-        inkscape_cmd = inkscape_path()
         # The command is built as an argument list rather than as a string that
         # is then split, so that a configured inkscape path containing spaces
         # or backslashes is passed through unchanged.
-        if LooseVersion(inkscape_version()) < LooseVersion('1.0'):
+        if LooseVersion(inkscape_ver) < LooseVersion('1.0'):
             cmd = [inkscape_cmd, '-z', '-h', str(height), '-e', pngfile, svgfile]
         else:
             cmd = [inkscape_cmd, '-h', str(height), '--export-filename', pngfile, svgfile]
@@ -326,7 +320,7 @@ class SVGOverlay:
             except SyntaxError as e:
                 os.unlink(pngfile)
                 raise RuntimeError(f"Error reading image from {pngfile}: {e}"
-                                   f" (inkscape version: {inkscape_version()})"
+                                   f" (inkscape version: {inkscape_ver})"
                                    f" (inkscape command: {inkscape_cmd})"
                                    f" (stdout: {stdout})"
                                    f" (stderr: {stderr})")

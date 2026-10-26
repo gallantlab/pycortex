@@ -44,6 +44,19 @@ def inkscape_version() -> str | None:
     return _query_inkscape_version(inkscapeExecutable)
 
 
+def require_inkscape() -> tuple[str, str]:
+    """Return the (path, version) of inkscape, or raise if it is not available."""
+    path = inkscape_path()
+    version = inkscape_version()
+    if path is None or version is None:
+        raise RuntimeError(
+            "Inkscape doesn't seem to be installed on this system, and is "
+            "required here. Please make sure that inkscape is installed and "
+            "accessible from the terminal, or set the 'inkscape' option in "
+            f"the [dependency_paths] section of {options.usercfg}.")
+    return path, version
+
+
 @cache
 def _query_inkscape_version(inkscapeExecutable: str) -> str | None:
     result = sp.run([inkscapeExecutable, '--version'], stdout = sp.PIPE, stderr = sp.PIPE, check = True)
