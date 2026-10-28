@@ -44,7 +44,7 @@ jobs:
         pip install --upgrade pip
         # force using latest nibabel
         pip install -U nibabel
-        pip install -e . --group docs
+        pip install -e . --group dev --group docs
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Cache Playwright browsers
