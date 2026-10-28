@@ -48,8 +48,8 @@ You can find many examples of pycortex features in the [pycortex example gallery
 
 To build the documentation locally:
 ```bash
-# Install required dependencies for the documentation
-pip install sphinx_gallery numpydoc
+# Install pycortex with the documentation dependencies (needs pip >= 25.1)
+pip install -e . --group docs
 # Move into the docs folder (assuming already in pycortex directory)
 cd docs
 # Build a local version of the documentation site
