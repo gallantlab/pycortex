@@ -33,6 +33,15 @@ types = [
     "scipy-stubs",
 ]
 
+docs = [
+    # The gallery examples render WebGL views headlessly and use IPython.
+    "pycortex[headless]",
+    "ipython",
+    "numpydoc",
+    "sphinx",
+    "sphinx-gallery",
+]
+
 [project.optional-dependencies]
 headless = [
     "playwright>=1.58.0"

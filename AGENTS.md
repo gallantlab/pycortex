@@ -35,8 +35,8 @@ uv run pytest -p no:cacheprovider --no-cov -x cortex/tests/test_formats.py  # qu
 ### Docs
 
 ```bash
-uv pip install sphinx_gallery numpydoc   # not (yet) a dependency group
-cd docs && uv run make html              # gallery examples need Inkscape and Playwright too
+uv sync --all-extras --group docs        # sphinx, sphinx-gallery, numpydoc, ipython, playwright
+cd docs && uv run make html              # gallery examples also need Inkscape and Playwright Chromium
 ```
 
 ## Architecture
