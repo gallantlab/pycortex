@@ -7,8 +7,10 @@ try:
     from cortex._version import version as __version__
     __full_version__ = __version__
 except ImportError:
-    # Fallback for development environments without setuptools-scm
-    __version__ = '1.3.0.dev0'
+    # Build ran without setuptools-scm (e.g. --no-build-isolation without it
+    # installed), so _version.py was never generated. Use an obviously-wrong
+    # placeholder rather than a real-looking version that goes stale.
+    __version__ = '0+unknown'
     __full_version__ = __version__
 
 __hardcoded_version__ = __version__

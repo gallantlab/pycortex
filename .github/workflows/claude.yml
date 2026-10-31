@@ -79,9 +79,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y inkscape --no-install-recommends
           pip install --upgrade pip
-          pip install wheel setuptools numpy cython
-          pip install -e '.[headless]' --no-build-isolation
-          pip install -e . --no-build-isolation --group dev
+          pip install -e '.[headless]' --group dev
           python -c 'import cortex; print(cortex.__full_version__)'
           # Combined with UV_NO_SYNC, this makes `uv run <cmd>` execute inside the
           # environment installed above rather than a throwaway project venv.
