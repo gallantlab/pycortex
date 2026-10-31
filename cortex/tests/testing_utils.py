@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
+import pytest
 
 from cortex.export.save_views import ViewParams
 
@@ -22,6 +23,17 @@ try:
     has_playwright = True
 except Exception:
     has_playwright = False
+
+# Skip marker for the headless WebGL test modules: `pytestmark = requires_playwright`.
+requires_playwright = pytest.mark.skipif(
+    not has_playwright, reason="playwright and chromium are required"
+)
+
+# The stub subject bundled in filestore/db/S1, used by the headless WebGL tests.
+subj = "S1"
+xfmname = "fullhead"
+nverts = 304380
+volshape = (31, 100, 100)
 
 
 def wait_for_file(path, timeout=30):
