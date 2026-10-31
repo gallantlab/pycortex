@@ -34,20 +34,17 @@ from cortex.export.save_views import (
 )
 from cortex.tests.testing_utils import (
     count_red_pixels,
-    has_playwright,
     js_run,
     js_value,
+    nverts,
+    requires_playwright,
+    subj,
+    volshape,
     wait_for_file,
+    xfmname,
 )
 
-pytestmark = pytest.mark.skipif(
-    not has_playwright, reason="playwright and chromium are required"
-)
-
-subj = "S1"
-xfmname = "fullhead"
-nverts = 304380
-volshape = (31, 100, 100)
+pytestmark = requires_playwright
 
 ALL_PANEL_PRESETS = {
     name: getattr(cortex.export, name)

@@ -28,21 +28,18 @@ import cortex.export
 from cortex.tests.testing_utils import (
     alpha_mask,
     flatmap_centre,
-    has_playwright,
     js_attrs,
     js_query,
     js_run,
     js_value,
+    requires_playwright,
+    subj,
+    volshape,
+    xfmname,
 )
 
 
-pytestmark = pytest.mark.skipif(
-    not has_playwright, reason="playwright and chromium are required"
-)
-
-subj = "S1"
-xfmname = "fullhead"
-volshape = (31, 100, 100)
+pytestmark = requires_playwright
 
 
 # ---------------------------------------------------------------------------

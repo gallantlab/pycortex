@@ -28,22 +28,18 @@ from cortex.export.save_views import default_view_params
 from cortex.tests.testing_utils import (
     alpha_mask,
     flatmap_centre,
-    has_playwright,
     js_attrs,
     js_run,
     js_value,
     mask_bbox,
+    requires_playwright,
+    subj,
+    volshape,
     wait_for_file,
+    xfmname,
 )
 
-pytestmark = pytest.mark.skipif(
-    not has_playwright, reason="playwright and chromium are required"
-)
-
-subj = "S1"
-xfmname = "fullhead"
-volshape = (31, 100, 100)
-
+pytestmark = requires_playwright
 
 # ---------------------------------------------------------------------------
 # _capture_view roundtrip
