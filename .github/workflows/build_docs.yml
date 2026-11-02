@@ -44,8 +44,7 @@ jobs:
         pip install --upgrade pip
         # force using latest nibabel
         pip install -U nibabel
-        pip install -q ipython Sphinx sphinx-gallery numpydoc # TODO: move to pyproject.toml
-        pip install -e . --group dev
+        pip install -e . --group dev --group docs
         python -c 'import cortex; print(cortex.__full_version__)'
 
     - name: Cache Playwright browsers
