@@ -27,7 +27,7 @@ from .database import db
 from .freesurfer import fs_aseg_dict
 from .options import config
 from .polyutils import Surface
-from .testing_utils import INKSCAPE_PATH, INKSCAPE_VERSION
+from .dependencies import require_inkscape
 from .volume import anat2epispace
 
 # register_cmap is deprecated in matplotlib > 3.7.0 and replaced by colormaps.register
@@ -499,6 +499,10 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
 
     from . import dataset, quickflat
 
+    # Fail before touching the overlay file if Inkscape is needed but missing.
+    if open_inkscape:
+        inkscape_cmd, inkscape_ver = require_inkscape()
+
     dv = dataset.normalize(data)
     if isinstance(dv, dataset.Dataset):
         raise TypeError("Please specify a data view")
@@ -511,8 +515,7 @@ def add_roi(data, name="new_roi", open_inkscape=True, add_path=True,
     svg.rois.add_shape(name, binascii.b2a_base64(fp.read()).decode('utf-8'), add_path)
 
     if open_inkscape:
-        inkscape_cmd = INKSCAPE_PATH
-        if LooseVersion(INKSCAPE_VERSION) < LooseVersion('1.0'):
+        if LooseVersion(inkscape_ver) < LooseVersion('1.0'):
             cmd = [inkscape_cmd, '-f', svg.svgfile]
         else:
             cmd = [inkscape_cmd, svg.svgfile]

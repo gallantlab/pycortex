@@ -19,7 +19,7 @@ import pytest
 
 import cortex
 from cortex import dataset
-from cortex.testing_utils import has_installed
+from cortex.dependencies import has_installed
 import cortex.utils
 from cortex.webgl.data import Package
 from cortex.webgl.serve import NPEncode

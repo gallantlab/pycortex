@@ -1634,20 +1634,14 @@ def show(
 
     server.start()
     local_url, network_url = _viewer_urls(server.port)
-    print("Started server on port %d"%server.port)
-    if network_url == local_url:
-        print("Open the viewer at %s"%local_url)
-    else:
-        print("Open the viewer at %s (from another machine: %s)"
-              %(local_url, network_url))
+    message = "Started server on port %d, open the viewer at %s"%(server.port, local_url)
+    if network_url != local_url:
+        message += " (from another machine: %s)"%network_url
+    print(message)
     if display_url and not open_browser:
         try:
             from IPython.display import HTML, display
-            link = 'Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)
-            if network_url != local_url:
-                link += (' (from another machine: '
-                         '<a href="{0}" target="_blank">{0}</a>)'.format(network_url))
-            display(HTML(link))
+            display(HTML('Open viewer: <a href="{0}" target="_blank">{0}</a>'.format(local_url)))
         except:
             pass
 

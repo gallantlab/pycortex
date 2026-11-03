@@ -1,19 +1,21 @@
-"""Module containing utils for testing"""
+"""Locate external tools (e.g. Inkscape) configured under ``[dependency_paths]``."""
+from __future__ import annotations
+
 import os
 import subprocess as sp
+from functools import cache
 from shutil import which
-from . import options
-import os
 
+from . import options
 from .options import config
 
 
-def has_installed(name):
+def has_installed(name: str) -> bool:
     binary_file = options.config.get('dependency_paths', name)
     return os.path.exists(binary_file) or which(name) is not None
 
 
-def inkscapePath():
+def inkscape_path() -> str | None:
     """Return the path of the inkscape executable to run, or None.
 
     The 'inkscape' option of the 'dependency_paths' config section is used
@@ -30,16 +32,38 @@ def inkscapePath():
     return which('inkscape')
 
 
-def inkscape_version():
-    inkscapeExecutable = inkscapePath()
+def inkscape_version() -> str | None:
+    """Return the version string of the inkscape executable, or None.
+
+    Nothing is cached while inkscape is missing, so installing it after
+    pycortex has been imported takes effect on the next call.
+    """
+    inkscapeExecutable = inkscape_path()
     if inkscapeExecutable is None:
         return None
+    return _query_inkscape_version(inkscapeExecutable)
+
+
+def require_inkscape() -> tuple[str, str]:
+    """Return the (path, version) of inkscape, or raise if it is not available."""
+    path = inkscape_path()
+    version = inkscape_version()
+    if path is None or version is None:
+        raise RuntimeError(
+            "Inkscape doesn't seem to be installed on this system, and is "
+            "required here. Please make sure that inkscape is installed and "
+            "accessible from the terminal, or set the 'inkscape' option in "
+            f"the [dependency_paths] section of {options.usercfg}.")
+    return path, version
+
+
+@cache
+def _query_inkscape_version(inkscapeExecutable: str) -> str | None:
     result = sp.run([inkscapeExecutable, '--version'], stdout = sp.PIPE, stderr = sp.PIPE, check = True)
     # Combine stdout and stderr; some systems print diagnostic messages
     # (e.g. "Setting _INKSCAPE_GC=disable …") before the version line.
-    combined = result.stdout + result.stderr
-    if isinstance(combined, bytes):
-        combined = combined.decode('utf-8')
+    raw = result.stdout + result.stderr
+    combined = raw.decode('utf-8') if isinstance(raw, bytes) else raw
     # Find the line that starts with 'Inkscape' to get the real version,
     # e.g. 'Inkscape 1.2.2 (b0a8486, 2022-12-01)'
     for line in combined.splitlines():
@@ -47,14 +71,3 @@ def inkscape_version():
             version = line.split()[1]
             return version
     return None
-
-
-INKSCAPE_PATH = inkscapePath()
-INKSCAPE_VERSION = inkscape_version()
-if INKSCAPE_VERSION is None:
-    print(("Inkscape not found. Some tests will be skipped. " 
-    "If you are on a Mac or Windows machine, please specify "
-    "the path to the Inkscape binary in the config file "
-    f"(Here: {options.usercfg})."))
-
-

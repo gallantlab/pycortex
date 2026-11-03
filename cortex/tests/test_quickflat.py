@@ -7,10 +7,10 @@ from matplotlib.figure import Figure
 from cortex import dataset
 import cortex.quickflat.utils  # for ty
 from cortex.svgoverlay import svgns
-from cortex.testing_utils import inkscapePath
+from cortex.dependencies import inkscape_path
 from cortex.webgl.data import Package
 
-no_inkscape = inkscapePath() is None
+no_inkscape = inkscape_path() is None
 
 
 def random_volume(with_nan=False, **kwargs):
