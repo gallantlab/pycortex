@@ -1,6 +1,7 @@
 """Tests for headless WebGL rendering across data types, angles, surfaces, and panels.
 
-These tests exercise the WebGL viewer through the headless Chromium browser,
+These tests exercise the WebGL viewer through the headless Chromium browser
+(the data type tests also through Firefox, when it is installed),
 verifying that all supported data types, camera angles, surface morphing
 states, and predefined panel layouts render correctly without a display server.
 
@@ -25,7 +26,13 @@ from cortex.export.save_views import (
     default_view_params,
     unfold_view_params,
 )
-from cortex.tests.testing_utils import count_red_pixels, has_playwright, wait_for_file
+from cortex.tests.testing_utils import (
+    BROWSERS,
+    FIREFOX_MISSING,
+    count_red_pixels,
+    has_playwright,
+    wait_for_file,
+)
 from cortex.webgl.serve import JSON, JSProxy
 
 pytestmark = pytest.mark.skipif(
@@ -42,6 +49,9 @@ ALL_PANEL_PRESETS = {
     for name in sorted(dir(cortex.export))
     if name.startswith("params_")
 }
+
+
+DTYPE_NAMES = ["Volume", "Vertex", "VolumeRGB", "VertexRGB", "Volume2D", "Vertex2D"]
 
 
 def make_dataview(dtype_name):
@@ -118,30 +128,56 @@ def _assert_not_blank(path):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "dtype_name",
-    [
-        "Volume",
-        "Vertex",
-        "VolumeRGB",
-        "VertexRGB",
-        "Volume2D",
-        "Vertex2D",
-    ],
-)
-def test_datatype_renders(dtype_name, tmp_path):
-    """Each data type should render in the headless viewer without errors."""
+@pytest.mark.parametrize("browser", BROWSERS)
+@pytest.mark.parametrize("dtype_name", DTYPE_NAMES)
+def test_datatype_renders(dtype_name, browser, tmp_path):
+    """Each data type should render in the headless viewer without errors.
+
+    Run in Firefox too: its Mesa rasterizer counts declared-but-unused vertex
+    attributes against the limit of 16, which Chromium's ANGLE does not, so a
+    shader that only fits after pruning fails to link there and renders blank.
+    """
     vol = make_dataview(dtype_name)
-    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
+    with cortex.export.headless_viewer(
+        vol, viewer_params={}, browser=browser
+    ) as handle:
         outfile = str(tmp_path / "test.png")
         handle.getImage(outfile, (512, 384))
         wait_for_file(outfile)
-        assert os.path.isfile(outfile)
-        assert os.path.getsize(outfile) > 0
+        # Browser errors first, since one may explain a blank file.
+        _assert_no_browser_failures(handle)
+        _assert_not_blank(outfile)
 
-    # Browser errors first, since one may explain a blank file.
-    _assert_no_browser_failures(handle)
-    _assert_not_blank(outfile)
+
+@FIREFOX_MISSING
+@pytest.mark.parametrize("dtype_name", DTYPE_NAMES)
+def test_chromium_matches_firefox(dtype_name, tmp_path):
+    """Each data type should look the same in both browsers.
+
+    Software WebGL rasterizers differ slightly in anti-aliasing and float
+    precision, so compare with a tolerance rather than byte for byte. A render
+    that is blank in both browsers matches; ``test_datatype_renders`` is what
+    catches that.
+    """
+    from PIL import Image
+
+    images = {}
+    for browser in ("chromium", "firefox"):
+        outfile = str(tmp_path / f"{browser}.png")
+        with cortex.export.headless_viewer(
+            make_dataview(dtype_name), viewer_params={}, browser=browser
+        ) as handle:
+            handle.getImage(outfile, (512, 384))
+            wait_for_file(outfile)
+        with Image.open(outfile) as img:
+            images[browser] = np.asarray(img.convert("RGB"), dtype=np.float64)
+
+    assert images["chromium"].shape == images["firefox"].shape
+    mean_abs_diff = np.abs(images["chromium"] - images["firefox"]).mean()
+    assert mean_abs_diff < 5.0, (
+        f"{dtype_name} differs between Chromium and Firefox (mean abs diff "
+        f"= {mean_abs_diff:.2f} out of 255)."
+    )
 
 
 # ---------------------------------------------------------------------------

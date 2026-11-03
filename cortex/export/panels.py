@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from ..dataset import Dataview
+from .headless import BrowserName
 from .save_views import save_3d_views, ViewParams
 from ._default_params import (
     params_inflatedless_lateral_medial_ventral,
@@ -52,6 +53,7 @@ def plot_panels(
     interpolation: str = "nearest",
     layers: int = 1,
     headless: bool = False,
+    browser: BrowserName = "chromium",
 ) -> Figure:
     """Plot on the same figure a number of views, as defined by a list of panel
     specifications.
@@ -102,13 +104,22 @@ def plot_panels(
         plotting the data. (Default: 1).
 
     headless: bool
-        If True, render using a headless Chromium browser via Playwright instead
+        If True, render using a headless browser via Playwright instead
         of requiring the user to manually open a browser window. This allows
         the function to run fully autonomously without any user interaction.
         Requires ``playwright`` to be installed (``pip install playwright``) and
-        Chromium to be available (``playwright install chromium``).
-        Software WebGL (SwiftShader) is used, so no GPU or display server is
-        needed. (Default: False)
+        the chosen ``browser`` to be installed: ``playwright install
+        chromium`` for the default, or ``playwright install firefox`` for
+        ``browser="firefox"`` (only that one is needed).
+        Software WebGL rendering is used, so no GPU is needed, and with the
+        default Chromium no display server either (``browser="firefox"``
+        needs one, see below). (Default: False)
+
+    browser: str
+        Which Playwright browser to use when ``headless=True``: ``"chromium"``
+        (default) or ``"firefox"``. Ignored when ``headless=False``.
+        ``"firefox"`` additionally requires ``Xvfb`` to be installed unless
+        ``DISPLAY`` is already set (see ``cortex.export.headless``).
 
     Returns
     -------
@@ -150,6 +161,7 @@ def plot_panels(
         interpolation=interpolation,
         layers=layers,
         headless=headless,
+        browser=browser,
     )
 
     fig = plt.figure(figsize=figsize)

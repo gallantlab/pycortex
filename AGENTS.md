@@ -13,6 +13,7 @@ The package has two Cython extensions (`cortex/formats.pyx` for surface mesh I/O
 ```bash
 uv sync --all-extras                              # headless extra (playwright) + dev group (test/type-checking deps) by default; builds the Cython extensions
 uv run playwright install --only-shell chromium   # browser for headless WebGL tests
+uv run playwright install firefox                 # optional: also run the Firefox tests (needs Xvfb, see Tests)
 ```
 
 Versioning is by `setuptools-scm` from git tags (written to `cortex/_version.py`); never edit version files by hand. A new git worktree gets its own `.venv` — rerun `uv sync` there to (re)build the compiled extensions.
@@ -28,9 +29,10 @@ uv run pytest -p no:cacheprovider --no-cov -x cortex/tests/test_formats.py  # qu
 
 - `pytest.ini` sets a 240 s per-test timeout (via `pytest-timeout`) because headless browser sessions can hang; override per-test with `@pytest.mark.timeout(N)`.
 - Tests self-skip based on available tools: Inkscape (quickflat/dataset overlay tests), Playwright Chromium (`cortex/tests/testing_utils.py:has_playwright` — WebGL headless tests), and FreeSurfer's `mri_surf2surf`.
+- Firefox tests (every test ID containing `firefox`; `pytest -k firefox` runs just those) self-skip unless Playwright's own Firefox build is installed (`testing_utils.py:has_playwright_firefox`). Headless Firefox needs an X display for WebGL, so they also need `Xvfb` (`apt-get install xvfb`) unless `DISPLAY` is set. These tests catch driver differences Chromium hides. For example, Mesa (Firefox) counts declared-but-unused vertex attributes against the 16-attribute limit, which ANGLE (Chromium) does not. Run them after touching `shaderlib.js` or the attributes `dataset.js` dispatches.
 - `pytest.ini` deselects `-m slow` by default. The one slow test, `cortex/tests/test_autoflatten.py:test_autoflatten_subject_end_to_end`, really runs autoflatten (15-30 min); it needs FreeSurfer sourced with `fsaverage` in `$SUBJECTS_DIR`, autoflatten installed, and `$PYCORTEX_TEST_FS_SUBJECT` naming a recon-all'd subject — the bundled S1 is a pycortex filestore entry, not a FreeSurfer subject directory, so it cannot be flattened. Run it with `pytest -m slow`.
 - Nearly all tests use the stub subject `S1` bundled in `filestore/db/S1` (transform `fullhead`, 304380 vertices, volume shape `(31, 100, 100)`).
-- CI (`.github/workflows/run_tests.yml`) runs `pytest --cov=./` on a matrix of Python versions, with Inkscape and Playwright Chromium installed. The only enforced lint is codespell (config in `pyproject.toml`). mypy is configured in `pyproject.toml` and installed with the dev group but not run in CI — new Python code should still carry type annotations.
+- CI (`.github/workflows/run_tests.yml`) runs `pytest --cov=./` on a matrix of Python versions, with Inkscape and Playwright Chromium installed. It deliberately does not install Firefox, to keep CI runs short, so the Firefox tests only run locally. The only enforced lint is codespell (config in `pyproject.toml`). mypy is configured in `pyproject.toml` and installed with the dev group but not run in CI — new Python code should still carry type annotations.
 
 ### Docs
 
@@ -67,7 +69,7 @@ Flow: dataviews → JSON + PNG mosaics (`data.py:Package`) + compressed CTM surf
 - The bundled Three.js is **r69** — very old; the shader pipeline depends on its conventions, do not casually upgrade.
 - All GLSL lives in `resources/js/shaderlib.js` as arrays of string lines assembled per-configuration — there are no `.glsl` files.
 - CTM packs reorder vertices: `cortex.utils.get_ctmmap` / `get_ctm2webgl_map` translate between CTM/WebGL ordering and the original surface ordering. Indexing viewer data with original vertex indices without remapping is a classic bug.
-- `cortex/export/headless.py` (`headless_viewer`) runs the viewer in headless Chromium via Playwright for screenshots/tests.
+- `cortex/export/headless.py` (`headless_viewer`) runs the viewer in headless Chromium (default) or Firefox (`browser="firefox"`) via Playwright for screenshots/tests.
 - Some JS resources use CRLF line endings (e.g. `dataset.js`); keep the existing endings when editing.
 - `setup.py` explicitly enumerates `cortex.webgl` `package_data` patterns — new resource subdirectories must be added there or they won't ship in wheels.
 

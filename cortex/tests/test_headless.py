@@ -6,17 +6,27 @@ These tests require ``playwright`` and Chromium to be installed::
 
     pip install playwright
     playwright install chromium
+
+Firefox-specific tests additionally require ``playwright install firefox``
+and are skipped otherwise.
 """
+import contextlib
 import os
+import subprocess
 import tempfile
 
 import numpy as np
 import pytest
 
 import cortex
+from cortex.export import headless
 from cortex.export.headless import _PlaywrightThread
 
-from .testing_utils import has_playwright, wait_for_file
+from .testing_utils import (
+    BROWSERS,
+    has_playwright,
+    wait_for_file,
+)
 
 pytestmark = pytest.mark.skipif(
     not has_playwright,
@@ -27,17 +37,45 @@ pytestmark = pytest.mark.skipif(
 subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
 
 
-def test_headless_viewer_opens_and_closes():
-    """The headless viewer context manager should yield a working handle and
-    tear down cleanly."""
+@pytest.mark.parametrize("browser", BROWSERS)
+def test_headless_viewer_opens_and_closes(browser, monkeypatch):
+    """The headless viewer should open in each browser and shut it down on exit.
+
+    Entering the context already proves the browser loaded the viewer:
+    ``headless_viewer`` raises unless the page connects and finishes loading.
+    On exit, the browser and any private Xvfb server (Firefox without a
+    ``DISPLAY``) must be gone rather than left running after every render.
+    """
+    browsers = []
+    real_webgl_browser = headless.webgl_browser
+
+    @contextlib.contextmanager
+    def recording_webgl_browser(*args, **kwargs):
+        with real_webgl_browser(*args, **kwargs) as instance:
+            browsers.append(instance)
+            yield instance
+
+    xvfbs = []
+    real_popen = subprocess.Popen
+
+    def recording_popen(args, *rest, **kwargs):
+        proc = real_popen(args, *rest, **kwargs)
+        if args[0] == "Xvfb":
+            xvfbs.append(proc)
+        return proc
+
+    monkeypatch.setattr(headless, "webgl_browser", recording_webgl_browser)
+    monkeypatch.setattr(subprocess, "Popen", recording_popen)
+
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
+    with cortex.export.headless_viewer(vol, viewer_params={}, browser=browser):
+        pass
 
-    with cortex.export.headless_viewer(vol, viewer_params={}) as handle:
-        # The handle should have a .server attribute (the WebApp)
-        assert hasattr(handle, "server")
-        # The server should be serving on some port
-        assert handle.server.port > 0
-
+    assert len(browsers) == 1
+    assert not browsers[0].is_connected(), "browser still running after exit"
+    assert all(proc.poll() is not None for proc in xvfbs), (
+        "Xvfb still running after exit"
+    )
 
 
 def test_browser_errors_collected():

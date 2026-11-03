@@ -5,10 +5,16 @@ WebGL only guarantees a maximum number of vertex attribute slots (usually
 shows up in the viewer as an unexplained black screen. This is how
 ``Vertex2D`` broke (gh-714).
 
-Linking a shader needs no subject database or render, just Chromium, so it
+Linking a shader needs no subject database or render, just a browser, so it
 costs milliseconds instead of seconds per case -- cheap enough to cover every
 combination of options here, including the equivolume shaders that no render
 test enables.
+
+Every variant is linked in both Chromium and Firefox, because they count
+attributes differently: Chromium's ANGLE drops declared-but-unused attributes
+before enforcing the limit, Firefox's Mesa counts every declaration. A shader
+that only fits after that pruning passes in Chromium and renders blank in
+Firefox.
 """
 
 import itertools
@@ -18,8 +24,8 @@ from typing import Any, Callable, Iterator
 import pytest
 
 import cortex.webgl
-from cortex.export.headless import SWIFTSHADER_CHROMIUM_ARGS
-from cortex.tests.testing_utils import has_playwright
+from cortex.export.headless import webgl_browser
+from cortex.tests.testing_utils import BROWSERS, has_playwright
 
 pytestmark = pytest.mark.skipif(
     not has_playwright, reason="playwright and chromium are required"
@@ -178,25 +184,24 @@ def _variants() -> Iterator[Any]:
     yield pytest.param("depth", dict(morphs=3, volume=1), id="depth")
 
 
-@pytest.fixture(scope="module")
-def webgl_page(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Any]:
+@pytest.fixture(scope="module", params=BROWSERS)
+def webgl_page(
+    request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[Any]:
     """Load the shader-linking page into a real GL context, shared by both hooks."""
     from playwright.sync_api import sync_playwright
 
     page_path = tmp_path_factory.mktemp("shaders") / "shaders.html"
     page_path.write_text(PAGE.replace("__JSDIR__", JS_PATH))
 
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(
-            headless=True, args=SWIFTSHADER_CHROMIUM_ARGS
-        )
+    with sync_playwright() as playwright, webgl_browser(
+        playwright, request.param
+    ) as browser:
         page = browser.new_page()
         page.goto("file://%s" % page_path, wait_until="load", timeout=60000)
         if not page.evaluate("() => !!window.linkShader"):
-            browser.close()
             pytest.skip("no WebGL context available in this browser")
         yield page
-        browser.close()
 
 
 @pytest.fixture(scope="module")

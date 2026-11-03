@@ -13,7 +13,7 @@ import pytest
 
 import cortex
 
-from .testing_utils import has_playwright
+from .testing_utils import BROWSERS, has_playwright
 
 pytestmark = pytest.mark.skipif(
     not has_playwright,
@@ -24,7 +24,8 @@ pytestmark = pytest.mark.skipif(
 subj, xfmname, volshape = "S1", "fullhead", (31, 100, 100)
 
 
-def test_save_3d_views_headless():
+@pytest.mark.parametrize("browser", BROWSERS)
+def test_save_3d_views_headless(browser):
     """save_3d_views with headless=True should produce an image file."""
     vol = cortex.Volume(np.random.randn(*volshape), subj, xfmname)
 
@@ -41,6 +42,7 @@ def test_save_3d_views_headless():
             # _set_view can succeed; sleep=10 (the default) is safe.
             sleep=10,
             headless=True,
+            browser=browser,
         )
 
         assert len(file_names) == 1
