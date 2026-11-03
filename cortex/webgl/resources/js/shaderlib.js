@@ -82,10 +82,6 @@ var Shaderlib = (function() {
                 "const vec4 shift = vec4(1.0, 1. / 255., 1. / 65025., 1./160581375.0);",
                 "return dot(rgba, shift);",
             "}",
-            "float decode_float_vec2(vec2 rg) {",
-                "const vec2 shift = vec2(1.0, 1. / 255.);",
-                "return dot(rg, shift);",
-            "}",
 
             "vec4 pack_float( const in float depth ) {",
                 "const vec4 bit_shift = vec4( 256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0 );",
@@ -392,11 +388,6 @@ var Shaderlib = (function() {
                 header += "#define ROI_RENDER\n";
             if (opts.extratex)
                 header += "#define EXTRATEX\n"
-            if (opts.halo) {
-                if (opts.twod)
-                    throw "Cannot use 2D colormaps with volume integration"
-                header += "#define HALO_RENDER\n";
-            }
             if (opts.hasflat)
                 header += "#define HASFLAT\n"
             if (opts.equivolume)
@@ -566,7 +557,6 @@ var Shaderlib = (function() {
             utils.rand,
             utils.edge,
             utils.colormap,
-            utils.pack,
             utils.samplers,
 
             "void main() {",
@@ -717,19 +707,6 @@ var Shaderlib = (function() {
             "#endif",
         "#endif",
                 "}",
-    "#ifdef HALO_RENDER",
-                "if (vMedial < .999) {",
-                    "float dweight = gl_FragCoord.w;",
-                    "float value = dweight * vnorm(values).x;",
-
-                    "gl_FragColor.rg = encode_float_vec2(value);",
-                    "gl_FragColor.ba = encode_float_vec2(dweight);",
-                    //"gl_FragColor = vec4(res / 256., 1. / 256.);",
-                    //"gl_FragColor = vec4(vec3(gl_FragCoord.w), 1.);",
-                "} else if (surfmix > "+((morphs-2)/(morphs-1))+") {",
-                    "gl_FragColor = vec4(0.);",
-                "}",
-    "#else",
             "#ifdef RGBCOLORS",
                 "vec4 vColor = mix(color[0], color[1], framemix);",
             "#else",
@@ -773,7 +750,6 @@ var Shaderlib = (function() {
                 "gl_FragColor = tColor + (1.-tColor.a)*gl_FragColor;",
             "#endif",
                 THREE.ShaderChunk[ "lights_phong_fragment" ],
-    "#endif",
             "}"
             ].join("\n");
 
@@ -1036,34 +1012,6 @@ var Shaderlib = (function() {
             return {vertex:header+vertShade, fragment:header+fragShade, attrs:attributes};
         },
 
-        cmap_quad: function() {
-            //Colormaps the full-screen quad, used for stage 2 of volume integration
-            var vertShade = [
-                "void main() {",
-                    "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-                "}",
-            ].join("\n");
-            var fragShade = [
-                utils.pack,
-                "uniform vec2 screen_size;",
-                "uniform sampler2D screen;",
-                "uniform sampler2D colormap;",
-                "void main() {",
-                    "vec4 data = texture2D(screen, gl_FragCoord.xy / screen_size);",
-                    "float value = decode_float_vec2(data.rg);",
-                    "float raw = value / decode_float_vec2(data.ba);",
-                    //"if (value.a > 0.) {",
-                       "gl_FragColor = texture2D(colormap, vec2(raw, 0.));",
-                    //"} else {",
-                    //   "discard;",
-                    //"}",
-                    //"gl_FragColor = vec4(vec3(raw), 1.);",
-                    //"gl_FragColor = vec4(value.rgb, 1.);",
-                "}",
-            ].join("\n");
-            return {vertex:vertShade, fragment:fragShade, attrs:{}};
-        },
-        
         pick: function(opts) {
             var header = "";
             var morphs = opts.morphs;

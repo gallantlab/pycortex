@@ -308,8 +308,6 @@ var jsplot = (function (module) {
                     scene = new THREE.Scene();
                     scene.add(this.camera);
                     scene.add(this.root);
-                    // scene.fsquad = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), null);
-                    // scene.fsquad.position.z = -1.0001;
                     this.views.push({left:left, bottom:bottom, width:width, height:height, scene:scene});
                 }
             }
