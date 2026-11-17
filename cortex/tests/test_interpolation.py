@@ -3,7 +3,7 @@
 The arithmetic here is duplicated in ``cortex/webgl/resources/js/interpolation.js``
 so that the browser's animation panel and ``JSMixer._get_anim_seq`` produce the
 same trajectories. These tests pin the python half; the two halves are checked
-against each other in ``test_webgl_headless.py``.
+against each other in ``test_webgl_animation.py``.
 """
 
 import math
@@ -413,7 +413,7 @@ def test_every_mode_is_offered_by_the_javascript_panel():
     """The dropdown must list all eight, or a mode becomes unreachable.
 
     Read out of the javascript source rather than a browser, so this runs
-    without playwright; the browser-side check lives in test_webgl_headless.py.
+    without playwright; the browser-side check lives in test_webgl_animation.py.
     """
     import os
     import re
